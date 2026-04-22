@@ -1064,12 +1064,13 @@
 
     <!-- ========= ACTUALS ========= -->
     <div id="actual-kind" style="display:none">
-      <div class="batch-instructions">Record the weight confirmed by the factory weighbridge (via SMS). The app will compare against the sum of plucker entries for the same day and factory to surface any unattributed kilograms.</div>
+      <div class="batch-instructions">Record the weight confirmed by the factory weighbridge (via SMS). Tag the block if the delivery was block-specific, or choose "All blocks" for consolidated loads. The app compares against plucker entries from the same day, factory, and block to surface any unattributed kilograms.</div>
 
       <div class="pair">
         <div class="field"><label>Date</label><input type="date" id="a-date"></div>
         <div class="field"><label>Factory</label><select id="a-factory"><option value="">— Factory —</option></select></div>
       </div>
+      <div class="field"><label>Block plucked</label><select id="a-block"><option value="All blocks">All blocks (consolidated)</option></select></div>
       <div class="field"><label>Actual Kg (factory SMS)</label><input type="number" id="a-kg" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
 
       <button class="submit" id="a-submit" disabled>Record Actual</button>
@@ -1083,6 +1084,7 @@
         </div>
         <div class="breakdown">
           <div class="k">Factory</div><div class="v" id="a-preview-factory">—</div>
+          <div class="k">Block</div><div class="v" id="a-preview-block">—</div>
           <div class="k">Date</div><div class="v" id="a-preview-date">—</div>
           <div class="k">Gap value (factory price)</div><div class="v" id="a-preview-gapval">Ksh 0</div>
         </div>
@@ -1347,6 +1349,7 @@ function populateDropdowns() {
   document.getElementById('b-block').innerHTML = '<option value="">— Block —</option>' + blockOpts;
   document.getElementById('filter-block').innerHTML = '<option value="">All Blocks</option>' + blockOpts;
   document.getElementById('x-block').innerHTML = '<option value="Whole farm">Whole farm</option>' + blockOpts;
+  document.getElementById('a-block').innerHTML = '<option value="All blocks">All blocks (consolidated)</option>' + blockOpts;
   repopulatePluckerDropdown();
   repopulateFactoryDropdowns();
   repopulateCategoryDropdown();
@@ -1549,12 +1552,13 @@ function renderRecentActuals() {
   document.getElementById('a-recent-count').textContent = STATE.actuals.length + ' total';
   const box = document.getElementById('a-recent-list');
   box.innerHTML = list.map(a => {
-    const recorded = recordedKgFor(a.date, a.factory);
+    const block = a.block || 'All blocks';
+    const recorded = recordedKgFor(a.date, a.factory, block);
     const gap = a.kg - recorded;
     return `
       <div class="record-row" style="grid-template-columns:1fr auto auto">
         <div>
-          <div class="name">${a.factory}</div>
+          <div class="name">${a.factory} · ${block}</div>
           <div class="meta">${a.date} · rec ${kg(recorded)} · gap ${gap >= 0 ? '+' : ''}${kg(gap)} kg</div>
         </div>
         <div class="qty">${kg(a.kg)}<span class="unit">kg</span></div>
@@ -1635,13 +1639,18 @@ function aValues() {
   return {
     date: document.getElementById('a-date').value,
     factory: document.getElementById('a-factory').value,
+    block: document.getElementById('a-block').value || 'All blocks',
     kg: parseFloat(document.getElementById('a-kg').value) || 0
   };
 }
 
-function recordedKgFor(date, factory) {
+function recordedKgFor(date, factory, block) {
   return STATE.entries
-    .filter(e => e.date === date && e.factory === factory)
+    .filter(e => {
+      if (e.date !== date || e.factory !== factory) return false;
+      if (block && block !== 'All blocks' && e.block !== block) return false;
+      return true;
+    })
     .reduce((s, e) => s + (Number(e.qty) || 0), 0);
 }
 
@@ -1653,7 +1662,7 @@ function updateActualPreview() {
   if (!ready) { card.style.display = 'none'; btn.disabled = true; return; }
   card.style.display = 'block';
   btn.disabled = false;
-  const recorded = recordedKgFor(v.date, v.factory);
+  const recorded = recordedKgFor(v.date, v.factory, v.block);
   const gap = v.kg - recorded;
   const factory = STATE.factories.find(f => f.name === v.factory);
   const gapValue = factory ? gap * factory.priceKg : 0;
@@ -1661,6 +1670,7 @@ function updateActualPreview() {
   document.getElementById('a-preview-recorded').textContent = kg(recorded) + ' kg';
   document.getElementById('a-preview-gap').textContent = (gap >= 0 ? '+' : '') + kg(gap) + ' kg';
   document.getElementById('a-preview-factory').textContent = v.factory;
+  document.getElementById('a-preview-block').textContent = v.block;
   document.getElementById('a-preview-date').textContent = v.date;
   document.getElementById('a-preview-gapval').textContent = 'Ksh ' + moneyRound(gapValue);
 }
@@ -1673,6 +1683,7 @@ async function submitActual() {
     ts: new Date().toISOString(),
     date: v.date,
     factory: v.factory,
+    block: v.block,
     kg: v.kg
   };
   STATE.actuals.push(actual);
@@ -1680,7 +1691,7 @@ async function submitActual() {
   document.getElementById('a-kg').value = '';
   updateActualPreview();
   renderRecentActuals();
-  showToast(`Actual saved · ${v.factory} · ${v.kg} kg`);
+  showToast(`Actual saved · ${v.factory} · ${v.block} · ${v.kg} kg`);
 }
 
 function monthEntries() {
@@ -1732,34 +1743,41 @@ function renderHome() {
       </div>`).join('');
   }
 
-  // Reconciliation: actuals vs recorded, by factory
+  // Reconciliation: actuals vs recorded, by factory + block
   const reconSection = document.getElementById('home-recon-section');
   const reconBox = document.getElementById('home-recon');
   if (actualsMonth.length === 0) {
     reconSection.style.display = 'none';
   } else {
     reconSection.style.display = '';
-    const byFactory = {};
+    const byCombo = {};
     actualsMonth.forEach(a => {
-      byFactory[a.factory] = byFactory[a.factory] || { actual: 0, recorded: 0 };
-      byFactory[a.factory].actual += a.kg;
+      const block = a.block || 'All blocks';
+      const key = a.factory + '::' + block;
+      byCombo[key] = byCombo[key] || { factory: a.factory, block, actual: 0, recorded: 0 };
+      byCombo[key].actual += a.kg;
     });
-    entries.forEach(e => {
-      if (!byFactory[e.factory]) byFactory[e.factory] = { actual: 0, recorded: 0 };
-      byFactory[e.factory].recorded += e.qty;
+    Object.values(byCombo).forEach(c => {
+      c.recorded = entries
+        .filter(e => {
+          if (e.factory !== c.factory) return false;
+          if (c.block !== 'All blocks' && e.block !== c.block) return false;
+          return true;
+        })
+        .reduce((s, e) => s + e.qty, 0);
     });
-    const rows = Object.entries(byFactory).sort((a,b) => b[1].actual - a[1].actual);
-    reconBox.innerHTML = rows.map(([name, v]) => {
-      const gap = v.actual - v.recorded;
-      const gapPct = v.actual > 0 ? (gap / v.actual) * 100 : 0;
-      const gapClass = gap > 0 ? 'warn' : gap < 0 ? 'ok' : '';
+    const rows = Object.values(byCombo).sort((a, b) => b.actual - a.actual);
+    reconBox.innerHTML = rows.map(c => {
+      const gap = c.actual - c.recorded;
+      const gapPct = c.actual > 0 ? (gap / c.actual) * 100 : 0;
+      const gc = gap > 0 ? 'warn' : gap < 0 ? 'ok' : '';
       return `
         <div class="recon-row">
-          <div class="recon-name">${name}</div>
+          <div class="recon-name">${c.factory} <span style="color:var(--brass);font-weight:400;font-style:italic">· ${c.block}</span></div>
           <div class="recon-nums">
-            <div><span class="rl">Recorded</span><span class="rv">${kg(v.recorded)} kg</span></div>
-            <div><span class="rl">Actual</span><span class="rv">${kg(v.actual)} kg</span></div>
-            <div class="${gapClass}"><span class="rl">Gap</span><span class="rv">${gap >= 0 ? '+' : ''}${kg(gap)} kg${v.actual > 0 ? ` · ${gapPct.toFixed(1)}%` : ''}</span></div>
+            <div><span class="rl">Recorded</span><span class="rv">${kg(c.recorded)} kg</span></div>
+            <div><span class="rl">Actual</span><span class="rv">${kg(c.actual)} kg</span></div>
+            <div class="${gc}"><span class="rl">Gap</span><span class="rv">${gap >= 0 ? '+' : ''}${kg(gap)} kg${c.actual > 0 ? ` · ${gapPct.toFixed(1)}%` : ''}</span></div>
           </div>
         </div>`;
     }).join('');
@@ -1823,7 +1841,7 @@ function filterRecords() {
   if (type === 'all' || type === 'actual') {
     STATE.actuals.forEach(a => {
       if (!byDate(a.date)) return;
-      if (block) return; // actuals are factory-level, no block
+      if (block && (a.block || 'All blocks') !== block) return;
       if (factory && a.factory !== factory) return;
       list.push({ ...a, _kind: 'actual' });
     });
@@ -1866,12 +1884,13 @@ function renderRecords() {
         </div>`;
     }
     if (r._kind === 'actual') {
-      const recorded = recordedKgFor(r.date, r.factory);
+      const block = r.block || 'All blocks';
+      const recorded = recordedKgFor(r.date, r.factory, block);
       const gap = r.kg - recorded;
       return `
         <div class="record-row">
           <div>
-            <div class="name"><span class="type-badge actual">Actual</span>${r.factory}</div>
+            <div class="name"><span class="type-badge actual">Actual</span>${r.factory} · ${block}</div>
             <div class="meta">${r.date} · recorded ${kg(recorded)} kg · gap ${gap >= 0 ? '+' : ''}${kg(gap)} kg</div>
           </div>
           <div class="qty">${kg(r.kg)}<span class="unit">kg</span></div>
@@ -1993,32 +2012,39 @@ function renderInsights() {
       </div>`).join('');
   }
 
-  // Reconciliation — actual vs recorded, by factory
+  // Reconciliation — actual vs recorded, by factory + block
   const reconBox = document.getElementById('insights-recon');
   if (actuals.length === 0) {
     reconBox.innerHTML = `<div class="empty" style="padding:1rem 0"><div class="sub">No actuals recorded in this period</div></div>`;
   } else {
-    const byFactory = {};
+    const byCombo = {};
     actuals.forEach(a => {
-      byFactory[a.factory] = byFactory[a.factory] || { actual: 0, recorded: 0 };
-      byFactory[a.factory].actual += a.kg;
+      const block = a.block || 'All blocks';
+      const key = a.factory + '::' + block;
+      byCombo[key] = byCombo[key] || { factory: a.factory, block, actual: 0, recorded: 0 };
+      byCombo[key].actual += a.kg;
     });
-    entries.forEach(e => {
-      if (!byFactory[e.factory]) byFactory[e.factory] = { actual: 0, recorded: 0 };
-      byFactory[e.factory].recorded += e.qty;
+    Object.values(byCombo).forEach(c => {
+      c.recorded = entries
+        .filter(e => {
+          if (e.factory !== c.factory) return false;
+          if (c.block !== 'All blocks' && e.block !== c.block) return false;
+          return true;
+        })
+        .reduce((s, e) => s + e.qty, 0);
     });
-    const rows = Object.entries(byFactory).sort((a,b) => b[1].actual - a[1].actual);
-    reconBox.innerHTML = rows.map(([name, v]) => {
-      const gap = v.actual - v.recorded;
-      const pct = v.actual > 0 ? (gap / v.actual) * 100 : 0;
+    const rows = Object.values(byCombo).sort((a, b) => b.actual - a.actual);
+    reconBox.innerHTML = rows.map(c => {
+      const gap = c.actual - c.recorded;
+      const pct = c.actual > 0 ? (gap / c.actual) * 100 : 0;
       const gc = gap > 0 ? 'warn' : gap < 0 ? 'ok' : '';
       return `
         <div class="recon-row">
-          <div class="recon-name">${name}</div>
+          <div class="recon-name">${c.factory} <span style="color:var(--brass);font-weight:400;font-style:italic">· ${c.block}</span></div>
           <div class="recon-nums">
-            <div><span class="rl">Recorded</span><span class="rv">${kg(v.recorded)} kg</span></div>
-            <div><span class="rl">Actual</span><span class="rv">${kg(v.actual)} kg</span></div>
-            <div class="${gc}"><span class="rl">Gap</span><span class="rv">${gap >= 0 ? '+' : ''}${kg(gap)} kg${v.actual > 0 ? ` · ${pct.toFixed(1)}%` : ''}</span></div>
+            <div><span class="rl">Recorded</span><span class="rv">${kg(c.recorded)} kg</span></div>
+            <div><span class="rl">Actual</span><span class="rv">${kg(c.actual)} kg</span></div>
+            <div class="${gc}"><span class="rl">Gap</span><span class="rv">${gap >= 0 ? '+' : ''}${kg(gap)} kg${c.actual > 0 ? ` · ${pct.toFixed(1)}%` : ''}</span></div>
           </div>
         </div>`;
     }).join('');
@@ -2430,10 +2456,11 @@ function exportCSV() {
   if (type === 'all' || type === 'actual') {
     if (STATE.actuals.length > 0) {
       downloadCSV(`sinonin_actuals_${today}.csv`,
-        ['Actual_ID','Timestamp','Date','Factory','Actual_Kg','Recorded_Kg','Gap_Kg'],
+        ['Actual_ID','Timestamp','Date','Factory','Block','Actual_Kg','Recorded_Kg','Gap_Kg'],
         STATE.actuals.map(a => {
-          const recorded = recordedKgFor(a.date, a.factory);
-          return [a.id, a.ts, a.date, a.factory, a.kg, recorded, a.kg - recorded];
+          const block = a.block || 'All blocks';
+          const recorded = recordedKgFor(a.date, a.factory, block);
+          return [a.id, a.ts, a.date, a.factory, block, a.kg, recorded, a.kg - recorded];
         })
       );
       exported += STATE.actuals.length;
@@ -2454,7 +2481,8 @@ function showToast(msg) {
 (async function init() {
   STATE.entries = await storageGet(K_ENTRIES, []);
   STATE.expenses = await storageGet(K_EXPENSES, []);
-  STATE.actuals = await storageGet(K_ACTUALS, []);
+  const storedActuals = await storageGet(K_ACTUALS, []);
+  STATE.actuals = storedActuals.map(a => ({ block: 'All blocks', ...a }));
   const storedFactories = await storageGet(K_FACTORIES, null);
   if (storedFactories && Array.isArray(storedFactories) && storedFactories.length > 0) STATE.factories = storedFactories;
   const storedPluckers = await storageGet(K_PLUCKERS, null);
@@ -2505,7 +2533,7 @@ function showToast(msg) {
   document.getElementById('x-submit').addEventListener('click', submitExpense);
 
   // Actuals form
-  ['a-date','a-factory','a-kg'].forEach(id => {
+  ['a-date','a-factory','a-block','a-kg'].forEach(id => {
     document.getElementById(id).addEventListener('input', updateActualPreview);
     document.getElementById(id).addEventListener('change', updateActualPreview);
   });
