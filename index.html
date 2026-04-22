@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1E3A2F">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Sinonin Greenleaf</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --forest: #1E3A2F;
+    --forest-dark: #122419;
+    --forest-mid: #2A4D3E;
+    --ivory: #F5F1E8;
+    --ivory-warm: #EDE6D3;
+    --ivory-card: #FAF6EB;
+    --brass: #B8935A;
+    --brass-light: #D4B582;
+    --brass-dim: #8C6E3F;
+    --ink: #1A1A1A;
+    --slate: #4A4A4A;
+    --slate-light: #8A8580;
+    --rule: #D9D2BE;
+    --success: #4A6B4E;
+    --danger: #8B3A3A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Fraunces', Georgia, serif;
+    font-optical-sizing: auto;
+    background: var(--ivory);
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    max-width: 520px;
+    margin: 0 auto;
+    overflow-x: hidden;
+    padding-bottom: 88px;
+  }
+  header.brand {
+    background: var(--forest);
+    color: var(--ivory);
+    padding: 1.35rem 1.5rem 1.15rem;
+    border-bottom: 3px solid var(--brass);
+    position: relative;
+  }
+  header.brand h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 1.65rem;
+    letter-spacing: -0.02em;
+    font-variation-settings: 'opsz' 80;
+    line-height: 1;
+  }
+  header.brand .tagline {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--brass-light);
+    margin-top: 0.45rem;
+  }
+  header.brand .leaf {
+    position: absolute;
+    top: 1.35rem;
+    right: 1.5rem;
+    width: 36px; height: 36px;
+    opacity: 0.85;
+  }
+  header.brand .header-screen-title {
+    display: block;
+    margin-top: 0.65rem;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 0.95rem;
+    color: var(--brass-light);
+    opacity: 0.85;
+  }
+  main { flex: 1; padding: 1.25rem 1.1rem; }
+  .panel { display: none; }
+  .panel.active { display: block; animation: fadein .22s ease-out; }
+  @keyframes fadein { from { opacity:0; transform: translateY(4px);} to { opacity:1; transform:none; } }
+
+  nav.bottom-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--forest-dark);
+    border-top: 2px solid var(--brass);
+    padding: 0.4rem 0.25rem 0.55rem;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.15rem;
+    max-width: 520px;
+    margin: 0 auto;
+    z-index: 50;
+  }
+  nav.bottom-nav button {
+    background: transparent; border: none;
+    color: var(--brass-light);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
+    padding: 0.45rem 0.2rem;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: color .15s;
+  }
+  nav.bottom-nav button svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  nav.bottom-nav button.active { color: var(--ivory); }
+  nav.bottom-nav button.active svg { stroke: var(--brass-light); }
+  nav.bottom-nav button.central { position: relative; }
+  nav.bottom-nav button.central svg {
+    width: 44px; height: 44px;
+    stroke-width: 1.8;
+    background: var(--brass);
+    border-radius: 50%;
+    padding: 10px;
+    stroke: var(--forest-dark);
+    margin-top: -14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  nav.bottom-nav button.central.active svg { background: var(--brass-light); }
+
+  .field { margin-bottom: 1.1rem; }
+  .field label {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--slate);
+    margin-bottom: 0.4rem;
+  }
+  .field input, .field select {
+    width: 100%; padding: 0.8rem 0.85rem;
+    font-family: 'Fraunces', serif;
+    font-size: 1.05rem;
+    background: var(--ivory-card);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    color: var(--ink);
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--forest); background: #fff; }
+  .field input[type="number"] {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.4rem;
+    font-weight: 500;
+    text-align: right;
+  }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+
+  .mode-toggle {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+    background: var(--ivory-warm);
+    border-radius: 2px;
+    margin-bottom: 1.1rem;
+    padding: 3px;
+    border: 1px solid var(--rule);
+  }
+  .mode-toggle button {
+    background: transparent; border: none;
+    padding: 0.65rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--slate);
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  .mode-toggle button.active { background: var(--forest); color: var(--ivory); }
+
+  .calc-card {
+    background: var(--forest); color: var(--ivory);
+    border-radius: 3px;
+    padding: 1.15rem 1.15rem 1rem;
+    margin: 1.25rem 0 1.1rem;
+    border-left: 3px solid var(--brass);
+    box-shadow: 0 2px 0 var(--forest-dark);
+  }
+  .calc-card .lbl {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--brass-light);
+    margin-bottom: 0.2rem;
+  }
+  .calc-card .primary {
+    font-family: 'Fraunces', serif;
+    font-variation-settings: 'opsz' 144;
+    font-weight: 500;
+    font-size: 2.3rem;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+  .calc-card .primary .unit {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--brass-light);
+    letter-spacing: 0.1em;
+    margin-right: 0.3rem;
+  }
+  .calc-card .split {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;
+    margin-top: 0.9rem; padding-top: 0.9rem;
+    border-top: 1px solid rgba(184, 147, 90, 0.35);
+  }
+  .calc-card .sub-lbl {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--brass-light);
+  }
+  .calc-card .sub-val {
+    font-family: 'Fraunces', serif;
+    font-size: 1.15rem;
+    font-weight: 500;
+    margin-top: 0.1rem;
+  }
+  .calc-card .breakdown {
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 0.22rem 1rem;
+    margin-top: 0.9rem; padding-top: 0.85rem;
+    border-top: 1px solid rgba(184, 147, 90, 0.35);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.76rem;
+  }
+  .calc-card .breakdown .k { color: var(--brass-light); letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.62rem; }
+  .calc-card .breakdown .v { text-align: right; font-variant-numeric: tabular-nums; }
+  .calc-card .breakdown .neg { color: #E8B4B4; }
+
+  button.submit {
+    width: 100%; padding: 1rem;
+    background: var(--brass); border: none;
+    border-radius: 2px;
+    color: var(--forest-dark);
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 0.82rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  button.submit:hover:not(:disabled) { background: var(--brass-light); }
+  button.submit:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .batch-instructions {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 0.92rem;
+    color: var(--slate);
+    margin-bottom: 0.9rem;
+    line-height: 1.45;
+  }
+  .batch-list {
+    background: var(--ivory-card);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+  .batch-row {
+    display: grid; grid-template-columns: 1fr 95px;
+    gap: 0.6rem; align-items: center;
+    padding: 0.55rem 0.85rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  .batch-row:last-child { border-bottom: none; }
+  .batch-row .p-name { font-family: 'Fraunces', serif; font-size: 0.95rem; color: var(--ink); }
+  .batch-row .p-name .id { color: var(--slate-light); font-size: 0.78rem; margin-right: 0.4rem; }
+  .batch-row .p-name .nobonus {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--brass-dim);
+    margin-left: 0.4rem;
+    background: var(--ivory-warm);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+  .batch-row input {
+    width: 100%; padding: 0.5rem 0.6rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1rem; text-align: right;
+    background: #fff;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+  }
+  .batch-row input:focus { outline: none; border-color: var(--forest); }
+  .batch-row input:not(:placeholder-shown) {
+    background: var(--ivory-warm);
+    border-color: var(--brass);
+    font-weight: 500;
+  }
+  .batch-summary {
+    background: var(--forest); color: var(--ivory);
+    padding: 0.85rem 1rem;
+    margin-top: 0.6rem;
+    border-left: 3px solid var(--brass);
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+  }
+  .batch-summary .sum-lbl {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--brass-light);
+  }
+  .batch-summary .sum-val {
+    font-family: 'Fraunces', serif;
+    font-size: 1.15rem;
+    font-weight: 500;
+    margin-top: 0.15rem;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 6.5rem; left: 50%;
+    transform: translateX(-50%) translateY(30px);
+    background: var(--forest-dark); color: var(--ivory);
+    padding: 0.8rem 1.3rem;
+    border-radius: 2px;
+    border-left: 3px solid var(--success);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s, transform .25s;
+    z-index: 100;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    max-width: 90%;
+    text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .hero {
+    background: linear-gradient(135deg, var(--forest-dark), var(--forest) 55%, var(--forest-mid));
+    color: var(--ivory);
+    padding: 1.35rem 1.35rem 1.5rem;
+    border-radius: 3px;
+    margin-bottom: 1.1rem;
+    border-left: 3px solid var(--brass);
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute;
+    top: -40px; right: -40px;
+    width: 180px; height: 180px;
+    background: radial-gradient(circle, var(--brass) 0%, transparent 65%);
+    opacity: 0.12; pointer-events: none;
+  }
+  .hero .greeting {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--brass-light);
+    position: relative;
+  }
+  .hero .date {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 1rem;
+    margin-top: 0.25rem;
+    color: var(--ivory);
+    opacity: 0.88;
+  }
+  .hero .stats {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+    margin-top: 1.15rem;
+    position: relative;
+  }
+  .hero .stat-lbl {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--brass-light);
+  }
+  .hero .stat-val {
+    font-family: 'Fraunces', serif;
+    font-variation-settings: 'opsz' 144;
+    font-weight: 500;
+    font-size: 1.85rem;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-top: 0.15rem;
+  }
+  .hero .stat-val .unit {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--brass-light);
+    margin-left: 0.2rem;
+    letter-spacing: 0.1em;
+  }
+
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; margin-bottom: 1.1rem; }
+  .stat-card {
+    background: var(--ivory-card);
+    border: 1px solid var(--rule);
+    padding: 0.85rem 0.95rem 0.9rem;
+    border-radius: 2px;
+    border-top: 2px solid var(--brass);
+  }
+  .stat-card .lbl { font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--slate); }
+  .stat-card .val { font-family: 'Fraunces', serif; font-weight: 500; font-size: 1.3rem; color: var(--forest); margin-top: 0.2rem; letter-spacing: -0.01em; line-height: 1.1; }
+  .stat-card .sub { font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; color: var(--slate-light); letter-spacing: 0.08em; margin-top: 0.25rem; }
+
+  .section {
+    background: var(--ivory-card);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 1rem 1rem 0.9rem;
+    margin-bottom: 1rem;
+  }
+  .section-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.9rem; }
+  .section-head h3 {
+    font-family: 'Fraunces', serif;
+    font-style: italic; font-weight: 400;
+    font-size: 1.1rem; color: var(--forest);
+    letter-spacing: -0.01em;
+  }
+  .section-head .meta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--slate);
+  }
+
+  .block-bar { margin-bottom: 0.85rem; }
+  .block-bar:last-child { margin-bottom: 0; }
+  .block-bar-head { display: flex; justify-content: space-between; margin-bottom: 0.3rem; }
+  .block-bar-head .name { font-family: 'Fraunces', serif; font-weight: 500; font-size: 0.95rem; color: var(--ink); }
+  .block-bar-head .kg { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; color: var(--forest); font-variant-numeric: tabular-nums; }
+  .block-bar-track { height: 6px; background: var(--ivory-warm); border-radius: 3px; overflow: hidden; }
+  .block-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--forest), var(--brass));
+    border-radius: 3px;
+    transition: width .35s ease;
+  }
+
+  .rank-row {
+    display: grid; grid-template-columns: 22px 1fr auto;
+    gap: 0.65rem; align-items: baseline;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .rank-row:last-child { border-bottom: none; }
+  .rank-row .n { font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; color: var(--brass); font-weight: 500; }
+  .rank-row .name { font-family: 'Fraunces', serif; font-size: 0.95rem; color: var(--ink); }
+  .rank-row .name .meta { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; color: var(--slate-light); letter-spacing: 0.08em; margin-top: 0.1rem; }
+  .rank-row .kg { font-family: 'IBM Plex Mono', monospace; font-size: 0.9rem; color: var(--forest); font-variant-numeric: tabular-nums; font-weight: 500; }
+
+  .filter-bar { display: flex; gap: 0.5rem; margin-bottom: 0.9rem; flex-wrap: wrap; }
+  .filter-bar select {
+    padding: 0.5rem 0.6rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    background: var(--ivory-card);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    color: var(--ink);
+    flex: 1; min-width: 110px;
+  }
+  .record-row {
+    display: grid; grid-template-columns: 1fr auto auto auto;
+    gap: 0.4rem 0.85rem; align-items: baseline;
+    padding: 0.8rem 0.1rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  .record-row .name { font-family: 'Fraunces', serif; font-weight: 500; font-size: 1rem; color: var(--ink); }
+  .record-row .meta { grid-column: 1; font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 0.12rem; }
+  .record-row .qty { font-family: 'IBM Plex Mono', monospace; font-weight: 500; font-size: 1rem; color: var(--forest); font-variant-numeric: tabular-nums; }
+  .record-row .qty .unit { font-size: 0.65rem; color: var(--slate); margin-left: 0.1rem; }
+  .record-row .val { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; color: var(--brass); font-variant-numeric: tabular-nums; }
+  .record-row .del { background: transparent; border: none; color: var(--slate-light); cursor: pointer; font-size: 1.05rem; padding: 0 0.3rem; }
+  .record-row .del:hover { color: var(--danger); }
+
+  .empty { text-align: center; padding: 2.5rem 1rem; color: var(--slate-light); }
+  .empty .em { font-family: 'Fraunces', serif; font-style: italic; font-size: 1.05rem; color: var(--slate); margin-bottom: 0.4rem; }
+  .empty .sub { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; letter-spacing: 0.15em; text-transform: uppercase; }
+
+  .period-toggle {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0;
+    background: var(--ivory-warm);
+    border-radius: 2px;
+    margin-bottom: 1rem;
+    padding: 3px;
+    border: 1px solid var(--rule);
+  }
+  .period-toggle button {
+    background: transparent; border: none;
+    padding: 0.6rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--slate);
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  .period-toggle button.active { background: var(--forest); color: var(--ivory); }
+
+  .econ-card {
+    background: var(--ivory-card);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--brass);
+    padding: 1rem;
+    margin-bottom: 0.7rem;
+    border-radius: 2px;
+  }
+  .econ-card .econ-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.7rem; }
+  .econ-card .econ-head .t { font-family: 'Fraunces', serif; font-weight: 500; font-size: 1.05rem; color: var(--forest); }
+  .econ-card .econ-head .k { font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; color: var(--brass); font-variant-numeric: tabular-nums; }
+  .econ-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+  .econ-grid .econ-item { padding: 0.45rem 0; border-top: 1px solid var(--rule); }
+  .econ-grid .econ-item .l { font-family: 'IBM Plex Mono', monospace; font-size: 0.55rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--slate); }
+  .econ-grid .econ-item .v { font-family: 'Fraunces', serif; font-size: 0.95rem; font-weight: 500; color: var(--ink); margin-top: 0.15rem; font-variant-numeric: tabular-nums; }
+
+  .factory-card {
+    background: var(--ivory-card);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--forest);
+    padding: 0.95rem 0.95rem 0.8rem;
+    margin-bottom: 0.7rem;
+    border-radius: 2px;
+  }
+  .factory-card .factory-name {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 1.15rem;
+    color: var(--forest);
+    margin-bottom: 0.7rem;
+    letter-spacing: -0.01em;
+  }
+  .factory-card .rate-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem 0.65rem; }
+  .factory-card .rate-cell label {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--slate);
+    margin-bottom: 0.25rem;
+  }
+  .factory-card .rate-cell input {
+    width: 100%; padding: 0.45rem 0.55rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.95rem; text-align: right;
+    background: #fff;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .factory-card .rate-cell input:focus { outline: none; border-color: var(--forest); }
+
+  .add-factory {
+    background: transparent;
+    border: 1px dashed var(--brass);
+    padding: 0.95rem;
+    border-radius: 2px;
+    text-align: center;
+    margin-top: 0.6rem;
+  }
+  .add-factory .field { margin-bottom: 0.6rem; }
+  .add-factory button {
+    background: var(--brass); border: none;
+    padding: 0.55rem 1rem;
+    color: var(--forest-dark);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border-radius: 2px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .setting-row {
+    display: grid; grid-template-columns: 1fr auto;
+    align-items: center;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-row .k { font-family: 'Fraunces', serif; font-weight: 500; font-size: 0.95rem; color: var(--ink); }
+  .setting-row .desc { font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; color: var(--slate-light); letter-spacing: 0.08em; margin-top: 0.2rem; line-height: 1.4; }
+  .setting-row input[type="number"] {
+    width: 90px; padding: 0.45rem 0.55rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.9rem; text-align: right;
+    background: #fff;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+  }
+
+  .toggle {
+    position: relative;
+    width: 44px; height: 24px;
+    background: var(--slate-light);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 20px; height: 20px;
+    background: var(--ivory);
+    border-radius: 50%;
+    transition: left .2s;
+  }
+  .toggle.on { background: var(--forest); }
+  .toggle.on::after { left: 22px; }
+
+  .danger-zone {
+    margin-top: 1.5rem;
+    padding: 0.95rem;
+    border: 1px solid var(--danger);
+    border-radius: 2px;
+    background: rgba(139, 58, 58, 0.04);
+  }
+  .danger-zone h4 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--danger);
+    margin-bottom: 0.5rem;
+  }
+  .danger-zone button {
+    background: transparent;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    padding: 0.5rem 0.85rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border-radius: 2px;
+    cursor: pointer;
+    margin-right: 0.4rem;
+    margin-top: 0.3rem;
+  }
+  .danger-zone button:hover { background: var(--danger); color: var(--ivory); }
+
+  .sync-bar {
+    padding: 0.6rem;
+    text-align: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--slate-light);
+    border-top: 1px solid var(--rule);
+    background: var(--ivory-warm);
+    position: fixed;
+    bottom: 88px; left: 0; right: 0;
+    max-width: 520px;
+    margin: 0 auto;
+    z-index: 40;
+  }
+  .sync-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--success); margin-right: 0.4rem; vertical-align: middle; }
+  .sync-dot.offline { background: var(--brass); }
+  body { padding-bottom: 122px; }
+
+  .mini-table { width: 100%; border-collapse: collapse; }
+  .mini-table th {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--slate);
+    padding: 0.5rem 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid var(--forest);
+    font-weight: 400;
+  }
+  .mini-table th:not(:first-child) { text-align: right; }
+  .mini-table td {
+    padding: 0.6rem 0.5rem;
+    border-bottom: 1px solid var(--rule);
+    font-family: 'Fraunces', serif;
+    font-size: 0.95rem;
+  }
+  .mini-table td:not(:first-child) {
+    text-align: right;
+    font-family: 'IBM Plex Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.85rem;
+  }
+  .mini-table tr.total td {
+    border-bottom: none;
+    border-top: 1px solid var(--forest);
+    font-weight: 600;
+    color: var(--forest);
+    padding-top: 0.85rem;
+  }
+  .mini-table tr.total td:first-child {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.66rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .export-btn {
+    background: transparent;
+    border: 1px solid var(--forest);
+    color: var(--forest);
+    padding: 0.35rem 0.75rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border-radius: 2px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<header class="brand">
+  <h1>Sinonin Greenleaf</h1>
+  <div class="tagline">Daily Plucker Returns</div>
+  <span class="header-screen-title" id="screen-title">Overview</span>
+  <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+    <path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C16 20 22 14 22 8V3h-5c-1.5 0-3.5.5-5 1z"/>
+    <path d="M3 21c1.5-4 6-8 11-10" />
+  </svg>
+</header>
+
+<main>
+  <!-- HOME -->
+  <section class="panel active" id="panel-home">
+    <div class="hero">
+      <div class="greeting" id="hero-greeting">Habari ya asubuhi</div>
+      <div class="date" id="hero-date"></div>
+      <div class="stats">
+        <div>
+          <div class="stat-lbl">This month · Kg</div>
+          <div class="stat-val" id="hero-kg">0<span class="unit">kg</span></div>
+        </div>
+        <div>
+          <div class="stat-lbl">Cash value</div>
+          <div class="stat-val" id="hero-cash">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card"><div class="lbl">Labour</div><div class="val" id="home-labour">Ksh 0</div><div class="sub">paid to pluckers</div></div>
+      <div class="stat-card"><div class="lbl">Bonus accrued</div><div class="val" id="home-bonus">Ksh 0</div><div class="sub">paid later</div></div>
+      <div class="stat-card"><div class="lbl">Shares retained</div><div class="val" id="home-shares">Ksh 0</div><div class="sub">factory equity</div></div>
+      <div class="stat-card"><div class="lbl">Total value</div><div class="val" id="home-total">Ksh 0</div><div class="sub">cash + accrued</div></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>Block performance</h3><span class="meta">this month</span></div>
+      <div id="block-bars"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>Top pluckers</h3><span class="meta">by kilograms</span></div>
+      <div id="top-pluckers"></div>
+    </div>
+  </section>
+
+  <!-- RECORDS -->
+  <section class="panel" id="panel-records">
+    <div class="filter-bar">
+      <select id="filter-period">
+        <option value="today">Today</option>
+        <option value="week" selected>This Week</option>
+        <option value="month">This Month</option>
+        <option value="all">All Time</option>
+      </select>
+      <select id="filter-block"><option value="">All Blocks</option></select>
+      <select id="filter-factory"><option value="">All Factories</option></select>
+    </div>
+    <div class="section-head" style="margin-bottom:0.4rem">
+      <h3 id="records-count">All records</h3>
+      <button class="export-btn" id="btn-export">Export CSV</button>
+    </div>
+    <div id="records-list"></div>
+  </section>
+
+  <!-- ADD -->
+  <section class="panel" id="panel-add">
+    <div class="mode-toggle">
+      <button class="active" id="mode-quick">Quick Entry</button>
+      <button id="mode-batch">Batch Entry</button>
+    </div>
+
+    <div id="quick-mode">
+      <div class="pair">
+        <div class="field"><label>Date</label><input type="date" id="q-date"></div>
+        <div class="field"><label>Block</label><select id="q-block"><option value="">— Block —</option></select></div>
+      </div>
+      <div class="field"><label>Plucker</label><select id="q-plucker"><option value="">— Select plucker —</option></select></div>
+      <div class="field"><label>Factory Delivered</label><select id="q-factory"><option value="">— Select factory —</option></select></div>
+      <div class="field"><label>Quantity Plucked (kg)</label><input type="number" id="q-qty" inputmode="decimal" step="0.1" min="0" placeholder="0"></div>
+
+      <div class="calc-card" id="q-calc" style="display:none">
+        <div class="lbl">Total Value</div>
+        <div class="primary"><span class="unit">Ksh</span><span id="q-total">0</span></div>
+        <div class="split">
+          <div><div class="sub-lbl">Cash now</div><div class="sub-val" id="q-cash">Ksh 0</div></div>
+          <div><div class="sub-lbl">Accrued</div><div class="sub-val" id="q-accrued">Ksh 0</div></div>
+        </div>
+        <div class="breakdown">
+          <div class="k">Gross (kg × price)</div><div class="v" id="q-gross">0</div>
+          <div class="k">Labour owed</div><div class="v neg" id="q-labour">0</div>
+          <div class="k">Cess</div><div class="v neg" id="q-cess">0</div>
+          <div class="k">Shares retained</div><div class="v neg" id="q-shares">0</div>
+          <div class="k" id="q-k-transport" style="display:none">Transport</div>
+          <div class="v neg" id="q-v-transport" style="display:none">0</div>
+          <div class="k">Bonus (accrued)</div><div class="v" id="q-bonus">0</div>
+          <div class="k">Greenleaf (accrued)</div><div class="v" id="q-gleaf">0</div>
+        </div>
+      </div>
+
+      <button class="submit" id="q-submit" disabled>Save Entry</button>
+    </div>
+
+    <div id="batch-mode" style="display:none">
+      <div class="pair">
+        <div class="field"><label>Date</label><input type="date" id="b-date"></div>
+        <div class="field"><label>Block</label><select id="b-block"><option value="">— Block —</option></select></div>
+      </div>
+      <div class="field"><label>Factory Delivered</label><select id="b-factory"><option value="">— Select factory —</option></select></div>
+
+      <div class="batch-instructions">Enter kilograms for each plucker who worked today. Leave blank for those who did not.</div>
+
+      <div class="batch-list" id="batch-list"></div>
+
+      <div class="batch-summary">
+        <div><div class="sum-lbl">Rows</div><div class="sum-val" id="b-rows">0</div></div>
+        <div><div class="sum-lbl">Kg total</div><div class="sum-val" id="b-kg">0</div></div>
+        <div><div class="sum-lbl">Ksh value</div><div class="sum-val" id="b-ksh">0</div></div>
+      </div>
+
+      <button class="submit" id="b-submit" style="margin-top:0.9rem" disabled>Save All Entries</button>
+    </div>
+  </section>
+
+  <!-- INSIGHTS -->
+  <section class="panel" id="panel-insights">
+    <div class="period-toggle">
+      <button data-p="week" class="active">Week</button>
+      <button data-p="month">Month</button>
+      <button data-p="all">All Time</button>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>Block economics</h3><span class="meta" id="insights-period-label">week</span></div>
+      <div id="econ-blocks"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>Factory mix</h3><span class="meta">by kilograms</span></div>
+      <table class="mini-table" id="tbl-factory"></table>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>Plucker rankings</h3><span class="meta">top performers</span></div>
+      <table class="mini-table" id="tbl-plucker"></table>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="panel" id="panel-settings">
+    <div class="section">
+      <div class="section-head"><h3>Global parameters</h3><span class="meta">every entry</span></div>
+      <div class="setting-row">
+        <div><div class="k">Tea Cess (Ksh/kg)</div><div class="desc">County deduction, every factory</div></div>
+        <input type="number" step="0.01" min="0" id="s-cess">
+      </div>
+      <div class="setting-row">
+        <div><div class="k">Transport active</div><div class="desc">Subtract transport deduction</div></div>
+        <div class="toggle" id="s-transport"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>Factory rate cards</h3><span class="meta">tap to edit</span></div>
+      <div id="factory-cards"></div>
+      <div class="add-factory">
+        <div class="field" style="margin-bottom:0.5rem"><input type="text" id="new-factory-name" placeholder="New factory name"></div>
+        <button id="btn-add-factory">Add Factory</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>About</h3><span class="meta">v2.0</span></div>
+      <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Greenleaf · Built for Sinonin Tea, Nandi County. Data stored locally on this device. Export CSV regularly to your records spreadsheet for reconciliation.</div>
+    </div>
+
+    <div class="danger-zone">
+      <h4>Danger Zone</h4>
+      <button id="btn-reset-rates">Reset rate cards</button>
+      <button id="btn-clear-entries">Clear all entries</button>
+    </div>
+  </section>
+</main>
+
+<div class="sync-bar">
+  <span class="sync-dot" id="sync-dot"></span>
+  <span id="sync-text">Local · Offline Ready</span>
+</div>
+
+<nav class="bottom-nav">
+  <button class="active" data-view="home">
+    <svg viewBox="0 0 24 24"><path d="M3 12L12 4l9 8"/><path d="M5 10v10h14V10"/></svg>
+    <span>Home</span>
+  </button>
+  <button data-view="records">
+    <svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+    <span>Records</span>
+  </button>
+  <button class="central" data-view="add">
+    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+    <span>Add</span>
+  </button>
+  <button data-view="insights">
+    <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg>
+    <span>Insights</span>
+  </button>
+  <button data-view="settings">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
+    <span>Settings</span>
+  </button>
+</nav>
+
+<div class="toast" id="toast">Entry Saved</div>
+
+<script>
+const BLOCKS = ['Sinonin', 'Cheptabach', 'Bitonin', 'Kipkenda', 'Kipkorom', 'Sangalo'];
+
+const DEFAULT_FACTORIES = [
+  { name: "Sang'alo",  priceKg: 25.5, transport: 0,    shares: 0, wageKg: 8,    bonusKg: 0,   greenleaf: 0  },
+  { name: "Sireet",    priceKg: 25.0, transport: 3.99, shares: 5, wageKg: 9.5,  bonusKg: 0.5, greenleaf: 13 },
+  { name: "Chebut",    priceKg: 26.0, transport: 5,    shares: 0, wageKg: 7,    bonusKg: 0,   greenleaf: 15 },
+  { name: "Kapchorua", priceKg: 23.0, transport: 0,    shares: 0, wageKg: 10,   bonusKg: 0,   greenleaf: 0  }
+];
+
+const PLUCKERS = [
+  { id: 5,  name: "Cheptabach",          bonus: true  },
+  { id: 6,  name: "Gladys Yego",          bonus: true  },
+  { id: 9,  name: "Hillary Kimutai",      bonus: true  },
+  { id: 10, name: "Sheila Jesang",        bonus: true  },
+  { id: 11, name: "Colleta Jerono",       bonus: true  },
+  { id: 12, name: "Zacchariah Kipleting", bonus: true  },
+  { id: 16, name: "Zachariah Kipleting",  bonus: true  },
+  { id: 17, name: "Stanley Kosgei",       bonus: true  },
+  { id: 19, name: "Eunice Koech",         bonus: true  },
+  { id: 25, name: "Winnie Jepkemei",      bonus: false },
+  { id: 29, name: "Nancy Cherop",         bonus: false },
+  { id: 30, name: "Caren Jepngetich",     bonus: true  },
+  { id: 31, name: "Josphat Kipkemboi",    bonus: true  },
+  { id: 32, name: "Frankline Kirwa",      bonus: true  },
+  { id: 33, name: "Contractors",          bonus: false },
+  { id: 34, name: "Meshark Too",          bonus: false },
+  { id: 35, name: "Ezron Rudisha",        bonus: true  },
+  { id: 36, name: "Geofrey Malakwen",     bonus: false },
+  { id: 37, name: "Nahashon Kipchirchir", bonus: false },
+  { id: 38, name: "Lydia Jelagat",        bonus: true  },
+  { id: 40, name: "Juliet Jepkemboi",     bonus: true  },
+  { id: 41, name: "Sharon Cherotich",     bonus: true  },
+  { id: 42, name: "Mercy Chepleting",     bonus: true  },
+  { id: 44, name: "Mercy Jepkurui",       bonus: true  },
+  { id: 45, name: "Winnie Jepkoech",      bonus: true  },
+  { id: 46, name: "Caren Lagat",          bonus: true  },
+  { id: 47, name: "Kipkorom",             bonus: true  },
+  { id: 48, name: "Sylivia Chelimo",      bonus: true  }
+];
+
+const DEFAULT_SETTINGS = { teaCessPerKg: 0.22, transportActive: false, currency: 'Ksh' };
+
+const SCREEN_TITLES = { home: 'Overview', records: 'Records', add: 'New Entry', insights: 'Insights', settings: 'Settings' };
+
+const K_ENTRIES = 'sinonin_entries_v1';
+const K_FACTORIES = 'sinonin_factories_v1';
+const K_SETTINGS = 'sinonin_settings_v1';
+
+async function storageGet(key, fallback) {
+  try { const r = await window.storage.get(key); return r ? JSON.parse(r.value) : fallback; }
+  catch(e) { return fallback; }
+}
+async function storageSet(key, val) {
+  try { await window.storage.set(key, JSON.stringify(val)); return true; }
+  catch(e) { return false; }
+}
+
+let STATE = {
+  entries: [],
+  factories: JSON.parse(JSON.stringify(DEFAULT_FACTORIES)),
+  settings: { ...DEFAULT_SETTINGS },
+  view: 'home',
+  mode: 'quick',
+  insightsPeriod: 'week'
+};
+
+function computeEntry(e) {
+  const factory = STATE.factories.find(f => f.name === e.factory);
+  const plucker = PLUCKERS.find(p => p.id === e.pluckerId);
+  if (!factory || !plucker) return null;
+  const qty = Number(e.qty) || 0;
+  const gross     = qty * factory.priceKg;
+  const labour    = qty * factory.wageKg;
+  const cess      = qty * STATE.settings.teaCessPerKg;
+  const transport = STATE.settings.transportActive ? qty * factory.transport : 0;
+  const shares    = qty * factory.shares;
+  const bonus     = (plucker.bonus && factory.bonusKg > 0) ? qty * factory.bonusKg : 0;
+  const greenleaf = (plucker.bonus && factory.greenleaf > 0) ? factory.greenleaf : 0;
+  const cashNow   = gross - labour - cess - transport - shares;
+  const accrued   = bonus + greenleaf;
+  const total     = cashNow + accrued;
+  return { gross, labour, cess, transport, shares, bonus, greenleaf, cashNow, accrued, total };
+}
+
+function money(n)      { return new Intl.NumberFormat('en-KE', { maximumFractionDigits: 2, minimumFractionDigits: 2 }).format(n || 0); }
+function moneyRound(n) { return Math.round(n || 0).toLocaleString('en-KE'); }
+function kg(n)         { const r = n || 0; return (r % 1 === 0) ? r.toLocaleString('en-KE') : r.toFixed(1); }
+
+function populateDropdowns() {
+  const blockOpts = BLOCKS.map(b => `<option value="${b}">${b}</option>`).join('');
+  document.getElementById('q-block').innerHTML = '<option value="">— Block —</option>' + blockOpts;
+  document.getElementById('b-block').innerHTML = '<option value="">— Block —</option>' + blockOpts;
+  document.getElementById('filter-block').innerHTML = '<option value="">All Blocks</option>' + blockOpts;
+  const pOpts = PLUCKERS.map(p => `<option value="${p.id}">${p.id}. ${p.name}${p.bonus ? '' : ' · no bonus'}</option>`).join('');
+  document.getElementById('q-plucker').innerHTML = '<option value="">— Select plucker —</option>' + pOpts;
+  repopulateFactoryDropdowns();
+  const todayIso = new Date().toISOString().slice(0,10);
+  document.getElementById('q-date').value = todayIso;
+  document.getElementById('b-date').value = todayIso;
+}
+
+function repopulateFactoryDropdowns() {
+  const opts = STATE.factories.map(f => `<option value="${f.name}">${f.name}</option>`).join('');
+  ['q-factory', 'b-factory'].forEach(id => {
+    const el = document.getElementById(id);
+    const cur = el.value;
+    el.innerHTML = '<option value="">— Select factory —</option>' + opts;
+    if (cur && STATE.factories.some(f => f.name === cur)) el.value = cur;
+  });
+  const fEl = document.getElementById('filter-factory');
+  const fCur = fEl.value;
+  fEl.innerHTML = '<option value="">All Factories</option>' + opts;
+  if (fCur) fEl.value = fCur;
+}
+
+function switchView(v) {
+  STATE.view = v;
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + v).classList.add('active');
+  document.querySelectorAll('nav.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  document.getElementById('screen-title').textContent = SCREEN_TITLES[v];
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (v === 'home') renderHome();
+  if (v === 'records') renderRecords();
+  if (v === 'insights') renderInsights();
+  if (v === 'settings') renderSettings();
+}
+
+function qValues() {
+  return {
+    date: document.getElementById('q-date').value,
+    block: document.getElementById('q-block').value,
+    pluckerId: parseInt(document.getElementById('q-plucker').value, 10) || null,
+    factory: document.getElementById('q-factory').value,
+    qty: parseFloat(document.getElementById('q-qty').value) || 0
+  };
+}
+
+function updateQuickCalc() {
+  const v = qValues();
+  const card = document.getElementById('q-calc');
+  const btn = document.getElementById('q-submit');
+  const ready = v.date && v.block && v.pluckerId && v.factory && v.qty > 0;
+  if (!ready) { card.style.display = 'none'; btn.disabled = true; return; }
+  const c = computeEntry(v);
+  if (!c) { card.style.display = 'none'; btn.disabled = true; return; }
+  card.style.display = 'block';
+  btn.disabled = false;
+  document.getElementById('q-total').textContent = moneyRound(c.total);
+  document.getElementById('q-cash').textContent = 'Ksh ' + moneyRound(c.cashNow);
+  document.getElementById('q-accrued').textContent = 'Ksh ' + moneyRound(c.accrued);
+  document.getElementById('q-gross').textContent = money(c.gross);
+  document.getElementById('q-labour').textContent = '−' + money(c.labour);
+  document.getElementById('q-cess').textContent = '−' + money(c.cess);
+  document.getElementById('q-shares').textContent = c.shares > 0 ? '−' + money(c.shares) : '—';
+  const showT = STATE.settings.transportActive && c.transport > 0;
+  document.getElementById('q-k-transport').style.display = showT ? '' : 'none';
+  document.getElementById('q-v-transport').style.display = showT ? '' : 'none';
+  if (showT) document.getElementById('q-v-transport').textContent = '−' + money(c.transport);
+  document.getElementById('q-bonus').textContent = c.bonus > 0 ? '+' + money(c.bonus) : '—';
+  document.getElementById('q-gleaf').textContent = c.greenleaf > 0 ? '+' + money(c.greenleaf) : '—';
+}
+
+async function submitQuick() {
+  const v = qValues();
+  const c = computeEntry(v);
+  if (!c) return;
+  const plucker = PLUCKERS.find(p => p.id === v.pluckerId);
+  const entry = {
+    id: 'E' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+    ts: new Date().toISOString(),
+    date: v.date, block: v.block,
+    pluckerId: v.pluckerId, pluckerName: plucker.name,
+    factory: v.factory, qty: v.qty
+  };
+  STATE.entries.push(entry);
+  await storageSet(K_ENTRIES, STATE.entries);
+  document.getElementById('q-qty').value = '';
+  document.getElementById('q-plucker').value = '';
+  updateQuickCalc();
+  showToast(`Saved · ${plucker.name} · ${v.qty} kg`);
+}
+
+function renderBatchList() {
+  const box = document.getElementById('batch-list');
+  box.innerHTML = PLUCKERS.map(p => `
+    <div class="batch-row" data-pid="${p.id}">
+      <div class="p-name"><span class="id">${p.id}.</span>${p.name}${p.bonus ? '' : '<span class="nobonus">no bonus</span>'}</div>
+      <input type="number" inputmode="decimal" step="0.1" min="0" placeholder="kg" class="batch-kg" data-pid="${p.id}">
+    </div>
+  `).join('');
+  box.querySelectorAll('.batch-kg').forEach(inp => inp.addEventListener('input', updateBatchSummary));
+}
+
+function batchRows() {
+  const block = document.getElementById('b-block').value;
+  const factory = document.getElementById('b-factory').value;
+  const date = document.getElementById('b-date').value;
+  const rows = [];
+  document.querySelectorAll('.batch-kg').forEach(inp => {
+    const q = parseFloat(inp.value);
+    if (q > 0) rows.push({ pluckerId: parseInt(inp.dataset.pid, 10), qty: q, block, factory, date });
+  });
+  return { block, factory, date, rows };
+}
+
+function updateBatchSummary() {
+  const { block, factory, rows } = batchRows();
+  let kgTotal = 0, kshTotal = 0;
+  rows.forEach(r => {
+    kgTotal += r.qty;
+    const c = computeEntry(r);
+    if (c) kshTotal += c.total;
+  });
+  document.getElementById('b-rows').textContent = rows.length;
+  document.getElementById('b-kg').textContent = kg(kgTotal);
+  document.getElementById('b-ksh').textContent = moneyRound(kshTotal);
+  document.getElementById('b-submit').disabled = !(block && factory && rows.length > 0);
+}
+
+async function submitBatch() {
+  const { block, factory, date, rows } = batchRows();
+  if (!block || !factory || rows.length === 0) return;
+  let saved = 0;
+  const tsBase = Date.now();
+  rows.forEach((r, i) => {
+    const plucker = PLUCKERS.find(p => p.id === r.pluckerId);
+    const entry = {
+      id: 'E' + (tsBase + i) + '-' + Math.random().toString(36).slice(2, 6),
+      ts: new Date(tsBase + i).toISOString(),
+      date, block,
+      pluckerId: r.pluckerId, pluckerName: plucker.name,
+      factory, qty: r.qty
+    };
+    STATE.entries.push(entry);
+    saved++;
+  });
+  await storageSet(K_ENTRIES, STATE.entries);
+  document.querySelectorAll('.batch-kg').forEach(i => i.value = '');
+  updateBatchSummary();
+  showToast(`Saved ${saved} entr${saved === 1 ? 'y' : 'ies'}`);
+}
+
+function switchMode(m) {
+  STATE.mode = m;
+  document.getElementById('mode-quick').classList.toggle('active', m === 'quick');
+  document.getElementById('mode-batch').classList.toggle('active', m === 'batch');
+  document.getElementById('quick-mode').style.display = m === 'quick' ? '' : 'none';
+  document.getElementById('batch-mode').style.display = m === 'batch' ? '' : 'none';
+}
+
+function monthEntries() {
+  const ym = new Date().toISOString().slice(0,7);
+  return STATE.entries.filter(e => e.date.startsWith(ym));
+}
+
+function renderHome() {
+  const h = new Date().getHours();
+  const greet = h < 12 ? 'Habari ya asubuhi' : h < 17 ? 'Habari ya mchana' : 'Habari ya jioni';
+  document.getElementById('hero-greeting').textContent = greet;
+  document.getElementById('hero-date').textContent =
+    new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  const entries = monthEntries();
+  let totalKg = 0, cashNow = 0, labour = 0, bonus = 0, shares = 0, total = 0;
+  entries.forEach(e => {
+    totalKg += e.qty;
+    const c = computeEntry(e);
+    if (c) { cashNow += c.cashNow; labour += c.labour; bonus += c.bonus + c.greenleaf; shares += c.shares; total += c.total; }
+  });
+
+  document.getElementById('hero-kg').innerHTML = kg(totalKg) + '<span class="unit">kg</span>';
+  document.getElementById('hero-cash').textContent = 'Ksh ' + moneyRound(cashNow);
+  document.getElementById('home-labour').textContent = 'Ksh ' + moneyRound(labour);
+  document.getElementById('home-bonus').textContent = 'Ksh ' + moneyRound(bonus);
+  document.getElementById('home-shares').textContent = 'Ksh ' + moneyRound(shares);
+  document.getElementById('home-total').textContent = 'Ksh ' + moneyRound(total);
+
+  const byBlock = {};
+  BLOCKS.forEach(b => byBlock[b] = 0);
+  entries.forEach(e => { byBlock[e.block] = (byBlock[e.block] || 0) + e.qty; });
+  const sorted = Object.entries(byBlock).sort((a,b) => b[1] - a[1]);
+  const topKg = sorted[0]?.[1] || 1;
+  const barsBox = document.getElementById('block-bars');
+  if (totalKg === 0) {
+    barsBox.innerHTML = `<div class="empty"><div class="em">No entries yet this month.</div><div class="sub">Tap Add to begin</div></div>`;
+  } else {
+    barsBox.innerHTML = sorted.map(([n, k]) => `
+      <div class="block-bar">
+        <div class="block-bar-head"><span class="name">${n}</span><span class="kg">${kg(k)} kg</span></div>
+        <div class="block-bar-track"><div class="block-bar-fill" style="width:${topKg > 0 ? (k/topKg)*100 : 0}%"></div></div>
+      </div>`).join('');
+  }
+
+  const byP = {};
+  entries.forEach(e => {
+    byP[e.pluckerName] = byP[e.pluckerName] || { kg: 0, total: 0 };
+    byP[e.pluckerName].kg += e.qty;
+    const c = computeEntry(e); if (c) byP[e.pluckerName].total += c.total;
+  });
+  const rank = Object.entries(byP).sort((a,b) => b[1].kg - a[1].kg).slice(0, 5);
+  const rBox = document.getElementById('top-pluckers');
+  if (rank.length === 0) {
+    rBox.innerHTML = `<div class="empty" style="padding:1rem 0"><div class="sub">No entries</div></div>`;
+  } else {
+    rBox.innerHTML = rank.map(([name, v], i) => `
+      <div class="rank-row">
+        <span class="n">${i+1}</span>
+        <div class="name">${name}<span class="meta">Ksh ${moneyRound(v.total)}</span></div>
+        <span class="kg">${kg(v.kg)} kg</span>
+      </div>`).join('');
+  }
+}
+
+function filterEntries() {
+  const period = document.getElementById('filter-period').value;
+  const block = document.getElementById('filter-block').value;
+  const factory = document.getElementById('filter-factory').value;
+  const now = new Date();
+  const todayIso = now.toISOString().slice(0,10);
+  const weekCutoff = new Date(now.getTime() - 7 * 86400000).toISOString().slice(0,10);
+  const ym = todayIso.slice(0,7);
+  return STATE.entries.filter(e => {
+    if (period === 'today' && e.date !== todayIso) return false;
+    if (period === 'week' && e.date < weekCutoff) return false;
+    if (period === 'month' && !e.date.startsWith(ym)) return false;
+    if (block && e.block !== block) return false;
+    if (factory && e.factory !== factory) return false;
+    return true;
+  }).sort((a,b) => b.ts.localeCompare(a.ts));
+}
+
+function renderRecords() {
+  const list = filterEntries();
+  document.getElementById('records-count').textContent = list.length === 1 ? '1 record' : `${list.length} records`;
+  const box = document.getElementById('records-list');
+  if (list.length === 0) {
+    box.innerHTML = `<div class="empty"><div class="em">No matching records.</div><div class="sub">Try widening the filters</div></div>`;
+    return;
+  }
+  box.innerHTML = list.map(e => {
+    const c = computeEntry(e);
+    return `
+      <div class="record-row">
+        <div>
+          <div class="name">${e.pluckerName}</div>
+          <div class="meta">${e.date} · ${e.block} → ${e.factory}</div>
+        </div>
+        <div class="qty">${kg(e.qty)}<span class="unit">kg</span></div>
+        <div class="val">Ksh ${moneyRound(c ? c.total : 0)}</div>
+        <button class="del" data-id="${e.id}" title="Delete">×</button>
+      </div>`;
+  }).join('');
+  box.querySelectorAll('.del').forEach(b => {
+    b.addEventListener('click', async () => {
+      if (!confirm('Delete this entry?')) return;
+      STATE.entries = STATE.entries.filter(x => x.id !== b.dataset.id);
+      await storageSet(K_ENTRIES, STATE.entries);
+      renderRecords();
+    });
+  });
+}
+
+function periodEntries(p) {
+  const now = new Date();
+  const todayIso = now.toISOString().slice(0,10);
+  const weekCutoff = new Date(now.getTime() - 7 * 86400000).toISOString().slice(0,10);
+  const ym = todayIso.slice(0,7);
+  if (p === 'week') return STATE.entries.filter(e => e.date >= weekCutoff);
+  if (p === 'month') return STATE.entries.filter(e => e.date.startsWith(ym));
+  return STATE.entries;
+}
+
+function renderInsights() {
+  document.getElementById('insights-period-label').textContent =
+    STATE.insightsPeriod === 'week' ? 'last 7 days' :
+    STATE.insightsPeriod === 'month' ? 'this month' : 'all time';
+  const entries = periodEntries(STATE.insightsPeriod);
+
+  const byBlock = {};
+  BLOCKS.forEach(b => byBlock[b] = { kg: 0, cashNow: 0, labour: 0, bonus: 0, shares: 0 });
+  entries.forEach(e => {
+    const c = computeEntry(e);
+    if (!c) return;
+    byBlock[e.block].kg       += e.qty;
+    byBlock[e.block].cashNow  += c.cashNow;
+    byBlock[e.block].labour   += c.labour;
+    byBlock[e.block].bonus    += c.bonus + c.greenleaf;
+    byBlock[e.block].shares   += c.shares;
+  });
+  const blockRows = Object.entries(byBlock).filter(([,v]) => v.kg > 0).sort((a,b) => b[1].kg - a[1].kg);
+  const box = document.getElementById('econ-blocks');
+  if (blockRows.length === 0) {
+    box.innerHTML = `<div class="empty" style="padding:1.5rem 0"><div class="em">No data for this period.</div></div>`;
+  } else {
+    box.innerHTML = blockRows.map(([name, v]) => `
+      <div class="econ-card">
+        <div class="econ-head"><span class="t">${name}</span><span class="k">${kg(v.kg)} kg</span></div>
+        <div class="econ-grid">
+          <div class="econ-item"><div class="l">Cash now</div><div class="v">${moneyRound(v.cashNow)}</div></div>
+          <div class="econ-item"><div class="l">Labour</div><div class="v">${moneyRound(v.labour)}</div></div>
+          <div class="econ-item"><div class="l">Accrued</div><div class="v">${moneyRound(v.bonus)}</div></div>
+        </div>
+      </div>`).join('');
+  }
+
+  const byFac = {};
+  entries.forEach(e => {
+    byFac[e.factory] = byFac[e.factory] || { kg: 0, total: 0 };
+    byFac[e.factory].kg += e.qty;
+    const c = computeEntry(e); if (c) byFac[e.factory].total += c.total;
+  });
+  renderMiniTable('tbl-factory', 'Factory', byFac);
+
+  const byP = {};
+  entries.forEach(e => {
+    byP[e.pluckerName] = byP[e.pluckerName] || { kg: 0, total: 0 };
+    byP[e.pluckerName].kg += e.qty;
+    const c = computeEntry(e); if (c) byP[e.pluckerName].total += c.total;
+  });
+  renderMiniTable('tbl-plucker', 'Plucker', byP, 12);
+}
+
+function renderMiniTable(id, firstCol, obj, limit) {
+  const rows = Object.entries(obj).sort((a,b) => b[1].kg - a[1].kg);
+  const show = limit ? rows.slice(0, limit) : rows;
+  const tKg = rows.reduce((s,r) => s + r[1].kg, 0);
+  const tVal = rows.reduce((s,r) => s + r[1].total, 0);
+  const t = document.getElementById(id);
+  if (rows.length === 0) {
+    t.innerHTML = `<tr><td colspan="3" style="color:var(--slate-light);font-style:italic;padding:1rem 0">No entries</td></tr>`;
+    return;
+  }
+  t.innerHTML = `
+    <thead><tr><th>${firstCol}</th><th>Kg</th><th>Ksh</th></tr></thead>
+    <tbody>
+      ${show.map(([k,v]) => `<tr><td>${k}</td><td>${kg(v.kg)}</td><td>${moneyRound(v.total)}</td></tr>`).join('')}
+      <tr class="total"><td>Total</td><td>${kg(tKg)}</td><td>${moneyRound(tVal)}</td></tr>
+    </tbody>`;
+}
+
+function renderSettings() {
+  document.getElementById('s-cess').value = STATE.settings.teaCessPerKg;
+  document.getElementById('s-transport').classList.toggle('on', STATE.settings.transportActive);
+
+  const box = document.getElementById('factory-cards');
+  box.innerHTML = STATE.factories.map((f, i) => `
+    <div class="factory-card" data-idx="${i}">
+      <div class="factory-name">${f.name}</div>
+      <div class="rate-grid">
+        <div class="rate-cell"><label>Price / kg</label><input type="number" step="0.01" min="0" data-k="priceKg" value="${f.priceKg}"></div>
+        <div class="rate-cell"><label>Wage / kg</label><input type="number" step="0.01" min="0" data-k="wageKg" value="${f.wageKg}"></div>
+        <div class="rate-cell"><label>Bonus / kg</label><input type="number" step="0.01" min="0" data-k="bonusKg" value="${f.bonusKg}"></div>
+        <div class="rate-cell"><label>Greenleaf bonus</label><input type="number" step="0.5" min="0" data-k="greenleaf" value="${f.greenleaf}"></div>
+        <div class="rate-cell"><label>Transport / kg</label><input type="number" step="0.01" min="0" data-k="transport" value="${f.transport}"></div>
+        <div class="rate-cell"><label>Shares / kg</label><input type="number" step="0.01" min="0" data-k="shares" value="${f.shares}"></div>
+      </div>
+    </div>`).join('');
+
+  box.querySelectorAll('.factory-card').forEach(card => {
+    const idx = parseInt(card.dataset.idx, 10);
+    card.querySelectorAll('input').forEach(inp => {
+      inp.addEventListener('change', async () => {
+        STATE.factories[idx][inp.dataset.k] = parseFloat(inp.value) || 0;
+        await storageSet(K_FACTORIES, STATE.factories);
+        showToast('Rate card saved');
+      });
+    });
+  });
+}
+
+async function addFactory() {
+  const name = document.getElementById('new-factory-name').value.trim();
+  if (!name) return;
+  if (STATE.factories.some(f => f.name.toLowerCase() === name.toLowerCase())) { showToast('Factory exists'); return; }
+  STATE.factories.push({ name, priceKg: 0, transport: 0, shares: 0, wageKg: 0, bonusKg: 0, greenleaf: 0 });
+  await storageSet(K_FACTORIES, STATE.factories);
+  document.getElementById('new-factory-name').value = '';
+  repopulateFactoryDropdowns();
+  renderSettings();
+  showToast(`Added: ${name}`);
+}
+
+async function saveCess() {
+  const v = parseFloat(document.getElementById('s-cess').value);
+  if (isNaN(v) || v < 0) return;
+  STATE.settings.teaCessPerKg = v;
+  await storageSet(K_SETTINGS, STATE.settings);
+  showToast('Cess updated');
+}
+
+async function toggleTransport() {
+  STATE.settings.transportActive = !STATE.settings.transportActive;
+  document.getElementById('s-transport').classList.toggle('on', STATE.settings.transportActive);
+  await storageSet(K_SETTINGS, STATE.settings);
+  updateQuickCalc();
+  updateBatchSummary();
+  showToast('Transport ' + (STATE.settings.transportActive ? 'on' : 'off'));
+}
+
+async function resetRates() {
+  if (!confirm('Reset rate cards to defaults? Custom factories will be removed.')) return;
+  STATE.factories = JSON.parse(JSON.stringify(DEFAULT_FACTORIES));
+  STATE.settings = { ...DEFAULT_SETTINGS };
+  await storageSet(K_FACTORIES, STATE.factories);
+  await storageSet(K_SETTINGS, STATE.settings);
+  repopulateFactoryDropdowns();
+  renderSettings();
+  showToast('Rates reset');
+}
+
+async function clearEntries() {
+  if (!confirm('Delete ALL entries permanently? Export CSV first if you need a backup.')) return;
+  if (!confirm('This cannot be undone. Continue?')) return;
+  STATE.entries = [];
+  await storageSet(K_ENTRIES, STATE.entries);
+  showToast('All entries cleared');
+  renderHome();
+}
+
+function exportCSV() {
+  if (STATE.entries.length === 0) { showToast('Nothing to export'); return; }
+  const header = ['Entry_ID','Timestamp','Date','Block','Plucker_ID','Plucker','Factory','Qty_Kg','Gross','Labour','Cess','Transport','Shares','Bonus','Greenleaf','Cash_Now','Accrued','Total_Value'];
+  const rows = STATE.entries.map(e => {
+    const c = computeEntry(e) || {};
+    return [e.id, e.ts, e.date, e.block, e.pluckerId, e.pluckerName, e.factory, e.qty,
+            c.gross||0, c.labour||0, c.cess||0, c.transport||0, c.shares||0, c.bonus||0, c.greenleaf||0,
+            c.cashNow||0, c.accrued||0, c.total||0]
+      .map(x => typeof x === 'string' && (x.includes(',') || x.includes("'")) ? `"${x.replace(/"/g, '""')}"` : x)
+      .join(',');
+  });
+  const csv = [header.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `sinonin_greenleaf_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`Exported ${STATE.entries.length} entries`);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+(async function init() {
+  STATE.entries = await storageGet(K_ENTRIES, []);
+  const storedFactories = await storageGet(K_FACTORIES, null);
+  if (storedFactories && Array.isArray(storedFactories) && storedFactories.length > 0) STATE.factories = storedFactories;
+  const storedSettings = await storageGet(K_SETTINGS, null);
+  if (storedSettings) STATE.settings = { ...DEFAULT_SETTINGS, ...storedSettings };
+
+  populateDropdowns();
+  renderBatchList();
+
+  document.querySelectorAll('nav.bottom-nav button').forEach(b => {
+    b.addEventListener('click', () => switchView(b.dataset.view));
+  });
+
+  ['q-date','q-block','q-plucker','q-factory','q-qty'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updateQuickCalc);
+    document.getElementById(id).addEventListener('change', updateQuickCalc);
+  });
+  document.getElementById('q-submit').addEventListener('click', submitQuick);
+
+  ['b-date','b-block','b-factory'].forEach(id => {
+    document.getElementById(id).addEventListener('change', updateBatchSummary);
+  });
+  document.getElementById('b-submit').addEventListener('click', submitBatch);
+
+  document.getElementById('mode-quick').addEventListener('click', () => switchMode('quick'));
+  document.getElementById('mode-batch').addEventListener('click', () => switchMode('batch'));
+
+  ['filter-period','filter-block','filter-factory'].forEach(id => {
+    document.getElementById(id).addEventListener('change', renderRecords);
+  });
+  document.getElementById('btn-export').addEventListener('click', exportCSV);
+
+  document.querySelectorAll('.period-toggle button').forEach(b => {
+    b.addEventListener('click', () => {
+      STATE.insightsPeriod = b.dataset.p;
+      document.querySelectorAll('.period-toggle button').forEach(x => x.classList.toggle('active', x === b));
+      renderInsights();
+    });
+  });
+
+  document.getElementById('s-cess').addEventListener('change', saveCess);
+  document.getElementById('s-transport').addEventListener('click', toggleTransport);
+  document.getElementById('btn-add-factory').addEventListener('click', addFactory);
+  document.getElementById('btn-reset-rates').addEventListener('click', resetRates);
+  document.getElementById('btn-clear-entries').addEventListener('click', clearEntries);
+
+  function setSync() {
+    const dot = document.getElementById('sync-dot');
+    const txt = document.getElementById('sync-text');
+    if (navigator.onLine) { dot.classList.remove('offline'); txt.textContent = 'Online · Stored Locally'; }
+    else { dot.classList.add('offline'); txt.textContent = 'Offline · Queued'; }
+  }
+  window.addEventListener('online', setSync);
+  window.addEventListener('offline', setSync);
+  setSync();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  }
+
+  renderHome();
+})();
+</script>
+</body>
+</html>
