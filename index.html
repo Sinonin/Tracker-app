@@ -275,7 +275,7 @@
 
   button.submit {
     width: 100%; padding: 1rem;
-    background: var(--brass); border: none;
+    background: var(--brass); border: 2px solid var(--brass);
     border-radius: 2px;
     color: var(--forest-dark);
     font-family: 'IBM Plex Mono', monospace;
@@ -284,9 +284,16 @@
     letter-spacing: 0.22em;
     text-transform: uppercase;
     cursor: pointer;
+    transition: background .15s, opacity .15s;
   }
   button.submit:hover:not(:disabled) { background: var(--brass-light); }
-  button.submit:disabled { opacity: 0.35; cursor: not-allowed; }
+  button.submit:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    background: transparent;
+    color: var(--brass-dim);
+    border-color: var(--brass-dim);
+  }
 
   .batch-instructions {
     font-family: 'Fraunces', serif;
@@ -1037,8 +1044,10 @@
       <div class="field"><label>Allocation</label><select id="x-block"><option value="Whole farm">Whole farm</option></select></div>
       <div class="field"><label>Paid to (optional)</label><input type="text" id="x-payee" placeholder="e.g. Kapsabet Agrovet" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
 
-      <div class="calc-card" id="x-preview" style="display:none">
-        <div class="lbl">Expense</div>
+      <button class="submit" id="x-submit" disabled>Record Expense</button>
+
+      <div class="calc-card" id="x-preview" style="display:none;margin-top:0.9rem">
+        <div class="lbl">Expense preview</div>
         <div class="primary"><span class="unit">Ksh</span><span id="x-preview-amt">0</span></div>
         <div class="breakdown">
           <div class="k">Category</div><div class="v" id="x-preview-cat">—</div>
@@ -1047,7 +1056,10 @@
         </div>
       </div>
 
-      <button class="submit" id="x-submit" disabled>Record Expense</button>
+      <div class="section" id="x-recent-section" style="display:none;margin-top:1.2rem">
+        <div class="section-head"><h3>Recent expenses</h3><span class="meta" id="x-recent-count">0</span></div>
+        <div id="x-recent-list"></div>
+      </div>
     </div>
 
     <!-- ========= ACTUALS ========= -->
@@ -1060,8 +1072,10 @@
       </div>
       <div class="field"><label>Actual Kg (factory SMS)</label><input type="number" id="a-kg" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
 
-      <div class="calc-card" id="a-preview" style="display:none">
-        <div class="lbl">Reconciliation</div>
+      <button class="submit" id="a-submit" disabled>Record Actual</button>
+
+      <div class="calc-card" id="a-preview" style="display:none;margin-top:0.9rem">
+        <div class="lbl">Reconciliation preview</div>
         <div class="primary"><span class="unit">kg</span><span id="a-preview-actual">0</span></div>
         <div class="split">
           <div><div class="sub-lbl">Recorded by managers</div><div class="sub-val" id="a-preview-recorded">0 kg</div></div>
@@ -1074,7 +1088,10 @@
         </div>
       </div>
 
-      <button class="submit" id="a-submit" disabled>Save Actual</button>
+      <div class="section" id="a-recent-section" style="display:none;margin-top:1.2rem">
+        <div class="section-head"><h3>Recent actuals</h3><span class="meta" id="a-recent-count">0</span></div>
+        <div id="a-recent-list"></div>
+      </div>
     </div>
   </section>
 
@@ -1518,6 +1535,48 @@ function switchKind(k) {
   document.getElementById('greenleaf-kind').style.display = k === 'greenleaf' ? '' : 'none';
   document.getElementById('expense-kind').style.display = k === 'expense' ? '' : 'none';
   document.getElementById('actual-kind').style.display = k === 'actual' ? '' : 'none';
+  if (k === 'expense') renderRecentExpenses();
+  if (k === 'actual') renderRecentActuals();
+}
+
+function renderRecentActuals() {
+  const list = [...STATE.actuals].sort((a,b) => (b.ts || '').localeCompare(a.ts || '')).slice(0, 5);
+  const section = document.getElementById('a-recent-section');
+  if (list.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  document.getElementById('a-recent-count').textContent = STATE.actuals.length + ' total';
+  const box = document.getElementById('a-recent-list');
+  box.innerHTML = list.map(a => {
+    const recorded = recordedKgFor(a.date, a.factory);
+    const gap = a.kg - recorded;
+    return `
+      <div class="record-row" style="grid-template-columns:1fr auto auto">
+        <div>
+          <div class="name">${a.factory}</div>
+          <div class="meta">${a.date} · rec ${kg(recorded)} · gap ${gap >= 0 ? '+' : ''}${kg(gap)} kg</div>
+        </div>
+        <div class="qty">${kg(a.kg)}<span class="unit">kg</span></div>
+        <div class="val"></div>
+      </div>`;
+  }).join('');
+}
+
+function renderRecentExpenses() {
+  const list = [...STATE.expenses].sort((a,b) => (b.ts || '').localeCompare(a.ts || '')).slice(0, 5);
+  const section = document.getElementById('x-recent-section');
+  if (list.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  document.getElementById('x-recent-count').textContent = STATE.expenses.length + ' total';
+  const box = document.getElementById('x-recent-list');
+  box.innerHTML = list.map(x => `
+    <div class="record-row" style="grid-template-columns:1fr auto auto">
+      <div>
+        <div class="name">${x.category}</div>
+        <div class="meta">${x.date} · ${x.block}${x.description ? ' · ' + x.description : ''}</div>
+      </div>
+      <div class="qty"></div>
+      <div class="val">Ksh ${moneyRound(x.amount)}</div>
+    </div>`).join('');
 }
 
 /* ========= EXPENSE ========= */
@@ -1565,6 +1624,7 @@ async function submitExpense() {
   document.getElementById('x-description').value = '';
   document.getElementById('x-payee').value = '';
   updateExpensePreview();
+  renderRecentExpenses();
   showToast(`Expense recorded · Ksh ${moneyRound(v.amount)}`);
 }
 
@@ -1617,6 +1677,7 @@ async function submitActual() {
   await storageSet(K_ACTUALS, STATE.actuals);
   document.getElementById('a-kg').value = '';
   updateActualPreview();
+  renderRecentActuals();
   showToast(`Actual saved · ${v.factory} · ${v.kg} kg`);
 }
 
