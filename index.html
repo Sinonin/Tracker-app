@@ -43,7 +43,7 @@
     max-width: 520px;
     margin: 0 auto;
     overflow-x: hidden;
-    padding-bottom: 140px;
+    padding-bottom: 100px;
   }
   header.brand {
     background: var(--forest);
@@ -822,20 +822,20 @@
   }
   .danger-zone button:hover { background: var(--danger); color: var(--ivory); }
 
-  .sync-bar {
-    padding: 0.6rem;
-    text-align: center;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.6rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--slate-light);
-    border-top: 1px solid var(--rule);
-    background: var(--ivory-warm);
+  .sync-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 2px 7px;
+    margin-left: 0.5rem;
+    background: rgba(184, 147, 90, 0.15);
+    border-radius: 10px;
+    font-size: 0.56rem;
+    letter-spacing: 0.14em;
   }
-  .sync-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--success); margin-right: 0.4rem; vertical-align: middle; }
-  .sync-dot.offline { background: var(--brass); }
-  body { padding-bottom: 140px; }
+  .sync-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--success); vertical-align: middle; }
+  .sync-dot.offline { background: var(--brass-light); }
+  body { padding-bottom: 100px; }
 
   .mini-table { width: 100%; border-collapse: collapse; }
   .mini-table th {
@@ -894,7 +894,7 @@
 
 <header class="brand">
   <h1>Sinonin Greenleaf</h1>
-  <div class="tagline">Daily Plucker Returns</div>
+  <div class="tagline">Daily Plucker Returns <span class="sync-inline"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span></div>
   <span class="header-screen-title" id="screen-title">Overview</span>
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" src="logo.png" alt="Sinonin Food Innovations">
@@ -945,8 +945,8 @@
   <section class="panel" id="panel-records">
     <div class="filter-bar">
       <select id="filter-type">
-        <option value="all">All Types</option>
-        <option value="greenleaf" selected>Greenleaf</option>
+        <option value="all" selected>All Types</option>
+        <option value="greenleaf">Greenleaf</option>
         <option value="expense">Expenses</option>
         <option value="actual">Actuals</option>
       </select>
@@ -1195,11 +1195,6 @@
 </main>
 
 <div class="footer-stack">
-  <div class="sync-bar">
-    <span class="sync-dot" id="sync-dot"></span>
-    <span id="sync-text">Local · Offline Ready</span>
-  </div>
-
   <nav class="bottom-nav">
     <button class="active" data-view="home">
       <svg viewBox="0 0 24 24"><path d="M3 12L12 4l9 8"/><path d="M5 10v10h14V10"/></svg>
@@ -1301,12 +1296,19 @@ const K_ACTUALS = 'sinonin_actuals_v1';
 const K_EXPENSE_CATS = 'sinonin_expense_cats_v1';
 
 async function storageGet(key, fallback) {
-  try { const r = await window.storage.get(key); return r ? JSON.parse(r.value) : fallback; }
-  catch(e) { return fallback; }
+  try {
+    const r = localStorage.getItem(key);
+    return r !== null ? JSON.parse(r) : fallback;
+  } catch(e) { return fallback; }
 }
 async function storageSet(key, val) {
-  try { await window.storage.set(key, JSON.stringify(val)); return true; }
-  catch(e) { return false; }
+  try {
+    localStorage.setItem(key, JSON.stringify(val));
+    return true;
+  } catch(e) {
+    console.error('Storage write failed:', e);
+    return false;
+  }
 }
 
 let STATE = {
@@ -2571,8 +2573,8 @@ function showToast(msg) {
   function setSync() {
     const dot = document.getElementById('sync-dot');
     const txt = document.getElementById('sync-text');
-    if (navigator.onLine) { dot.classList.remove('offline'); txt.textContent = 'Online · Stored Locally'; }
-    else { dot.classList.add('offline'); txt.textContent = 'Offline · Queued'; }
+    if (navigator.onLine) { dot.classList.remove('offline'); txt.textContent = 'Online'; }
+    else { dot.classList.add('offline'); txt.textContent = 'Offline'; }
   }
   window.addEventListener('online', setSync);
   window.addEventListener('offline', setSync);
