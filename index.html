@@ -75,6 +75,14 @@
     width: 36px; height: 36px;
     opacity: 0.85;
   }
+  header.brand .brand-logo {
+    position: absolute;
+    top: 1.1rem;
+    right: 1.3rem;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25), 0 0 0 1px rgba(184,147,90,0.3);
+  }
   header.brand .header-screen-title {
     display: block;
     margin-top: 0.65rem;
@@ -597,6 +605,74 @@
     font-weight: 600;
   }
 
+  .plucker-row {
+    display: grid;
+    grid-template-columns: 34px 1fr auto auto auto;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.55rem 0.1rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  .plucker-row:last-child { border-bottom: none; }
+  .plucker-row.inactive { opacity: 0.5; }
+  .plucker-row .pid {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--brass);
+    font-weight: 500;
+    text-align: right;
+  }
+  .plucker-row .pname {
+    font-family: 'Fraunces', serif;
+    font-size: 0.95rem;
+    color: var(--ink);
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed transparent;
+    padding: 0.2rem 0.1rem;
+    width: 100%;
+  }
+  .plucker-row .pname:focus {
+    outline: none;
+    border-bottom-color: var(--forest);
+    background: #fff;
+  }
+  .plucker-row .pname:hover {
+    border-bottom-color: var(--rule);
+  }
+  .plucker-row .pchip {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.52rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 2px;
+    cursor: pointer;
+    border: 1px solid var(--rule);
+    background: var(--ivory);
+    color: var(--slate-light);
+    transition: all .15s;
+  }
+  .plucker-row .pchip.on {
+    background: var(--forest);
+    color: var(--ivory);
+    border-color: var(--forest);
+  }
+  .plucker-row .pchip.on.warn {
+    background: var(--brass-dim);
+    border-color: var(--brass-dim);
+  }
+  .plucker-row .pdel {
+    background: transparent;
+    border: none;
+    color: var(--slate-light);
+    cursor: pointer;
+    font-size: 1.05rem;
+    padding: 0 0.3rem;
+  }
+  .plucker-row .pdel:hover { color: var(--danger); }
+  .plucker-row .pdel:disabled { opacity: 0.25; cursor: not-allowed; }
+
   .setting-row {
     display: grid; grid-template-columns: 1fr auto;
     align-items: center;
@@ -745,10 +821,8 @@
   <h1>Sinonin Greenleaf</h1>
   <div class="tagline">Daily Plucker Returns</div>
   <span class="header-screen-title" id="screen-title">Overview</span>
-  <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-    <path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C16 20 22 14 22 8V3h-5c-1.5 0-3.5.5-5 1z"/>
-    <path d="M3 21c1.5-4 6-8 11-10" />
-  </svg>
+  <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
+  <img class="brand-logo" src="logo.png" alt="Sinonin Food Innovations">
 </header>
 
 <main>
@@ -913,13 +987,30 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v2.0</span></div>
+      <div class="section-head"><h3>Plucker roster</h3><span class="meta" id="plucker-count">0 active</span></div>
+      <div id="plucker-list"></div>
+      <div class="add-factory">
+        <div class="pair" style="margin-bottom:0.5rem;gap:0.5rem">
+          <div class="field" style="margin-bottom:0"><input type="text" id="new-plucker-name" placeholder="Plucker name"></div>
+          <div class="field" style="margin-bottom:0"><input type="number" id="new-plucker-id" placeholder="ID" min="1" step="1"></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:0.6rem;margin:0.3rem 0 0.6rem">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--slate)">Bonus eligible</span>
+          <div class="toggle on" id="new-plucker-bonus"></div>
+        </div>
+        <button id="btn-add-plucker">Add Plucker</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>About</h3><span class="meta">v2.1</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Greenleaf · Built for Sinonin Tea, Nandi County. Data stored locally on this device. Export CSV regularly to your records spreadsheet for reconciliation.</div>
     </div>
 
     <div class="danger-zone">
       <h4>Danger Zone</h4>
       <button id="btn-reset-rates">Reset rate cards</button>
+      <button id="btn-reset-pluckers">Reset plucker roster</button>
       <button id="btn-clear-entries">Clear all entries</button>
     </div>
   </section>
@@ -965,36 +1056,38 @@ const DEFAULT_FACTORIES = [
   { name: "Kapchorua", priceKg: 23.0, transport: 0,    shares: 0, wageKg: 10,   bonusKg: 0,   greenleaf: 0  }
 ];
 
-const PLUCKERS = [
-  { id: 5,  name: "Cheptabach",          bonus: true  },
-  { id: 6,  name: "Gladys Yego",          bonus: true  },
-  { id: 9,  name: "Hillary Kimutai",      bonus: true  },
-  { id: 10, name: "Sheila Jesang",        bonus: true  },
-  { id: 11, name: "Colleta Jerono",       bonus: true  },
-  { id: 12, name: "Zacchariah Kipleting", bonus: true  },
-  { id: 16, name: "Zachariah Kipleting",  bonus: true  },
-  { id: 17, name: "Stanley Kosgei",       bonus: true  },
-  { id: 19, name: "Eunice Koech",         bonus: true  },
-  { id: 25, name: "Winnie Jepkemei",      bonus: false },
-  { id: 29, name: "Nancy Cherop",         bonus: false },
-  { id: 30, name: "Caren Jepngetich",     bonus: true  },
-  { id: 31, name: "Josphat Kipkemboi",    bonus: true  },
-  { id: 32, name: "Frankline Kirwa",      bonus: true  },
-  { id: 33, name: "Contractors",          bonus: false },
-  { id: 34, name: "Meshark Too",          bonus: false },
-  { id: 35, name: "Ezron Rudisha",        bonus: true  },
-  { id: 36, name: "Geofrey Malakwen",     bonus: false },
-  { id: 37, name: "Nahashon Kipchirchir", bonus: false },
-  { id: 38, name: "Lydia Jelagat",        bonus: true  },
-  { id: 40, name: "Juliet Jepkemboi",     bonus: true  },
-  { id: 41, name: "Sharon Cherotich",     bonus: true  },
-  { id: 42, name: "Mercy Chepleting",     bonus: true  },
-  { id: 44, name: "Mercy Jepkurui",       bonus: true  },
-  { id: 45, name: "Winnie Jepkoech",      bonus: true  },
-  { id: 46, name: "Caren Lagat",          bonus: true  },
-  { id: 47, name: "Kipkorom",             bonus: true  },
-  { id: 48, name: "Sylivia Chelimo",      bonus: true  }
+const DEFAULT_PLUCKERS = [
+  { id: 5,  name: "Cheptabach",          bonus: true,  active: true },
+  { id: 6,  name: "Gladys Yego",          bonus: true,  active: true },
+  { id: 9,  name: "Hillary Kimutai",      bonus: true,  active: true },
+  { id: 10, name: "Sheila Jesang",        bonus: true,  active: true },
+  { id: 11, name: "Colleta Jerono",       bonus: true,  active: true },
+  { id: 12, name: "Zacchariah Kipleting", bonus: true,  active: true },
+  { id: 16, name: "Zachariah Kipleting",  bonus: true,  active: true },
+  { id: 17, name: "Stanley Kosgei",       bonus: true,  active: true },
+  { id: 19, name: "Eunice Koech",         bonus: true,  active: true },
+  { id: 25, name: "Winnie Jepkemei",      bonus: false, active: true },
+  { id: 29, name: "Nancy Cherop",         bonus: false, active: true },
+  { id: 30, name: "Caren Jepngetich",     bonus: true,  active: true },
+  { id: 31, name: "Josphat Kipkemboi",    bonus: true,  active: true },
+  { id: 32, name: "Frankline Kirwa",      bonus: true,  active: true },
+  { id: 33, name: "Contractors",          bonus: false, active: true },
+  { id: 34, name: "Meshark Too",          bonus: false, active: true },
+  { id: 35, name: "Ezron Rudisha",        bonus: true,  active: true },
+  { id: 36, name: "Geofrey Malakwen",     bonus: false, active: true },
+  { id: 37, name: "Nahashon Kipchirchir", bonus: false, active: true },
+  { id: 38, name: "Lydia Jelagat",        bonus: true,  active: true },
+  { id: 40, name: "Juliet Jepkemboi",     bonus: true,  active: true },
+  { id: 41, name: "Sharon Cherotich",     bonus: true,  active: true },
+  { id: 42, name: "Mercy Chepleting",     bonus: true,  active: true },
+  { id: 44, name: "Mercy Jepkurui",       bonus: true,  active: true },
+  { id: 45, name: "Winnie Jepkoech",      bonus: true,  active: true },
+  { id: 46, name: "Caren Lagat",          bonus: true,  active: true },
+  { id: 47, name: "Kipkorom",             bonus: true,  active: true },
+  { id: 48, name: "Sylivia Chelimo",      bonus: true,  active: true }
 ];
+
+let PLUCKERS = JSON.parse(JSON.stringify(DEFAULT_PLUCKERS));
 
 const DEFAULT_SETTINGS = { teaCessPerKg: 0.22, transportActive: false, currency: 'Ksh' };
 
@@ -1002,6 +1095,7 @@ const SCREEN_TITLES = { home: 'Overview', records: 'Records', add: 'New Entry', 
 
 const K_ENTRIES = 'sinonin_entries_v1';
 const K_FACTORIES = 'sinonin_factories_v1';
+const K_PLUCKERS = 'sinonin_pluckers_v1';
 const K_SETTINGS = 'sinonin_settings_v1';
 
 async function storageGet(key, fallback) {
@@ -1049,12 +1143,23 @@ function populateDropdowns() {
   document.getElementById('q-block').innerHTML = '<option value="">— Block —</option>' + blockOpts;
   document.getElementById('b-block').innerHTML = '<option value="">— Block —</option>' + blockOpts;
   document.getElementById('filter-block').innerHTML = '<option value="">All Blocks</option>' + blockOpts;
-  const pOpts = PLUCKERS.map(p => `<option value="${p.id}">${p.id}. ${p.name}${p.bonus ? '' : ' · no bonus'}</option>`).join('');
-  document.getElementById('q-plucker').innerHTML = '<option value="">— Select plucker —</option>' + pOpts;
+  repopulatePluckerDropdown();
   repopulateFactoryDropdowns();
   const todayIso = new Date().toISOString().slice(0,10);
   document.getElementById('q-date').value = todayIso;
   document.getElementById('b-date').value = todayIso;
+}
+
+function activePluckers() {
+  return PLUCKERS.filter(p => p.active !== false);
+}
+
+function repopulatePluckerDropdown() {
+  const el = document.getElementById('q-plucker');
+  const cur = el.value;
+  const pOpts = activePluckers().map(p => `<option value="${p.id}">${p.id}. ${p.name}${p.bonus ? '' : ' · no bonus'}</option>`).join('');
+  el.innerHTML = '<option value="">— Select plucker —</option>' + pOpts;
+  if (cur && PLUCKERS.some(p => p.id === parseInt(cur, 10) && p.active !== false)) el.value = cur;
 }
 
 function repopulateFactoryDropdowns() {
@@ -1141,7 +1246,7 @@ async function submitQuick() {
 
 function renderBatchList() {
   const box = document.getElementById('batch-list');
-  box.innerHTML = PLUCKERS.map(p => `
+  box.innerHTML = activePluckers().map(p => `
     <div class="batch-row" data-pid="${p.id}">
       <div class="p-name"><span class="id">${p.id}.</span>${p.name}${p.bonus ? '' : '<span class="nobonus">no bonus</span>'}</div>
       <input type="number" inputmode="decimal" step="0.1" min="0" placeholder="kg" class="batch-kg" data-pid="${p.id}">
@@ -1425,6 +1530,117 @@ function renderSettings() {
       });
     });
   });
+
+  renderPluckers();
+}
+
+function pluckerHasEntries(id) {
+  return STATE.entries.some(e => e.pluckerId === id);
+}
+
+function renderPluckers() {
+  const activeCount = activePluckers().length;
+  const totalCount = PLUCKERS.length;
+  document.getElementById('plucker-count').textContent =
+    `${activeCount} active${totalCount !== activeCount ? ` · ${totalCount - activeCount} inactive` : ''}`;
+
+  const sorted = [...PLUCKERS].sort((a, b) => a.id - b.id);
+  const box = document.getElementById('plucker-list');
+  box.innerHTML = sorted.map(p => {
+    const hasEntries = pluckerHasEntries(p.id);
+    const active = p.active !== false;
+    return `
+      <div class="plucker-row ${active ? '' : 'inactive'}" data-pid="${p.id}">
+        <span class="pid">${p.id}</span>
+        <input type="text" class="pname" data-pid="${p.id}" value="${p.name.replace(/"/g, '&quot;')}">
+        <button class="pchip ${p.bonus ? 'on' : ''}" data-act="bonus" data-pid="${p.id}">${p.bonus ? 'Bonus' : 'No Bonus'}</button>
+        <button class="pchip ${active ? 'on warn' : ''}" data-act="active" data-pid="${p.id}">${active ? 'Active' : 'Inactive'}</button>
+        <button class="pdel" data-act="delete" data-pid="${p.id}" ${hasEntries ? 'disabled title="Has entries — mark inactive instead"' : 'title="Delete"'}>×</button>
+      </div>`;
+  }).join('');
+
+  box.querySelectorAll('.pname').forEach(inp => {
+    inp.addEventListener('change', async () => {
+      const id = parseInt(inp.dataset.pid, 10);
+      const newName = inp.value.trim();
+      if (!newName) { renderPluckers(); return; }
+      const p = PLUCKERS.find(x => x.id === id);
+      if (p && p.name !== newName) {
+        p.name = newName;
+        await storageSet(K_PLUCKERS, PLUCKERS);
+        repopulatePluckerDropdown();
+        renderBatchList();
+        showToast(`Renamed: ${newName}`);
+      }
+    });
+  });
+
+  box.querySelectorAll('.pchip').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = parseInt(btn.dataset.pid, 10);
+      const act = btn.dataset.act;
+      const p = PLUCKERS.find(x => x.id === id);
+      if (!p) return;
+      if (act === 'bonus') p.bonus = !p.bonus;
+      else if (act === 'active') p.active = !(p.active !== false);
+      await storageSet(K_PLUCKERS, PLUCKERS);
+      renderPluckers();
+      repopulatePluckerDropdown();
+      renderBatchList();
+    });
+  });
+
+  box.querySelectorAll('.pdel').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (btn.disabled) return;
+      const id = parseInt(btn.dataset.pid, 10);
+      const p = PLUCKERS.find(x => x.id === id);
+      if (!p) return;
+      if (!confirm(`Delete ${p.name} (ID ${id}) from the roster?`)) return;
+      PLUCKERS = PLUCKERS.filter(x => x.id !== id);
+      await storageSet(K_PLUCKERS, PLUCKERS);
+      renderPluckers();
+      repopulatePluckerDropdown();
+      renderBatchList();
+      showToast(`Removed: ${p.name}`);
+    });
+  });
+}
+
+async function addPlucker() {
+  const name = document.getElementById('new-plucker-name').value.trim();
+  const idRaw = document.getElementById('new-plucker-id').value.trim();
+  const bonus = document.getElementById('new-plucker-bonus').classList.contains('on');
+  if (!name) { showToast('Enter a name'); return; }
+  let id = parseInt(idRaw, 10);
+  if (!id || id < 1) {
+    // auto-suggest next integer above max
+    id = Math.max(0, ...PLUCKERS.map(p => p.id)) + 1;
+  }
+  if (PLUCKERS.some(p => p.id === id)) { showToast(`ID ${id} already taken`); return; }
+  if (PLUCKERS.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+    if (!confirm(`A plucker named "${name}" already exists. Add anyway?`)) return;
+  }
+  PLUCKERS.push({ id, name, bonus, active: true });
+  PLUCKERS.sort((a, b) => a.id - b.id);
+  await storageSet(K_PLUCKERS, PLUCKERS);
+  document.getElementById('new-plucker-name').value = '';
+  document.getElementById('new-plucker-id').value = '';
+  document.getElementById('new-plucker-bonus').classList.add('on');
+  renderPluckers();
+  repopulatePluckerDropdown();
+  renderBatchList();
+  showToast(`Added: ${id}. ${name}`);
+}
+
+async function resetPluckers() {
+  if (!confirm('Reset the plucker roster to defaults? Any pluckers you added will be removed. Existing entries keep their recorded names.')) return;
+  PLUCKERS = JSON.parse(JSON.stringify(DEFAULT_PLUCKERS));
+  await storageSet(K_PLUCKERS, PLUCKERS);
+  renderPluckers();
+  repopulatePluckerDropdown();
+  renderBatchList();
+  showToast('Roster reset');
 }
 
 async function addFactory() {
@@ -1509,6 +1725,11 @@ function showToast(msg) {
   STATE.entries = await storageGet(K_ENTRIES, []);
   const storedFactories = await storageGet(K_FACTORIES, null);
   if (storedFactories && Array.isArray(storedFactories) && storedFactories.length > 0) STATE.factories = storedFactories;
+  const storedPluckers = await storageGet(K_PLUCKERS, null);
+  if (storedPluckers && Array.isArray(storedPluckers) && storedPluckers.length > 0) {
+    // Forward-compat: ensure every plucker has an `active` field
+    PLUCKERS = storedPluckers.map(p => ({ active: true, ...p }));
+  }
   const storedSettings = await storageGet(K_SETTINGS, null);
   if (storedSettings) STATE.settings = { ...DEFAULT_SETTINGS, ...storedSettings };
 
@@ -1549,7 +1770,12 @@ function showToast(msg) {
   document.getElementById('s-cess').addEventListener('change', saveCess);
   document.getElementById('s-transport').addEventListener('click', toggleTransport);
   document.getElementById('btn-add-factory').addEventListener('click', addFactory);
+  document.getElementById('btn-add-plucker').addEventListener('click', addPlucker);
+  document.getElementById('new-plucker-bonus').addEventListener('click', () => {
+    document.getElementById('new-plucker-bonus').classList.toggle('on');
+  });
   document.getElementById('btn-reset-rates').addEventListener('click', resetRates);
+  document.getElementById('btn-reset-pluckers').addEventListener('click', resetPluckers);
   document.getElementById('btn-clear-entries').addEventListener('click', clearEntries);
 
   function setSync() {
