@@ -43,7 +43,7 @@
     max-width: 520px;
     margin: 0 auto;
     overflow-x: hidden;
-    padding-bottom: 88px;
+    padding-bottom: 140px;
   }
   header.brand {
     background: var(--forest);
@@ -98,18 +98,23 @@
   .panel.active { display: block; animation: fadein .22s ease-out; }
   @keyframes fadein { from { opacity:0; transform: translateY(4px);} to { opacity:1; transform:none; } }
 
-  nav.bottom-nav {
+  .footer-stack {
     position: fixed;
     bottom: 0; left: 0; right: 0;
+    max-width: 520px;
+    margin: 0 auto;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+  }
+
+  nav.bottom-nav {
     background: var(--forest-dark);
     border-top: 2px solid var(--brass);
     padding: 0.4rem 0.25rem 0.55rem;
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 0.15rem;
-    max-width: 520px;
-    margin: 0 auto;
-    z-index: 50;
   }
   nav.bottom-nav button {
     background: transparent; border: none;
@@ -369,7 +374,7 @@
 
   .toast {
     position: fixed;
-    bottom: 6.5rem; left: 50%;
+    bottom: 9rem; left: 50%;
     transform: translateX(-50%) translateY(30px);
     background: var(--forest-dark); color: var(--ivory);
     padding: 0.8rem 1.3rem;
@@ -827,15 +832,10 @@
     color: var(--slate-light);
     border-top: 1px solid var(--rule);
     background: var(--ivory-warm);
-    position: fixed;
-    bottom: 88px; left: 0; right: 0;
-    max-width: 520px;
-    margin: 0 auto;
-    z-index: 40;
   }
   .sync-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--success); margin-right: 0.4rem; vertical-align: middle; }
   .sync-dot.offline { background: var(--brass); }
-  body { padding-bottom: 122px; }
+  body { padding-bottom: 140px; }
 
   .mini-table { width: 100%; border-collapse: collapse; }
   .mini-table th {
@@ -1192,33 +1192,35 @@
   </section>
 </main>
 
-<div class="sync-bar">
-  <span class="sync-dot" id="sync-dot"></span>
-  <span id="sync-text">Local · Offline Ready</span>
-</div>
+<div class="footer-stack">
+  <div class="sync-bar">
+    <span class="sync-dot" id="sync-dot"></span>
+    <span id="sync-text">Local · Offline Ready</span>
+  </div>
 
-<nav class="bottom-nav">
-  <button class="active" data-view="home">
-    <svg viewBox="0 0 24 24"><path d="M3 12L12 4l9 8"/><path d="M5 10v10h14V10"/></svg>
-    <span>Home</span>
-  </button>
-  <button data-view="records">
-    <svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
-    <span>Records</span>
-  </button>
-  <button class="central" data-view="add">
-    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-    <span>Add</span>
-  </button>
-  <button data-view="insights">
-    <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg>
-    <span>Insights</span>
-  </button>
-  <button data-view="settings">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
-    <span>Settings</span>
-  </button>
-</nav>
+  <nav class="bottom-nav">
+    <button class="active" data-view="home">
+      <svg viewBox="0 0 24 24"><path d="M3 12L12 4l9 8"/><path d="M5 10v10h14V10"/></svg>
+      <span>Home</span>
+    </button>
+    <button data-view="records">
+      <svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+      <span>Records</span>
+    </button>
+    <button class="central" data-view="add">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      <span>Add</span>
+    </button>
+    <button data-view="insights">
+      <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg>
+      <span>Insights</span>
+    </button>
+    <button data-view="settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
+      <span>Settings</span>
+    </button>
+  </nav>
+</div>
 
 <div class="toast" id="toast">Entry Saved</div>
 
