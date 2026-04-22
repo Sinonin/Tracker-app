@@ -168,6 +168,28 @@
   }
   .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
 
+  .kind-toggle {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0;
+    background: var(--forest-dark);
+    border-radius: 2px;
+    margin-bottom: 1rem;
+    padding: 3px;
+    border: 1px solid var(--forest-dark);
+  }
+  .kind-toggle button {
+    background: transparent; border: none;
+    padding: 0.75rem 0.3rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--brass-light);
+    cursor: pointer;
+    border-radius: 2px;
+    font-weight: 500;
+  }
+  .kind-toggle button.active { background: var(--brass); color: var(--forest-dark); }
+
   .mode-toggle {
     display: grid; grid-template-columns: 1fr 1fr; gap: 0;
     background: var(--ivory-warm);
@@ -478,6 +500,52 @@
   .rank-row .name { font-family: 'Fraunces', serif; font-size: 0.95rem; color: var(--ink); }
   .rank-row .name .meta { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; color: var(--slate-light); letter-spacing: 0.08em; margin-top: 0.1rem; }
   .rank-row .kg { font-family: 'IBM Plex Mono', monospace; font-size: 0.9rem; color: var(--forest); font-variant-numeric: tabular-nums; font-weight: 500; }
+
+  .recon-row {
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .recon-row:last-child { border-bottom: none; }
+  .recon-row .recon-name {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 1rem;
+    color: var(--forest);
+    margin-bottom: 0.35rem;
+  }
+  .recon-row .recon-nums {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.5rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.78rem;
+  }
+  .recon-row .recon-nums > div { display: flex; flex-direction: column; gap: 0.15rem; }
+  .recon-row .recon-nums .rl {
+    font-size: 0.55rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--slate);
+  }
+  .recon-row .recon-nums .rv { color: var(--ink); }
+  .recon-row .recon-nums .warn .rv { color: var(--danger); font-weight: 500; }
+  .recon-row .recon-nums .ok .rv { color: var(--success); font-weight: 500; }
+
+  .type-badge {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.52rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 2px;
+    background: var(--ivory-warm);
+    color: var(--slate);
+    margin-right: 0.4rem;
+    vertical-align: middle;
+  }
+  .type-badge.expense { background: var(--brass); color: var(--forest-dark); }
+  .type-badge.actual { background: var(--forest); color: var(--ivory); }
 
   .filter-bar { display: flex; gap: 0.5rem; margin-bottom: 0.9rem; flex-wrap: wrap; }
   .filter-bar select {
@@ -846,8 +914,13 @@
     <div class="stat-grid">
       <div class="stat-card"><div class="lbl">Labour</div><div class="val" id="home-labour">Ksh 0</div><div class="sub">paid to pluckers</div></div>
       <div class="stat-card"><div class="lbl">Bonus accrued</div><div class="val" id="home-bonus">Ksh 0</div><div class="sub">paid later</div></div>
-      <div class="stat-card"><div class="lbl">Shares retained</div><div class="val" id="home-shares">Ksh 0</div><div class="sub">factory equity</div></div>
-      <div class="stat-card"><div class="lbl">Total value</div><div class="val" id="home-total">Ksh 0</div><div class="sub">cash + accrued</div></div>
+      <div class="stat-card"><div class="lbl">Expenses</div><div class="val" id="home-expenses">Ksh 0</div><div class="sub">this month</div></div>
+      <div class="stat-card"><div class="lbl">Margin</div><div class="val" id="home-margin">Ksh 0</div><div class="sub">cash − expenses</div></div>
+    </div>
+
+    <div class="section" id="home-recon-section" style="display:none">
+      <div class="section-head"><h3>Recorded vs Actual</h3><span class="meta">this month</span></div>
+      <div id="home-recon"></div>
     </div>
 
     <div class="section">
@@ -864,6 +937,12 @@
   <!-- RECORDS -->
   <section class="panel" id="panel-records">
     <div class="filter-bar">
+      <select id="filter-type">
+        <option value="all">All Types</option>
+        <option value="greenleaf" selected>Greenleaf</option>
+        <option value="expense">Expenses</option>
+        <option value="actual">Actuals</option>
+      </select>
       <select id="filter-period">
         <option value="today">Today</option>
         <option value="week" selected>This Week</option>
@@ -882,60 +961,120 @@
 
   <!-- ADD -->
   <section class="panel" id="panel-add">
-    <div class="mode-toggle">
-      <button class="active" id="mode-quick">Quick Entry</button>
-      <button id="mode-batch">Batch Entry</button>
+    <div class="kind-toggle">
+      <button class="active" data-kind="greenleaf">Greenleaf</button>
+      <button data-kind="expense">Expense</button>
+      <button data-kind="actual">Actuals</button>
     </div>
 
-    <div id="quick-mode">
-      <div class="pair">
-        <div class="field"><label>Date</label><input type="date" id="q-date"></div>
-        <div class="field"><label>Block</label><select id="q-block"><option value="">— Block —</option></select></div>
+    <!-- ========= GREENLEAF ========= -->
+    <div id="greenleaf-kind">
+      <div class="mode-toggle">
+        <button class="active" id="mode-quick">Quick Entry</button>
+        <button id="mode-batch">Batch Entry</button>
       </div>
-      <div class="field"><label>Plucker</label><select id="q-plucker"><option value="">— Select plucker —</option></select></div>
-      <div class="field"><label>Factory Delivered</label><select id="q-factory"><option value="">— Select factory —</option></select></div>
-      <div class="field"><label>Quantity Plucked (kg)</label><input type="number" id="q-qty" inputmode="decimal" step="0.1" min="0" placeholder="0"></div>
 
-      <div class="calc-card" id="q-calc" style="display:none">
-        <div class="lbl">Total Value</div>
-        <div class="primary"><span class="unit">Ksh</span><span id="q-total">0</span></div>
+      <div id="quick-mode">
+        <div class="pair">
+          <div class="field"><label>Date</label><input type="date" id="q-date"></div>
+          <div class="field"><label>Block</label><select id="q-block"><option value="">— Block —</option></select></div>
+        </div>
+        <div class="field"><label>Plucker</label><select id="q-plucker"><option value="">— Select plucker —</option></select></div>
+        <div class="field"><label>Factory Delivered</label><select id="q-factory"><option value="">— Select factory —</option></select></div>
+        <div class="field"><label>Quantity Plucked (kg)</label><input type="number" id="q-qty" inputmode="decimal" step="0.1" min="0" placeholder="0"></div>
+
+        <div class="calc-card" id="q-calc" style="display:none">
+          <div class="lbl">Total Value</div>
+          <div class="primary"><span class="unit">Ksh</span><span id="q-total">0</span></div>
+          <div class="split">
+            <div><div class="sub-lbl">Cash now</div><div class="sub-val" id="q-cash">Ksh 0</div></div>
+            <div><div class="sub-lbl">Accrued</div><div class="sub-val" id="q-accrued">Ksh 0</div></div>
+          </div>
+          <div class="breakdown">
+            <div class="k">Gross (kg × price)</div><div class="v" id="q-gross">0</div>
+            <div class="k">Labour owed</div><div class="v neg" id="q-labour">0</div>
+            <div class="k">Cess</div><div class="v neg" id="q-cess">0</div>
+            <div class="k">Shares retained</div><div class="v neg" id="q-shares">0</div>
+            <div class="k" id="q-k-transport" style="display:none">Transport</div>
+            <div class="v neg" id="q-v-transport" style="display:none">0</div>
+            <div class="k">Bonus (accrued)</div><div class="v" id="q-bonus">0</div>
+            <div class="k">Greenleaf (accrued)</div><div class="v" id="q-gleaf">0</div>
+          </div>
+        </div>
+
+        <button class="submit" id="q-submit" disabled>Save Entry</button>
+      </div>
+
+      <div id="batch-mode" style="display:none">
+        <div class="pair">
+          <div class="field"><label>Date</label><input type="date" id="b-date"></div>
+          <div class="field"><label>Block</label><select id="b-block"><option value="">— Block —</option></select></div>
+        </div>
+        <div class="field"><label>Factory Delivered</label><select id="b-factory"><option value="">— Select factory —</option></select></div>
+
+        <div class="batch-instructions">Enter kilograms for each plucker who worked today. Leave blank for those who did not.</div>
+
+        <div class="batch-list" id="batch-list"></div>
+
+        <div class="batch-summary">
+          <div><div class="sum-lbl">Rows</div><div class="sum-val" id="b-rows">0</div></div>
+          <div><div class="sum-lbl">Kg total</div><div class="sum-val" id="b-kg">0</div></div>
+          <div><div class="sum-lbl">Ksh value</div><div class="sum-val" id="b-ksh">0</div></div>
+        </div>
+
+        <button class="submit" id="b-submit" style="margin-top:0.9rem" disabled>Save All Entries</button>
+      </div>
+    </div>
+
+    <!-- ========= EXPENSE ========= -->
+    <div id="expense-kind" style="display:none">
+      <div class="pair">
+        <div class="field"><label>Date</label><input type="date" id="x-date"></div>
+        <div class="field"><label>Amount (Ksh)</label><input type="number" id="x-amount" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+      </div>
+      <div class="field"><label>Category</label><select id="x-category"><option value="">— Category —</option></select></div>
+      <div class="field"><label>Description</label><input type="text" id="x-description" placeholder="e.g. DAP fertilizer, 50kg bag" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
+      <div class="field"><label>Allocation</label><select id="x-block"><option value="Whole farm">Whole farm</option></select></div>
+      <div class="field"><label>Paid to (optional)</label><input type="text" id="x-payee" placeholder="e.g. Kapsabet Agrovet" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
+
+      <div class="calc-card" id="x-preview" style="display:none">
+        <div class="lbl">Expense</div>
+        <div class="primary"><span class="unit">Ksh</span><span id="x-preview-amt">0</span></div>
+        <div class="breakdown">
+          <div class="k">Category</div><div class="v" id="x-preview-cat">—</div>
+          <div class="k">Allocation</div><div class="v" id="x-preview-block">—</div>
+          <div class="k">Date</div><div class="v" id="x-preview-date">—</div>
+        </div>
+      </div>
+
+      <button class="submit" id="x-submit" disabled>Record Expense</button>
+    </div>
+
+    <!-- ========= ACTUALS ========= -->
+    <div id="actual-kind" style="display:none">
+      <div class="batch-instructions">Record the weight confirmed by the factory weighbridge (via SMS). The app will compare against the sum of plucker entries for the same day and factory to surface any unattributed kilograms.</div>
+
+      <div class="pair">
+        <div class="field"><label>Date</label><input type="date" id="a-date"></div>
+        <div class="field"><label>Factory</label><select id="a-factory"><option value="">— Factory —</option></select></div>
+      </div>
+      <div class="field"><label>Actual Kg (factory SMS)</label><input type="number" id="a-kg" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+
+      <div class="calc-card" id="a-preview" style="display:none">
+        <div class="lbl">Reconciliation</div>
+        <div class="primary"><span class="unit">kg</span><span id="a-preview-actual">0</span></div>
         <div class="split">
-          <div><div class="sub-lbl">Cash now</div><div class="sub-val" id="q-cash">Ksh 0</div></div>
-          <div><div class="sub-lbl">Accrued</div><div class="sub-val" id="q-accrued">Ksh 0</div></div>
+          <div><div class="sub-lbl">Recorded by managers</div><div class="sub-val" id="a-preview-recorded">0 kg</div></div>
+          <div><div class="sub-lbl">Unattributed</div><div class="sub-val" id="a-preview-gap">0 kg</div></div>
         </div>
         <div class="breakdown">
-          <div class="k">Gross (kg × price)</div><div class="v" id="q-gross">0</div>
-          <div class="k">Labour owed</div><div class="v neg" id="q-labour">0</div>
-          <div class="k">Cess</div><div class="v neg" id="q-cess">0</div>
-          <div class="k">Shares retained</div><div class="v neg" id="q-shares">0</div>
-          <div class="k" id="q-k-transport" style="display:none">Transport</div>
-          <div class="v neg" id="q-v-transport" style="display:none">0</div>
-          <div class="k">Bonus (accrued)</div><div class="v" id="q-bonus">0</div>
-          <div class="k">Greenleaf (accrued)</div><div class="v" id="q-gleaf">0</div>
+          <div class="k">Factory</div><div class="v" id="a-preview-factory">—</div>
+          <div class="k">Date</div><div class="v" id="a-preview-date">—</div>
+          <div class="k">Gap value (factory price)</div><div class="v" id="a-preview-gapval">Ksh 0</div>
         </div>
       </div>
 
-      <button class="submit" id="q-submit" disabled>Save Entry</button>
-    </div>
-
-    <div id="batch-mode" style="display:none">
-      <div class="pair">
-        <div class="field"><label>Date</label><input type="date" id="b-date"></div>
-        <div class="field"><label>Block</label><select id="b-block"><option value="">— Block —</option></select></div>
-      </div>
-      <div class="field"><label>Factory Delivered</label><select id="b-factory"><option value="">— Select factory —</option></select></div>
-
-      <div class="batch-instructions">Enter kilograms for each plucker who worked today. Leave blank for those who did not.</div>
-
-      <div class="batch-list" id="batch-list"></div>
-
-      <div class="batch-summary">
-        <div><div class="sum-lbl">Rows</div><div class="sum-val" id="b-rows">0</div></div>
-        <div><div class="sum-lbl">Kg total</div><div class="sum-val" id="b-kg">0</div></div>
-        <div><div class="sum-lbl">Ksh value</div><div class="sum-val" id="b-ksh">0</div></div>
-      </div>
-
-      <button class="submit" id="b-submit" style="margin-top:0.9rem" disabled>Save All Entries</button>
+      <button class="submit" id="a-submit" disabled>Save Actual</button>
     </div>
   </section>
 
@@ -950,6 +1089,16 @@
     <div class="section">
       <div class="section-head"><h3>Block economics</h3><span class="meta" id="insights-period-label">week</span></div>
       <div id="econ-blocks"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>Reconciliation</h3><span class="meta">recorded vs actual</span></div>
+      <div id="insights-recon"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>Expenses by category</h3><span class="meta" id="insights-exp-total">Ksh 0</span></div>
+      <table class="mini-table" id="tbl-expenses"></table>
     </div>
 
     <div class="section">
@@ -1003,7 +1152,16 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v2.1</span></div>
+      <div class="section-head"><h3>Expense categories</h3><span class="meta" id="category-count">0 active</span></div>
+      <div id="category-list"></div>
+      <div class="add-factory">
+        <div class="field" style="margin-bottom:0.5rem"><input type="text" id="new-category-name" placeholder="New category name"></div>
+        <button id="btn-add-category">Add Category</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>About</h3><span class="meta">v2.2</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Greenleaf · Built for Sinonin Tea, Nandi County. Data stored locally on this device. Export CSV regularly to your records spreadsheet for reconciliation.</div>
     </div>
 
@@ -1011,7 +1169,8 @@
       <h4>Danger Zone</h4>
       <button id="btn-reset-rates">Reset rate cards</button>
       <button id="btn-reset-pluckers">Reset plucker roster</button>
-      <button id="btn-clear-entries">Clear all entries</button>
+      <button id="btn-reset-categories">Reset categories</button>
+      <button id="btn-clear-entries">Clear all data</button>
     </div>
   </section>
 </main>
@@ -1091,12 +1250,34 @@ let PLUCKERS = JSON.parse(JSON.stringify(DEFAULT_PLUCKERS));
 
 const DEFAULT_SETTINGS = { teaCessPerKg: 0.22, transportActive: false, currency: 'Ksh' };
 
+const DEFAULT_EXPENSE_CATEGORIES = [
+  { name: "Fertilizer", active: true },
+  { name: "Pesticide / herbicide", active: true },
+  { name: "Pruning labour", active: true },
+  { name: "Weeding labour", active: true },
+  { name: "Other field labour", active: true },
+  { name: "Fuel", active: true },
+  { name: "Machinery / repairs", active: true },
+  { name: "Tools & equipment", active: true },
+  { name: "Transport (non-factory)", active: true },
+  { name: "Farm supplies", active: true },
+  { name: "Office & admin", active: true },
+  { name: "Utilities", active: true },
+  { name: "Levies & licenses", active: true },
+  { name: "Worker welfare", active: true },
+  { name: "Miscellaneous", active: true }
+];
+let EXPENSE_CATEGORIES = JSON.parse(JSON.stringify(DEFAULT_EXPENSE_CATEGORIES));
+
 const SCREEN_TITLES = { home: 'Overview', records: 'Records', add: 'New Entry', insights: 'Insights', settings: 'Settings' };
 
 const K_ENTRIES = 'sinonin_entries_v1';
 const K_FACTORIES = 'sinonin_factories_v1';
 const K_PLUCKERS = 'sinonin_pluckers_v1';
 const K_SETTINGS = 'sinonin_settings_v1';
+const K_EXPENSES = 'sinonin_expenses_v1';
+const K_ACTUALS = 'sinonin_actuals_v1';
+const K_EXPENSE_CATS = 'sinonin_expense_cats_v1';
 
 async function storageGet(key, fallback) {
   try { const r = await window.storage.get(key); return r ? JSON.parse(r.value) : fallback; }
@@ -1109,10 +1290,13 @@ async function storageSet(key, val) {
 
 let STATE = {
   entries: [],
+  expenses: [],
+  actuals: [],
   factories: JSON.parse(JSON.stringify(DEFAULT_FACTORIES)),
   settings: { ...DEFAULT_SETTINGS },
   view: 'home',
   mode: 'quick',
+  kind: 'greenleaf',
   insightsPeriod: 'week'
 };
 
@@ -1143,15 +1327,23 @@ function populateDropdowns() {
   document.getElementById('q-block').innerHTML = '<option value="">— Block —</option>' + blockOpts;
   document.getElementById('b-block').innerHTML = '<option value="">— Block —</option>' + blockOpts;
   document.getElementById('filter-block').innerHTML = '<option value="">All Blocks</option>' + blockOpts;
+  document.getElementById('x-block').innerHTML = '<option value="Whole farm">Whole farm</option>' + blockOpts;
   repopulatePluckerDropdown();
   repopulateFactoryDropdowns();
+  repopulateCategoryDropdown();
   const todayIso = new Date().toISOString().slice(0,10);
   document.getElementById('q-date').value = todayIso;
   document.getElementById('b-date').value = todayIso;
+  document.getElementById('x-date').value = todayIso;
+  document.getElementById('a-date').value = todayIso;
 }
 
 function activePluckers() {
   return PLUCKERS.filter(p => p.active !== false);
+}
+
+function activeCategories() {
+  return EXPENSE_CATEGORIES.filter(c => c.active !== false);
 }
 
 function repopulatePluckerDropdown() {
@@ -1162,9 +1354,17 @@ function repopulatePluckerDropdown() {
   if (cur && PLUCKERS.some(p => p.id === parseInt(cur, 10) && p.active !== false)) el.value = cur;
 }
 
+function repopulateCategoryDropdown() {
+  const el = document.getElementById('x-category');
+  const cur = el.value;
+  const opts = activeCategories().map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+  el.innerHTML = '<option value="">— Category —</option>' + opts;
+  if (cur && activeCategories().some(c => c.name === cur)) el.value = cur;
+}
+
 function repopulateFactoryDropdowns() {
   const opts = STATE.factories.map(f => `<option value="${f.name}">${f.name}</option>`).join('');
-  ['q-factory', 'b-factory'].forEach(id => {
+  ['q-factory', 'b-factory', 'a-factory'].forEach(id => {
     const el = document.getElementById(id);
     const cur = el.value;
     el.innerHTML = '<option value="">— Select factory —</option>' + opts;
@@ -1312,6 +1512,114 @@ function switchMode(m) {
   document.getElementById('batch-mode').style.display = m === 'batch' ? '' : 'none';
 }
 
+function switchKind(k) {
+  STATE.kind = k;
+  document.querySelectorAll('.kind-toggle button').forEach(b => b.classList.toggle('active', b.dataset.kind === k));
+  document.getElementById('greenleaf-kind').style.display = k === 'greenleaf' ? '' : 'none';
+  document.getElementById('expense-kind').style.display = k === 'expense' ? '' : 'none';
+  document.getElementById('actual-kind').style.display = k === 'actual' ? '' : 'none';
+}
+
+/* ========= EXPENSE ========= */
+function xValues() {
+  return {
+    date: document.getElementById('x-date').value,
+    category: document.getElementById('x-category').value,
+    description: document.getElementById('x-description').value.trim(),
+    amount: parseFloat(document.getElementById('x-amount').value) || 0,
+    block: document.getElementById('x-block').value || 'Whole farm',
+    payee: document.getElementById('x-payee').value.trim()
+  };
+}
+
+function updateExpensePreview() {
+  const v = xValues();
+  const card = document.getElementById('x-preview');
+  const btn = document.getElementById('x-submit');
+  const ready = v.date && v.category && v.amount > 0;
+  if (!ready) { card.style.display = 'none'; btn.disabled = true; return; }
+  card.style.display = 'block';
+  btn.disabled = false;
+  document.getElementById('x-preview-amt').textContent = moneyRound(v.amount);
+  document.getElementById('x-preview-cat').textContent = v.category;
+  document.getElementById('x-preview-block').textContent = v.block;
+  document.getElementById('x-preview-date').textContent = v.date;
+}
+
+async function submitExpense() {
+  const v = xValues();
+  if (!v.date || !v.category || v.amount <= 0) return;
+  const expense = {
+    id: 'X' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+    ts: new Date().toISOString(),
+    date: v.date,
+    category: v.category,
+    description: v.description,
+    amount: v.amount,
+    block: v.block,
+    payee: v.payee
+  };
+  STATE.expenses.push(expense);
+  await storageSet(K_EXPENSES, STATE.expenses);
+  document.getElementById('x-amount').value = '';
+  document.getElementById('x-description').value = '';
+  document.getElementById('x-payee').value = '';
+  updateExpensePreview();
+  showToast(`Expense recorded · Ksh ${moneyRound(v.amount)}`);
+}
+
+/* ========= ACTUALS ========= */
+function aValues() {
+  return {
+    date: document.getElementById('a-date').value,
+    factory: document.getElementById('a-factory').value,
+    kg: parseFloat(document.getElementById('a-kg').value) || 0
+  };
+}
+
+function recordedKgFor(date, factory) {
+  return STATE.entries
+    .filter(e => e.date === date && e.factory === factory)
+    .reduce((s, e) => s + (Number(e.qty) || 0), 0);
+}
+
+function updateActualPreview() {
+  const v = aValues();
+  const card = document.getElementById('a-preview');
+  const btn = document.getElementById('a-submit');
+  const ready = v.date && v.factory && v.kg > 0;
+  if (!ready) { card.style.display = 'none'; btn.disabled = true; return; }
+  card.style.display = 'block';
+  btn.disabled = false;
+  const recorded = recordedKgFor(v.date, v.factory);
+  const gap = v.kg - recorded;
+  const factory = STATE.factories.find(f => f.name === v.factory);
+  const gapValue = factory ? gap * factory.priceKg : 0;
+  document.getElementById('a-preview-actual').textContent = kg(v.kg);
+  document.getElementById('a-preview-recorded').textContent = kg(recorded) + ' kg';
+  document.getElementById('a-preview-gap').textContent = (gap >= 0 ? '+' : '') + kg(gap) + ' kg';
+  document.getElementById('a-preview-factory').textContent = v.factory;
+  document.getElementById('a-preview-date').textContent = v.date;
+  document.getElementById('a-preview-gapval').textContent = 'Ksh ' + moneyRound(gapValue);
+}
+
+async function submitActual() {
+  const v = aValues();
+  if (!v.date || !v.factory || v.kg <= 0) return;
+  const actual = {
+    id: 'A' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+    ts: new Date().toISOString(),
+    date: v.date,
+    factory: v.factory,
+    kg: v.kg
+  };
+  STATE.actuals.push(actual);
+  await storageSet(K_ACTUALS, STATE.actuals);
+  document.getElementById('a-kg').value = '';
+  updateActualPreview();
+  showToast(`Actual saved · ${v.factory} · ${v.kg} kg`);
+}
+
 function monthEntries() {
   const ym = new Date().toISOString().slice(0,7);
   return STATE.entries.filter(e => e.date.startsWith(ym));
@@ -1325,19 +1633,25 @@ function renderHome() {
     new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   const entries = monthEntries();
-  let totalKg = 0, cashNow = 0, labour = 0, bonus = 0, shares = 0, total = 0;
+  const ym = new Date().toISOString().slice(0,7);
+  const expensesMonth = STATE.expenses.filter(x => x.date.startsWith(ym));
+  const actualsMonth = STATE.actuals.filter(a => a.date.startsWith(ym));
+
+  let totalKg = 0, cashNow = 0, labour = 0, bonus = 0;
   entries.forEach(e => {
     totalKg += e.qty;
     const c = computeEntry(e);
-    if (c) { cashNow += c.cashNow; labour += c.labour; bonus += c.bonus + c.greenleaf; shares += c.shares; total += c.total; }
+    if (c) { cashNow += c.cashNow; labour += c.labour; bonus += c.bonus + c.greenleaf; }
   });
+  const expenseTotal = expensesMonth.reduce((s, x) => s + (x.amount || 0), 0);
+  const margin = cashNow - expenseTotal;
 
   document.getElementById('hero-kg').innerHTML = kg(totalKg) + '<span class="unit">kg</span>';
   document.getElementById('hero-cash').textContent = 'Ksh ' + moneyRound(cashNow);
   document.getElementById('home-labour').textContent = 'Ksh ' + moneyRound(labour);
   document.getElementById('home-bonus').textContent = 'Ksh ' + moneyRound(bonus);
-  document.getElementById('home-shares').textContent = 'Ksh ' + moneyRound(shares);
-  document.getElementById('home-total').textContent = 'Ksh ' + moneyRound(total);
+  document.getElementById('home-expenses').textContent = 'Ksh ' + moneyRound(expenseTotal);
+  document.getElementById('home-margin').textContent = 'Ksh ' + moneyRound(margin);
 
   const byBlock = {};
   BLOCKS.forEach(b => byBlock[b] = 0);
@@ -1355,27 +1669,170 @@ function renderHome() {
       </div>`).join('');
   }
 
+  // Reconciliation: actuals vs recorded, by factory
+  const reconSection = document.getElementById('home-recon-section');
+  const reconBox = document.getElementById('home-recon');
+  if (actualsMonth.length === 0) {
+    reconSection.style.display = 'none';
+  } else {
+    reconSection.style.display = '';
+    const byFactory = {};
+    actualsMonth.forEach(a => {
+      byFactory[a.factory] = byFactory[a.factory] || { actual: 0, recorded: 0 };
+      byFactory[a.factory].actual += a.kg;
+    });
+    entries.forEach(e => {
+      if (!byFactory[e.factory]) byFactory[e.factory] = { actual: 0, recorded: 0 };
+      byFactory[e.factory].recorded += e.qty;
+    });
+    const rows = Object.entries(byFactory).sort((a,b) => b[1].actual - a[1].actual);
+    reconBox.innerHTML = rows.map(([name, v]) => {
+      const gap = v.actual - v.recorded;
+      const gapPct = v.actual > 0 ? (gap / v.actual) * 100 : 0;
+      const gapClass = gap > 0 ? 'warn' : gap < 0 ? 'ok' : '';
+      return `
+        <div class="recon-row">
+          <div class="recon-name">${name}</div>
+          <div class="recon-nums">
+            <div><span class="rl">Recorded</span><span class="rv">${kg(v.recorded)} kg</span></div>
+            <div><span class="rl">Actual</span><span class="rv">${kg(v.actual)} kg</span></div>
+            <div class="${gapClass}"><span class="rl">Gap</span><span class="rv">${gap >= 0 ? '+' : ''}${kg(gap)} kg${v.actual > 0 ? ` · ${gapPct.toFixed(1)}%` : ''}</span></div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
   const byP = {};
   entries.forEach(e => {
-    byP[e.pluckerName] = byP[e.pluckerName] || { kg: 0, total: 0 };
-    byP[e.pluckerName].kg += e.qty;
-    const c = computeEntry(e); if (c) byP[e.pluckerName].total += c.total;
+    byP[e.pluckerId] = byP[e.pluckerId] || { kg: 0, total: 0, name: e.pluckerName };
+    byP[e.pluckerId].kg += e.qty;
+    const c = computeEntry(e); if (c) byP[e.pluckerId].total += c.total;
   });
-  const rank = Object.entries(byP).sort((a,b) => b[1].kg - a[1].kg).slice(0, 5);
+  const rank = Object.entries(byP).map(([id, v]) => {
+    const current = PLUCKERS.find(p => p.id === parseInt(id, 10));
+    return { ...v, name: current ? current.name : v.name };
+  }).sort((a,b) => b.kg - a.kg).slice(0, 5);
   const rBox = document.getElementById('top-pluckers');
   if (rank.length === 0) {
     rBox.innerHTML = `<div class="empty" style="padding:1rem 0"><div class="sub">No entries</div></div>`;
   } else {
-    rBox.innerHTML = rank.map(([name, v], i) => `
+    rBox.innerHTML = rank.map((v, i) => `
       <div class="rank-row">
         <span class="n">${i+1}</span>
-        <div class="name">${name}<span class="meta">Ksh ${moneyRound(v.total)}</span></div>
+        <div class="name">${v.name}<span class="meta">Ksh ${moneyRound(v.total)}</span></div>
         <span class="kg">${kg(v.kg)} kg</span>
       </div>`).join('');
   }
 }
 
+function filterRecords() {
+  const type = document.getElementById('filter-type').value;
+  const period = document.getElementById('filter-period').value;
+  const block = document.getElementById('filter-block').value;
+  const factory = document.getElementById('filter-factory').value;
+  const now = new Date();
+  const todayIso = now.toISOString().slice(0,10);
+  const weekCutoff = new Date(now.getTime() - 7 * 86400000).toISOString().slice(0,10);
+  const ym = todayIso.slice(0,7);
+  const byDate = (d) => {
+    if (period === 'today' && d !== todayIso) return false;
+    if (period === 'week' && d < weekCutoff) return false;
+    if (period === 'month' && !d.startsWith(ym)) return false;
+    return true;
+  };
+  const list = [];
+  if (type === 'all' || type === 'greenleaf') {
+    STATE.entries.forEach(e => {
+      if (!byDate(e.date)) return;
+      if (block && e.block !== block) return;
+      if (factory && e.factory !== factory) return;
+      list.push({ ...e, _kind: 'greenleaf' });
+    });
+  }
+  if (type === 'all' || type === 'expense') {
+    STATE.expenses.forEach(x => {
+      if (!byDate(x.date)) return;
+      if (block && x.block !== block && x.block !== 'Whole farm') return;
+      if (factory) return; // expenses don't have a factory dimension
+      list.push({ ...x, _kind: 'expense' });
+    });
+  }
+  if (type === 'all' || type === 'actual') {
+    STATE.actuals.forEach(a => {
+      if (!byDate(a.date)) return;
+      if (block) return; // actuals are factory-level, no block
+      if (factory && a.factory !== factory) return;
+      list.push({ ...a, _kind: 'actual' });
+    });
+  }
+  return list.sort((a,b) => (b.ts || '').localeCompare(a.ts || ''));
+}
+
+function renderRecords() {
+  const list = filterRecords();
+  document.getElementById('records-count').textContent = list.length === 1 ? '1 record' : `${list.length} records`;
+  const box = document.getElementById('records-list');
+  if (list.length === 0) {
+    box.innerHTML = `<div class="empty"><div class="em">No matching records.</div><div class="sub">Try widening the filters</div></div>`;
+    return;
+  }
+  box.innerHTML = list.map(r => {
+    if (r._kind === 'greenleaf') {
+      const c = computeEntry(r);
+      return `
+        <div class="record-row">
+          <div>
+            <div class="name">${r.pluckerName}</div>
+            <div class="meta">${r.date} · ${r.block} → ${r.factory}</div>
+          </div>
+          <div class="qty">${kg(r.qty)}<span class="unit">kg</span></div>
+          <div class="val">Ksh ${moneyRound(c ? c.total : 0)}</div>
+          <button class="del" data-kind="greenleaf" data-id="${r.id}" title="Delete">×</button>
+        </div>`;
+    }
+    if (r._kind === 'expense') {
+      return `
+        <div class="record-row">
+          <div>
+            <div class="name"><span class="type-badge expense">Expense</span>${r.category}</div>
+            <div class="meta">${r.date} · ${r.block}${r.description ? ' · ' + r.description : ''}${r.payee ? ' · ' + r.payee : ''}</div>
+          </div>
+          <div class="qty"></div>
+          <div class="val">Ksh ${moneyRound(r.amount)}</div>
+          <button class="del" data-kind="expense" data-id="${r.id}" title="Delete">×</button>
+        </div>`;
+    }
+    if (r._kind === 'actual') {
+      const recorded = recordedKgFor(r.date, r.factory);
+      const gap = r.kg - recorded;
+      return `
+        <div class="record-row">
+          <div>
+            <div class="name"><span class="type-badge actual">Actual</span>${r.factory}</div>
+            <div class="meta">${r.date} · recorded ${kg(recorded)} kg · gap ${gap >= 0 ? '+' : ''}${kg(gap)} kg</div>
+          </div>
+          <div class="qty">${kg(r.kg)}<span class="unit">kg</span></div>
+          <div class="val"></div>
+          <button class="del" data-kind="actual" data-id="${r.id}" title="Delete">×</button>
+        </div>`;
+    }
+    return '';
+  }).join('');
+  box.querySelectorAll('.del').forEach(b => {
+    b.addEventListener('click', async () => {
+      if (!confirm('Delete this record?')) return;
+      const k = b.dataset.kind;
+      const id = b.dataset.id;
+      if (k === 'greenleaf') { STATE.entries = STATE.entries.filter(x => x.id !== id); await storageSet(K_ENTRIES, STATE.entries); }
+      if (k === 'expense')   { STATE.expenses = STATE.expenses.filter(x => x.id !== id); await storageSet(K_EXPENSES, STATE.expenses); }
+      if (k === 'actual')    { STATE.actuals = STATE.actuals.filter(x => x.id !== id); await storageSet(K_ACTUALS, STATE.actuals); }
+      renderRecords();
+    });
+  });
+}
+
 function filterEntries() {
+  // legacy — kept for any internal callers; equivalent to filterRecords with type=greenleaf
   const period = document.getElementById('filter-period').value;
   const block = document.getElementById('filter-block').value;
   const factory = document.getElementById('filter-factory').value;
@@ -1393,37 +1850,6 @@ function filterEntries() {
   }).sort((a,b) => b.ts.localeCompare(a.ts));
 }
 
-function renderRecords() {
-  const list = filterEntries();
-  document.getElementById('records-count').textContent = list.length === 1 ? '1 record' : `${list.length} records`;
-  const box = document.getElementById('records-list');
-  if (list.length === 0) {
-    box.innerHTML = `<div class="empty"><div class="em">No matching records.</div><div class="sub">Try widening the filters</div></div>`;
-    return;
-  }
-  box.innerHTML = list.map(e => {
-    const c = computeEntry(e);
-    return `
-      <div class="record-row">
-        <div>
-          <div class="name">${e.pluckerName}</div>
-          <div class="meta">${e.date} · ${e.block} → ${e.factory}</div>
-        </div>
-        <div class="qty">${kg(e.qty)}<span class="unit">kg</span></div>
-        <div class="val">Ksh ${moneyRound(c ? c.total : 0)}</div>
-        <button class="del" data-id="${e.id}" title="Delete">×</button>
-      </div>`;
-  }).join('');
-  box.querySelectorAll('.del').forEach(b => {
-    b.addEventListener('click', async () => {
-      if (!confirm('Delete this entry?')) return;
-      STATE.entries = STATE.entries.filter(x => x.id !== b.dataset.id);
-      await storageSet(K_ENTRIES, STATE.entries);
-      renderRecords();
-    });
-  });
-}
-
 function periodEntries(p) {
   const now = new Date();
   const todayIso = now.toISOString().slice(0,10);
@@ -1434,14 +1860,37 @@ function periodEntries(p) {
   return STATE.entries;
 }
 
+function periodExpenses(p) {
+  const now = new Date();
+  const todayIso = now.toISOString().slice(0,10);
+  const weekCutoff = new Date(now.getTime() - 7 * 86400000).toISOString().slice(0,10);
+  const ym = todayIso.slice(0,7);
+  if (p === 'week') return STATE.expenses.filter(x => x.date >= weekCutoff);
+  if (p === 'month') return STATE.expenses.filter(x => x.date.startsWith(ym));
+  return STATE.expenses;
+}
+
+function periodActuals(p) {
+  const now = new Date();
+  const todayIso = now.toISOString().slice(0,10);
+  const weekCutoff = new Date(now.getTime() - 7 * 86400000).toISOString().slice(0,10);
+  const ym = todayIso.slice(0,7);
+  if (p === 'week') return STATE.actuals.filter(a => a.date >= weekCutoff);
+  if (p === 'month') return STATE.actuals.filter(a => a.date.startsWith(ym));
+  return STATE.actuals;
+}
+
 function renderInsights() {
   document.getElementById('insights-period-label').textContent =
     STATE.insightsPeriod === 'week' ? 'last 7 days' :
     STATE.insightsPeriod === 'month' ? 'this month' : 'all time';
   const entries = periodEntries(STATE.insightsPeriod);
+  const expenses = periodExpenses(STATE.insightsPeriod);
+  const actuals = periodActuals(STATE.insightsPeriod);
 
+  // Block economics — now with allocated expenses and margin
   const byBlock = {};
-  BLOCKS.forEach(b => byBlock[b] = { kg: 0, cashNow: 0, labour: 0, bonus: 0, shares: 0 });
+  BLOCKS.forEach(b => byBlock[b] = { kg: 0, cashNow: 0, labour: 0, bonus: 0, expenses: 0 });
   entries.forEach(e => {
     const c = computeEntry(e);
     if (!c) return;
@@ -1449,9 +1898,23 @@ function renderInsights() {
     byBlock[e.block].cashNow  += c.cashNow;
     byBlock[e.block].labour   += c.labour;
     byBlock[e.block].bonus    += c.bonus + c.greenleaf;
-    byBlock[e.block].shares   += c.shares;
   });
-  const blockRows = Object.entries(byBlock).filter(([,v]) => v.kg > 0).sort((a,b) => b[1].kg - a[1].kg);
+  // Allocate expenses: block-specific goes to the block; "Whole farm" distributed proportionally by kg
+  let wholeFarmExp = 0;
+  expenses.forEach(x => {
+    if (x.block === 'Whole farm' || !byBlock[x.block]) {
+      wholeFarmExp += x.amount;
+    } else {
+      byBlock[x.block].expenses += x.amount;
+    }
+  });
+  const totalKg = Object.values(byBlock).reduce((s, v) => s + v.kg, 0);
+  if (totalKg > 0 && wholeFarmExp > 0) {
+    Object.values(byBlock).forEach(v => { v.expenses += wholeFarmExp * (v.kg / totalKg); });
+  }
+  Object.values(byBlock).forEach(v => { v.margin = v.cashNow - v.expenses; });
+
+  const blockRows = Object.entries(byBlock).filter(([,v]) => v.kg > 0 || v.expenses > 0).sort((a,b) => b[1].kg - a[1].kg);
   const box = document.getElementById('econ-blocks');
   if (blockRows.length === 0) {
     box.innerHTML = `<div class="empty" style="padding:1.5rem 0"><div class="em">No data for this period.</div></div>`;
@@ -1461,12 +1924,55 @@ function renderInsights() {
         <div class="econ-head"><span class="t">${name}</span><span class="k">${kg(v.kg)} kg</span></div>
         <div class="econ-grid">
           <div class="econ-item"><div class="l">Cash now</div><div class="v">${moneyRound(v.cashNow)}</div></div>
-          <div class="econ-item"><div class="l">Labour</div><div class="v">${moneyRound(v.labour)}</div></div>
-          <div class="econ-item"><div class="l">Accrued</div><div class="v">${moneyRound(v.bonus)}</div></div>
+          <div class="econ-item"><div class="l">Expenses</div><div class="v">${moneyRound(v.expenses)}</div></div>
+          <div class="econ-item"><div class="l">Margin</div><div class="v">${moneyRound(v.margin)}</div></div>
         </div>
       </div>`).join('');
   }
 
+  // Reconciliation — actual vs recorded, by factory
+  const reconBox = document.getElementById('insights-recon');
+  if (actuals.length === 0) {
+    reconBox.innerHTML = `<div class="empty" style="padding:1rem 0"><div class="sub">No actuals recorded in this period</div></div>`;
+  } else {
+    const byFactory = {};
+    actuals.forEach(a => {
+      byFactory[a.factory] = byFactory[a.factory] || { actual: 0, recorded: 0 };
+      byFactory[a.factory].actual += a.kg;
+    });
+    entries.forEach(e => {
+      if (!byFactory[e.factory]) byFactory[e.factory] = { actual: 0, recorded: 0 };
+      byFactory[e.factory].recorded += e.qty;
+    });
+    const rows = Object.entries(byFactory).sort((a,b) => b[1].actual - a[1].actual);
+    reconBox.innerHTML = rows.map(([name, v]) => {
+      const gap = v.actual - v.recorded;
+      const pct = v.actual > 0 ? (gap / v.actual) * 100 : 0;
+      const gc = gap > 0 ? 'warn' : gap < 0 ? 'ok' : '';
+      return `
+        <div class="recon-row">
+          <div class="recon-name">${name}</div>
+          <div class="recon-nums">
+            <div><span class="rl">Recorded</span><span class="rv">${kg(v.recorded)} kg</span></div>
+            <div><span class="rl">Actual</span><span class="rv">${kg(v.actual)} kg</span></div>
+            <div class="${gc}"><span class="rl">Gap</span><span class="rv">${gap >= 0 ? '+' : ''}${kg(gap)} kg${v.actual > 0 ? ` · ${pct.toFixed(1)}%` : ''}</span></div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // Expenses by category
+  const totalExp = expenses.reduce((s, x) => s + x.amount, 0);
+  document.getElementById('insights-exp-total').textContent = 'Ksh ' + moneyRound(totalExp);
+  const byCat = {};
+  expenses.forEach(x => {
+    byCat[x.category] = byCat[x.category] || { kg: 0, total: 0 };
+    byCat[x.category].total += x.amount;
+    byCat[x.category].kg += 1; // use kg field as count for the shared table renderer
+  });
+  renderExpenseTable('tbl-expenses', byCat);
+
+  // Factory mix
   const byFac = {};
   entries.forEach(e => {
     byFac[e.factory] = byFac[e.factory] || { kg: 0, total: 0 };
@@ -1475,13 +1981,36 @@ function renderInsights() {
   });
   renderMiniTable('tbl-factory', 'Factory', byFac);
 
+  // Plucker rankings — group by ID so name changes propagate
   const byP = {};
   entries.forEach(e => {
-    byP[e.pluckerName] = byP[e.pluckerName] || { kg: 0, total: 0 };
-    byP[e.pluckerName].kg += e.qty;
-    const c = computeEntry(e); if (c) byP[e.pluckerName].total += c.total;
+    byP[e.pluckerId] = byP[e.pluckerId] || { kg: 0, total: 0, _name: e.pluckerName };
+    byP[e.pluckerId].kg += e.qty;
+    const c = computeEntry(e); if (c) byP[e.pluckerId].total += c.total;
   });
-  renderMiniTable('tbl-plucker', 'Plucker', byP, 12);
+  const pluckerDisplay = {};
+  Object.entries(byP).forEach(([id, v]) => {
+    const current = PLUCKERS.find(p => p.id === parseInt(id, 10));
+    pluckerDisplay[current ? current.name : v._name] = { kg: v.kg, total: v.total };
+  });
+  renderMiniTable('tbl-plucker', 'Plucker', pluckerDisplay, 12);
+}
+
+function renderExpenseTable(id, obj) {
+  const rows = Object.entries(obj).sort((a,b) => b[1].total - a[1].total);
+  const tCount = rows.reduce((s,r) => s + r[1].kg, 0);
+  const tTotal = rows.reduce((s,r) => s + r[1].total, 0);
+  const t = document.getElementById(id);
+  if (rows.length === 0) {
+    t.innerHTML = `<tr><td colspan="3" style="color:var(--slate-light);font-style:italic;padding:1rem 0">No expenses in this period</td></tr>`;
+    return;
+  }
+  t.innerHTML = `
+    <thead><tr><th>Category</th><th>Count</th><th>Ksh</th></tr></thead>
+    <tbody>
+      ${rows.map(([k,v]) => `<tr><td>${k}</td><td>${v.kg}</td><td>${moneyRound(v.total)}</td></tr>`).join('')}
+      <tr class="total"><td>Total</td><td>${tCount}</td><td>${moneyRound(tTotal)}</td></tr>
+    </tbody>`;
 }
 
 function renderMiniTable(id, firstCol, obj, limit) {
@@ -1532,6 +2061,7 @@ function renderSettings() {
   });
 
   renderPluckers();
+  renderCategories();
 }
 
 function pluckerHasEntries(id) {
@@ -1643,6 +2173,94 @@ async function resetPluckers() {
   showToast('Roster reset');
 }
 
+/* ========= EXPENSE CATEGORIES ========= */
+function categoryHasExpenses(name) {
+  return STATE.expenses.some(x => x.category === name);
+}
+
+function renderCategories() {
+  const active = EXPENSE_CATEGORIES.filter(c => c.active !== false).length;
+  const total = EXPENSE_CATEGORIES.length;
+  document.getElementById('category-count').textContent =
+    `${active} active${total !== active ? ` · ${total - active} inactive` : ''}`;
+  const box = document.getElementById('category-list');
+  box.innerHTML = EXPENSE_CATEGORIES.map((c, i) => {
+    const hasExp = categoryHasExpenses(c.name);
+    const act = c.active !== false;
+    return `
+      <div class="plucker-row ${act ? '' : 'inactive'}" data-idx="${i}">
+        <span class="pid">${i + 1}</span>
+        <input type="text" class="cname" data-idx="${i}" value="${c.name.replace(/"/g, '&quot;')}">
+        <span></span>
+        <button class="pchip ${act ? 'on warn' : ''}" data-act="cactive" data-idx="${i}">${act ? 'Active' : 'Inactive'}</button>
+        <button class="pdel" data-act="cdelete" data-idx="${i}" ${hasExp ? 'disabled title="Has expenses — mark inactive instead"' : 'title="Delete"'}>×</button>
+      </div>`;
+  }).join('');
+
+  box.querySelectorAll('.cname').forEach(inp => {
+    inp.addEventListener('change', async () => {
+      const idx = parseInt(inp.dataset.idx, 10);
+      const newName = inp.value.trim();
+      if (!newName) { renderCategories(); return; }
+      const oldName = EXPENSE_CATEGORIES[idx].name;
+      if (newName !== oldName) {
+        // Rename: update any expenses using old name to preserve link
+        STATE.expenses.forEach(x => { if (x.category === oldName) x.category = newName; });
+        EXPENSE_CATEGORIES[idx].name = newName;
+        await storageSet(K_EXPENSE_CATS, EXPENSE_CATEGORIES);
+        await storageSet(K_EXPENSES, STATE.expenses);
+        repopulateCategoryDropdown();
+        showToast(`Renamed: ${newName}`);
+      }
+    });
+  });
+
+  box.querySelectorAll('.pchip').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      EXPENSE_CATEGORIES[idx].active = !(EXPENSE_CATEGORIES[idx].active !== false);
+      await storageSet(K_EXPENSE_CATS, EXPENSE_CATEGORIES);
+      renderCategories();
+      repopulateCategoryDropdown();
+    });
+  });
+
+  box.querySelectorAll('.pdel').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (btn.disabled) return;
+      const idx = parseInt(btn.dataset.idx, 10);
+      const c = EXPENSE_CATEGORIES[idx];
+      if (!confirm(`Delete category "${c.name}"?`)) return;
+      EXPENSE_CATEGORIES.splice(idx, 1);
+      await storageSet(K_EXPENSE_CATS, EXPENSE_CATEGORIES);
+      renderCategories();
+      repopulateCategoryDropdown();
+      showToast(`Removed: ${c.name}`);
+    });
+  });
+}
+
+async function addCategory() {
+  const name = document.getElementById('new-category-name').value.trim();
+  if (!name) { showToast('Enter a name'); return; }
+  if (EXPENSE_CATEGORIES.some(c => c.name.toLowerCase() === name.toLowerCase())) { showToast('Category exists'); return; }
+  EXPENSE_CATEGORIES.push({ name, active: true });
+  await storageSet(K_EXPENSE_CATS, EXPENSE_CATEGORIES);
+  document.getElementById('new-category-name').value = '';
+  renderCategories();
+  repopulateCategoryDropdown();
+  showToast(`Added: ${name}`);
+}
+
+async function resetCategories() {
+  if (!confirm('Reset expense categories to defaults? Any you added will be removed. Existing expenses keep their category name.')) return;
+  EXPENSE_CATEGORIES = JSON.parse(JSON.stringify(DEFAULT_EXPENSE_CATEGORIES));
+  await storageSet(K_EXPENSE_CATS, EXPENSE_CATEGORIES);
+  renderCategories();
+  repopulateCategoryDropdown();
+  showToast('Categories reset');
+}
+
 async function addFactory() {
   const name = document.getElementById('new-factory-name').value.trim();
   if (!name) return;
@@ -1684,34 +2302,83 @@ async function resetRates() {
 }
 
 async function clearEntries() {
-  if (!confirm('Delete ALL entries permanently? Export CSV first if you need a backup.')) return;
+  if (!confirm('Delete ALL records permanently — greenleaf entries, expenses, and actuals? Export CSVs first if you need a backup.')) return;
   if (!confirm('This cannot be undone. Continue?')) return;
   STATE.entries = [];
+  STATE.expenses = [];
+  STATE.actuals = [];
   await storageSet(K_ENTRIES, STATE.entries);
-  showToast('All entries cleared');
+  await storageSet(K_EXPENSES, STATE.expenses);
+  await storageSet(K_ACTUALS, STATE.actuals);
+  showToast('All records cleared');
   renderHome();
 }
 
-function exportCSV() {
-  if (STATE.entries.length === 0) { showToast('Nothing to export'); return; }
-  const header = ['Entry_ID','Timestamp','Date','Block','Plucker_ID','Plucker','Factory','Qty_Kg','Gross','Labour','Cess','Transport','Shares','Bonus','Greenleaf','Cash_Now','Accrued','Total_Value'];
-  const rows = STATE.entries.map(e => {
-    const c = computeEntry(e) || {};
-    return [e.id, e.ts, e.date, e.block, e.pluckerId, e.pluckerName, e.factory, e.qty,
-            c.gross||0, c.labour||0, c.cess||0, c.transport||0, c.shares||0, c.bonus||0, c.greenleaf||0,
-            c.cashNow||0, c.accrued||0, c.total||0]
-      .map(x => typeof x === 'string' && (x.includes(',') || x.includes("'")) ? `"${x.replace(/"/g, '""')}"` : x)
-      .join(',');
-  });
-  const csv = [header.join(','), ...rows].join('\n');
+/* ========= CSV EXPORT ========= */
+function csvRow(arr) {
+  return arr.map(x => {
+    if (x === null || x === undefined) return '';
+    const s = String(x);
+    return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g, '""')}"` : s;
+  }).join(',');
+}
+
+function downloadCSV(filename, headerRow, rows) {
+  const csv = [csvRow(headerRow), ...rows.map(csvRow)].join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `sinonin_greenleaf_${new Date().toISOString().slice(0,10)}.csv`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
-  showToast(`Exported ${STATE.entries.length} entries`);
+}
+
+function exportCSV() {
+  const type = document.getElementById('filter-type').value;
+  const today = new Date().toISOString().slice(0,10);
+  let exported = 0;
+
+  if (type === 'all' || type === 'greenleaf') {
+    if (STATE.entries.length > 0) {
+      downloadCSV(`sinonin_greenleaf_${today}.csv`,
+        ['Entry_ID','Timestamp','Date','Block','Plucker_ID','Plucker','Factory','Qty_Kg','Gross','Labour','Cess','Transport','Shares','Bonus','Greenleaf','Cash_Now','Accrued','Total_Value'],
+        STATE.entries.map(e => {
+          const c = computeEntry(e) || {};
+          return [e.id, e.ts, e.date, e.block, e.pluckerId, e.pluckerName, e.factory, e.qty,
+                  c.gross||0, c.labour||0, c.cess||0, c.transport||0, c.shares||0, c.bonus||0, c.greenleaf||0,
+                  c.cashNow||0, c.accrued||0, c.total||0];
+        })
+      );
+      exported += STATE.entries.length;
+    }
+  }
+
+  if (type === 'all' || type === 'expense') {
+    if (STATE.expenses.length > 0) {
+      downloadCSV(`sinonin_expenses_${today}.csv`,
+        ['Expense_ID','Timestamp','Date','Category','Description','Amount_Ksh','Allocation','Payee'],
+        STATE.expenses.map(x => [x.id, x.ts, x.date, x.category, x.description || '', x.amount, x.block || 'Whole farm', x.payee || ''])
+      );
+      exported += STATE.expenses.length;
+    }
+  }
+
+  if (type === 'all' || type === 'actual') {
+    if (STATE.actuals.length > 0) {
+      downloadCSV(`sinonin_actuals_${today}.csv`,
+        ['Actual_ID','Timestamp','Date','Factory','Actual_Kg','Recorded_Kg','Gap_Kg'],
+        STATE.actuals.map(a => {
+          const recorded = recordedKgFor(a.date, a.factory);
+          return [a.id, a.ts, a.date, a.factory, a.kg, recorded, a.kg - recorded];
+        })
+      );
+      exported += STATE.actuals.length;
+    }
+  }
+
+  if (exported === 0) showToast('Nothing to export');
+  else showToast(`Exported ${exported} record${exported === 1 ? '' : 's'}`);
 }
 
 function showToast(msg) {
@@ -1723,12 +2390,17 @@ function showToast(msg) {
 
 (async function init() {
   STATE.entries = await storageGet(K_ENTRIES, []);
+  STATE.expenses = await storageGet(K_EXPENSES, []);
+  STATE.actuals = await storageGet(K_ACTUALS, []);
   const storedFactories = await storageGet(K_FACTORIES, null);
   if (storedFactories && Array.isArray(storedFactories) && storedFactories.length > 0) STATE.factories = storedFactories;
   const storedPluckers = await storageGet(K_PLUCKERS, null);
   if (storedPluckers && Array.isArray(storedPluckers) && storedPluckers.length > 0) {
-    // Forward-compat: ensure every plucker has an `active` field
     PLUCKERS = storedPluckers.map(p => ({ active: true, ...p }));
+  }
+  const storedCategories = await storageGet(K_EXPENSE_CATS, null);
+  if (storedCategories && Array.isArray(storedCategories) && storedCategories.length > 0) {
+    EXPENSE_CATEGORIES = storedCategories.map(c => ({ active: true, ...c }));
   }
   const storedSettings = await storageGet(K_SETTINGS, null);
   if (storedSettings) STATE.settings = { ...DEFAULT_SETTINGS, ...storedSettings };
@@ -1740,25 +2412,49 @@ function showToast(msg) {
     b.addEventListener('click', () => switchView(b.dataset.view));
   });
 
+  // Kind toggle (Greenleaf / Expense / Actuals)
+  document.querySelectorAll('.kind-toggle button').forEach(b => {
+    b.addEventListener('click', () => switchKind(b.dataset.kind));
+  });
+
+  // Greenleaf Quick
   ['q-date','q-block','q-plucker','q-factory','q-qty'].forEach(id => {
     document.getElementById(id).addEventListener('input', updateQuickCalc);
     document.getElementById(id).addEventListener('change', updateQuickCalc);
   });
   document.getElementById('q-submit').addEventListener('click', submitQuick);
 
+  // Greenleaf Batch
   ['b-date','b-block','b-factory'].forEach(id => {
     document.getElementById(id).addEventListener('change', updateBatchSummary);
   });
   document.getElementById('b-submit').addEventListener('click', submitBatch);
 
+  // Mode toggle inside Greenleaf
   document.getElementById('mode-quick').addEventListener('click', () => switchMode('quick'));
   document.getElementById('mode-batch').addEventListener('click', () => switchMode('batch'));
 
-  ['filter-period','filter-block','filter-factory'].forEach(id => {
+  // Expense form
+  ['x-date','x-category','x-description','x-amount','x-block','x-payee'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updateExpensePreview);
+    document.getElementById(id).addEventListener('change', updateExpensePreview);
+  });
+  document.getElementById('x-submit').addEventListener('click', submitExpense);
+
+  // Actuals form
+  ['a-date','a-factory','a-kg'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updateActualPreview);
+    document.getElementById(id).addEventListener('change', updateActualPreview);
+  });
+  document.getElementById('a-submit').addEventListener('click', submitActual);
+
+  // Records filters
+  ['filter-type','filter-period','filter-block','filter-factory'].forEach(id => {
     document.getElementById(id).addEventListener('change', renderRecords);
   });
   document.getElementById('btn-export').addEventListener('click', exportCSV);
 
+  // Insights period
   document.querySelectorAll('.period-toggle button').forEach(b => {
     b.addEventListener('click', () => {
       STATE.insightsPeriod = b.dataset.p;
@@ -1767,6 +2463,7 @@ function showToast(msg) {
     });
   });
 
+  // Settings
   document.getElementById('s-cess').addEventListener('change', saveCess);
   document.getElementById('s-transport').addEventListener('click', toggleTransport);
   document.getElementById('btn-add-factory').addEventListener('click', addFactory);
@@ -1774,8 +2471,10 @@ function showToast(msg) {
   document.getElementById('new-plucker-bonus').addEventListener('click', () => {
     document.getElementById('new-plucker-bonus').classList.toggle('on');
   });
+  document.getElementById('btn-add-category').addEventListener('click', addCategory);
   document.getElementById('btn-reset-rates').addEventListener('click', resetRates);
   document.getElementById('btn-reset-pluckers').addEventListener('click', resetPluckers);
+  document.getElementById('btn-reset-categories').addEventListener('click', resetCategories);
   document.getElementById('btn-clear-entries').addEventListener('click', clearEntries);
 
   function setSync() {
