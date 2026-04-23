@@ -1180,8 +1180,33 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v2.2</span></div>
-      <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Greenleaf · Built for Sinonin Tea, Nandi County. Data stored locally on this device. Export CSV regularly to your records spreadsheet for reconciliation.</div>
+      <div class="section-head"><h3>Google Sheet sync</h3><span class="meta" id="sync-queue-meta">—</span></div>
+      <div class="setting-row">
+        <div>
+          <div class="k">Synced to Sheet</div>
+          <div class="desc" id="sync-synced-desc">Greenleaf entries auto-push to Sinonin Data Entry</div>
+        </div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.95rem;color:var(--forest);font-variant-numeric:tabular-nums;font-weight:500" id="sync-synced-count">0</div>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="k">Waiting to sync</div>
+          <div class="desc" id="sync-waiting-desc">Entries queued until signal returns</div>
+        </div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.95rem;color:var(--brass);font-variant-numeric:tabular-nums;font-weight:500" id="sync-waiting-count">0</div>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="k">Last sync</div>
+          <div class="desc" id="sync-last">Never</div>
+        </div>
+        <button id="btn-sync-now" class="export-btn">Sync now</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>About</h3><span class="meta">v2.3</span></div>
+      <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Greenleaf · Built for Sinonin Tea, Nandi County. Greenleaf entries push to your existing Sinonin Data Entry form on Google Drive. Expenses and Actuals remain local — export CSV to add them to the workbook.</div>
     </div>
 
     <div class="danger-zone">
@@ -1345,6 +1370,116 @@ function money(n)      { return new Intl.NumberFormat('en-KE', { maximumFraction
 function moneyRound(n) { return Math.round(n || 0).toLocaleString('en-KE'); }
 function kg(n)         { const r = n || 0; return (r % 1 === 0) ? r.toLocaleString('en-KE') : r.toFixed(1); }
 
+/* ============================================================
+   GOOGLE FORM RELAY — pushes each greenleaf save to the Sheet
+   ============================================================
+   Maps to Dr. Cheison's existing Sinonin Data Entry Form so
+   Victor's Sheet fills automatically. Uses no-cors POST via a
+   hidden iframe — the same mechanism Google Forms uses itself,
+   works cross-origin without API keys or OAuth. If the phone is
+   offline, entries queue in localStorage and flush when online.
+*/
+const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdleFsj6Y4rXHko6lVxI4xKJC2sbK0T-qAy_31xMPAcQqg7cg/formResponse';
+const FORM_FIELDS = {
+  date:    'entry.96842877',
+  block:   'entry.1734171147',
+  plucker: 'entry.1182307071',
+  qty:     'entry.1515707048',
+  factory: 'entry.1441042521'
+};
+const K_SYNC_QUEUE = 'sinonin_sync_queue_v1';
+const K_SYNC_STATS = 'sinonin_sync_stats_v1';
+
+function formatPluckerForForm(entry) {
+  return `${entry.pluckerId}. ${entry.pluckerName}`;
+}
+
+async function pushToForm(entry) {
+  const params = new URLSearchParams();
+  params.set(FORM_FIELDS.date, entry.date);
+  params.set(FORM_FIELDS.block, entry.block);
+  params.set(FORM_FIELDS.plucker, formatPluckerForForm(entry));
+  params.set(FORM_FIELDS.qty, String(entry.qty));
+  params.set(FORM_FIELDS.factory, entry.factory);
+  try {
+    await fetch(FORM_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function queueForSync(entry) {
+  const queue = await storageGet(K_SYNC_QUEUE, []);
+  queue.push({ entryId: entry.id, attempts: 0, queuedAt: new Date().toISOString() });
+  await storageSet(K_SYNC_QUEUE, queue);
+  updateSyncIndicator();
+}
+
+async function syncEntry(entry) {
+  if (!navigator.onLine) return false;
+  const ok = await pushToForm(entry);
+  if (ok) {
+    const stats = await storageGet(K_SYNC_STATS, { synced: 0, lastSync: null });
+    stats.synced = (stats.synced || 0) + 1;
+    stats.lastSync = new Date().toISOString();
+    await storageSet(K_SYNC_STATS, stats);
+  }
+  return ok;
+}
+
+let flushInFlight = false;
+async function flushQueue() {
+  if (flushInFlight) return;
+  if (!navigator.onLine) return;
+  flushInFlight = true;
+  try {
+    let queue = await storageGet(K_SYNC_QUEUE, []);
+    if (queue.length === 0) return;
+    const remaining = [];
+    for (const item of queue) {
+      const entry = STATE.entries.find(e => e.id === item.entryId);
+      if (!entry) continue; // entry was deleted locally, drop from queue
+      const ok = await pushToForm(entry);
+      if (ok) {
+        const stats = await storageGet(K_SYNC_STATS, { synced: 0, lastSync: null });
+        stats.synced = (stats.synced || 0) + 1;
+        stats.lastSync = new Date().toISOString();
+        await storageSet(K_SYNC_STATS, stats);
+      } else {
+        item.attempts = (item.attempts || 0) + 1;
+        if (item.attempts < 10) remaining.push(item);
+      }
+    }
+    await storageSet(K_SYNC_QUEUE, remaining);
+    updateSyncIndicator();
+  } finally {
+    flushInFlight = false;
+  }
+}
+
+async function updateSyncIndicator() {
+  const queue = await storageGet(K_SYNC_QUEUE, []);
+  const txt = document.getElementById('sync-text');
+  const dot = document.getElementById('sync-dot');
+  if (!txt || !dot) return;
+  if (!navigator.onLine) {
+    dot.classList.add('offline');
+    txt.textContent = queue.length > 0 ? `Offline · ${queue.length} queued` : 'Offline';
+  } else if (queue.length > 0) {
+    dot.classList.add('offline');
+    txt.textContent = `Syncing ${queue.length}`;
+  } else {
+    dot.classList.remove('offline');
+    txt.textContent = 'Online';
+  }
+}
+
 function populateDropdowns() {
   const blockOpts = BLOCKS.map(b => `<option value="${b}">${b}</option>`).join('');
   document.getElementById('q-block').innerHTML = '<option value="">— Block —</option>' + blockOpts;
@@ -1466,6 +1601,10 @@ async function submitQuick() {
   document.getElementById('q-plucker').value = '';
   updateQuickCalc();
   showToast(`Saved · ${plucker.name} · ${v.qty} kg`);
+  // Push to Google Sheet — if it fails, queue for retry
+  const synced = await syncEntry(entry);
+  if (!synced) await queueForSync(entry);
+  updateSyncIndicator();
 }
 
 function renderBatchList() {
@@ -1510,6 +1649,7 @@ async function submitBatch() {
   if (!block || !factory || rows.length === 0) return;
   let saved = 0;
   const tsBase = Date.now();
+  const newEntries = [];
   rows.forEach((r, i) => {
     const plucker = PLUCKERS.find(p => p.id === r.pluckerId);
     const entry = {
@@ -1520,12 +1660,19 @@ async function submitBatch() {
       factory, qty: r.qty
     };
     STATE.entries.push(entry);
+    newEntries.push(entry);
     saved++;
   });
   await storageSet(K_ENTRIES, STATE.entries);
   document.querySelectorAll('.batch-kg').forEach(i => i.value = '');
   updateBatchSummary();
   showToast(`Saved ${saved} entr${saved === 1 ? 'y' : 'ies'}`);
+  // Push to Google Sheet — parallel, queue on failure
+  const results = await Promise.all(newEntries.map(e => syncEntry(e)));
+  for (let i = 0; i < results.length; i++) {
+    if (!results[i]) await queueForSync(newEntries[i]);
+  }
+  updateSyncIndicator();
 }
 
 function switchMode(m) {
@@ -2153,6 +2300,28 @@ function renderSettings() {
 
   renderPluckers();
   renderCategories();
+  renderSyncStatus();
+}
+
+async function renderSyncStatus() {
+  const queue = await storageGet(K_SYNC_QUEUE, []);
+  const stats = await storageGet(K_SYNC_STATS, { synced: 0, lastSync: null });
+  const synced = stats.synced || 0;
+  const waiting = queue.length;
+  document.getElementById('sync-synced-count').textContent = synced.toLocaleString('en-KE');
+  document.getElementById('sync-waiting-count').textContent = waiting;
+  document.getElementById('sync-queue-meta').textContent = waiting === 0 ? 'all caught up' : `${waiting} to push`;
+  const lastEl = document.getElementById('sync-last');
+  if (stats.lastSync) {
+    const when = new Date(stats.lastSync);
+    const mins = Math.round((Date.now() - when.getTime()) / 60000);
+    if (mins < 1) lastEl.textContent = 'just now';
+    else if (mins < 60) lastEl.textContent = `${mins} min ago`;
+    else if (mins < 1440) lastEl.textContent = `${Math.round(mins/60)} h ago`;
+    else lastEl.textContent = when.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  } else {
+    lastEl.textContent = 'Never';
+  }
 }
 
 function pluckerHasEntries(id) {
@@ -2569,16 +2738,25 @@ function showToast(msg) {
   document.getElementById('btn-reset-pluckers').addEventListener('click', resetPluckers);
   document.getElementById('btn-reset-categories').addEventListener('click', resetCategories);
   document.getElementById('btn-clear-entries').addEventListener('click', clearEntries);
+  document.getElementById('btn-sync-now').addEventListener('click', async () => {
+    if (!navigator.onLine) { showToast('Offline — will sync when online'); return; }
+    showToast('Syncing…');
+    await flushQueue();
+    await renderSyncStatus();
+    await updateSyncIndicator();
+    const queue = await storageGet(K_SYNC_QUEUE, []);
+    showToast(queue.length === 0 ? 'All synced' : `${queue.length} still queued`);
+  });
 
-  function setSync() {
-    const dot = document.getElementById('sync-dot');
-    const txt = document.getElementById('sync-text');
-    if (navigator.onLine) { dot.classList.remove('offline'); txt.textContent = 'Online'; }
-    else { dot.classList.add('offline'); txt.textContent = 'Offline'; }
-  }
-  window.addEventListener('online', setSync);
-  window.addEventListener('offline', setSync);
-  setSync();
+  window.addEventListener('online', async () => {
+    await updateSyncIndicator();
+    flushQueue();
+  });
+  window.addEventListener('offline', updateSyncIndicator);
+  await updateSyncIndicator();
+  // Flush any queued entries on startup, and every 60s while the tab is open
+  flushQueue();
+  setInterval(flushQueue, 60000);
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js').catch(() => {});
