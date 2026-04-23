@@ -477,6 +477,62 @@
   .stat-card .val { font-family: 'Fraunces', serif; font-weight: 500; font-size: 1.3rem; color: var(--forest); margin-top: 0.2rem; letter-spacing: -0.01em; line-height: 1.1; }
   .stat-card .sub { font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; color: var(--slate-light); letter-spacing: 0.08em; margin-top: 0.25rem; }
 
+  .sireet-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.55rem; }
+  .sireet-card {
+    background: var(--ivory-warm);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 0.7rem 0.6rem;
+    text-align: center;
+  }
+  .sireet-card.sireet-lifetime {
+    background: var(--forest-dark);
+    border-color: var(--forest-dark);
+  }
+  .sireet-card.sireet-lifetime .sireet-lbl { color: var(--brass-light); }
+  .sireet-card.sireet-lifetime .sireet-ksh { color: var(--ivory); }
+  .sireet-card.sireet-lifetime .sireet-kg { color: var(--brass-light); opacity: 0.85; }
+  .sireet-lbl {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--slate);
+  }
+  .sireet-ksh {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 1.02rem;
+    color: var(--forest);
+    margin-top: 0.3rem;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+  }
+  .sireet-kg {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.66rem;
+    color: var(--slate-light);
+    letter-spacing: 0.06em;
+    margin-top: 0.25rem;
+  }
+  .sireet-history {
+    margin-top: 0.95rem;
+    border-top: 1px solid var(--rule);
+    padding-top: 0.7rem;
+  }
+  .sireet-history summary {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.66rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--brass);
+    cursor: pointer;
+    padding: 0.2rem 0;
+    outline: none;
+  }
+  .sireet-history summary::-webkit-details-marker { color: var(--brass); }
+  .sireet-history table { margin-top: 0.7rem; }
+
   .section {
     background: var(--ivory-card);
     border: 1px solid var(--rule);
@@ -920,21 +976,21 @@
       <div class="motto">Sinonin Tea · The Tea of Champions</div>
       <div class="stats">
         <div>
-          <div class="stat-lbl">This month · Kg</div>
+          <div class="stat-lbl">This month · factory confirmed</div>
           <div class="stat-val" id="hero-kg">0<span class="unit">kg</span></div>
         </div>
         <div>
-          <div class="stat-lbl">Cash value</div>
+          <div class="stat-lbl">Income expected</div>
           <div class="stat-val" id="hero-cash">0</div>
         </div>
       </div>
     </div>
 
     <div class="stat-grid">
-      <div class="stat-card"><div class="lbl">Labour</div><div class="val" id="home-labour">Ksh 0</div><div class="sub">paid to pluckers</div></div>
+      <div class="stat-card"><div class="lbl">Labour owed</div><div class="val" id="home-labour">Ksh 0</div><div class="sub">to pluckers</div></div>
       <div class="stat-card"><div class="lbl">Bonus accrued</div><div class="val" id="home-bonus">Ksh 0</div><div class="sub">paid later</div></div>
       <div class="stat-card"><div class="lbl">Expenses</div><div class="val" id="home-expenses">Ksh 0</div><div class="sub">this month</div></div>
-      <div class="stat-card"><div class="lbl">Margin</div><div class="val" id="home-margin">Ksh 0</div><div class="sub">cash − expenses</div></div>
+      <div class="stat-card"><div class="lbl">Margin</div><div class="val" id="home-margin">Ksh 0</div><div class="sub">income − labour − exp</div></div>
     </div>
 
     <div class="section" id="home-recon-section" style="display:none">
@@ -1122,9 +1178,29 @@
       <div id="econ-blocks"></div>
     </div>
 
-    <div class="section">
-      <div class="section-head"><h3>Reconciliation</h3><span class="meta">recorded vs actual</span></div>
-      <div id="insights-recon"></div>
+    <div class="section" id="sireet-shares-section">
+      <div class="section-head"><h3>Sireet shares</h3><span class="meta" id="sireet-rate-meta">5 Ksh/kg</span></div>
+      <div class="sireet-grid">
+        <div class="sireet-card">
+          <div class="sireet-lbl">MTD</div>
+          <div class="sireet-ksh" id="sireet-mtd-ksh">Ksh 0</div>
+          <div class="sireet-kg" id="sireet-mtd-kg">0 kg</div>
+        </div>
+        <div class="sireet-card">
+          <div class="sireet-lbl">YTD</div>
+          <div class="sireet-ksh" id="sireet-ytd-ksh">Ksh 0</div>
+          <div class="sireet-kg" id="sireet-ytd-kg">0 kg</div>
+        </div>
+        <div class="sireet-card sireet-lifetime">
+          <div class="sireet-lbl">Lifetime</div>
+          <div class="sireet-ksh" id="sireet-life-ksh">Ksh 0</div>
+          <div class="sireet-kg" id="sireet-life-kg">0 kg</div>
+        </div>
+      </div>
+      <details class="sireet-history">
+        <summary>Equity by year</summary>
+        <table class="mini-table" id="sireet-year-table"></table>
+      </details>
     </div>
 
     <div class="section">
@@ -1342,6 +1418,24 @@ const K_SETTINGS = 'sinonin_settings_v1';
 const K_EXPENSES = 'sinonin_expenses_v1';
 const K_ACTUALS = 'sinonin_actuals_v1';
 const K_EXPENSE_CATS = 'sinonin_expense_cats_v1';
+const K_SIREET_LEDGER = 'sinonin_sireet_ledger_v1';
+
+/* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
+   Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
+   migrates them here. "asOf" is the last year frozen into the ledger; a year greater than
+   asOf gets rolled over on first render in that later year. */
+const DEFAULT_SIREET_LEDGER = {
+  asOf: 2025,
+  years: [
+    { year: 2019, kg: 2972.1,  ksh: 14860.50 },
+    { year: 2020, kg: 16548.0, ksh: 82740.00 },
+    { year: 2021, kg: 18537.5, ksh: 92687.50 },
+    { year: 2022, kg: 31206.1, ksh: 156030.50 },
+    { year: 2023, kg: 33429.8, ksh: 167149.00 },
+    { year: 2024, kg: 48134.9, ksh: 240674.50 },
+    { year: 2025, kg: 47777.5, ksh: 238887.50 }
+  ]
+};
 
 async function storageGet(key, fallback) {
   try {
@@ -1437,6 +1531,84 @@ function formatPluckerForForm(entry) {
 function tierForCategory(catName) {
   const cat = EXPENSE_CATEGORIES.find(c => c.name === catName);
   return cat && cat.tier ? cat.tier : 'Tea farm operations';
+}
+
+/* ============================================================
+   SIREET SHARES — MTD / YTD / Lifetime accumulator
+   ============================================================
+   Carryover ledger holds closed-out years (seeded from 2019-2025).
+   Current year and earlier not-yet-rolled years live in STATE.actuals.
+   On init, any year older than the current year whose entries are
+   sitting in STATE.actuals gets rolled into the ledger. */
+function sireetRate() {
+  const sireet = STATE.factories.find(f => f.name === 'Sireet');
+  return sireet ? (sireet.shares || 0) : 5;
+}
+
+function sireetActualsInYear(year) {
+  return STATE.actuals.filter(a => {
+    if (a.factory !== 'Sireet') return false;
+    const y = parseInt((a.date || '').slice(0, 4), 10);
+    return y === year;
+  });
+}
+
+function sireetMTD() {
+  const ym = new Date().toISOString().slice(0, 7);
+  const rows = STATE.actuals.filter(a => a.factory === 'Sireet' && (a.date || '').startsWith(ym));
+  const kg = rows.reduce((s, a) => s + (Number(a.kg) || 0), 0);
+  return { kg, ksh: kg * sireetRate() };
+}
+
+function sireetYTD() {
+  const year = new Date().getFullYear();
+  const rows = sireetActualsInYear(year);
+  const kg = rows.reduce((s, a) => s + (Number(a.kg) || 0), 0);
+  return { kg, ksh: kg * sireetRate() };
+}
+
+function sireetLifetime() {
+  const ledger = STATE.sireetLedger || DEFAULT_SIREET_LEDGER;
+  const historical = ledger.years.reduce(
+    (s, y) => ({ kg: s.kg + (y.kg || 0), ksh: s.ksh + (y.ksh || 0) }),
+    { kg: 0, ksh: 0 }
+  );
+  const currentYear = new Date().getFullYear();
+  const liveThisYearKg = sireetActualsInYear(currentYear).reduce((s, a) => s + (Number(a.kg) || 0), 0);
+  const liveThisYearKsh = liveThisYearKg * sireetRate();
+  return {
+    kg: historical.kg + liveThisYearKg,
+    ksh: historical.ksh + liveThisYearKsh
+  };
+}
+
+async function rolloverClosedYearsIfNeeded() {
+  if (!STATE.sireetLedger) return;
+  const currentYear = new Date().getFullYear();
+  const ledger = STATE.sireetLedger;
+  // Roll every year from (asOf + 1) through (currentYear - 1) into the ledger
+  let changed = false;
+  for (let y = ledger.asOf + 1; y < currentYear; y++) {
+    const rows = sireetActualsInYear(y);
+    if (rows.length === 0) {
+      // No data for that year in app — still advance the asOf marker so we don't re-check forever
+      ledger.asOf = y;
+      changed = true;
+      continue;
+    }
+    const kg = rows.reduce((s, a) => s + (Number(a.kg) || 0), 0);
+    const ksh = kg * sireetRate();
+    // Only add if this year isn't already in the ledger
+    if (!ledger.years.some(e => e.year === y)) {
+      ledger.years.push({ year: y, kg, ksh });
+    }
+    ledger.asOf = y;
+    changed = true;
+  }
+  if (changed) {
+    ledger.years.sort((a, b) => a.year - b.year);
+    await storageSet(K_SIREET_LEDGER, ledger);
+  }
 }
 
 async function pushToForm(entry) {
@@ -2010,32 +2182,54 @@ function renderHome() {
   const expensesMonth = STATE.expenses.filter(x => x.date.startsWith(ym));
   const actualsMonth = STATE.actuals.filter(a => a.date.startsWith(ym));
 
-  let totalKg = 0, cashNow = 0, labour = 0, bonus = 0;
-  entries.forEach(e => {
-    totalKg += e.qty;
-    const c = computeEntry(e);
-    if (c) { cashNow += c.cashNow; labour += c.labour; bonus += c.bonus + c.greenleaf; }
+  // Hero — revenue truth from Actuals (factory-confirmed), not plucker entries
+  let actualKg = 0, incomeExpected = 0;
+  actualsMonth.forEach(a => {
+    const f = STATE.factories.find(fac => fac.name === a.factory);
+    const price = f ? (f.priceKg || 0) : 0;
+    actualKg += Number(a.kg) || 0;
+    incomeExpected += (Number(a.kg) || 0) * price;
   });
-  const expenseTotal = expensesMonth.reduce((s, x) => s + (x.amount || 0), 0);
-  const margin = cashNow - expenseTotal;
 
-  document.getElementById('hero-kg').innerHTML = kg(totalKg) + '<span class="unit">kg</span>';
-  document.getElementById('hero-cash').textContent = 'Ksh ' + moneyRound(cashNow);
+  // Plucker payroll cost — what we owe pluckers (wage + accrued bonus)
+  let labour = 0, bonus = 0;
+  entries.forEach(e => {
+    const c = computeEntry(e);
+    if (c) { labour += c.labour; bonus += c.bonus + c.greenleaf; }
+  });
+
+  const expenseTotal = expensesMonth.reduce((s, x) => s + (x.amount || 0), 0);
+  // Margin = income expected from factory (Actuals) minus labour minus expenses.
+  // Bonus is accrued (not yet paid) so it's a liability, not a cash outflow — excluded from margin.
+  const margin = incomeExpected - labour - expenseTotal;
+
+  document.getElementById('hero-kg').innerHTML = kg(actualKg) + '<span class="unit">kg</span>';
+  document.getElementById('hero-cash').textContent = 'Ksh ' + moneyRound(incomeExpected);
   document.getElementById('home-labour').textContent = 'Ksh ' + moneyRound(labour);
   document.getElementById('home-bonus').textContent = 'Ksh ' + moneyRound(bonus);
   document.getElementById('home-expenses').textContent = 'Ksh ' + moneyRound(expenseTotal);
   document.getElementById('home-margin').textContent = 'Ksh ' + moneyRound(margin);
 
+  // Block bars — driven by Actuals kg per block, with a separate bucket for consolidated loads
   const byBlock = {};
   BLOCKS.forEach(b => byBlock[b] = 0);
-  entries.forEach(e => { byBlock[e.block] = (byBlock[e.block] || 0) + e.qty; });
+  let consolidatedKg = 0;
+  actualsMonth.forEach(a => {
+    const b = a.block || 'All blocks';
+    if (b === 'All blocks' || b === 'All blocks (consolidated)') {
+      consolidatedKg += Number(a.kg) || 0;
+    } else if (BLOCKS.includes(b)) {
+      byBlock[b] += Number(a.kg) || 0;
+    }
+  });
   const sorted = Object.entries(byBlock).sort((a,b) => b[1] - a[1]);
+  if (consolidatedKg > 0) sorted.push(['Consolidated loads', consolidatedKg]);
   const topKg = sorted[0]?.[1] || 1;
   const barsBox = document.getElementById('block-bars');
-  if (totalKg === 0) {
-    barsBox.innerHTML = `<div class="empty"><div class="em">No entries yet this month.</div><div class="sub">Tap Add to begin</div></div>`;
+  if (actualKg === 0) {
+    barsBox.innerHTML = `<div class="empty"><div class="em">No factory actuals yet this month.</div><div class="sub">Income figures update as SMS confirmations arrive</div></div>`;
   } else {
-    barsBox.innerHTML = sorted.map(([n, k]) => `
+    barsBox.innerHTML = sorted.filter(([, k]) => k > 0).map(([n, k]) => `
       <div class="block-bar">
         <div class="block-bar-head"><span class="name">${n}</span><span class="kg">${kg(k)} kg</span></div>
         <div class="block-bar-track"><div class="block-bar-fill" style="width:${topKg > 0 ? (k/topKg)*100 : 0}%"></div></div>
@@ -2262,6 +2456,43 @@ function periodActuals(p) {
   return STATE.actuals;
 }
 
+function renderSireetShares() {
+  const rate = sireetRate();
+  document.getElementById('sireet-rate-meta').textContent = `${rate} Ksh/kg`;
+
+  const mtd = sireetMTD();
+  const ytd = sireetYTD();
+  const life = sireetLifetime();
+
+  document.getElementById('sireet-mtd-ksh').textContent = 'Ksh ' + moneyRound(mtd.ksh);
+  document.getElementById('sireet-mtd-kg').textContent  = kg(mtd.kg) + ' kg';
+  document.getElementById('sireet-ytd-ksh').textContent = 'Ksh ' + moneyRound(ytd.ksh);
+  document.getElementById('sireet-ytd-kg').textContent  = kg(ytd.kg) + ' kg';
+  document.getElementById('sireet-life-ksh').textContent = 'Ksh ' + moneyRound(life.ksh);
+  document.getElementById('sireet-life-kg').textContent  = kg(life.kg) + ' kg';
+
+  // Year-by-year table: closed-out years from the ledger + the live current year
+  const ledger = STATE.sireetLedger || { years: [] };
+  const currentYear = new Date().getFullYear();
+  const rows = [...ledger.years];
+  const liveKg = sireetActualsInYear(currentYear).reduce((s, a) => s + (Number(a.kg) || 0), 0);
+  if (liveKg > 0 || !rows.some(r => r.year === currentYear)) {
+    rows.push({ year: currentYear, kg: liveKg, ksh: liveKg * rate, live: true });
+  }
+  rows.sort((a, b) => a.year - b.year);
+  const tbl = document.getElementById('sireet-year-table');
+  tbl.innerHTML = `
+    <thead><tr><th style="text-align:left">Year</th><th style="text-align:right">Kg</th><th style="text-align:right">Ksh</th></tr></thead>
+    <tbody>
+      ${rows.map(r => `
+        <tr>
+          <td>${r.year}${r.live ? ' <span style="color:var(--brass);font-size:0.7rem;letter-spacing:0.12em">LIVE</span>' : ''}</td>
+          <td style="text-align:right;font-family:'IBM Plex Mono',monospace">${kg(r.kg)}</td>
+          <td style="text-align:right;font-family:'IBM Plex Mono',monospace">${moneyRound(r.ksh)}</td>
+        </tr>`).join('')}
+    </tbody>`;
+}
+
 function renderInsights() {
   document.getElementById('insights-period-label').textContent =
     STATE.insightsPeriod === 'week' ? 'last 7 days' :
@@ -2312,43 +2543,8 @@ function renderInsights() {
       </div>`).join('');
   }
 
-  // Reconciliation — actual vs recorded, by factory + block
-  const reconBox = document.getElementById('insights-recon');
-  if (actuals.length === 0) {
-    reconBox.innerHTML = `<div class="empty" style="padding:1rem 0"><div class="sub">No actuals recorded in this period</div></div>`;
-  } else {
-    const byCombo = {};
-    actuals.forEach(a => {
-      const block = a.block || 'All blocks';
-      const key = a.factory + '::' + block;
-      byCombo[key] = byCombo[key] || { factory: a.factory, block, actual: 0, recorded: 0 };
-      byCombo[key].actual += a.kg;
-    });
-    Object.values(byCombo).forEach(c => {
-      c.recorded = entries
-        .filter(e => {
-          if (e.factory !== c.factory) return false;
-          if (c.block !== 'All blocks' && e.block !== c.block) return false;
-          return true;
-        })
-        .reduce((s, e) => s + e.qty, 0);
-    });
-    const rows = Object.values(byCombo).sort((a, b) => b.actual - a.actual);
-    reconBox.innerHTML = rows.map(c => {
-      const gap = c.actual - c.recorded;
-      const pct = c.actual > 0 ? (gap / c.actual) * 100 : 0;
-      const gc = gap > 0 ? 'warn' : gap < 0 ? 'ok' : '';
-      return `
-        <div class="recon-row">
-          <div class="recon-name">${c.factory} <span style="color:var(--brass);font-weight:400;font-style:italic">· ${c.block}</span></div>
-          <div class="recon-nums">
-            <div><span class="rl">Recorded</span><span class="rv">${kg(c.recorded)} kg</span></div>
-            <div><span class="rl">Actual</span><span class="rv">${kg(c.actual)} kg</span></div>
-            <div class="${gc}"><span class="rl">Gap</span><span class="rv">${gap >= 0 ? '+' : ''}${kg(gap)} kg${c.actual > 0 ? ` · ${pct.toFixed(1)}%` : ''}</span></div>
-          </div>
-        </div>`;
-    }).join('');
-  }
+  // Sireet shares — MTD / YTD / Lifetime (lifetime uses the carryover ledger + live current year)
+  renderSireetShares();
 
   // Expenses by category
   const totalExp = expenses.reduce((s, x) => s + x.amount, 0);
@@ -2817,6 +3013,11 @@ function showToast(msg) {
   }
   const storedSettings = await storageGet(K_SETTINGS, null);
   if (storedSettings) STATE.settings = { ...DEFAULT_SETTINGS, ...storedSettings };
+  const storedLedger = await storageGet(K_SIREET_LEDGER, null);
+  STATE.sireetLedger = storedLedger
+    ? { asOf: storedLedger.asOf, years: [...(storedLedger.years || [])] }
+    : { asOf: DEFAULT_SIREET_LEDGER.asOf, years: [...DEFAULT_SIREET_LEDGER.years] };
+  await rolloverClosedYearsIfNeeded();
 
   populateDropdowns();
   renderBatchList();
