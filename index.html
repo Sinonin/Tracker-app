@@ -312,8 +312,6 @@
     background: var(--ivory-card);
     border: 1px solid var(--rule);
     border-radius: 2px;
-    max-height: 50vh;
-    overflow-y: auto;
   }
   .batch-row {
     display: grid; grid-template-columns: 1fr 95px;
@@ -1019,17 +1017,17 @@
         </div>
         <div class="field"><label>Factory Delivered</label><select id="b-factory"><option value="">— Select factory —</option></select></div>
 
-        <div class="batch-instructions">Enter kilograms for each plucker who worked today. Leave blank for those who did not.</div>
-
-        <div class="batch-list" id="batch-list"></div>
-
         <div class="batch-summary">
           <div><div class="sum-lbl">Rows</div><div class="sum-val" id="b-rows">0</div></div>
           <div><div class="sum-lbl">Kg total</div><div class="sum-val" id="b-kg">0</div></div>
           <div><div class="sum-lbl">Ksh value</div><div class="sum-val" id="b-ksh">0</div></div>
         </div>
 
-        <button class="submit" id="b-submit" style="margin-top:0.9rem" disabled>Save All Entries</button>
+        <button class="submit" id="b-submit" style="margin-top:0.6rem" disabled>Save All Entries</button>
+
+        <div class="batch-instructions" style="margin-top:1.1rem">Enter kilograms for each plucker who worked today. Leave blank for those who did not.</div>
+
+        <div class="batch-list" id="batch-list"></div>
       </div>
     </div>
 
