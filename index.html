@@ -990,8 +990,10 @@
         <div class="field"><label>Factory Delivered</label><select id="q-factory"><option value="">— Select factory —</option></select></div>
         <div class="field"><label>Quantity Plucked (kg)</label><input type="number" id="q-qty" inputmode="decimal" step="0.1" min="0" placeholder="0"></div>
 
-        <div class="calc-card" id="q-calc" style="display:none">
-          <div class="lbl">Total Value</div>
+        <button class="submit" id="q-submit" disabled>Save Entry</button>
+
+        <div class="calc-card" id="q-calc" style="display:none;margin-top:0.9rem">
+          <div class="lbl">Entry preview</div>
           <div class="primary"><span class="unit">Ksh</span><span id="q-total">0</span></div>
           <div class="split">
             <div><div class="sub-lbl">Cash now</div><div class="sub-val" id="q-cash">Ksh 0</div></div>
@@ -1008,8 +1010,6 @@
             <div class="k">Greenleaf (accrued)</div><div class="v" id="q-gleaf">0</div>
           </div>
         </div>
-
-        <button class="submit" id="q-submit" disabled>Save Entry</button>
       </div>
 
       <div id="batch-mode" style="display:none">
