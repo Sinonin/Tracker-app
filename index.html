@@ -1182,7 +1182,7 @@
       <div class="setting-row">
         <div>
           <div class="k">Synced to Sheet</div>
-          <div class="desc" id="sync-synced-desc">Greenleaf and Expense entries auto-push to Drive</div>
+          <div class="desc" id="sync-synced-desc">All entries auto-push to your Drive ledger</div>
         </div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:0.95rem;color:var(--forest);font-variant-numeric:tabular-nums;font-weight:500" id="sync-synced-count">0</div>
       </div>
@@ -1203,8 +1203,8 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v2.4</span></div>
-      <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Greenleaf · Built for Sinonin Tea, Nandi County. Greenleaf and Expense entries push to your Google Forms on Drive, feeding your existing ledger. Actuals remain local for now — export CSV to add them to the workbook.</div>
+      <div class="section-head"><h3>About</h3><span class="meta">v2.5</span></div>
+      <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Greenleaf · Built for Sinonin Tea, Nandi County. Greenleaf, Expense, and Actuals entries all push to your Google Forms on Drive, feeding the Sinonin Ledger workbook. Farm Management is now obsolete.</div>
     </div>
 
     <div class="danger-zone">
@@ -1405,6 +1405,13 @@ const EXPENSE_FORM_FIELDS = {
   block:       'entry.43924605',
   payee:       'entry.2005149692'
 };
+const ACTUAL_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSe88E6Mn76MnGzbbBh9mTJp51HD4xd4tyBa27iAXk1IX8-17g/formResponse';
+const ACTUAL_FORM_FIELDS = {
+  date:    'entry.1758166125',
+  factory: 'entry.40715264',
+  block:   'entry.884377567',
+  kg:      'entry.682739850'
+};
 const K_SYNC_QUEUE = 'sinonin_sync_queue_v1';
 const K_SYNC_STATS = 'sinonin_sync_stats_v1';
 
@@ -1459,6 +1466,25 @@ async function pushExpenseToForm(expense) {
   }
 }
 
+async function pushActualToForm(actual) {
+  const params = new URLSearchParams();
+  params.set(ACTUAL_FORM_FIELDS.date, actual.date);
+  params.set(ACTUAL_FORM_FIELDS.factory, actual.factory);
+  params.set(ACTUAL_FORM_FIELDS.block, actual.block || 'All blocks (consolidated)');
+  params.set(ACTUAL_FORM_FIELDS.kg, String(actual.kg));
+  try {
+    await fetch(ACTUAL_FORM_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 async function queueForSync(record, kind) {
   kind = kind || 'greenleaf';
   const queue = await storageGet(K_SYNC_QUEUE, []);
@@ -1491,6 +1517,18 @@ async function syncExpense(expense) {
   return ok;
 }
 
+async function syncActual(actual) {
+  if (!navigator.onLine) return false;
+  const ok = await pushActualToForm(actual);
+  if (ok) {
+    const stats = await storageGet(K_SYNC_STATS, { synced: 0, lastSync: null });
+    stats.synced = (stats.synced || 0) + 1;
+    stats.lastSync = new Date().toISOString();
+    await storageSet(K_SYNC_STATS, stats);
+  }
+  return ok;
+}
+
 let flushInFlight = false;
 async function flushQueue() {
   if (flushInFlight) return;
@@ -1507,8 +1545,12 @@ async function flushQueue() {
       let record = null;
       if (kind === 'greenleaf') record = STATE.entries.find(e => e.id === recordId);
       else if (kind === 'expense') record = STATE.expenses.find(x => x.id === recordId);
+      else if (kind === 'actual') record = STATE.actuals.find(a => a.id === recordId);
       if (!record) continue; // record was deleted locally, drop from queue
-      const ok = kind === 'expense' ? await pushExpenseToForm(record) : await pushToForm(record);
+      let ok;
+      if (kind === 'expense')      ok = await pushExpenseToForm(record);
+      else if (kind === 'actual')  ok = await pushActualToForm(record);
+      else                         ok = await pushToForm(record);
       if (ok) {
         const stats = await storageGet(K_SYNC_STATS, { synced: 0, lastSync: null });
         stats.synced = (stats.synced || 0) + 1;
@@ -1930,6 +1972,10 @@ async function submitActual() {
   updateActualPreview();
   renderRecentActuals();
   showToast(`Actual saved · ${v.factory} · ${v.block} · ${v.kg} kg`);
+  // Push to Google Sheet — if it fails, queue for retry
+  const synced = await syncActual(actual);
+  if (!synced) await queueForSync(actual, 'actual');
+  updateSyncIndicator();
 }
 
 function monthEntries() {
