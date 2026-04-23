@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#1E3A2F">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <title>Sinonin Greenleaf</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -421,6 +423,17 @@
     margin-top: 0.25rem;
     color: var(--ivory);
     opacity: 0.88;
+  }
+  .hero .motto {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.64rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--brass-light);
+    margin-top: 0.9rem;
+    padding-top: 0.7rem;
+    border-top: 1px solid rgba(184, 147, 90, 0.22);
+    opacity: 0.85;
   }
   .hero .stats {
     display: grid; grid-template-columns: 1fr 1fr;
@@ -904,6 +917,7 @@
     <div class="hero">
       <div class="greeting" id="hero-greeting">Habari ya asubuhi</div>
       <div class="date" id="hero-date"></div>
+      <div class="motto">Sinonin Tea · The Tea of Champions</div>
       <div class="stats">
         <div>
           <div class="stat-lbl">This month · Kg</div>
@@ -1203,8 +1217,9 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v2.5</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v2.6</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Greenleaf · Built for Sinonin Tea, Nandi County. Greenleaf, Expense, and Actuals entries all push to your Google Forms on Drive, feeding the Sinonin Ledger workbook. Farm Management is now obsolete.</div>
+      <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
 
     <div class="danger-zone">
