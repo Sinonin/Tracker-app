@@ -948,7 +948,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>Top pluckers</h3><span class="meta">by kilograms</span></div>
+      <div class="section-head"><h3>Top pluckers</h3><span class="meta">this month · by kg</span></div>
       <div id="top-pluckers"></div>
     </div>
   </section>
@@ -2084,14 +2084,15 @@ function renderHome() {
 
   const byP = {};
   entries.forEach(e => {
-    byP[e.pluckerId] = byP[e.pluckerId] || { kg: 0, total: 0, name: e.pluckerName };
+    byP[e.pluckerId] = byP[e.pluckerId] || { kg: 0, earnings: 0, name: e.pluckerName };
     byP[e.pluckerId].kg += e.qty;
-    const c = computeEntry(e); if (c) byP[e.pluckerId].total += c.total;
+    const c = computeEntry(e);
+    if (c) byP[e.pluckerId].earnings += c.labour + c.bonus + c.greenleaf;
   });
   const rank = Object.entries(byP).map(([id, v]) => {
     const current = PLUCKERS.find(p => p.id === parseInt(id, 10));
     return { ...v, name: current ? current.name : v.name };
-  }).sort((a,b) => b.kg - a.kg).slice(0, 5);
+  }).sort((a,b) => b.kg - a.kg).slice(0, 3);
   const rBox = document.getElementById('top-pluckers');
   if (rank.length === 0) {
     rBox.innerHTML = `<div class="empty" style="padding:1rem 0"><div class="sub">No entries</div></div>`;
@@ -2099,7 +2100,7 @@ function renderHome() {
     rBox.innerHTML = rank.map((v, i) => `
       <div class="rank-row">
         <span class="n">${i+1}</span>
-        <div class="name">${v.name}<span class="meta">Ksh ${moneyRound(v.total)}</span></div>
+        <div class="name">${v.name}<span class="meta">Ksh ${moneyRound(v.earnings)} earned</span></div>
         <span class="kg">${kg(v.kg)} kg</span>
       </div>`).join('');
   }

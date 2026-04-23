@@ -2,7 +2,7 @@
 // Caches the app shell so the clerk can load the app with no signal,
 // and makes the "Install" prompt appear on Android Chrome.
 
-const CACHE = 'sinonin-greenleaf-v20';
+const CACHE = 'sinonin-greenleaf-v21';
 const SHELL = [
   './',
   './index.html',
