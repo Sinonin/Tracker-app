@@ -1182,7 +1182,7 @@
       <div class="setting-row">
         <div>
           <div class="k">Synced to Sheet</div>
-          <div class="desc" id="sync-synced-desc">Greenleaf entries auto-push to Sinonin Data Entry</div>
+          <div class="desc" id="sync-synced-desc">Greenleaf and Expense entries auto-push to Drive</div>
         </div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:0.95rem;color:var(--forest);font-variant-numeric:tabular-nums;font-weight:500" id="sync-synced-count">0</div>
       </div>
@@ -1203,8 +1203,8 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v2.3</span></div>
-      <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Greenleaf · Built for Sinonin Tea, Nandi County. Greenleaf entries push to your existing Sinonin Data Entry form on Google Drive. Expenses and Actuals remain local — export CSV to add them to the workbook.</div>
+      <div class="section-head"><h3>About</h3><span class="meta">v2.4</span></div>
+      <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Greenleaf · Built for Sinonin Tea, Nandi County. Greenleaf and Expense entries push to your Google Forms on Drive, feeding your existing ledger. Actuals remain local for now — export CSV to add them to the workbook.</div>
     </div>
 
     <div class="danger-zone">
@@ -1290,21 +1290,31 @@ let PLUCKERS = JSON.parse(JSON.stringify(DEFAULT_PLUCKERS));
 const DEFAULT_SETTINGS = { teaCessPerKg: 0.22, transportActive: false, currency: 'Ksh' };
 
 const DEFAULT_EXPENSE_CATEGORIES = [
-  { name: "Fertilizer", active: true },
-  { name: "Pesticide / herbicide", active: true },
-  { name: "Pruning labour", active: true },
-  { name: "Weeding labour", active: true },
-  { name: "Other field labour", active: true },
-  { name: "Fuel", active: true },
-  { name: "Machinery / repairs", active: true },
-  { name: "Tools & equipment", active: true },
-  { name: "Transport (non-factory)", active: true },
-  { name: "Farm supplies", active: true },
-  { name: "Office & admin", active: true },
-  { name: "Utilities", active: true },
-  { name: "Levies & licenses", active: true },
-  { name: "Worker welfare", active: true },
-  { name: "Miscellaneous", active: true }
+  { name: "Fertilizer",             tier: "Tea farm operations",   active: true },
+  { name: "Herbicide",              tier: "Tea farm operations",   active: true },
+  { name: "Farm preparation",       tier: "Tea farm operations",   active: true },
+  { name: "Tea nursery",            tier: "Tea farm operations",   active: true },
+  { name: "Tea plucking labour",    tier: "Tea farm operations",   active: true },
+  { name: "Farm assets & tools",    tier: "Tea farm operations",   active: true },
+  { name: "Car",                    tier: "Tea farm operations",   active: true },
+  { name: "Transport costs",        tier: "Tea farm operations",   active: true },
+  { name: "Legal fees",             tier: "Tea farm operations",   active: true },
+  { name: "Transaction fees",       tier: "Tea farm operations",   active: true },
+  { name: "Accounting fees",        tier: "Tea farm operations",   active: true },
+  { name: "Permits, licences & titles", tier: "Tea farm operations", active: true },
+  { name: "Dryer",                  tier: "Tea farm operations",   active: true },
+  { name: "Miscellaneous",          tier: "Tea farm operations",   active: true },
+  { name: "Elias salary & bonus",   tier: "Tea farm payroll",      active: true },
+  { name: "Elias MRF",              tier: "Tea farm payroll",      active: true },
+  { name: "Petrol water pump",      tier: "Tea farm payroll",      active: true },
+  { name: "Weekly wage (other)",    tier: "Tea farm payroll",      active: true },
+  { name: "Cheptabach Farm",        tier: "Cross-business transfer", active: true },
+  { name: "Sangalo Farm",           tier: "Cross-business transfer", active: true },
+  { name: "Kipkorom Farm",          tier: "Cross-business transfer", active: true },
+  { name: "Chebulet Farm",          tier: "Cross-business transfer", active: true },
+  { name: "Oloworiti Coffee Farm",  tier: "Cross-business transfer", active: true },
+  { name: "Kipkenda & Bitonin Maize Farm", tier: "Cross-business transfer", active: true },
+  { name: "Kipkenda Poultry",       tier: "Cross-business transfer", active: true }
 ];
 let EXPENSE_CATEGORIES = JSON.parse(JSON.stringify(DEFAULT_EXPENSE_CATEGORIES));
 
@@ -1385,11 +1395,26 @@ const FORM_FIELDS = {
   qty:     'entry.1515707048',
   factory: 'entry.1441042521'
 };
+const EXPENSE_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfrZ5DD8Bj-OBrOS2a-8sqC7Norv7nicAkk9cI2HZ98bC2B1w/formResponse';
+const EXPENSE_FORM_FIELDS = {
+  date:        'entry.104641274',
+  tier:        'entry.1021757410',
+  category:    'entry.26156089',
+  description: 'entry.1716638302',
+  amount:      'entry.648064989',
+  block:       'entry.43924605',
+  payee:       'entry.2005149692'
+};
 const K_SYNC_QUEUE = 'sinonin_sync_queue_v1';
 const K_SYNC_STATS = 'sinonin_sync_stats_v1';
 
 function formatPluckerForForm(entry) {
   return `${entry.pluckerId}. ${entry.pluckerName}`;
+}
+
+function tierForCategory(catName) {
+  const cat = EXPENSE_CATEGORIES.find(c => c.name === catName);
+  return cat && cat.tier ? cat.tier : 'Tea farm operations';
 }
 
 async function pushToForm(entry) {
@@ -1412,9 +1437,32 @@ async function pushToForm(entry) {
   }
 }
 
-async function queueForSync(entry) {
+async function pushExpenseToForm(expense) {
+  const params = new URLSearchParams();
+  params.set(EXPENSE_FORM_FIELDS.date, expense.date);
+  params.set(EXPENSE_FORM_FIELDS.tier, expense.tier || tierForCategory(expense.category));
+  params.set(EXPENSE_FORM_FIELDS.category, expense.category);
+  params.set(EXPENSE_FORM_FIELDS.description, expense.description || '');
+  params.set(EXPENSE_FORM_FIELDS.amount, String(expense.amount));
+  params.set(EXPENSE_FORM_FIELDS.block, expense.block || 'Whole farm');
+  params.set(EXPENSE_FORM_FIELDS.payee, expense.payee || '');
+  try {
+    await fetch(EXPENSE_FORM_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function queueForSync(record, kind) {
+  kind = kind || 'greenleaf';
   const queue = await storageGet(K_SYNC_QUEUE, []);
-  queue.push({ entryId: entry.id, attempts: 0, queuedAt: new Date().toISOString() });
+  queue.push({ kind, recordId: record.id, attempts: 0, queuedAt: new Date().toISOString() });
   await storageSet(K_SYNC_QUEUE, queue);
   updateSyncIndicator();
 }
@@ -1422,6 +1470,18 @@ async function queueForSync(entry) {
 async function syncEntry(entry) {
   if (!navigator.onLine) return false;
   const ok = await pushToForm(entry);
+  if (ok) {
+    const stats = await storageGet(K_SYNC_STATS, { synced: 0, lastSync: null });
+    stats.synced = (stats.synced || 0) + 1;
+    stats.lastSync = new Date().toISOString();
+    await storageSet(K_SYNC_STATS, stats);
+  }
+  return ok;
+}
+
+async function syncExpense(expense) {
+  if (!navigator.onLine) return false;
+  const ok = await pushExpenseToForm(expense);
   if (ok) {
     const stats = await storageGet(K_SYNC_STATS, { synced: 0, lastSync: null });
     stats.synced = (stats.synced || 0) + 1;
@@ -1441,9 +1501,14 @@ async function flushQueue() {
     if (queue.length === 0) return;
     const remaining = [];
     for (const item of queue) {
-      const entry = STATE.entries.find(e => e.id === item.entryId);
-      if (!entry) continue; // entry was deleted locally, drop from queue
-      const ok = await pushToForm(entry);
+      // Backfill: pre-expense queue items used `entryId` and had no kind
+      const kind = item.kind || 'greenleaf';
+      const recordId = item.recordId || item.entryId;
+      let record = null;
+      if (kind === 'greenleaf') record = STATE.entries.find(e => e.id === recordId);
+      else if (kind === 'expense') record = STATE.expenses.find(x => x.id === recordId);
+      if (!record) continue; // record was deleted locally, drop from queue
+      const ok = kind === 'expense' ? await pushExpenseToForm(record) : await pushToForm(record);
       if (ok) {
         const stats = await storageGet(K_SYNC_STATS, { synced: 0, lastSync: null });
         stats.synced = (stats.synced || 0) + 1;
@@ -1451,6 +1516,9 @@ async function flushQueue() {
         await storageSet(K_SYNC_STATS, stats);
       } else {
         item.attempts = (item.attempts || 0) + 1;
+        item.kind = kind;
+        item.recordId = recordId;
+        delete item.entryId;
         if (item.attempts < 10) remaining.push(item);
       }
     }
@@ -1514,9 +1582,27 @@ function repopulatePluckerDropdown() {
 function repopulateCategoryDropdown() {
   const el = document.getElementById('x-category');
   const cur = el.value;
-  const opts = activeCategories().map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-  el.innerHTML = '<option value="">— Category —</option>' + opts;
-  if (cur && activeCategories().some(c => c.name === cur)) el.value = cur;
+  const active = activeCategories();
+  const tiers = ['Tea farm operations', 'Tea farm payroll', 'Cross-business transfer'];
+  let html = '<option value="">— Category —</option>';
+  tiers.forEach(tier => {
+    const items = active.filter(c => (c.tier || 'Tea farm operations') === tier);
+    if (items.length === 0) return;
+    html += `<optgroup label="${tier}">`;
+    items.forEach(c => {
+      html += `<option value="${c.name}">${c.name}</option>`;
+    });
+    html += '</optgroup>';
+  });
+  // Categories added by user that don't match a known tier
+  const custom = active.filter(c => !tiers.includes(c.tier || 'Tea farm operations'));
+  if (custom.length > 0) {
+    html += `<optgroup label="Custom">`;
+    custom.forEach(c => { html += `<option value="${c.name}">${c.name}</option>`; });
+    html += '</optgroup>';
+  }
+  el.innerHTML = html;
+  if (cur && active.some(c => c.name === cur)) el.value = cur;
 }
 
 function repopulateFactoryDropdowns() {
@@ -1601,7 +1687,7 @@ async function submitQuick() {
   showToast(`Saved · ${plucker.name} · ${v.qty} kg`);
   // Push to Google Sheet — if it fails, queue for retry
   const synced = await syncEntry(entry);
-  if (!synced) await queueForSync(entry);
+  if (!synced) await queueForSync(entry, 'greenleaf');
   updateSyncIndicator();
 }
 
@@ -1668,7 +1754,7 @@ async function submitBatch() {
   // Push to Google Sheet — parallel, queue on failure
   const results = await Promise.all(newEntries.map(e => syncEntry(e)));
   for (let i = 0; i < results.length; i++) {
-    if (!results[i]) await queueForSync(newEntries[i]);
+    if (!results[i]) await queueForSync(newEntries[i], 'greenleaf');
   }
   updateSyncIndicator();
 }
@@ -1765,6 +1851,7 @@ async function submitExpense() {
     id: 'X' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
     ts: new Date().toISOString(),
     date: v.date,
+    tier: tierForCategory(v.category),
     category: v.category,
     description: v.description,
     amount: v.amount,
@@ -1779,6 +1866,10 @@ async function submitExpense() {
   updateExpensePreview();
   renderRecentExpenses();
   showToast(`Expense recorded · Ksh ${moneyRound(v.amount)}`);
+  // Push to Google Sheet — if it fails, queue for retry
+  const synced = await syncExpense(expense);
+  if (!synced) await queueForSync(expense, 'expense');
+  updateSyncIndicator();
 }
 
 /* ========= ACTUALS ========= */
