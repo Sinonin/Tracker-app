@@ -175,14 +175,38 @@
   }
   .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
 
-  .kind-toggle {
+  .biz-toggle {
     display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0;
+    background: var(--ivory-card);
+    border: 1px solid var(--brass);
+    border-radius: 2px;
+    margin-bottom: 0.6rem;
+    padding: 3px;
+  }
+  .biz-toggle button {
+    background: transparent; border: none;
+    padding: 0.7rem 0.3rem;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 0.95rem;
+    color: var(--brass);
+    cursor: pointer;
+    border-radius: 2px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .biz-toggle button.active { background: var(--forest-dark); color: var(--ivory); }
+
+  .kind-toggle {
+    display: grid; gap: 0;
     background: var(--forest-dark);
     border-radius: 2px;
     margin-bottom: 1rem;
     padding: 3px;
     border: 1px solid var(--forest-dark);
   }
+  #kind-toggle-tea { grid-template-columns: 1fr 1fr 1fr; }
+  #kind-toggle-poultry, #kind-toggle-admin { grid-template-columns: 1fr; }
   .kind-toggle button {
     background: transparent; border: none;
     padding: 0.75rem 0.3rem;
@@ -1036,10 +1060,24 @@
 
   <!-- ADD -->
   <section class="panel" id="panel-add">
-    <div class="kind-toggle">
+    <div class="biz-toggle">
+      <button class="active" data-biz="tea">Tea</button>
+      <button data-biz="poultry">Poultry</button>
+      <button data-biz="admin">Admin</button>
+    </div>
+
+    <div class="kind-toggle" id="kind-toggle-tea">
       <button class="active" data-kind="greenleaf">Greenleaf</button>
-      <button data-kind="expense">Expense</button>
       <button data-kind="actual">Actuals</button>
+      <button data-kind="banked">Banked</button>
+    </div>
+
+    <div class="kind-toggle" id="kind-toggle-poultry" style="display:none">
+      <button class="active" data-kind="poultry">Sales</button>
+    </div>
+
+    <div class="kind-toggle" id="kind-toggle-admin" style="display:none">
+      <button class="active" data-kind="expense">Expense</button>
     </div>
 
     <!-- ========= GREENLEAF ========= -->
@@ -1161,6 +1199,71 @@
       <div class="section" id="a-recent-section" style="display:none;margin-top:1.2rem">
         <div class="section-head"><h3>Recent actuals</h3><span class="meta" id="a-recent-count">0</span></div>
         <div id="a-recent-list"></div>
+      </div>
+    </div>
+
+    <!-- ========= BANKED INCOME ========= -->
+    <div id="banked-kind" style="display:none">
+      <div class="batch-instructions">Records money received — factory payments, bulk sales, periodic deposits. For daily poultry sales, use the Poultry tab instead.</div>
+
+      <div class="pair">
+        <div class="field"><label>Date</label><input type="date" id="i-date"></div>
+        <div class="field"><label>Business</label><select id="i-business"></select></div>
+      </div>
+      <div class="field"><label>Source</label><input type="text" id="i-source" placeholder="e.g. Sireet, PayBill, customer name" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
+      <div class="field"><label>Amount (Ksh)</label><input type="number" id="i-amount" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+      <div class="field"><label>For period (optional)</label><input type="text" id="i-period" placeholder="e.g. Feb 2026" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
+      <div class="field"><label>Reference / notes (optional)</label><input type="text" id="i-reference" placeholder="e.g. TXN-9823, M-Pesa code" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
+
+      <button class="submit" id="i-submit" disabled>Record Income</button>
+
+      <div class="calc-card" id="i-preview" style="display:none;margin-top:0.9rem">
+        <div class="lbl">Income preview</div>
+        <div class="primary"><span class="unit">Ksh</span><span id="i-preview-amt">0</span></div>
+        <div class="breakdown">
+          <div class="k">Business</div><div class="v" id="i-preview-biz">—</div>
+          <div class="k">Source</div><div class="v" id="i-preview-src">—</div>
+          <div class="k">Date</div><div class="v" id="i-preview-date">—</div>
+        </div>
+      </div>
+
+      <div class="section" id="i-recent-section" style="display:none;margin-top:1.2rem">
+        <div class="section-head"><h3>Recent income</h3><span class="meta" id="i-recent-count">0</span></div>
+        <div id="i-recent-list"></div>
+      </div>
+    </div>
+
+    <!-- ========= POULTRY SALES ========= -->
+    <div id="poultry-kind" style="display:none">
+      <div class="batch-instructions">Individual poultry sales — eggs, chicks, retired birds, manure. One entry per sale.</div>
+
+      <div class="pair">
+        <div class="field"><label>Date</label><input type="date" id="y-date"></div>
+        <div class="field"><label>Product</label><select id="y-product"></select></div>
+      </div>
+      <div class="pair">
+        <div class="field"><label>Unit</label><select id="y-unit"></select></div>
+        <div class="field"><label>Quantity</label><input type="number" id="y-quantity" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+      </div>
+      <div class="field"><label>Amount (Ksh)</label><input type="number" id="y-amount" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+      <div class="field"><label>Buyer (optional)</label><input type="text" id="y-buyer" placeholder="Customer name" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
+      <div class="field"><label>Notes (optional)</label><input type="text" id="y-notes" placeholder="Anything worth remembering" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
+
+      <button class="submit" id="y-submit" disabled>Record Sale</button>
+
+      <div class="calc-card" id="y-preview" style="display:none;margin-top:0.9rem">
+        <div class="lbl">Sale preview</div>
+        <div class="primary"><span class="unit">Ksh</span><span id="y-preview-amt">0</span></div>
+        <div class="breakdown">
+          <div class="k">Product</div><div class="v" id="y-preview-product">—</div>
+          <div class="k">Quantity</div><div class="v" id="y-preview-qty">—</div>
+          <div class="k">Date</div><div class="v" id="y-preview-date">—</div>
+        </div>
+      </div>
+
+      <div class="section" id="y-recent-section" style="display:none;margin-top:1.2rem">
+        <div class="section-head"><h3>Recent sales</h3><span class="meta" id="y-recent-count">0</span></div>
+        <div id="y-recent-list"></div>
       </div>
     </div>
   </section>
@@ -1293,8 +1396,8 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v2.6</span></div>
-      <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Greenleaf · Built for Sinonin Tea, Nandi County. Greenleaf, Expense, and Actuals entries all push to your Google Forms on Drive, feeding the Sinonin Ledger workbook. Farm Management is now obsolete.</div>
+      <div class="section-head"><h3>About</h3><span class="meta">v2.7</span></div>
+      <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Greenleaf · Built for Sinonin Tea and Kipkenda Poultry, Nandi County. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, feeding the Sinonin Ledger workbook.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
 
@@ -1419,6 +1522,8 @@ const K_EXPENSES = 'sinonin_expenses_v1';
 const K_ACTUALS = 'sinonin_actuals_v1';
 const K_EXPENSE_CATS = 'sinonin_expense_cats_v1';
 const K_SIREET_LEDGER = 'sinonin_sireet_ledger_v1';
+const K_BANKED = 'sinonin_banked_v1';
+const K_POULTRY = 'sinonin_poultry_v1';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -1520,6 +1625,25 @@ const ACTUAL_FORM_FIELDS = {
   factory: 'entry.40715264',
   block:   'entry.884377567',
   kg:      'entry.682739850'
+};
+const BANKED_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSd0yA6ANgxSUh60W1ls-IngQ1lCSo1wMBrmNRPH27enGCYq9Q/formResponse';
+const BANKED_FORM_FIELDS = {
+  date:      'entry.318416865',
+  business:  'entry.1610584116',
+  source:    'entry.801377683',
+  amount:    'entry.1776701810',
+  period:    'entry.784213464',
+  reference: 'entry.131094276'
+};
+const POULTRY_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSd1khjADGI007KNni5NXmd_r0-J4MSZvqyNG1uysjqzrMTs3Q/formResponse';
+const POULTRY_FORM_FIELDS = {
+  date:     'entry.580998495',
+  product:  'entry.768948373',
+  unit:     'entry.1483594964',
+  quantity: 'entry.2101059254',
+  amount:   'entry.935543283',
+  buyer:    'entry.382131237',
+  notes:    'entry.396849479'
 };
 const K_SYNC_QUEUE = 'sinonin_sync_queue_v1';
 const K_SYNC_STATS = 'sinonin_sync_stats_v1';
@@ -1716,6 +1840,73 @@ async function syncActual(actual) {
   return ok;
 }
 
+async function pushBankedToForm(row) {
+  const params = new URLSearchParams();
+  params.set(BANKED_FORM_FIELDS.date, row.date);
+  params.set(BANKED_FORM_FIELDS.business, row.business);
+  params.set(BANKED_FORM_FIELDS.source, row.source);
+  params.set(BANKED_FORM_FIELDS.amount, String(row.amount));
+  params.set(BANKED_FORM_FIELDS.period, row.period || '');
+  params.set(BANKED_FORM_FIELDS.reference, row.reference || '');
+  try {
+    await fetch(BANKED_FORM_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function syncBanked(row) {
+  if (!navigator.onLine) return false;
+  const ok = await pushBankedToForm(row);
+  if (ok) {
+    const stats = await storageGet(K_SYNC_STATS, { synced: 0, lastSync: null });
+    stats.synced = (stats.synced || 0) + 1;
+    stats.lastSync = new Date().toISOString();
+    await storageSet(K_SYNC_STATS, stats);
+  }
+  return ok;
+}
+
+async function pushPoultryToForm(row) {
+  const params = new URLSearchParams();
+  params.set(POULTRY_FORM_FIELDS.date, row.date);
+  params.set(POULTRY_FORM_FIELDS.product, row.product);
+  params.set(POULTRY_FORM_FIELDS.unit, row.unit);
+  params.set(POULTRY_FORM_FIELDS.quantity, String(row.quantity));
+  params.set(POULTRY_FORM_FIELDS.amount, String(row.amount));
+  params.set(POULTRY_FORM_FIELDS.buyer, row.buyer || '');
+  params.set(POULTRY_FORM_FIELDS.notes, row.notes || '');
+  try {
+    await fetch(POULTRY_FORM_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function syncPoultry(row) {
+  if (!navigator.onLine) return false;
+  const ok = await pushPoultryToForm(row);
+  if (ok) {
+    const stats = await storageGet(K_SYNC_STATS, { synced: 0, lastSync: null });
+    stats.synced = (stats.synced || 0) + 1;
+    stats.lastSync = new Date().toISOString();
+    await storageSet(K_SYNC_STATS, stats);
+  }
+  return ok;
+}
+
 let flushInFlight = false;
 async function flushQueue() {
   if (flushInFlight) return;
@@ -1733,10 +1924,14 @@ async function flushQueue() {
       if (kind === 'greenleaf') record = STATE.entries.find(e => e.id === recordId);
       else if (kind === 'expense') record = STATE.expenses.find(x => x.id === recordId);
       else if (kind === 'actual') record = STATE.actuals.find(a => a.id === recordId);
+      else if (kind === 'banked') record = (STATE.banked || []).find(b => b.id === recordId);
+      else if (kind === 'poultry') record = (STATE.poultry || []).find(p => p.id === recordId);
       if (!record) continue; // record was deleted locally, drop from queue
       let ok;
       if (kind === 'expense')      ok = await pushExpenseToForm(record);
       else if (kind === 'actual')  ok = await pushActualToForm(record);
+      else if (kind === 'banked')  ok = await pushBankedToForm(record);
+      else if (kind === 'poultry') ok = await pushPoultryToForm(record);
       else                         ok = await pushToForm(record);
       if (ok) {
         const stats = await storageGet(K_SYNC_STATS, { synced: 0, lastSync: null });
@@ -1785,11 +1980,21 @@ function populateDropdowns() {
   repopulatePluckerDropdown();
   repopulateFactoryDropdowns();
   repopulateCategoryDropdown();
+
+  // Banked Income: business dropdown
+  document.getElementById('i-business').innerHTML = '<option value="">— Business —</option>' + BUSINESS_OPTIONS.map(b => `<option value="${b}">${b}</option>`).join('');
+
+  // Poultry Sales: product and unit dropdowns
+  document.getElementById('y-product').innerHTML = '<option value="">— Product —</option>' + POULTRY_PRODUCTS.map(p => `<option value="${p}">${p}</option>`).join('');
+  document.getElementById('y-unit').innerHTML = '<option value="">— Unit —</option>' + POULTRY_UNITS.map(u => `<option value="${u}">${u}</option>`).join('');
+
   const todayIso = new Date().toISOString().slice(0,10);
   document.getElementById('q-date').value = todayIso;
   document.getElementById('b-date').value = todayIso;
   document.getElementById('x-date').value = todayIso;
   document.getElementById('a-date').value = todayIso;
+  document.getElementById('i-date').value = todayIso;
+  document.getElementById('y-date').value = todayIso;
 }
 
 function activePluckers() {
@@ -1996,14 +2201,30 @@ function switchMode(m) {
   document.getElementById('batch-mode').style.display = m === 'batch' ? '' : 'none';
 }
 
+function switchBiz(b) {
+  STATE.biz = b;
+  document.querySelectorAll('.biz-toggle button').forEach(el => el.classList.toggle('active', el.dataset.biz === b));
+  document.getElementById('kind-toggle-tea').style.display = b === 'tea' ? '' : 'none';
+  document.getElementById('kind-toggle-poultry').style.display = b === 'poultry' ? '' : 'none';
+  document.getElementById('kind-toggle-admin').style.display = b === 'admin' ? '' : 'none';
+  // When switching business, activate the first kind in that business's toggle
+  if (b === 'tea') switchKind('greenleaf');
+  else if (b === 'poultry') switchKind('poultry');
+  else if (b === 'admin') switchKind('expense');
+}
+
 function switchKind(k) {
   STATE.kind = k;
   document.querySelectorAll('.kind-toggle button').forEach(b => b.classList.toggle('active', b.dataset.kind === k));
   document.getElementById('greenleaf-kind').style.display = k === 'greenleaf' ? '' : 'none';
   document.getElementById('expense-kind').style.display = k === 'expense' ? '' : 'none';
   document.getElementById('actual-kind').style.display = k === 'actual' ? '' : 'none';
+  document.getElementById('banked-kind').style.display = k === 'banked' ? '' : 'none';
+  document.getElementById('poultry-kind').style.display = k === 'poultry' ? '' : 'none';
   if (k === 'expense') renderRecentExpenses();
   if (k === 'actual') renderRecentActuals();
+  if (k === 'banked') renderRecentBanked();
+  if (k === 'poultry') renderRecentPoultry();
 }
 
 function renderRecentActuals() {
@@ -2163,6 +2384,164 @@ async function submitActual() {
   const synced = await syncActual(actual);
   if (!synced) await queueForSync(actual, 'actual');
   updateSyncIndicator();
+}
+
+// ============ BANKED INCOME ============
+
+const BUSINESS_OPTIONS = [
+  'Sinonin Tea',
+  'Kipkenda Poultry',
+  'Kipkenda Maize',
+  'Dorper',
+  'Olomotit Coffee',
+  'Other'
+];
+
+function iValues() {
+  return {
+    date: document.getElementById('i-date').value,
+    business: document.getElementById('i-business').value,
+    source: document.getElementById('i-source').value.trim(),
+    amount: parseFloat(document.getElementById('i-amount').value) || 0,
+    period: document.getElementById('i-period').value.trim(),
+    reference: document.getElementById('i-reference').value.trim()
+  };
+}
+
+function updateBankedPreview() {
+  const v = iValues();
+  const valid = v.date && v.business && v.source && v.amount > 0;
+  document.getElementById('i-submit').disabled = !valid;
+  const preview = document.getElementById('i-preview');
+  if (!valid) { preview.style.display = 'none'; return; }
+  preview.style.display = '';
+  document.getElementById('i-preview-amt').textContent = moneyRound(v.amount);
+  document.getElementById('i-preview-biz').textContent = v.business;
+  document.getElementById('i-preview-src').textContent = v.source;
+  document.getElementById('i-preview-date').textContent = v.date;
+}
+
+async function submitBanked() {
+  const v = iValues();
+  if (!v.date || !v.business || !v.source || v.amount <= 0) return;
+  const row = {
+    id: 'I' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+    ts: new Date().toISOString(),
+    date: v.date,
+    business: v.business,
+    source: v.source,
+    amount: v.amount,
+    period: v.period,
+    reference: v.reference
+  };
+  STATE.banked = STATE.banked || [];
+  STATE.banked.push(row);
+  await storageSet(K_BANKED, STATE.banked);
+  document.getElementById('i-amount').value = '';
+  document.getElementById('i-source').value = '';
+  document.getElementById('i-period').value = '';
+  document.getElementById('i-reference').value = '';
+  updateBankedPreview();
+  renderRecentBanked();
+  showToast(`Income recorded · ${v.business} · Ksh ${moneyRound(v.amount)}`);
+  const synced = await syncBanked(row);
+  if (!synced) await queueForSync(row, 'banked');
+  updateSyncIndicator();
+}
+
+function renderRecentBanked() {
+  const list = [...(STATE.banked || [])].sort((a,b) => (b.ts || '').localeCompare(a.ts || '')).slice(0, 5);
+  const section = document.getElementById('i-recent-section');
+  if (list.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  document.getElementById('i-recent-count').textContent = (STATE.banked || []).length + ' total';
+  const box = document.getElementById('i-recent-list');
+  box.innerHTML = list.map(r => `
+    <div class="record-row" style="grid-template-columns:1fr auto auto">
+      <div>
+        <div class="name">${r.business}</div>
+        <div class="meta">${r.date} · ${r.source}${r.period ? ' · ' + r.period : ''}</div>
+      </div>
+      <div class="qty"></div>
+      <div class="val">Ksh ${moneyRound(r.amount)}</div>
+    </div>`).join('');
+}
+
+// ============ POULTRY SALES ============
+
+const POULTRY_PRODUCTS = ['Eggs', 'Chicks', 'Retired birds', 'Manure', 'Other'];
+const POULTRY_UNITS = ['No. of eggs', 'Trays', 'Birds', 'Bags', 'Kg', 'Other'];
+
+function yValues() {
+  return {
+    date: document.getElementById('y-date').value,
+    product: document.getElementById('y-product').value,
+    unit: document.getElementById('y-unit').value,
+    quantity: parseFloat(document.getElementById('y-quantity').value) || 0,
+    amount: parseFloat(document.getElementById('y-amount').value) || 0,
+    buyer: document.getElementById('y-buyer').value.trim(),
+    notes: document.getElementById('y-notes').value.trim()
+  };
+}
+
+function updatePoultryPreview() {
+  const v = yValues();
+  const valid = v.date && v.product && v.unit && v.quantity > 0 && v.amount > 0;
+  document.getElementById('y-submit').disabled = !valid;
+  const preview = document.getElementById('y-preview');
+  if (!valid) { preview.style.display = 'none'; return; }
+  preview.style.display = '';
+  document.getElementById('y-preview-amt').textContent = moneyRound(v.amount);
+  document.getElementById('y-preview-product').textContent = v.product;
+  document.getElementById('y-preview-qty').textContent = `${v.quantity} ${v.unit}`;
+  document.getElementById('y-preview-date').textContent = v.date;
+}
+
+async function submitPoultry() {
+  const v = yValues();
+  if (!v.date || !v.product || !v.unit || v.quantity <= 0 || v.amount <= 0) return;
+  const row = {
+    id: 'P' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+    ts: new Date().toISOString(),
+    date: v.date,
+    product: v.product,
+    unit: v.unit,
+    quantity: v.quantity,
+    amount: v.amount,
+    buyer: v.buyer,
+    notes: v.notes
+  };
+  STATE.poultry = STATE.poultry || [];
+  STATE.poultry.push(row);
+  await storageSet(K_POULTRY, STATE.poultry);
+  document.getElementById('y-quantity').value = '';
+  document.getElementById('y-amount').value = '';
+  document.getElementById('y-buyer').value = '';
+  document.getElementById('y-notes').value = '';
+  updatePoultryPreview();
+  renderRecentPoultry();
+  showToast(`Sale recorded · ${v.product} · Ksh ${moneyRound(v.amount)}`);
+  const synced = await syncPoultry(row);
+  if (!synced) await queueForSync(row, 'poultry');
+  updateSyncIndicator();
+}
+
+function renderRecentPoultry() {
+  const list = [...(STATE.poultry || [])].sort((a,b) => (b.ts || '').localeCompare(a.ts || '')).slice(0, 5);
+  const section = document.getElementById('y-recent-section');
+  if (list.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  document.getElementById('y-recent-count').textContent = (STATE.poultry || []).length + ' total';
+  const box = document.getElementById('y-recent-list');
+  box.innerHTML = list.map(r => `
+    <div class="record-row" style="grid-template-columns:1fr auto auto">
+      <div>
+        <div class="name">${r.product}</div>
+        <div class="meta">${r.date} · ${r.quantity} ${r.unit}${r.buyer ? ' · ' + r.buyer : ''}</div>
+      </div>
+      <div class="qty"></div>
+      <div class="val">Ksh ${moneyRound(r.amount)}</div>
+    </div>`).join('');
 }
 
 function monthEntries() {
@@ -3001,6 +3380,8 @@ function showToast(msg) {
   STATE.expenses = await storageGet(K_EXPENSES, []);
   const storedActuals = await storageGet(K_ACTUALS, []);
   STATE.actuals = storedActuals.map(a => ({ block: 'All blocks', ...a }));
+  STATE.banked = await storageGet(K_BANKED, []);
+  STATE.poultry = await storageGet(K_POULTRY, []);
   const storedFactories = await storageGet(K_FACTORIES, null);
   if (storedFactories && Array.isArray(storedFactories) && storedFactories.length > 0) STATE.factories = storedFactories;
   const storedPluckers = await storageGet(K_PLUCKERS, null);
@@ -3026,10 +3407,31 @@ function showToast(msg) {
     b.addEventListener('click', () => switchView(b.dataset.view));
   });
 
-  // Kind toggle (Greenleaf / Expense / Actuals)
+  // Business toggle (Tea / Poultry / Admin)
+  document.querySelectorAll('.biz-toggle button').forEach(b => {
+    b.addEventListener('click', () => switchBiz(b.dataset.biz));
+  });
+
+  // Kind toggles within each business
   document.querySelectorAll('.kind-toggle button').forEach(b => {
     b.addEventListener('click', () => switchKind(b.dataset.kind));
   });
+
+  // Banked Income
+  ['i-date','i-business','i-source','i-amount','i-period','i-reference'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', updateBankedPreview);
+    el.addEventListener('change', updateBankedPreview);
+  });
+  document.getElementById('i-submit').addEventListener('click', submitBanked);
+
+  // Poultry Sales
+  ['y-date','y-product','y-unit','y-quantity','y-amount','y-buyer','y-notes'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', updatePoultryPreview);
+    el.addEventListener('change', updatePoultryPreview);
+  });
+  document.getElementById('y-submit').addEventListener('click', submitPoultry);
 
   // Greenleaf Quick
   ['q-date','q-block','q-plucker','q-factory','q-qty'].forEach(id => {
