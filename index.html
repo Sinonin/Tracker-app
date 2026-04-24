@@ -557,6 +557,48 @@
   .sireet-history summary::-webkit-details-marker { color: var(--brass); }
   .sireet-history table { margin-top: 0.7rem; }
 
+  /* First-install splash — blocks app until initial cloud sync completes */
+  #first-install-splash {
+    position: fixed; inset: 0;
+    background: var(--forest-dark);
+    z-index: 9999;
+    display: flex; align-items: center; justify-content: center;
+    animation: fade-in 0.3s ease-out;
+  }
+  #first-install-splash .splash-inner {
+    text-align: center;
+    max-width: 320px;
+    padding: 0 2rem;
+  }
+  #first-install-splash .splash-logo {
+    width: 72px; height: 72px; margin: 0 auto 1.5rem;
+    background: url('icon-192.png') center/contain no-repeat;
+  }
+  #first-install-splash .splash-title {
+    font-family: 'Fraunces', serif;
+    font-style: italic; font-weight: 400;
+    font-size: 1.6rem;
+    color: var(--ivory);
+    letter-spacing: -0.01em;
+    margin-bottom: 0.6rem;
+  }
+  #first-install-splash .splash-sub {
+    font-family: 'Fraunces', serif;
+    font-size: 0.9rem;
+    color: var(--brass-light);
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+  }
+  #first-install-splash .splash-spinner {
+    width: 28px; height: 28px; margin: 0 auto;
+    border: 2px solid var(--brass);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
   .section {
     background: var(--ivory-card);
     border: 1px solid var(--rule);
@@ -1393,11 +1435,18 @@
         </div>
         <button id="btn-sync-now" class="export-btn">Sync now</button>
       </div>
+      <div class="setting-row">
+        <div>
+          <div class="k">Last cloud fetch</div>
+          <div class="desc" id="cloud-fetch-last">Never</div>
+        </div>
+        <button id="btn-cloud-resync" class="export-btn">Resync all</button>
+      </div>
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v2.7</span></div>
-      <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Greenleaf · Built for Sinonin Tea and Kipkenda Poultry, Nandi County. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, feeding the Sinonin Ledger workbook.</div>
+      <div class="section-head"><h3>About</h3><span class="meta">v2.8</span></div>
+      <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Greenleaf · Built for Sinonin Tea and Kipkenda Poultry, Nandi County. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
 
@@ -1524,6 +1573,9 @@ const K_EXPENSE_CATS = 'sinonin_expense_cats_v1';
 const K_SIREET_LEDGER = 'sinonin_sireet_ledger_v1';
 const K_BANKED = 'sinonin_banked_v1';
 const K_POULTRY = 'sinonin_poultry_v1';
+const K_CLOUD_SYNC = 'sinonin_cloud_sync_v1';
+
+const CLOUD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxUkCjQ7EtzfE4_DmxVnDLMUftKdiDBHifaSbK5-GHSLDZ9FhxmxugjFJJFk5nHRU2OPg/exec';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -1562,12 +1614,16 @@ let STATE = {
   entries: [],
   expenses: [],
   actuals: [],
+  banked: [],
+  poultry: [],
   factories: JSON.parse(JSON.stringify(DEFAULT_FACTORIES)),
   settings: { ...DEFAULT_SETTINGS },
   view: 'home',
   mode: 'quick',
   kind: 'greenleaf',
-  insightsPeriod: 'week'
+  biz: 'tea',
+  insightsPeriod: 'week',
+  cloudFetching: false
 };
 
 function computeEntry(e) {
@@ -1958,6 +2014,11 @@ async function updateSyncIndicator() {
   const txt = document.getElementById('sync-text');
   const dot = document.getElementById('sync-dot');
   if (!txt || !dot) return;
+  if (STATE.cloudFetching) {
+    dot.classList.remove('offline');
+    txt.textContent = 'Syncing…';
+    return;
+  }
   if (!navigator.onLine) {
     dot.classList.add('offline');
     txt.textContent = queue.length > 0 ? `Offline · ${queue.length} queued` : 'Offline';
@@ -1968,6 +2029,212 @@ async function updateSyncIndicator() {
     dot.classList.remove('offline');
     txt.textContent = 'Online';
   }
+}
+
+/* ============================================================
+   CLOUD READ LAYER — fetches from the Apps Script endpoint and
+   merges the response into local state. Called on app open and
+   when the user taps "Resync everything" in Settings.
+
+   Strategy: incremental by default (uses ?since=<last_sync>), with
+   a full-history fetch on first install or on manual full resync.
+   Merge rule: cloud rows are authoritative for the date range they
+   cover. Local rows not yet reflected in the cloud stay as-is.
+   ============================================================ */
+
+async function cloudFetch(since) {
+  if (!navigator.onLine) return null;
+  const url = since ? `${CLOUD_ENDPOINT}?since=${since}` : CLOUD_ENDPOINT;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data || data.ok !== true) return null;
+    return data;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Content-based identity keys — used to dedupe cloud rows against
+// local rows. If two rows have the same key, they are the same row.
+function pluckerKey(r) {
+  // plucker row from cloud has .plucker as "6. Gladys Yego" string;
+  // local row has .pluckerName. Normalise to the cloud form.
+  const name = r.plucker || (r.pluckerId != null ? `${r.pluckerId}. ${r.pluckerName}` : r.pluckerName || '');
+  return `${r.date}|${(r.block||'').trim()}|${name.trim()}|${Number(r.kg || r.qty || 0).toFixed(2)}|${(r.factory||'').trim()}`;
+}
+function actualKey(r) {
+  return `${r.date}|${(r.factory||'').trim()}|${(r.block||'').trim()}|${Number(r.kg || 0).toFixed(2)}`;
+}
+function expenseKey(r) {
+  return `${r.date}|${(r.category||'').trim()}|${Number(r.amount || 0).toFixed(2)}|${(r.block||'').trim()}|${(r.payee||'').trim()}`;
+}
+function bankedKey(r) {
+  return `${r.date}|${(r.business||'').trim()}|${(r.source||'').trim()}|${Number(r.amount || 0).toFixed(2)}|${(r.period||'').trim()}`;
+}
+function poultryKey(r) {
+  return `${r.date}|${(r.product||'').trim()}|${(r.unit||'').trim()}|${Number(r.quantity || 0).toFixed(2)}|${Number(r.amount || 0).toFixed(2)}`;
+}
+
+function mergeByKey(local, cloud, keyFn, mapCloud) {
+  // Build a set of local keys
+  const localKeys = new Set(local.map(keyFn));
+  // Start with all local rows — they stay
+  const merged = [...local];
+  // Add cloud rows that aren't already present locally
+  for (const cr of cloud) {
+    const mapped = mapCloud(cr);
+    if (!localKeys.has(keyFn(mapped))) {
+      merged.push(mapped);
+      localKeys.add(keyFn(mapped));
+    }
+  }
+  return merged;
+}
+
+// Cloud row shape → local row shape for each data type
+function cloudToLocalPlucker(r) {
+  // Parse "6. Gladys Yego" into id + name if possible
+  let pluckerId = null, pluckerName = r.plucker || '';
+  const m = /^(\d+)\.\s*(.+)$/.exec(r.plucker || '');
+  if (m) {
+    pluckerId = parseInt(m[1], 10);
+    pluckerName = m[2].trim();
+  }
+  return {
+    id: 'C-P-' + r.date + '-' + (pluckerId || pluckerName) + '-' + Number(r.kg).toFixed(2),
+    ts: r.timestamp || r.date + 'T00:00:00Z',
+    date: r.date,
+    block: r.block,
+    pluckerId: pluckerId,
+    pluckerName: pluckerName,
+    qty: Number(r.kg) || 0,
+    factory: r.factory,
+    _source: 'cloud'
+  };
+}
+function cloudToLocalActual(r) {
+  return {
+    id: 'C-A-' + r.date + '-' + (r.factory || '') + '-' + (r.block || '') + '-' + Number(r.kg).toFixed(2),
+    ts: r.timestamp || r.date + 'T00:00:00Z',
+    date: r.date,
+    factory: r.factory,
+    block: r.block || 'All blocks',
+    kg: Number(r.kg) || 0,
+    _source: 'cloud'
+  };
+}
+function cloudToLocalExpense(r) {
+  return {
+    id: 'C-X-' + r.date + '-' + (r.category || '') + '-' + Number(r.amount).toFixed(2) + '-' + (r.block || ''),
+    ts: r.timestamp || r.date + 'T00:00:00Z',
+    date: r.date,
+    tier: r.tier,
+    category: r.category,
+    description: r.description || '',
+    amount: Number(r.amount) || 0,
+    block: r.block || 'Whole farm',
+    payee: r.payee || '',
+    _source: r.source === 'history' ? 'history' : 'cloud'
+  };
+}
+function cloudToLocalBanked(r) {
+  return {
+    id: 'C-I-' + r.date + '-' + (r.business || '') + '-' + Number(r.amount).toFixed(2) + '-' + (r.period || ''),
+    ts: r.timestamp || r.date + 'T00:00:00Z',
+    date: r.date,
+    business: r.business,
+    source: r.source,
+    amount: Number(r.amount) || 0,
+    period: r.period || '',
+    reference: r.reference || '',
+    _source: 'cloud'
+  };
+}
+function cloudToLocalPoultry(r) {
+  return {
+    id: 'C-Y-' + r.date + '-' + (r.product || '') + '-' + Number(r.quantity).toFixed(2) + '-' + Number(r.amount).toFixed(2),
+    ts: r.timestamp || r.date + 'T00:00:00Z',
+    date: r.date,
+    product: r.product,
+    unit: r.unit,
+    quantity: Number(r.quantity) || 0,
+    amount: Number(r.amount) || 0,
+    buyer: r.buyer || '',
+    notes: r.notes || '',
+    _source: 'cloud'
+  };
+}
+
+async function applyCloudResponse(data) {
+  if (!data) return;
+  if (Array.isArray(data.pluckers)) {
+    STATE.entries = mergeByKey(STATE.entries, data.pluckers, pluckerKey, cloudToLocalPlucker);
+    await storageSet(K_ENTRIES, STATE.entries);
+  }
+  if (Array.isArray(data.actuals)) {
+    STATE.actuals = mergeByKey(STATE.actuals, data.actuals, actualKey, cloudToLocalActual);
+    await storageSet(K_ACTUALS, STATE.actuals);
+  }
+  if (Array.isArray(data.expenses)) {
+    STATE.expenses = mergeByKey(STATE.expenses, data.expenses, expenseKey, cloudToLocalExpense);
+    await storageSet(K_EXPENSES, STATE.expenses);
+  }
+  if (Array.isArray(data.banked)) {
+    STATE.banked = mergeByKey(STATE.banked || [], data.banked, bankedKey, cloudToLocalBanked);
+    await storageSet(K_BANKED, STATE.banked);
+  }
+  if (Array.isArray(data.poultry)) {
+    STATE.poultry = mergeByKey(STATE.poultry || [], data.poultry, poultryKey, cloudToLocalPoultry);
+    await storageSet(K_POULTRY, STATE.poultry);
+  }
+  const syncMeta = { lastCloudSync: new Date().toISOString(), lastSyncDate: new Date().toISOString().slice(0, 10) };
+  await storageSet(K_CLOUD_SYNC, syncMeta);
+}
+
+async function runCloudSync(opts) {
+  opts = opts || {};
+  const forceFullFetch = !!opts.full;
+  const meta = await storageGet(K_CLOUD_SYNC, null);
+  const hasHistory = !!(meta && meta.lastCloudSync);
+  STATE.cloudFetching = true;
+  updateSyncIndicator();
+  try {
+    // First install OR explicit full refresh → no ?since= parameter
+    const since = (forceFullFetch || !hasHistory) ? null : meta.lastSyncDate;
+    const data = await cloudFetch(since);
+    if (data) {
+      await applyCloudResponse(data);
+      // After apply, re-render any currently-visible view to reflect new data
+      if (STATE.view === 'home') renderHome();
+      else if (STATE.view === 'insights') renderInsights();
+      else if (STATE.view === 'records') renderRecords();
+    }
+    return data;
+  } finally {
+    STATE.cloudFetching = false;
+    updateSyncIndicator();
+  }
+}
+
+// First-install splash: blocks the app until the initial cloud sync completes.
+function showFirstInstallSplash() {
+  const splash = document.createElement('div');
+  splash.id = 'first-install-splash';
+  splash.innerHTML = `
+    <div class="splash-inner">
+      <div class="splash-logo"></div>
+      <div class="splash-title">Loading Sinonin Ledger</div>
+      <div class="splash-sub">Fetching your farm's full history — this may take a moment on first install.</div>
+      <div class="splash-spinner"></div>
+    </div>
+  `;
+  document.body.appendChild(splash);
+}
+function hideFirstInstallSplash() {
+  const splash = document.getElementById('first-install-splash');
+  if (splash) splash.remove();
 }
 
 function populateDropdowns() {
@@ -3061,6 +3328,22 @@ async function renderSyncStatus() {
   } else {
     lastEl.textContent = 'Never';
   }
+
+  // Cloud-fetch timestamp
+  const cloudMeta = await storageGet(K_CLOUD_SYNC, null);
+  const cloudEl = document.getElementById('cloud-fetch-last');
+  if (cloudEl) {
+    if (cloudMeta && cloudMeta.lastCloudSync) {
+      const when = new Date(cloudMeta.lastCloudSync);
+      const mins = Math.round((Date.now() - when.getTime()) / 60000);
+      if (mins < 1) cloudEl.textContent = 'just now';
+      else if (mins < 60) cloudEl.textContent = `${mins} min ago`;
+      else if (mins < 1440) cloudEl.textContent = `${Math.round(mins/60)} h ago`;
+      else cloudEl.textContent = when.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    } else {
+      cloudEl.textContent = 'Never';
+    }
+  }
 }
 
 function pluckerHasEntries(id) {
@@ -3515,6 +3798,32 @@ function showToast(msg) {
     showToast(queue.length === 0 ? 'All synced' : `${queue.length} still queued`);
   });
 
+  const btnResync = document.getElementById('btn-cloud-resync');
+  if (btnResync) {
+    btnResync.addEventListener('click', async () => {
+      if (!navigator.onLine) {
+        showToast('Offline — resync not possible right now');
+        return;
+      }
+      showToast('Resyncing from cloud…');
+      const data = await runCloudSync({ full: true });
+      await renderSyncStatus();
+      if (data) {
+        const counts = [
+          (data.pluckers || []).length,
+          (data.actuals || []).length,
+          (data.expenses || []).length,
+          (data.banked || []).length,
+          (data.poultry || []).length
+        ];
+        const total = counts.reduce((s, n) => s + n, 0);
+        showToast(`Resync complete · ${total} rows fetched`);
+      } else {
+        showToast('Resync failed — try again');
+      }
+    });
+  }
+
   window.addEventListener('online', async () => {
     await updateSyncIndicator();
     flushQueue();
@@ -3530,6 +3839,26 @@ function showToast(msg) {
   }
 
   renderHome();
+
+  // ======== CLOUD SYNC ON APP OPEN ========
+  // If this is the first install (no prior cloud sync), show the splash screen
+  // and block rendering until the full initial fetch completes. Otherwise
+  // run the incremental sync in the background and refresh views when done.
+  const syncMeta = await storageGet(K_CLOUD_SYNC, null);
+  const isFirstInstall = !syncMeta || !syncMeta.lastCloudSync;
+
+  if (isFirstInstall && navigator.onLine) {
+    showFirstInstallSplash();
+    try {
+      await runCloudSync({ full: true });
+    } catch (e) { /* swallow — app can still run on local-only */ }
+    hideFirstInstallSplash();
+    // Re-render home after first-sync populates state
+    renderHome();
+  } else {
+    // Returning user — fetch in background; views auto-refresh on completion
+    runCloudSync();
+  }
 })();
 </script>
 </body>
