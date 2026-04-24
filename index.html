@@ -2880,18 +2880,26 @@ function renderInsights() {
   const expenses = periodExpenses(STATE.insightsPeriod);
   const actuals = periodActuals(STATE.insightsPeriod);
 
-  // Block economics — now with allocated expenses and margin
+  // Block economics — kg and cash pulled from Actuals (revenue truth), expenses
+  // allocated by block, margin = cash − expenses. Pluckers excluded from this
+  // section; they live in Plucker rankings below.
   const byBlock = {};
-  BLOCKS.forEach(b => byBlock[b] = { kg: 0, cashNow: 0, labour: 0, bonus: 0, expenses: 0 });
-  entries.forEach(e => {
-    const c = computeEntry(e);
-    if (!c) return;
-    byBlock[e.block].kg       += e.qty;
-    byBlock[e.block].cashNow  += c.cashNow;
-    byBlock[e.block].labour   += c.labour;
-    byBlock[e.block].bonus    += c.bonus + c.greenleaf;
+  BLOCKS.forEach(b => byBlock[b] = { kg: 0, cashNow: 0, expenses: 0 });
+  byBlock['Consolidated'] = { kg: 0, cashNow: 0, expenses: 0 };
+
+  actuals.forEach(a => {
+    const factory = STATE.factories.find(f => f.name === a.factory);
+    const price = factory ? (factory.priceKg || 0) : 0;
+    const kg = Number(a.kg) || 0;
+    const cash = kg * price;
+    const b = a.block || 'All blocks';
+    const bucket = (b === 'All blocks' || b === 'All blocks (consolidated)') ? 'Consolidated'
+                 : (byBlock[b] ? b : 'Consolidated');
+    byBlock[bucket].kg      += kg;
+    byBlock[bucket].cashNow += cash;
   });
-  // Allocate expenses: block-specific goes to the block; "Whole farm" distributed proportionally by kg
+
+  // Expenses: block-specific to that block, "Whole farm" distributed by Actuals-kg share
   let wholeFarmExp = 0;
   expenses.forEach(x => {
     if (x.block === 'Whole farm' || !byBlock[x.block]) {
@@ -2906,16 +2914,18 @@ function renderInsights() {
   }
   Object.values(byBlock).forEach(v => { v.margin = v.cashNow - v.expenses; });
 
-  const blockRows = Object.entries(byBlock).filter(([,v]) => v.kg > 0 || v.expenses > 0).sort((a,b) => b[1].kg - a[1].kg);
+  const blockRows = Object.entries(byBlock)
+    .filter(([,v]) => v.kg > 0 || v.expenses > 0)
+    .sort((a,b) => b[1].kg - a[1].kg);
   const box = document.getElementById('econ-blocks');
   if (blockRows.length === 0) {
-    box.innerHTML = `<div class="empty" style="padding:1.5rem 0"><div class="em">No data for this period.</div></div>`;
+    box.innerHTML = `<div class="empty" style="padding:1.5rem 0"><div class="em">No actuals or expenses this period.</div></div>`;
   } else {
     box.innerHTML = blockRows.map(([name, v]) => `
       <div class="econ-card">
         <div class="econ-head"><span class="t">${name}</span><span class="k">${kg(v.kg)} kg</span></div>
         <div class="econ-grid">
-          <div class="econ-item"><div class="l">Cash now</div><div class="v">${moneyRound(v.cashNow)}</div></div>
+          <div class="econ-item"><div class="l">Income</div><div class="v">${moneyRound(v.cashNow)}</div></div>
           <div class="econ-item"><div class="l">Expenses</div><div class="v">${moneyRound(v.expenses)}</div></div>
           <div class="econ-item"><div class="l">Margin</div><div class="v">${moneyRound(v.margin)}</div></div>
         </div>
@@ -2936,12 +2946,15 @@ function renderInsights() {
   });
   renderExpenseTable('tbl-expenses', byCat);
 
-  // Factory mix
+  // Factory mix — kg and income expected, both from Actuals
   const byFac = {};
-  entries.forEach(e => {
-    byFac[e.factory] = byFac[e.factory] || { kg: 0, total: 0 };
-    byFac[e.factory].kg += e.qty;
-    const c = computeEntry(e); if (c) byFac[e.factory].total += c.total;
+  actuals.forEach(a => {
+    const factory = STATE.factories.find(f => f.name === a.factory);
+    const price = factory ? (factory.priceKg || 0) : 0;
+    const kg = Number(a.kg) || 0;
+    byFac[a.factory] = byFac[a.factory] || { kg: 0, total: 0 };
+    byFac[a.factory].kg += kg;
+    byFac[a.factory].total += kg * price;
   });
   renderMiniTable('tbl-factory', 'Factory', byFac);
 
