@@ -691,6 +691,8 @@
   }
   .type-badge.expense { background: var(--brass); color: var(--forest-dark); }
   .type-badge.actual { background: var(--forest); color: var(--ivory); }
+  .type-badge.banked { background: var(--forest-dark); color: var(--brass-light); }
+  .type-badge.poultry { background: var(--terracotta, #b8714d); color: var(--ivory); }
 
   .filter-bar { display: flex; gap: 0.5rem; margin-bottom: 0.9rem; flex-wrap: wrap; }
   .filter-bar select {
@@ -1081,8 +1083,10 @@
       <select id="filter-type">
         <option value="all" selected>All Types</option>
         <option value="greenleaf">Greenleaf</option>
-        <option value="expense">Expenses</option>
         <option value="actual">Actuals</option>
+        <option value="expense">Expenses</option>
+        <option value="banked">Banked Income</option>
+        <option value="poultry">Poultry</option>
       </select>
       <select id="filter-period">
         <option value="today">Today</option>
@@ -2746,14 +2750,14 @@ const POULTRY_PRODUCTS = ['Eggs', 'Chicks', 'Chicken', 'Other'];
 const POULTRY_STAGES = [
   'Normal eggs',
   'Broken eggs',
+  'Small/Abnormal Eggs',
   'Chicks 1\u20137 days',
   'Chicks 7\u201328 days',
   'Growers',
   'Layers',
   'Cockerels',
   'Retired birds',
-  'Deformities',
-  'Other'
+  'Deformities'
 ];
 const POULTRY_UNITS = ['No. of eggs', 'Trays', 'Birds', 'Bags', 'Kg', 'Other'];
 const POULTRY_PAYMENT_METHODS = ['TILL', 'MPESA', 'PayBill', 'Cash', 'Bank'];
@@ -3006,6 +3010,22 @@ function filterRecords() {
       list.push({ ...a, _kind: 'actual' });
     });
   }
+  if (type === 'all' || type === 'banked') {
+    (STATE.banked || []).forEach(b => {
+      if (!byDate(b.date)) return;
+      if (block) return;     // banked income has no block dimension
+      if (factory) return;   // banked income has no factory dimension
+      list.push({ ...b, _kind: 'banked' });
+    });
+  }
+  if (type === 'all' || type === 'poultry') {
+    (STATE.poultry || []).forEach(p => {
+      if (!byDate(p.date)) return;
+      if (block) return;     // poultry has no block dimension
+      if (factory) return;   // poultry has no factory dimension
+      list.push({ ...p, _kind: 'poultry' });
+    });
+  }
   return list.sort((a,b) => (b.ts || '').localeCompare(a.ts || ''));
 }
 
@@ -3058,6 +3078,33 @@ function renderRecords() {
           <button class="del" data-kind="actual" data-id="${r.id}" title="Delete">×</button>
         </div>`;
     }
+    if (r._kind === 'banked') {
+      const subtitle = [r.date, r.business, r.source, r.period].filter(Boolean).join(' · ');
+      return `
+        <div class="record-row">
+          <div>
+            <div class="name"><span class="type-badge banked">Banked</span>${r.business || 'Income'}${r.source ? ' · ' + r.source : ''}</div>
+            <div class="meta">${subtitle}${r.reference ? ' · ' + r.reference : ''}</div>
+          </div>
+          <div class="qty"></div>
+          <div class="val">Ksh ${moneyRound(r.amount)}</div>
+          <button class="del" data-kind="banked" data-id="${r.id}" title="Delete">×</button>
+        </div>`;
+    }
+    if (r._kind === 'poultry') {
+      const head = `${r.product || 'Poultry'}${r.stage ? ' · ' + r.stage : ''}`;
+      const meta = `${r.date} · ${r.quantity || 0} ${r.unit || ''}${r.payment_method ? ' · ' + r.payment_method : ''}${r.buyer ? ' · ' + r.buyer : ''}`;
+      return `
+        <div class="record-row">
+          <div>
+            <div class="name"><span class="type-badge poultry">Poultry</span>${head}</div>
+            <div class="meta">${meta}</div>
+          </div>
+          <div class="qty"></div>
+          <div class="val">Ksh ${moneyRound(r.amount)}</div>
+          <button class="del" data-kind="poultry" data-id="${r.id}" title="Delete">×</button>
+        </div>`;
+    }
     return '';
   }).join('');
   box.querySelectorAll('.del').forEach(b => {
@@ -3068,6 +3115,8 @@ function renderRecords() {
       if (k === 'greenleaf') { STATE.entries = STATE.entries.filter(x => x.id !== id); await storageSet(K_ENTRIES, STATE.entries); }
       if (k === 'expense')   { STATE.expenses = STATE.expenses.filter(x => x.id !== id); await storageSet(K_EXPENSES, STATE.expenses); }
       if (k === 'actual')    { STATE.actuals = STATE.actuals.filter(x => x.id !== id); await storageSet(K_ACTUALS, STATE.actuals); }
+      if (k === 'banked')    { STATE.banked = (STATE.banked || []).filter(x => x.id !== id); await storageSet(K_BANKED, STATE.banked); }
+      if (k === 'poultry')   { STATE.poultry = (STATE.poultry || []).filter(x => x.id !== id); await storageSet(K_POULTRY, STATE.poultry); }
       renderRecords();
     });
   });
