@@ -1285,10 +1285,11 @@
       </div>
       <div class="field"><label>Stage</label><select id="y-stage"></select></div>
       <div class="pair">
-        <div class="field"><label>Unit</label><select id="y-unit"></select></div>
         <div class="field"><label>Quantity</label><input type="number" id="y-quantity" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+        <div class="field"><label>Unit</label><select id="y-unit"></select></div>
       </div>
       <div class="field"><label>Amount (Ksh)</label><input type="number" id="y-amount" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+      <div class="field"><label>Payment method</label><select id="y-payment"></select></div>
       <div class="field"><label>Buyer (optional)</label><input type="text" id="y-buyer" placeholder="Customer name" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
 
       <button class="submit" id="y-submit" disabled>Record Sale</button>
@@ -1693,13 +1694,14 @@ const BANKED_FORM_FIELDS = {
 };
 const POULTRY_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSd1khjADGI007KNni5NXmd_r0-J4MSZvqyNG1uysjqzrMTs3Q/formResponse';
 const POULTRY_FORM_FIELDS = {
-  date:     'entry.580998495',
-  product:  'entry.768948373',
-  stage:    'entry.396849479',
-  unit:     'entry.1483594964',
-  quantity: 'entry.2101059254',
-  amount:   'entry.935543283',
-  buyer:    'entry.382131237'
+  date:           'entry.580998495',
+  product:        'entry.768948373',
+  stage:          'entry.396849479',
+  quantity:       'entry.2101059254',
+  unit:           'entry.1483594964',
+  amount:         'entry.935543283',
+  payment_method: 'entry.417919136',
+  buyer:          'entry.382131237'
 };
 const K_SYNC_QUEUE = 'sinonin_sync_queue_v1';
 const K_SYNC_STATS = 'sinonin_sync_stats_v1';
@@ -1934,9 +1936,10 @@ async function pushPoultryToForm(row) {
   params.set(POULTRY_FORM_FIELDS.date, row.date);
   params.set(POULTRY_FORM_FIELDS.product, row.product);
   params.set(POULTRY_FORM_FIELDS.stage, row.stage || '');
-  params.set(POULTRY_FORM_FIELDS.unit, row.unit);
   params.set(POULTRY_FORM_FIELDS.quantity, String(row.quantity));
+  params.set(POULTRY_FORM_FIELDS.unit, row.unit);
   params.set(POULTRY_FORM_FIELDS.amount, String(row.amount));
+  params.set(POULTRY_FORM_FIELDS.payment_method, row.payment_method || '');
   params.set(POULTRY_FORM_FIELDS.buyer, row.buyer || '');
   try {
     await fetch(POULTRY_FORM_URL, {
@@ -2162,6 +2165,7 @@ function cloudToLocalPoultry(r) {
     unit: r.unit,
     quantity: Number(r.quantity) || 0,
     amount: Number(r.amount) || 0,
+    payment_method: r.payment_method || r.paymentMethod || '',
     buyer: r.buyer || '',
     _source: 'cloud'
   };
@@ -2255,6 +2259,7 @@ function populateDropdowns() {
   document.getElementById('y-product').innerHTML = '<option value="">— Product —</option>' + POULTRY_PRODUCTS.map(p => `<option value="${p}">${p}</option>`).join('');
   document.getElementById('y-stage').innerHTML = '<option value="">— Stage —</option>' + POULTRY_STAGES.map(s => `<option value="${s}">${s}</option>`).join('');
   document.getElementById('y-unit').innerHTML = '<option value="">— Unit —</option>' + POULTRY_UNITS.map(u => `<option value="${u}">${u}</option>`).join('');
+  document.getElementById('y-payment').innerHTML = '<option value="">— Method —</option>' + POULTRY_PAYMENT_METHODS.map(m => `<option value="${m}">${m}</option>`).join('');
 
   const todayIso = new Date().toISOString().slice(0,10);
   document.getElementById('q-date').value = todayIso;
@@ -2751,6 +2756,7 @@ const POULTRY_STAGES = [
   'Other'
 ];
 const POULTRY_UNITS = ['No. of eggs', 'Trays', 'Birds', 'Bags', 'Kg', 'Other'];
+const POULTRY_PAYMENT_METHODS = ['TILL', 'MPESA', 'PayBill', 'Cash', 'Bank'];
 
 function yValues() {
   return {
@@ -2760,26 +2766,27 @@ function yValues() {
     unit: document.getElementById('y-unit').value,
     quantity: parseFloat(document.getElementById('y-quantity').value) || 0,
     amount: parseFloat(document.getElementById('y-amount').value) || 0,
+    payment_method: document.getElementById('y-payment').value,
     buyer: document.getElementById('y-buyer').value.trim()
   };
 }
 
 function updatePoultryPreview() {
   const v = yValues();
-  const valid = v.date && v.product && v.stage && v.unit && v.quantity > 0 && v.amount > 0;
+  const valid = v.date && v.product && v.stage && v.unit && v.quantity > 0 && v.amount > 0 && v.payment_method;
   document.getElementById('y-submit').disabled = !valid;
   const preview = document.getElementById('y-preview');
   if (!valid) { preview.style.display = 'none'; return; }
   preview.style.display = '';
   document.getElementById('y-preview-amt').textContent = moneyRound(v.amount);
   document.getElementById('y-preview-product').textContent = `${v.product} · ${v.stage}`;
-  document.getElementById('y-preview-qty').textContent = `${v.quantity} ${v.unit}`;
+  document.getElementById('y-preview-qty').textContent = `${v.quantity} ${v.unit} · ${v.payment_method}`;
   document.getElementById('y-preview-date').textContent = v.date;
 }
 
 async function submitPoultry() {
   const v = yValues();
-  if (!v.date || !v.product || !v.stage || !v.unit || v.quantity <= 0 || v.amount <= 0) return;
+  if (!v.date || !v.product || !v.stage || !v.unit || v.quantity <= 0 || v.amount <= 0 || !v.payment_method) return;
   const row = {
     id: 'P' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
     ts: new Date().toISOString(),
@@ -2789,6 +2796,7 @@ async function submitPoultry() {
     unit: v.unit,
     quantity: v.quantity,
     amount: v.amount,
+    payment_method: v.payment_method,
     buyer: v.buyer
   };
   STATE.poultry = STATE.poultry || [];
@@ -2799,7 +2807,7 @@ async function submitPoultry() {
   document.getElementById('y-buyer').value = '';
   updatePoultryPreview();
   renderRecentPoultry();
-  showToast(`Sale recorded · ${v.product} · ${v.stage} · Ksh ${moneyRound(v.amount)}`);
+  showToast(`Sale recorded · ${v.product} · ${v.payment_method} · Ksh ${moneyRound(v.amount)}`);
   const synced = await syncPoultry(row);
   if (!synced) await queueForSync(row, 'poultry');
   updateSyncIndicator();
@@ -2816,7 +2824,7 @@ function renderRecentPoultry() {
     <div class="record-row" style="grid-template-columns:1fr auto auto">
       <div>
         <div class="name">${r.product}${r.stage ? ' · ' + r.stage : ''}</div>
-        <div class="meta">${r.date} · ${r.quantity} ${r.unit}${r.buyer ? ' · ' + r.buyer : ''}</div>
+        <div class="meta">${r.date} · ${r.quantity} ${r.unit}${r.payment_method ? ' · ' + r.payment_method : ''}${r.buyer ? ' · ' + r.buyer : ''}</div>
       </div>
       <div class="qty"></div>
       <div class="val">Ksh ${moneyRound(r.amount)}</div>
@@ -3734,7 +3742,7 @@ function showToast(msg) {
   document.getElementById('i-submit').addEventListener('click', submitBanked);
 
   // Poultry Sales
-  ['y-date','y-product','y-stage','y-unit','y-quantity','y-amount','y-buyer'].forEach(id => {
+  ['y-date','y-product','y-stage','y-unit','y-quantity','y-amount','y-payment','y-buyer'].forEach(id => {
     const el = document.getElementById(id);
     el.addEventListener('input', updatePoultryPreview);
     el.addEventListener('change', updatePoultryPreview);
