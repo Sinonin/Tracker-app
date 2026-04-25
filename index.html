@@ -501,6 +501,38 @@
   .stat-card .val { font-family: 'Fraunces', serif; font-weight: 500; font-size: 1.3rem; color: var(--forest); margin-top: 0.2rem; letter-spacing: -0.01em; line-height: 1.1; }
   .stat-card .sub { font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; color: var(--slate-light); letter-spacing: 0.08em; margin-top: 0.25rem; }
 
+  /* Hero whole-farm cashflow band */
+  .hero-cashflow .stat-val { font-size: 1.55rem; }
+  .hero-margin-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-top: 0.85rem; padding-top: 0.7rem;
+    border-top: 1px solid rgba(212, 175, 100, 0.25);
+  }
+  .hero-margin-row .margin-lbl {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--brass-light);
+  }
+  .hero-margin-row .margin-val {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 400;
+    font-size: 1.4rem; color: var(--ivory);
+    letter-spacing: -0.01em;
+  }
+  .hero-margin-row .margin-val.negative { color: #d99c70; }
+
+  /* Per-business stat cards */
+  .biz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .biz-card {
+    background: var(--ivory-card);
+    border: 1px solid var(--rule);
+    padding: 0.75rem 0.85rem 0.8rem;
+    border-radius: 2px;
+    border-left: 2px solid var(--forest);
+  }
+  .biz-card .lbl { font-family: 'IBM Plex Mono', monospace; font-size: 0.57rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--slate); }
+  .biz-card .val { font-family: 'Fraunces', serif; font-weight: 500; font-size: 1.15rem; color: var(--forest); margin-top: 0.18rem; letter-spacing: -0.01em; line-height: 1.15; }
+  .biz-card .sub { font-family: 'Fraunces', serif; font-size: 0.78rem; color: var(--slate-light); margin-top: 0.22rem; font-style: italic; }
+
   .sireet-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.55rem; }
   .sireet-card {
     background: var(--ivory-warm);
@@ -693,6 +725,28 @@
   .type-badge.actual { background: var(--forest); color: var(--ivory); }
   .type-badge.banked { background: var(--forest-dark); color: var(--brass-light); }
   .type-badge.poultry { background: var(--terracotta, #b8714d); color: var(--ivory); }
+
+  .records-totals {
+    background: var(--ivory-warm);
+    border: 1px solid var(--rule);
+    border-left: 2px solid var(--brass);
+    padding: 0.6rem 0.85rem;
+    margin-bottom: 0.7rem;
+    font-family: 'Fraunces', serif;
+    font-size: 0.85rem;
+    color: var(--forest);
+    line-height: 1.4;
+  }
+  .records-totals .total-row { display: flex; justify-content: space-between; align-items: baseline; }
+  .records-totals .total-lbl { font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--slate); }
+  .records-totals .total-val { font-weight: 500; color: var(--forest); }
+  .records-totals .meta-line { font-size: 0.78rem; color: var(--slate-light); font-style: italic; margin-top: 0.2rem; }
+
+  .records-more {
+    text-align: center;
+    margin-top: 0.8rem;
+    margin-bottom: 0.4rem;
+  }
 
   .filter-bar { display: flex; gap: 0.5rem; margin-bottom: 0.9rem; flex-wrap: wrap; }
   .filter-bar select {
@@ -1042,33 +1096,50 @@
       <div class="greeting" id="hero-greeting">Habari ya asubuhi</div>
       <div class="date" id="hero-date"></div>
       <div class="motto">Sinonin Tea · The Tea of Champions</div>
-      <div class="stats">
+      <div class="stats hero-cashflow">
         <div>
-          <div class="stat-lbl">This month · factory confirmed</div>
-          <div class="stat-val" id="hero-kg">0<span class="unit">kg</span></div>
+          <div class="stat-lbl">Income · this month</div>
+          <div class="stat-val" id="hero-income">0</div>
         </div>
         <div>
-          <div class="stat-lbl">Income expected</div>
-          <div class="stat-val" id="hero-cash">0</div>
+          <div class="stat-lbl">Expenses · this month</div>
+          <div class="stat-val" id="hero-expenses">0</div>
         </div>
+      </div>
+      <div class="hero-margin-row">
+        <div class="margin-lbl">Margin</div>
+        <div class="margin-val" id="hero-margin">Ksh 0</div>
       </div>
     </div>
 
-    <div class="stat-grid">
-      <div class="stat-card"><div class="lbl">Labour owed</div><div class="val" id="home-labour">Ksh 0</div><div class="sub">to pluckers</div></div>
-      <div class="stat-card"><div class="lbl">Bonus accrued</div><div class="val" id="home-bonus">Ksh 0</div><div class="sub">paid later</div></div>
-      <div class="stat-card"><div class="lbl">Expenses</div><div class="val" id="home-expenses">Ksh 0</div><div class="sub">this month</div></div>
-      <div class="stat-card"><div class="lbl">Margin</div><div class="val" id="home-margin">Ksh 0</div><div class="sub">income − labour − exp</div></div>
+    <div class="section">
+      <div class="section-head"><h3>Sinonin Tea</h3><span class="meta">this month</span></div>
+      <div class="biz-grid">
+        <div class="biz-card"><div class="lbl">Factory-confirmed kg</div><div class="val" id="tea-kg-month">0</div><div class="sub">all factories</div></div>
+        <div class="biz-card"><div class="lbl">Expected income</div><div class="val" id="tea-expected-month">Ksh 0</div><div class="sub">net after transport &amp; equity</div></div>
+        <div class="biz-card"><div class="lbl">Wages paid</div><div class="val" id="tea-wages-month">Ksh 0</div><div class="sub">to pluckers, daily cash</div></div>
+        <div class="biz-card"><div class="lbl">Sireet equity built</div><div class="val" id="tea-shares-month">Ksh 0</div><div class="sub">5 KES/kg accrued</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>Kipkenda Poultry</h3><span class="meta">this month</span></div>
+      <div class="biz-grid">
+        <div class="biz-card"><div class="lbl">Eggs income</div><div class="val" id="poultry-eggs-month">Ksh 0</div><div class="sub">received this month</div></div>
+        <div class="biz-card"><div class="lbl">Live birds income</div><div class="val" id="poultry-birds-month">Ksh 0</div><div class="sub">chicks &amp; chicken</div></div>
+        <div class="biz-card"><div class="lbl">Eggs sold</div><div class="val" id="poultry-eggs-count">0</div><div class="sub">sales this month</div></div>
+        <div class="biz-card"><div class="lbl">Live birds sold</div><div class="val" id="poultry-birds-count">0</div><div class="sub">sales this month</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>Tea — block performance</h3><span class="meta">this month</span></div>
+      <div id="block-bars"></div>
     </div>
 
     <div class="section" id="home-recon-section" style="display:none">
       <div class="section-head"><h3>Recorded vs Actual</h3><span class="meta">this month</span></div>
       <div id="home-recon"></div>
-    </div>
-
-    <div class="section">
-      <div class="section-head"><h3>Block performance</h3><span class="meta">this month</span></div>
-      <div id="block-bars"></div>
     </div>
 
     <div class="section">
@@ -1101,7 +1172,11 @@
       <h3 id="records-count">All records</h3>
       <button class="export-btn" id="btn-export">Export CSV</button>
     </div>
+    <div id="records-totals" class="records-totals" style="display:none"></div>
     <div id="records-list"></div>
+    <div id="records-more" class="records-more" style="display:none">
+      <button id="btn-show-all" class="export-btn">Show all <span id="records-more-count"></span></button>
+    </div>
   </section>
 
   <!-- ADD -->
@@ -1450,7 +1525,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v3.0</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v3.1</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Greenleaf · Built for Sinonin Tea and Kipkenda Poultry, Nandi County. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -1496,11 +1571,56 @@
 const BLOCKS = ['Sinonin', 'Cheptabach', 'Bitonin', 'Kipkenda', 'Kipkorom', 'Sangalo'];
 
 const DEFAULT_FACTORIES = [
-  { name: "Sang'alo",  priceKg: 25.5, transport: 0,    shares: 0, wageKg: 8,    bonusKg: 0,   greenleaf: 0  },
-  { name: "Sireet",    priceKg: 25.0, transport: 3.99, shares: 5, wageKg: 9.5,  bonusKg: 0.5, greenleaf: 13 },
-  { name: "Chebut",    priceKg: 26.0, transport: 5,    shares: 0, wageKg: 7,    bonusKg: 0,   greenleaf: 15 },
-  { name: "Kapchorua", priceKg: 23.0, transport: 0,    shares: 0, wageKg: 10,   bonusKg: 0,   greenleaf: 0  }
+  { name: "Sireet",    priceKg: 25,   transport: 3.90, shares: 5, wageKg: 9.5,  bonusKg: 0.5, greenleaf: 13 },
+  { name: "Sang'alo",  priceKg: 23,   transport: 0,    shares: 0, wageKg: 8,    bonusKg: 0,   greenleaf: 0  },
+  { name: "Kapchorua", priceKg: 24,   transport: 3,    shares: 0, wageKg: 10,   bonusKg: 0,   greenleaf: 0  },
+  { name: "Chebut",    priceKg: 26,   transport: 5,    shares: 0, wageKg: 7,    bonusKg: 0,   greenleaf: 15 }
 ];
+
+/* Factory rate history — applied per Actuals row based on its date.
+   Each era runs from `from` (inclusive) until the next era begins.
+   Net per kg = priceKg − transport − shares.
+   Used for accurate Tea expected-income calculation across years. */
+const FACTORY_RATE_HISTORY = {
+  "Sireet": [
+    { from: '2019-01-01', priceKg: 23, transport: 3.50, shares: 5 },  // pre-2024 era
+    { from: '2024-01-01', priceKg: 25, transport: 3.90, shares: 5 }   // current era
+  ],
+  "Sang'alo": [
+    { from: '2019-01-01', priceKg: 15, transport: 0, shares: 0 },     // 2019-2022
+    { from: '2023-01-01', priceKg: 20, transport: 0, shares: 0 },     // 2023-2024
+    { from: '2025-01-01', priceKg: 23, transport: 0, shares: 0 }      // 2025+
+  ],
+  "Kapchorua": [
+    { from: '2026-01-01', priceKg: 24, transport: 3, shares: 0 }      // started 2026, Kipkorom only
+  ],
+  "Chebut": [
+    // not yet supplying; keep current-rate placeholder if data appears
+    { from: '2019-01-01', priceKg: 26, transport: 5, shares: 0 }
+  ]
+};
+
+/* Look up the factory's rate active on a given date (YYYY-MM-DD). */
+function rateForDate(factory, dateStr) {
+  const eras = FACTORY_RATE_HISTORY[factory];
+  if (!eras || eras.length === 0) return null;
+  // Find the last era whose `from` is <= dateStr
+  let chosen = eras[0];
+  for (const era of eras) {
+    if (era.from <= dateStr) chosen = era;
+    else break;
+  }
+  return chosen;
+}
+
+/* Net (banked) per kg for a factory on a date — what hits the bank after
+   transport and equity deductions. Used for "expected income" calculations
+   that approximate what tea production should eventually wire to the bank. */
+function netPerKg(factory, dateStr) {
+  const r = rateForDate(factory, dateStr);
+  if (!r) return 0;
+  return Math.max(0, r.priceKg - r.transport - r.shares);
+}
 
 const DEFAULT_PLUCKERS = [
   { id: 5,  name: "Cheptabach",          bonus: true,  active: true },
@@ -2849,38 +2969,53 @@ function renderHome() {
 
   const entries = monthEntries();
   const ym = new Date().toISOString().slice(0,7);
-  const expensesMonth = STATE.expenses.filter(x => x.date.startsWith(ym));
-  const actualsMonth = STATE.actuals.filter(a => a.date.startsWith(ym));
+  const expensesMonth = STATE.expenses.filter(x => (x.date || '').startsWith(ym));
+  const actualsMonth = STATE.actuals.filter(a => (a.date || '').startsWith(ym));
+  const bankedMonth = (STATE.banked || []).filter(b => (b.date || '').startsWith(ym));
+  const poultryMonth = (STATE.poultry || []).filter(p => (p.date || '').startsWith(ym));
 
-  // Hero — revenue truth from Actuals (factory-confirmed), not plucker entries
-  let actualKg = 0, incomeExpected = 0;
-  actualsMonth.forEach(a => {
-    const f = STATE.factories.find(fac => fac.name === a.factory);
-    const price = f ? (f.priceKg || 0) : 0;
-    actualKg += Number(a.kg) || 0;
-    incomeExpected += (Number(a.kg) || 0) * price;
-  });
+  // Zone 1 — whole-farm cashflow this month
+  const allIncome = bankedMonth.reduce((s, b) => s + (b.amount || 0), 0)
+                  + poultryMonth.reduce((s, p) => s + (p.amount || 0), 0);
+  const allExpenses = expensesMonth.reduce((s, x) => s + (x.amount || 0), 0);
+  const margin = allIncome - allExpenses;
 
-  // Plucker payroll cost — what we owe pluckers (wage + accrued bonus)
-  let labour = 0, bonus = 0;
+  document.getElementById('hero-income').textContent = 'Ksh ' + moneyRound(allIncome);
+  document.getElementById('hero-expenses').textContent = 'Ksh ' + moneyRound(allExpenses);
+  const marginEl = document.getElementById('hero-margin');
+  marginEl.textContent = 'Ksh ' + moneyRound(margin);
+  marginEl.classList.toggle('negative', margin < 0);
+
+  // Zone 2a — Sinonin Tea this month
+  const teaKgMonth = actualsMonth.reduce((s, a) => s + (Number(a.kg) || 0), 0);
+  const teaExpectedMonth = actualsMonth.reduce((s, a) => s + (Number(a.kg) || 0) * netPerKg(a.factory, a.date), 0);
+  // Wages = sum of plucker wage costs from this month's Greenleaf entries (paid daily as cash)
+  let teaWagesMonth = 0;
   entries.forEach(e => {
     const c = computeEntry(e);
-    if (c) { labour += c.labour; bonus += c.bonus + c.greenleaf; }
+    if (c) teaWagesMonth += c.labour;
   });
+  const teaShareMonth = actualsMonth
+    .filter(a => a.factory === 'Sireet')
+    .reduce((s, a) => s + (Number(a.kg) || 0) * 5, 0);
 
-  const expenseTotal = expensesMonth.reduce((s, x) => s + (x.amount || 0), 0);
-  // Margin = income expected from factory (Actuals) minus labour minus expenses.
-  // Bonus is accrued (not yet paid) so it's a liability, not a cash outflow — excluded from margin.
-  const margin = incomeExpected - labour - expenseTotal;
+  document.getElementById('tea-kg-month').innerHTML = kg(teaKgMonth) + '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:0.7rem;color:var(--slate-light);margin-left:0.25rem;">kg</span>';
+  document.getElementById('tea-expected-month').textContent = 'Ksh ' + moneyRound(teaExpectedMonth);
+  document.getElementById('tea-wages-month').textContent = 'Ksh ' + moneyRound(teaWagesMonth);
+  document.getElementById('tea-shares-month').textContent = 'Ksh ' + moneyRound(teaShareMonth);
 
-  document.getElementById('hero-kg').innerHTML = kg(actualKg) + '<span class="unit">kg</span>';
-  document.getElementById('hero-cash').textContent = 'Ksh ' + moneyRound(incomeExpected);
-  document.getElementById('home-labour').textContent = 'Ksh ' + moneyRound(labour);
-  document.getElementById('home-bonus').textContent = 'Ksh ' + moneyRound(bonus);
-  document.getElementById('home-expenses').textContent = 'Ksh ' + moneyRound(expenseTotal);
-  document.getElementById('home-margin').textContent = 'Ksh ' + moneyRound(margin);
+  // Zone 2b — Kipkenda Poultry this month
+  const eggsRows = poultryMonth.filter(p => p.product === 'Eggs');
+  const birdRows = poultryMonth.filter(p => p.product === 'Chicks' || p.product === 'Chicken');
+  const eggsIncome = eggsRows.reduce((s, p) => s + (p.amount || 0), 0);
+  const birdsIncome = birdRows.reduce((s, p) => s + (p.amount || 0), 0);
 
-  // Block bars — driven by Actuals kg per block, with a separate bucket for consolidated loads
+  document.getElementById('poultry-eggs-month').textContent = 'Ksh ' + moneyRound(eggsIncome);
+  document.getElementById('poultry-birds-month').textContent = 'Ksh ' + moneyRound(birdsIncome);
+  document.getElementById('poultry-eggs-count').textContent = String(eggsRows.length);
+  document.getElementById('poultry-birds-count').textContent = String(birdRows.length);
+
+  // Zone 3 — Tea block bars (unchanged from prior behaviour)
   const byBlock = {};
   BLOCKS.forEach(b => byBlock[b] = 0);
   let consolidatedKg = 0;
@@ -2896,8 +3031,8 @@ function renderHome() {
   if (consolidatedKg > 0) sorted.push(['Consolidated loads', consolidatedKg]);
   const topKg = sorted[0]?.[1] || 1;
   const barsBox = document.getElementById('block-bars');
-  if (actualKg === 0) {
-    barsBox.innerHTML = `<div class="empty"><div class="em">No factory actuals yet this month.</div><div class="sub">Income figures update as SMS confirmations arrive</div></div>`;
+  if (teaKgMonth === 0) {
+    barsBox.innerHTML = `<div class="empty"><div class="em">No factory actuals yet this month.</div><div class="sub">Numbers update as SMS confirmations arrive</div></div>`;
   } else {
     barsBox.innerHTML = sorted.filter(([, k]) => k > 0).map(([n, k]) => `
       <div class="block-bar">
@@ -2906,7 +3041,7 @@ function renderHome() {
       </div>`).join('');
   }
 
-  // Reconciliation: actuals vs recorded, by factory + block
+  // Reconciliation: actuals vs recorded, by factory + block (unchanged)
   const reconSection = document.getElementById('home-recon-section');
   const reconBox = document.getElementById('home-recon');
   if (actualsMonth.length === 0) {
@@ -2946,6 +3081,7 @@ function renderHome() {
     }).join('');
   }
 
+  // Top pluckers (unchanged)
   const byP = {};
   entries.forEach(e => {
     byP[e.pluckerId] = byP[e.pluckerId] || { kg: 0, earnings: 0, name: e.pluckerName };
@@ -3031,13 +3167,66 @@ function filterRecords() {
 
 function renderRecords() {
   const list = filterRecords();
-  document.getElementById('records-count').textContent = list.length === 1 ? '1 record' : `${list.length} records`;
+  const totalsBox = document.getElementById('records-totals');
+  const headerEl = document.getElementById('records-count');
+  const moreBox = document.getElementById('records-more');
+  const moreBtn = document.getElementById('btn-show-all');
+  const moreCount = document.getElementById('records-more-count');
+  headerEl.textContent = list.length === 1 ? '1 record' : `${list.length} records`;
+
+  // Aggregations: show a totals band for filtered list, regardless of how many displayed
+  if (list.length > 0) {
+    const type = document.getElementById('filter-type').value;
+    const totalKsh = list.reduce((s, r) => {
+      if (r._kind === 'greenleaf') {
+        const c = computeEntry(r);
+        return s + (c ? c.total : 0);
+      }
+      if (r._kind === 'actual') return s; // kg-only
+      return s + (r.amount || 0);
+    }, 0);
+    const totalKg = list.reduce((s, r) => {
+      if (r._kind === 'greenleaf') return s + (Number(r.qty) || 0);
+      if (r._kind === 'actual') return s + (Number(r.kg) || 0);
+      return s;
+    }, 0);
+    const totalUnits = list.reduce((s, r) => {
+      if (r._kind === 'poultry') return s + (Number(r.quantity) || 0);
+      return s;
+    }, 0);
+    let lines = [];
+    if (totalKsh > 0) {
+      lines.push(`<div class="total-row"><span class="total-lbl">Total Ksh</span><span class="total-val">Ksh ${moneyRound(totalKsh)}</span></div>`);
+    }
+    if (totalKg > 0) {
+      lines.push(`<div class="total-row"><span class="total-lbl">Total kg</span><span class="total-val">${kg(totalKg)} kg</span></div>`);
+    }
+    if (totalUnits > 0 && type === 'poultry') {
+      lines.push(`<div class="meta-line">Across ${list.length} sales · ${moneyRound(totalUnits)} units (eggs / birds)</div>`);
+    }
+    if (lines.length > 0) {
+      totalsBox.style.display = '';
+      totalsBox.innerHTML = lines.join('');
+    } else {
+      totalsBox.style.display = 'none';
+    }
+  } else {
+    totalsBox.style.display = 'none';
+  }
+
+  // Window the list — show 10 most recent unless Show all has been toggled
+  const SHOW_ALL = STATE.showAllRecords === true;
+  const windowed = SHOW_ALL ? list : list.slice(0, 10);
+  const remaining = list.length - windowed.length;
+
   const box = document.getElementById('records-list');
   if (list.length === 0) {
     box.innerHTML = `<div class="empty"><div class="em">No matching records.</div><div class="sub">Try widening the filters</div></div>`;
+    moreBox.style.display = 'none';
     return;
   }
-  box.innerHTML = list.map(r => {
+
+  box.innerHTML = windowed.map(r => {
     if (r._kind === 'greenleaf') {
       const c = computeEntry(r);
       return `
@@ -3107,6 +3296,21 @@ function renderRecords() {
     }
     return '';
   }).join('');
+
+  // Show / hide the "Show all" toggle
+  if (remaining > 0) {
+    moreBox.style.display = '';
+    moreCount.textContent = `(${remaining} more)`;
+    moreBtn.onclick = () => { STATE.showAllRecords = true; renderRecords(); };
+  } else if (SHOW_ALL && list.length > 10) {
+    moreBox.style.display = '';
+    moreCount.textContent = '(collapse)';
+    moreBtn.innerHTML = 'Collapse to 10 most recent';
+    moreBtn.onclick = () => { STATE.showAllRecords = false; renderRecords(); };
+  } else {
+    moreBox.style.display = 'none';
+  }
+
   box.querySelectorAll('.del').forEach(b => {
     b.addEventListener('click', async () => {
       if (!confirm('Delete this record?')) return;
@@ -3224,10 +3428,10 @@ function renderInsights() {
   byBlock['Consolidated'] = { kg: 0, cashNow: 0, expenses: 0 };
 
   actuals.forEach(a => {
-    const factory = STATE.factories.find(f => f.name === a.factory);
-    const price = factory ? (factory.priceKg || 0) : 0;
     const kg = Number(a.kg) || 0;
-    const cash = kg * price;
+    // Use date-aware net per kg (price minus transport minus equity), so historical
+    // rows compute against their era's pricing rather than today's headline price.
+    const cash = kg * netPerKg(a.factory, a.date);
     const b = a.block || 'All blocks';
     const bucket = (b === 'All blocks' || b === 'All blocks (consolidated)') ? 'Consolidated'
                  : (byBlock[b] ? b : 'Consolidated');
