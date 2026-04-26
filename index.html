@@ -1203,7 +1203,7 @@
     <div class="filter-bar">
       <select id="filter-type">
         <option value="all" selected>All Types</option>
-        <option value="greenleaf">Greenleaf</option>
+        <option value="greenleaf">Plucker Entry</option>
         <option value="actual">Actuals</option>
         <option value="expense">Expenses</option>
         <option value="banked">Banked Income</option>
@@ -1238,7 +1238,7 @@
     </div>
 
     <div class="kind-toggle" id="kind-toggle-tea">
-      <button class="active" data-kind="greenleaf">Greenleaf</button>
+      <button class="active" data-kind="greenleaf">Plucker Entry</button>
       <button data-kind="actual">Actuals</button>
       <button data-kind="banked">Banked</button>
     </div>
@@ -1609,7 +1609,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v3.5</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v3.6</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -1766,13 +1766,14 @@ const DEFAULT_EXPENSE_CATEGORIES = [
   { name: "Elias SHA",              tier: "Tea farm payroll",      active: true },
   { name: "Petrol water pump",      tier: "Tea farm payroll",      active: true },
   { name: "Weekly wage (other)",    tier: "Tea farm payroll",      active: true },
-  { name: "Cheptabach Farm",        tier: "Cross-business transfer", active: true },
-  { name: "Sangalo Farm",           tier: "Cross-business transfer", active: true },
-  { name: "Kipkorom Farm",          tier: "Cross-business transfer", active: true },
-  { name: "Chelabaal Farm",         tier: "Cross-business transfer", active: true },
-  { name: "Olomotit Coffee Farm",   tier: "Cross-business transfer", active: true },
-  { name: "Kipkenda & Bitonin Maize Farm", tier: "Cross-business transfer", active: true },
-  { name: "Kipkenda Poultry",       tier: "Cross-business transfer", active: true }
+  { name: "Cheptabach Farm",        tier: "Business Units Expenses", active: true },
+  { name: "Sangalo Farm",           tier: "Business Units Expenses", active: true },
+  { name: "Kipkorom Farm",          tier: "Business Units Expenses", active: true },
+  { name: "Chelabaal Farm",         tier: "Business Units Expenses", active: true },
+  { name: "Olomotit Coffee Farm",   tier: "Business Units Expenses", active: true },
+  { name: "Kipkenda & Bitonin Maize Farm", tier: "Business Units Expenses", active: true },
+  { name: "Kipkenda Poultry",       tier: "Business Units Expenses", active: true },
+  { name: "Dorper farm",            tier: "Business Units Expenses", active: true }
 ];
 let EXPENSE_CATEGORIES = JSON.parse(JSON.stringify(DEFAULT_EXPENSE_CATEGORIES));
 
@@ -4334,6 +4335,17 @@ function showToast(msg) {
   const storedCategories = await storageGet(K_EXPENSE_CATS, null);
   if (storedCategories && Array.isArray(storedCategories) && storedCategories.length > 0) {
     EXPENSE_CATEGORIES = storedCategories.map(c => ({ active: true, ...c }));
+    // Migrations for v38 — rename old tier label, fix Chelabal typo, ensure Dorper farm exists
+    let migrated = false;
+    EXPENSE_CATEGORIES.forEach(c => {
+      if (c.tier === 'Cross-business transfer') { c.tier = 'Business Units Expenses'; migrated = true; }
+      if (c.name === 'Chelabal Farm')           { c.name = 'Chelabaal Farm';          migrated = true; }
+    });
+    if (!EXPENSE_CATEGORIES.some(c => c.name === 'Dorper farm')) {
+      EXPENSE_CATEGORIES.push({ name: 'Dorper farm', tier: 'Business Units Expenses', active: true });
+      migrated = true;
+    }
+    if (migrated) await storageSet(K_EXPENSE_CATS, EXPENSE_CATEGORIES);
   }
   const storedSettings = await storageGet(K_SETTINGS, null);
   if (storedSettings) STATE.settings = { ...DEFAULT_SETTINGS, ...storedSettings };
