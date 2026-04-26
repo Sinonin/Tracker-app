@@ -206,7 +206,7 @@
     border: 1px solid var(--forest-dark);
   }
   #kind-toggle-tea { grid-template-columns: 1fr 1fr 1fr; }
-  #kind-toggle-poultry, #kind-toggle-admin { grid-template-columns: 1fr; }
+  #kind-toggle-poultry, #kind-toggle-expenses { grid-template-columns: 1fr; }
   .kind-toggle button {
     background: transparent; border: none;
     padding: 0.75rem 0.3rem;
@@ -334,6 +334,56 @@
     margin-bottom: 0.9rem;
     line-height: 1.45;
   }
+
+  /* Batch expense entry — full vertical rows, each its own card */
+  .xb-row {
+    background: var(--ivory-card);
+    border: 1px solid var(--rule);
+    border-left: 2px solid var(--brass);
+    border-radius: 2px;
+    padding: 0.7rem 0.8rem 0.85rem;
+    margin-bottom: 0.7rem;
+    position: relative;
+  }
+  .xb-row .xb-row-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    color: var(--slate-light);
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+  .xb-row .xb-row-del {
+    position: absolute; top: 0.5rem; right: 0.5rem;
+    width: 26px; height: 26px;
+    background: transparent; border: 1px solid var(--rule);
+    border-radius: 2px;
+    color: var(--slate-light);
+    font-size: 1.1rem; line-height: 0;
+    cursor: pointer;
+  }
+  .xb-row .xb-row-del:hover { color: #c44; border-color: #c44; }
+  .xb-row .field { margin-bottom: 0.5rem; }
+  .xb-row .field:last-child { margin-bottom: 0; }
+  .xb-row.invalid { border-left-color: var(--rule); opacity: 0.6; }
+  .xb-row.valid   { border-left-color: var(--forest); }
+
+  button.batch-add-row {
+    width: 100%;
+    background: transparent;
+    border: 1px dashed var(--brass);
+    color: var(--brass);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 0.7rem;
+    border-radius: 2px;
+    margin-bottom: 0.85rem;
+    cursor: pointer;
+  }
+  button.batch-add-row:hover { background: var(--ivory-warm); }
+
   .batch-list {
     background: var(--ivory-card);
     border: 1px solid var(--rule);
@@ -1165,8 +1215,8 @@
         <option value="month">This Month</option>
         <option value="all">All Time</option>
       </select>
-      <select id="filter-block"><option value="">All Blocks</option></select>
-      <select id="filter-factory"><option value="">All Factories</option></select>
+      <span id="filter-block-wrap"><select id="filter-block"><option value="">All Blocks</option></select></span>
+      <span id="filter-factory-wrap"><select id="filter-factory"><option value="">All Factories</option></select></span>
     </div>
     <div class="section-head" style="margin-bottom:0.4rem">
       <h3 id="records-count">All records</h3>
@@ -1184,7 +1234,7 @@
     <div class="biz-toggle">
       <button class="active" data-biz="tea">Tea</button>
       <button data-biz="poultry">Poultry</button>
-      <button data-biz="admin">Admin</button>
+      <button data-biz="expenses">Expenses</button>
     </div>
 
     <div class="kind-toggle" id="kind-toggle-tea">
@@ -1197,7 +1247,7 @@
       <button class="active" data-kind="poultry">Sales</button>
     </div>
 
-    <div class="kind-toggle" id="kind-toggle-admin" style="display:none">
+    <div class="kind-toggle" id="kind-toggle-expenses" style="display:none">
       <button class="active" data-kind="expense">Expense</button>
     </div>
 
@@ -1262,6 +1312,13 @@
 
     <!-- ========= EXPENSE ========= -->
     <div id="expense-kind" style="display:none">
+      <div class="mode-toggle">
+        <button class="active" id="x-mode-quick">Quick Entry</button>
+        <button id="x-mode-batch">Batch Entry</button>
+      </div>
+
+      <!-- ===== QUICK ENTRY ===== -->
+      <div id="x-quick-mode">
       <div class="pair">
         <div class="field"><label>Date</label><input type="date" id="x-date"></div>
         <div class="field"><label>Amount (Ksh)</label><input type="number" id="x-amount" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
@@ -1286,6 +1343,30 @@
       <div class="section" id="x-recent-section" style="display:none;margin-top:1.2rem">
         <div class="section-head"><h3>Recent expenses</h3><span class="meta" id="x-recent-count">0</span></div>
         <div id="x-recent-list"></div>
+      </div>
+      </div>
+
+      <!-- ===== BATCH ENTRY ===== -->
+      <div id="x-batch-mode" style="display:none">
+        <div class="batch-instructions">Enter many expenses at once for the same day. Set the date once at the top, then add a row per expense. Empty or incomplete rows are skipped on save.</div>
+
+        <div class="field"><label>Date · applies to all rows below</label><input type="date" id="xb-date"></div>
+
+        <div id="xb-rows"></div>
+
+        <button class="batch-add-row" id="xb-add-row">+ Add expense row</button>
+
+        <button class="submit" id="xb-submit" disabled>Save all expenses</button>
+
+        <div class="calc-card" id="xb-preview" style="display:none;margin-top:0.9rem">
+          <div class="lbl">Batch preview</div>
+          <div class="primary"><span class="unit">Ksh</span><span id="xb-preview-total">0</span></div>
+          <div class="breakdown">
+            <div class="k">Valid rows</div><div class="v" id="xb-preview-valid">0</div>
+            <div class="k">Incomplete rows</div><div class="v" id="xb-preview-skip">0</div>
+            <div class="k">Date</div><div class="v" id="xb-preview-date">—</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1525,7 +1606,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v3.2</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v3.3</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Greenleaf · Built for Sinonin Tea and Kipkenda Poultry, Nandi County. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2611,11 +2692,11 @@ function switchBiz(b) {
   document.querySelectorAll('.biz-toggle button').forEach(el => el.classList.toggle('active', el.dataset.biz === b));
   document.getElementById('kind-toggle-tea').style.display = b === 'tea' ? '' : 'none';
   document.getElementById('kind-toggle-poultry').style.display = b === 'poultry' ? '' : 'none';
-  document.getElementById('kind-toggle-admin').style.display = b === 'admin' ? '' : 'none';
+  document.getElementById('kind-toggle-expenses').style.display = b === 'expenses' ? '' : 'none';
   // When switching business, activate the first kind in that business's toggle
   if (b === 'tea') switchKind('greenleaf');
   else if (b === 'poultry') switchKind('poultry');
-  else if (b === 'admin') switchKind('expense');
+  else if (b === 'expenses') switchKind('expense');
 }
 
 function switchKind(k) {
@@ -2725,6 +2806,164 @@ async function submitExpense() {
   const synced = await syncExpense(expense);
   if (!synced) await queueForSync(expense, 'expense');
   updateSyncIndicator();
+}
+
+/* ========= EXPENSE BATCH ENTRY =========
+   Victor's end-of-day workflow: enter the day's expenses one date at a time,
+   add a row per expense, save once. Rows are independent; incomplete rows are
+   silently skipped at submit time. Default block is "Whole farm" — most
+   expenses don't need block-specific allocation. */
+
+let xbRowCounter = 0; // monotonic counter for unique row IDs
+
+function xbAddRow() {
+  xbRowCounter += 1;
+  const rowId = 'xb-r' + xbRowCounter;
+  const wrap = document.createElement('div');
+  wrap.className = 'xb-row invalid';
+  wrap.id = rowId;
+  // Build category options grouped by tier (matches Quick Entry behaviour)
+  const cats = STATE.expenseCats || EXPENSE_CATEGORIES;
+  const grouped = {};
+  cats.filter(c => c.active !== false).forEach(c => {
+    grouped[c.tier] = grouped[c.tier] || [];
+    grouped[c.tier].push(c.name);
+  });
+  let catOpts = '<option value="">— Category —</option>';
+  Object.entries(grouped).forEach(([tier, names]) => {
+    catOpts += `<optgroup label="${tier}">${names.map(n => `<option value="${n}">${n}</option>`).join('')}</optgroup>`;
+  });
+  // Build block options from current state
+  const blocks = ['Whole farm', ...BLOCKS];
+  const blockOpts = blocks.map(b => `<option value="${b}"${b === 'Whole farm' ? ' selected' : ''}>${b}</option>`).join('');
+  wrap.innerHTML = `
+    <button class="xb-row-del" title="Remove this row">×</button>
+    <div class="xb-row-num">Row ${xbRowCounter}</div>
+    <div class="field"><label>Category</label><select class="xb-cat">${catOpts}</select></div>
+    <div class="field"><label>Amount (Ksh)</label><input type="number" class="xb-amt" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+    <div class="field"><label>Description</label><input type="text" class="xb-desc" placeholder="e.g. DAP fertilizer, 50kg" style="font-family:'Fraunces',serif;font-size:1rem"></div>
+    <div class="field"><label>Allocation</label><select class="xb-block">${blockOpts}</select></div>
+    <div class="field"><label>Paid to (optional)</label><input type="text" class="xb-payee" placeholder="e.g. Kapsabet Agrovet" style="font-family:'Fraunces',serif;font-size:1rem"></div>
+  `;
+  document.getElementById('xb-rows').appendChild(wrap);
+  // Wire the delete button
+  wrap.querySelector('.xb-row-del').addEventListener('click', () => {
+    wrap.remove();
+    updateBatchExpensePreview();
+  });
+  // Wire change/input listeners
+  wrap.querySelectorAll('select, input').forEach(el => {
+    const ev = el.tagName === 'SELECT' ? 'change' : 'input';
+    el.addEventListener(ev, updateBatchExpensePreview);
+  });
+  updateBatchExpensePreview();
+}
+
+function xbRowValues(rowEl) {
+  return {
+    category: rowEl.querySelector('.xb-cat').value,
+    amount: parseFloat(rowEl.querySelector('.xb-amt').value) || 0,
+    description: rowEl.querySelector('.xb-desc').value.trim(),
+    block: rowEl.querySelector('.xb-block').value || 'Whole farm',
+    payee: rowEl.querySelector('.xb-payee').value.trim()
+  };
+}
+
+function xbRowIsValid(rowEl) {
+  const v = xbRowValues(rowEl);
+  return v.category && v.amount > 0;
+}
+
+function xbRowIsEmpty(rowEl) {
+  const v = xbRowValues(rowEl);
+  return !v.category && v.amount === 0 && !v.description && !v.payee;
+}
+
+function updateBatchExpensePreview() {
+  const date = document.getElementById('xb-date').value;
+  const rows = Array.from(document.querySelectorAll('#xb-rows .xb-row'));
+  let validCount = 0, skipCount = 0, totalKsh = 0;
+  rows.forEach(r => {
+    if (xbRowIsValid(r)) {
+      r.classList.add('valid'); r.classList.remove('invalid');
+      validCount += 1;
+      totalKsh += xbRowValues(r).amount;
+    } else if (xbRowIsEmpty(r)) {
+      r.classList.remove('valid'); r.classList.add('invalid');
+      // Empty rows don't count against skip; they're just placeholders
+    } else {
+      r.classList.remove('valid'); r.classList.add('invalid');
+      skipCount += 1;
+    }
+  });
+  const submitBtn = document.getElementById('xb-submit');
+  submitBtn.disabled = !date || validCount === 0;
+  const preview = document.getElementById('xb-preview');
+  if (!date || validCount === 0) {
+    preview.style.display = 'none';
+    return;
+  }
+  preview.style.display = '';
+  document.getElementById('xb-preview-total').textContent = moneyRound(totalKsh);
+  document.getElementById('xb-preview-valid').textContent = validCount;
+  document.getElementById('xb-preview-skip').textContent = skipCount;
+  document.getElementById('xb-preview-date').textContent = date;
+}
+
+async function submitBatchExpenses() {
+  const date = document.getElementById('xb-date').value;
+  if (!date) return;
+  const rows = Array.from(document.querySelectorAll('#xb-rows .xb-row'));
+  const validRows = rows.filter(xbRowIsValid);
+  const skippedRows = rows.filter(r => !xbRowIsValid(r) && !xbRowIsEmpty(r));
+  if (validRows.length === 0) return;
+  const newExpenses = validRows.map((r, i) => {
+    const v = xbRowValues(r);
+    return {
+      id: 'X' + Date.now() + '-' + i + '-' + Math.random().toString(36).slice(2, 5),
+      ts: new Date().toISOString(),
+      date: date,
+      tier: tierForCategory(v.category),
+      category: v.category,
+      description: v.description,
+      amount: v.amount,
+      block: v.block,
+      payee: v.payee
+    };
+  });
+  // Persist locally first
+  STATE.expenses.push(...newExpenses);
+  await storageSet(K_EXPENSES, STATE.expenses);
+  // Then push each to the form relay (any failure → queue for retry)
+  const results = await Promise.all(newExpenses.map(e => syncExpense(e)));
+  for (let i = 0; i < newExpenses.length; i++) {
+    if (!results[i]) await queueForSync(newExpenses[i], 'expense');
+  }
+  // Reset the form: clear rows, clear date, add one fresh empty row
+  document.getElementById('xb-rows').innerHTML = '';
+  xbAddRow();
+  updateBatchExpensePreview();
+  // Toast
+  const skipMsg = skippedRows.length > 0 ? ` · ${skippedRows.length} incomplete skipped` : '';
+  showToast(`Saved ${newExpenses.length} expense${newExpenses.length === 1 ? '' : 's'}${skipMsg}`);
+  updateSyncIndicator();
+  renderRecentExpenses();
+}
+
+function switchExpenseMode(mode) {
+  const isQuick = mode === 'quick';
+  document.getElementById('x-mode-quick').classList.toggle('active', isQuick);
+  document.getElementById('x-mode-batch').classList.toggle('active', !isQuick);
+  document.getElementById('x-quick-mode').style.display = isQuick ? '' : 'none';
+  document.getElementById('x-batch-mode').style.display = isQuick ? 'none' : '';
+  if (!isQuick) {
+    // Initialize batch mode if first time
+    const dateEl = document.getElementById('xb-date');
+    if (!dateEl.value) dateEl.value = new Date().toISOString().slice(0, 10);
+    if (document.querySelectorAll('#xb-rows .xb-row').length === 0) {
+      xbAddRow();
+    }
+  }
 }
 
 /* ========= ACTUALS ========= */
@@ -3112,6 +3351,26 @@ function renderHome() {
         <span class="kg">${kg(v.kg)} kg</span>
       </div>`).join('');
   }
+}
+
+/* Records filter context-awareness — hide Block/Factory dropdowns when the
+   selected Type doesn't have those concepts (Banked Income, Poultry have
+   neither; Expenses have block but no factory). When hiding, also reset the
+   hidden filter's value so it doesn't silently restrict results. */
+function updateFilterVisibility() {
+  const type = document.getElementById('filter-type').value;
+  const blockWrap = document.getElementById('filter-block-wrap');
+  const factoryWrap = document.getElementById('filter-factory-wrap');
+  const blockSel = document.getElementById('filter-block');
+  const factorySel = document.getElementById('filter-factory');
+  // Default: show both (used for All / Greenleaf / Actuals)
+  let showBlock = true, showFactory = true;
+  if (type === 'expense') { showFactory = false; }
+  if (type === 'banked' || type === 'poultry') { showBlock = false; showFactory = false; }
+  blockWrap.style.display = showBlock ? '' : 'none';
+  factoryWrap.style.display = showFactory ? '' : 'none';
+  if (!showBlock) blockSel.value = '';
+  if (!showFactory) factorySel.value = '';
 }
 
 function filterRecords() {
@@ -3941,6 +4200,28 @@ function exportCSV() {
     }
   }
 
+  if (type === 'all' || type === 'banked') {
+    const banked = STATE.banked || [];
+    if (banked.length > 0) {
+      downloadCSV(`sinonin_banked_${today}.csv`,
+        ['Banked_ID','Timestamp','Date','Business','Source','Amount_Ksh','Period','Reference','Type'],
+        banked.map(b => [b.id, b.ts, b.date, b.business || '', b.source || '', b.amount || 0, b.period || '', b.reference || '', b.type || ''])
+      );
+      exported += banked.length;
+    }
+  }
+
+  if (type === 'all' || type === 'poultry') {
+    const poultry = STATE.poultry || [];
+    if (poultry.length > 0) {
+      downloadCSV(`sinonin_poultry_${today}.csv`,
+        ['Poultry_ID','Timestamp','Date','Product','Stage','Quantity','Unit','Amount_Ksh','Payment_Method','Buyer'],
+        poultry.map(p => [p.id, p.ts, p.date, p.product || '', p.stage || '', p.quantity || 0, p.unit || '', p.amount || 0, p.payment_method || '', p.buyer || ''])
+      );
+      exported += poultry.length;
+    }
+  }
+
   if (exported === 0) showToast('Nothing to export');
   else showToast(`Exported ${exported} record${exported === 1 ? '' : 's'}`);
 }
@@ -4034,6 +4315,14 @@ function showToast(msg) {
   });
   document.getElementById('x-submit').addEventListener('click', submitExpense);
 
+  // Expense mode toggle (Quick / Batch) and batch controls
+  document.getElementById('x-mode-quick').addEventListener('click', () => switchExpenseMode('quick'));
+  document.getElementById('x-mode-batch').addEventListener('click', () => switchExpenseMode('batch'));
+  document.getElementById('xb-date').addEventListener('input', updateBatchExpensePreview);
+  document.getElementById('xb-date').addEventListener('change', updateBatchExpensePreview);
+  document.getElementById('xb-add-row').addEventListener('click', xbAddRow);
+  document.getElementById('xb-submit').addEventListener('click', submitBatchExpenses);
+
   // Actuals form
   ['a-date','a-factory','a-block','a-kg'].forEach(id => {
     document.getElementById(id).addEventListener('input', updateActualPreview);
@@ -4043,8 +4332,13 @@ function showToast(msg) {
 
   // Records filters
   ['filter-type','filter-period','filter-block','filter-factory'].forEach(id => {
-    document.getElementById(id).addEventListener('change', renderRecords);
+    document.getElementById(id).addEventListener('change', () => {
+      STATE.showAllRecords = false;  // collapse to 10 most recent on any filter change
+      renderRecords();
+    });
   });
+  // Type filter additionally drives Block/Factory visibility
+  document.getElementById('filter-type').addEventListener('change', updateFilterVisibility);
   document.getElementById('btn-export').addEventListener('click', exportCSV);
 
   // Insights period
