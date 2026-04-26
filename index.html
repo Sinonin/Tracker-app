@@ -1609,7 +1609,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v3.4</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v3.5</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -1653,6 +1653,12 @@
 
 <script>
 const BLOCKS = ['Sinonin', 'Cheptabach', 'Bitonin', 'Kipkenda', 'Kipkorom', 'Sangalo'];
+
+/* Business units — appear in Allocation dropdown for expenses (and Records
+   block filter) alongside the tea blocks. Each one is a separate revenue or
+   cost centre under the Sinonin Group umbrella. Chelabaal is the
+   retirement-home-and-orchard project near Eldoret International Airport. */
+const BUSINESS_UNITS = ['Kipkenda Poultry', 'Olomotit Coffee', 'Maize', 'Dorper sheep', 'Chelabaal'];
 
 const DEFAULT_FACTORIES = [
   { name: "Sireet",    priceKg: 25,   transport: 3.90, shares: 5, wageKg: 9.5,  bonusKg: 0.5, greenleaf: 13 },
@@ -2459,11 +2465,17 @@ function hideFirstInstallSplash() {
 
 function populateDropdowns() {
   const blockOpts = BLOCKS.map(b => `<option value="${b}">${b}</option>`).join('');
+  const businessUnitOpts = BUSINESS_UNITS.map(b => `<option value="${b}">${b}</option>`).join('');
+  // Tea-only dropdowns: only tea blocks (Greenleaf entry, Actuals)
   document.getElementById('q-block').innerHTML = '<option value="">— Block —</option>' + blockOpts;
   document.getElementById('b-block').innerHTML = '<option value="">— Block —</option>' + blockOpts;
-  document.getElementById('filter-block').innerHTML = '<option value="">All Blocks</option>' + blockOpts;
-  document.getElementById('x-block').innerHTML = '<option value="Whole farm">Whole farm</option>' + blockOpts;
   document.getElementById('a-block').innerHTML = '<option value="All blocks">All blocks (consolidated)</option>' + blockOpts;
+  // Allocation dropdowns: tea blocks AND business units (Records filter, expense form)
+  const groupedOpts =
+    `<optgroup label="Tea blocks">${blockOpts}</optgroup>` +
+    `<optgroup label="Business units">${businessUnitOpts}</optgroup>`;
+  document.getElementById('filter-block').innerHTML = '<option value="">All Allocations</option>' + groupedOpts;
+  document.getElementById('x-block').innerHTML = '<option value="Whole farm">Whole farm</option>' + groupedOpts;
   repopulatePluckerDropdown();
   repopulateFactoryDropdowns();
   repopulateCategoryDropdown();
@@ -2836,9 +2848,13 @@ function xbAddRow() {
   Object.entries(grouped).forEach(([tier, names]) => {
     catOpts += `<optgroup label="${tier}">${names.map(n => `<option value="${n}">${n}</option>`).join('')}</optgroup>`;
   });
-  // Build block options from current state
-  const blocks = ['Whole farm', ...BLOCKS];
-  const blockOpts = blocks.map(b => `<option value="${b}"${b === 'Whole farm' ? ' selected' : ''}>${b}</option>`).join('');
+  // Build allocation options: Whole farm + grouped tea blocks + grouped business units
+  const teaBlockOpts = BLOCKS.map(b => `<option value="${b}">${b}</option>`).join('');
+  const businessUnitOpts = BUSINESS_UNITS.map(b => `<option value="${b}">${b}</option>`).join('');
+  const blockOpts =
+    `<option value="Whole farm" selected>Whole farm</option>` +
+    `<optgroup label="Tea blocks">${teaBlockOpts}</optgroup>` +
+    `<optgroup label="Business units">${businessUnitOpts}</optgroup>`;
   wrap.innerHTML = `
     <button class="xb-row-del" title="Remove this row">×</button>
     <div class="xb-row-num">Row ${xbRowCounter}</div>
