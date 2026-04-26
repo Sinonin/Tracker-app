@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-<title>Sinonin Greenleaf</title>
+<title>Sinonin Group</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -1132,8 +1132,8 @@
 <body>
 
 <header class="brand">
-  <h1>Sinonin Greenleaf</h1>
-  <div class="tagline">Daily Plucker Returns <span class="sync-inline"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span></div>
+  <h1>Sinonin Group</h1>
+  <div class="tagline">Tea · Poultry · Dorper · Coffee · Maize <span class="sync-inline"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span></div>
   <span class="header-screen-title" id="screen-title">Overview</span>
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" src="logo.png" alt="Sinonin Food Innovations">
@@ -1512,16 +1512,19 @@
     <div class="section">
       <div class="section-head"><h3>Expenses by category</h3><span class="meta" id="insights-exp-total">Ksh 0</span></div>
       <table class="mini-table" id="tbl-expenses"></table>
+      <div class="records-more" id="tbl-expenses-expand" style="display:none"></div>
     </div>
 
     <div class="section">
       <div class="section-head"><h3>Factory mix</h3><span class="meta">by kilograms</span></div>
       <table class="mini-table" id="tbl-factory"></table>
+      <div class="records-more" id="tbl-factory-expand" style="display:none"></div>
     </div>
 
     <div class="section">
       <div class="section-head"><h3>Plucker rankings</h3><span class="meta">top performers</span></div>
       <table class="mini-table" id="tbl-plucker"></table>
+      <div class="records-more" id="tbl-plucker-expand" style="display:none"></div>
     </div>
   </section>
 
@@ -1606,8 +1609,8 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v3.3</span></div>
-      <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Greenleaf · Built for Sinonin Tea and Kipkenda Poultry, Nandi County. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
+      <div class="section-head"><h3>About</h3><span class="meta">v3.4</span></div>
+      <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
 
@@ -3785,34 +3788,100 @@ function renderExpenseTable(id, obj) {
   const tCount = rows.reduce((s,r) => s + r[1].kg, 0);
   const tTotal = rows.reduce((s,r) => s + r[1].total, 0);
   const t = document.getElementById(id);
+  const ctrl = document.getElementById(id + '-expand');
   if (rows.length === 0) {
     t.innerHTML = `<tr><td colspan="3" style="color:var(--slate-light);font-style:italic;padding:1rem 0">No expenses in this period</td></tr>`;
+    if (ctrl) ctrl.style.display = 'none';
     return;
   }
+  STATE.expandedTables = STATE.expandedTables || {};
+  const expanded = STATE.expandedTables[id] === true;
+  const defaultLimit = 5;
+  const expandLimit = 10;
+  const limit = expanded ? expandLimit : defaultLimit;
+  const show = rows.slice(0, limit);
   t.innerHTML = `
     <thead><tr><th>Category</th><th>Count</th><th>Ksh</th></tr></thead>
     <tbody>
-      ${rows.map(([k,v]) => `<tr><td>${k}</td><td>${v.kg}</td><td>${moneyRound(v.total)}</td></tr>`).join('')}
+      ${show.map(([k,v]) => `<tr><td>${k}</td><td>${v.kg}</td><td>${moneyRound(v.total)}</td></tr>`).join('')}
       <tr class="total"><td>Total</td><td>${tCount}</td><td>${moneyRound(tTotal)}</td></tr>
     </tbody>`;
+  if (!ctrl) return;
+  if (rows.length <= defaultLimit) {
+    ctrl.style.display = 'none';
+    return;
+  }
+  ctrl.style.display = '';
+  if (expanded) {
+    if (rows.length > expandLimit) {
+      ctrl.innerHTML = `<button class="export-btn">Collapse to top 5 (${rows.length - defaultLimit} hidden)</button>`;
+    } else {
+      ctrl.innerHTML = `<button class="export-btn">Collapse to top 5</button>`;
+    }
+    ctrl.querySelector('button').onclick = () => {
+      STATE.expandedTables[id] = false;
+      renderInsights();
+    };
+  } else {
+    const remaining = Math.min(rows.length, expandLimit) - defaultLimit;
+    ctrl.innerHTML = `<button class="export-btn">View top ${Math.min(rows.length, expandLimit)} (${remaining} more)</button>`;
+    ctrl.querySelector('button').onclick = () => {
+      STATE.expandedTables[id] = true;
+      renderInsights();
+    };
+  }
 }
 
-function renderMiniTable(id, firstCol, obj, limit) {
+function renderMiniTable(id, firstCol, obj, _legacyLimit) {
   const rows = Object.entries(obj).sort((a,b) => b[1].kg - a[1].kg);
-  const show = limit ? rows.slice(0, limit) : rows;
   const tKg = rows.reduce((s,r) => s + r[1].kg, 0);
   const tVal = rows.reduce((s,r) => s + r[1].total, 0);
   const t = document.getElementById(id);
   if (rows.length === 0) {
     t.innerHTML = `<tr><td colspan="3" style="color:var(--slate-light);font-style:italic;padding:1rem 0">No entries</td></tr>`;
+    // Hide expand control if it exists
+    const ctrl = document.getElementById(id + '-expand');
+    if (ctrl) ctrl.style.display = 'none';
     return;
   }
+  STATE.expandedTables = STATE.expandedTables || {};
+  const expanded = STATE.expandedTables[id] === true;
+  const defaultLimit = 5;
+  const expandLimit = 10;
+  const limit = expanded ? expandLimit : defaultLimit;
+  const show = rows.slice(0, limit);
   t.innerHTML = `
     <thead><tr><th>${firstCol}</th><th>Kg</th><th>Ksh</th></tr></thead>
     <tbody>
       ${show.map(([k,v]) => `<tr><td>${k}</td><td>${kg(v.kg)}</td><td>${moneyRound(v.total)}</td></tr>`).join('')}
       <tr class="total"><td>Total</td><td>${kg(tKg)}</td><td>${moneyRound(tVal)}</td></tr>
     </tbody>`;
+  // Render or hide the expand control
+  const ctrl = document.getElementById(id + '-expand');
+  if (!ctrl) return;
+  if (rows.length <= defaultLimit) {
+    ctrl.style.display = 'none';
+    return;
+  }
+  ctrl.style.display = '';
+  if (expanded) {
+    if (rows.length > expandLimit) {
+      ctrl.innerHTML = `<button class="export-btn">Collapse to top 5 (${rows.length - defaultLimit} hidden)</button>`;
+    } else {
+      ctrl.innerHTML = `<button class="export-btn">Collapse to top 5</button>`;
+    }
+    ctrl.querySelector('button').onclick = () => {
+      STATE.expandedTables[id] = false;
+      renderInsights();
+    };
+  } else {
+    const remaining = Math.min(rows.length, expandLimit) - defaultLimit;
+    ctrl.innerHTML = `<button class="export-btn">View top ${Math.min(rows.length, expandLimit)} (${remaining} more)</button>`;
+    ctrl.querySelector('button').onclick = () => {
+      STATE.expandedTables[id] = true;
+      renderInsights();
+    };
+  }
 }
 
 function renderSettings() {
