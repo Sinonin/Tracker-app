@@ -1525,7 +1525,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v3.1</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v3.2</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Greenleaf · Built for Sinonin Tea and Kipkenda Poultry, Nandi County. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -1753,16 +1753,21 @@ let STATE = {
 
 function computeEntry(e) {
   const factory = STATE.factories.find(f => f.name === e.factory);
+  if (!factory) return null;
+  // Plucker may be from active roster (use their bonus flag) or retired (id >= 100,
+  // not in roster — default to bonus-eligible since most retired pluckers were
+  // regular workers). The "no bonus" flag in the active roster is for the
+  // day-and-disappear contractors who agreed to flat-rate payment.
   const plucker = PLUCKERS.find(p => p.id === e.pluckerId);
-  if (!factory || !plucker) return null;
+  const bonusEligible = plucker ? plucker.bonus : true;
   const qty = Number(e.qty) || 0;
   const gross     = qty * factory.priceKg;
   const labour    = qty * factory.wageKg;
   const cess      = qty * STATE.settings.teaCessPerKg;
   const transport = STATE.settings.transportActive ? qty * factory.transport : 0;
   const shares    = qty * factory.shares;
-  const bonus     = (plucker.bonus && factory.bonusKg > 0) ? qty * factory.bonusKg : 0;
-  const greenleaf = (plucker.bonus && factory.greenleaf > 0) ? factory.greenleaf : 0;
+  const bonus     = (bonusEligible && factory.bonusKg > 0) ? qty * factory.bonusKg : 0;
+  const greenleaf = (bonusEligible && factory.greenleaf > 0) ? qty * factory.greenleaf : 0;
   const cashNow   = gross - labour - cess - transport - shares;
   const accrued   = bonus + greenleaf;
   const total     = cashNow + accrued;
@@ -1771,7 +1776,10 @@ function computeEntry(e) {
 
 function money(n)      { return new Intl.NumberFormat('en-KE', { maximumFractionDigits: 2, minimumFractionDigits: 2 }).format(n || 0); }
 function moneyRound(n) { return Math.round(n || 0).toLocaleString('en-KE'); }
-function kg(n)         { const r = n || 0; return (r % 1 === 0) ? r.toLocaleString('en-KE') : r.toFixed(1); }
+function kg(n) {
+  const r = n || 0;
+  return r.toLocaleString('en-KE', { maximumFractionDigits: 1 });
+}
 
 /* ============================================================
    GOOGLE FORM RELAY — pushes each greenleaf save to the Sheet
