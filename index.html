@@ -1609,13 +1609,27 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v3.6</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v3.7</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
 
+    <div class="section">
+      <div class="section-head"><h3>Backup &amp; Restore</h3><span class="meta">your safety net</span></div>
+      <div style="font-family:'Fraunces',serif;font-size:0.92rem;color:var(--slate);line-height:1.55;margin-bottom:0.85rem">Export downloads <em>everything</em> on this device — entries, expenses, actuals, banked, poultry, the plucker roster, factory rates, expense categories, settings — into one dated JSON file you can email to yourself or save to Drive. Import restores from a previously-saved file. <strong>Tip:</strong> export before any major change.</div>
+      <button id="btn-export-json" style="width:100%;padding:0.85rem;background:var(--forest);color:var(--ivory);border:none;border-radius:2px;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;letter-spacing:0.16em;text-transform:uppercase;cursor:pointer;margin-bottom:0.5rem">Export backup (JSON)</button>
+      <input type="file" id="json-import-file" accept=".json,application/json" style="display:none">
+      <button id="btn-import-json" style="width:100%;padding:0.85rem;background:transparent;color:var(--forest);border:1px solid var(--forest);border-radius:2px;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;letter-spacing:0.16em;text-transform:uppercase;cursor:pointer">Import backup (JSON)</button>
+    </div>
+
+    <div class="section" style="border-left:2px solid var(--brass);padding-left:0.85rem;background:var(--ivory-warm);padding-top:0.7rem;padding-bottom:0.85rem;border-radius:2px">
+      <div class="section-head"><h3 style="color:var(--brass-dim)">Update guidance</h3></div>
+      <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.55"><strong>Never uninstall the app to update.</strong> The app updates itself when a new version ships — just close it (swipe away from recent apps) and reopen. Uninstalling wipes new pluckers, sync queue, and any data not yet pushed to your Sheet. Export a backup first if you must reinstall.</div>
+    </div>
+
     <div class="danger-zone">
       <h4>Danger Zone</h4>
+      <div style="font-family:'Fraunces',serif;font-size:0.86rem;color:var(--slate);font-style:italic;margin-bottom:0.7rem;line-height:1.45">These reset device-local state. Export a backup first.</div>
       <button id="btn-reset-rates">Reset rate cards</button>
       <button id="btn-reset-pluckers">Reset plucker roster</button>
       <button id="btn-reset-categories">Reset categories</button>
@@ -4222,6 +4236,90 @@ async function clearEntries() {
   renderHome();
 }
 
+/* ========= JSON BACKUP / RESTORE =========
+   Captures every key in localStorage that the app uses, plus current STATE
+   for sireet ledger and expense categories, into one JSON file. Restoring
+   replaces local state entirely — destructive — so we double-confirm and
+   recommend exporting first. */
+
+async function exportBackupJSON() {
+  const backup = {
+    schema: 'sinonin-group-backup',
+    version: 'v3.7',
+    exportedAt: new Date().toISOString(),
+    deviceUserAgent: navigator.userAgent,
+    data: {
+      [K_ENTRIES]:        await storageGet(K_ENTRIES, []),
+      [K_EXPENSES]:       await storageGet(K_EXPENSES, []),
+      [K_ACTUALS]:        await storageGet(K_ACTUALS, []),
+      [K_BANKED]:         await storageGet(K_BANKED, []),
+      [K_POULTRY]:        await storageGet(K_POULTRY, []),
+      [K_PLUCKERS]:       await storageGet(K_PLUCKERS, null),
+      [K_FACTORIES]:      await storageGet(K_FACTORIES, null),
+      [K_EXPENSE_CATS]:   await storageGet(K_EXPENSE_CATS, null),
+      [K_SETTINGS]:       await storageGet(K_SETTINGS, null),
+      [K_SIREET_LEDGER]:  await storageGet(K_SIREET_LEDGER, null),
+      [K_SYNC_QUEUE]:     await storageGet(K_SYNC_QUEUE, []),
+      [K_SYNC_STATS]:     await storageGet(K_SYNC_STATS, null),
+    }
+  };
+  const counts = {
+    entries: backup.data[K_ENTRIES]?.length || 0,
+    expenses: backup.data[K_EXPENSES]?.length || 0,
+    actuals: backup.data[K_ACTUALS]?.length || 0,
+    banked: backup.data[K_BANKED]?.length || 0,
+    poultry: backup.data[K_POULTRY]?.length || 0,
+    pluckers: backup.data[K_PLUCKERS]?.length || 0,
+  };
+  backup.summary = counts;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `sinonin-group-backup-${today}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  const total = counts.entries + counts.expenses + counts.actuals + counts.banked + counts.poultry;
+  showToast(`Backup saved · ${total} records, ${counts.pluckers} pluckers`);
+}
+
+async function importBackupJSON(file) {
+  if (!file) return;
+  let backup;
+  try {
+    const text = await file.text();
+    backup = JSON.parse(text);
+  } catch (e) {
+    showToast('Could not read backup file — invalid JSON');
+    return;
+  }
+  if (backup.schema !== 'sinonin-group-backup' || !backup.data) {
+    showToast('Not a Sinonin Group backup file');
+    return;
+  }
+  const c = backup.summary || {};
+  const total = (c.entries||0) + (c.expenses||0) + (c.actuals||0) + (c.banked||0) + (c.poultry||0);
+  const exportedDate = backup.exportedAt ? new Date(backup.exportedAt).toLocaleString('en-GB') : 'unknown date';
+  if (!confirm(`Restore from backup of ${exportedDate}?\n\nThis will REPLACE all current data on this device with:\n· ${c.entries||0} plucker entries\n· ${c.expenses||0} expenses\n· ${c.actuals||0} actuals\n· ${c.banked||0} banked rows\n· ${c.poultry||0} poultry rows\n· ${c.pluckers||0} pluckers\n\nYour current local data will be lost. Proceed?`)) return;
+  if (!confirm('Last chance — current local state will be overwritten. Continue?')) return;
+
+  // Apply the backup — write each key
+  const data = backup.data;
+  for (const key of Object.keys(data)) {
+    if (data[key] !== null && data[key] !== undefined) {
+      await storageSet(key, data[key]);
+    }
+  }
+
+  showToast(`Backup restored · ${total} records, ${c.pluckers||0} pluckers · reloading...`);
+  // Reload the page so all in-memory state reflects the restored localStorage
+  setTimeout(() => location.reload(), 1200);
+}
+
 /* ========= CSV EXPORT ========= */
 function csvRow(arr) {
   return arr.map(x => {
@@ -4460,6 +4558,17 @@ function showToast(msg) {
   document.getElementById('btn-reset-pluckers').addEventListener('click', resetPluckers);
   document.getElementById('btn-reset-categories').addEventListener('click', resetCategories);
   document.getElementById('btn-clear-entries').addEventListener('click', clearEntries);
+
+  // JSON Backup / Restore
+  document.getElementById('btn-export-json').addEventListener('click', exportBackupJSON);
+  document.getElementById('btn-import-json').addEventListener('click', () => {
+    document.getElementById('json-import-file').click();
+  });
+  document.getElementById('json-import-file').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (file) await importBackupJSON(file);
+    e.target.value = ''; // reset so same file can be re-selected if needed
+  });
   document.getElementById('btn-sync-now').addEventListener('click', async () => {
     if (!navigator.onLine) { showToast('Offline — will sync when online'); return; }
     showToast('Syncing…');
