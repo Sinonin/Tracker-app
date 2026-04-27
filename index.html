@@ -583,6 +583,112 @@
   .biz-card .val { font-family: 'Fraunces', serif; font-weight: 500; font-size: 1.15rem; color: var(--forest); margin-top: 0.18rem; letter-spacing: -0.01em; line-height: 1.15; }
   .biz-card .sub { font-family: 'Fraunces', serif; font-size: 0.78rem; color: var(--slate-light); margin-top: 0.22rem; font-style: italic; }
 
+  /* Year-over-year comparison */
+  .yoy-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem;
+    margin-bottom: 0.7rem;
+  }
+  .yoy-col {
+    background: var(--ivory-card);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 0.7rem 0.85rem 0.85rem;
+  }
+  .yoy-col.current { border-left: 2px solid var(--forest); }
+  .yoy-col.prior   { border-left: 2px solid var(--brass-dim); }
+  .yoy-col .col-lbl {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--slate);
+    margin-bottom: 0.45rem;
+  }
+  .yoy-col .col-period {
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 0.75rem; color: var(--slate-light);
+    margin-bottom: 0.55rem;
+  }
+  .yoy-col .col-row { display: flex; justify-content: space-between; align-items: baseline; padding: 0.18rem 0; border-bottom: 1px dotted var(--rule); }
+  .yoy-col .col-row:last-child { border-bottom: none; }
+  .yoy-col .rl { font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; letter-spacing: 0.1em; color: var(--slate-light); }
+  .yoy-col .rv { font-family: 'Fraunces', serif; font-weight: 500; font-size: 0.9rem; color: var(--forest); }
+  .yoy-col .rv.margin-pos { color: var(--forest); }
+  .yoy-col .rv.margin-neg { color: #b8714d; }
+
+  .yoy-summary {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 0.92rem;
+    color: var(--slate);
+    text-align: center;
+    margin: 0.6rem 0 0.4rem;
+    line-height: 1.4;
+  }
+  .yoy-summary .delta-up   { color: var(--forest); font-weight: 500; font-style: normal; font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; letter-spacing: 0.04em; }
+  .yoy-summary .delta-down { color: #b8714d;       font-weight: 500; font-style: normal; font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; letter-spacing: 0.04em; }
+  .yoy-summary .delta-neutral { color: var(--slate-light); font-weight: 500; font-style: normal; font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; letter-spacing: 0.04em; }
+
+  /* Trend chart — rolling 4 months */
+  .trend-chart {
+    background: var(--ivory-card);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 0.85rem 0.95rem 0.7rem;
+  }
+  .trend-chart .trend-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--slate);
+    margin-bottom: 0.35rem;
+  }
+  .trend-chart .trend-legend {
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 0.78rem; color: var(--slate-light);
+    margin-bottom: 0.7rem;
+  }
+  .trend-chart .legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 1px; margin-right: 0.25rem; vertical-align: middle; }
+  .trend-chart .legend-dot.income { background: var(--forest); }
+  .trend-chart .legend-dot.expense { background: #b8714d; }
+  .trend-chart svg { width: 100%; height: auto; display: block; }
+  .trend-chart .month-row { display: grid; grid-template-columns: 60px 1fr; gap: 0.5rem; align-items: center; padding: 0.3rem 0; cursor: pointer; }
+  .trend-chart .month-row:hover { background: var(--ivory-warm); }
+  .trend-chart .month-lbl { font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; color: var(--slate); letter-spacing: 0.04em; }
+  .trend-chart .bars { display: flex; flex-direction: column; gap: 3px; }
+  .trend-chart .bar-row { display: flex; align-items: center; gap: 0.4rem; }
+  .trend-chart .bar-track { flex: 1; height: 9px; background: var(--ivory-warm); position: relative; border-radius: 1px; }
+  .trend-chart .bar-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 1px; }
+  .trend-chart .bar-fill.income { background: var(--forest); }
+  .trend-chart .bar-fill.expense { background: #b8714d; }
+  .trend-chart .bar-val { font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; color: var(--slate); min-width: 64px; text-align: right; }
+
+  /* Trend detail modal */
+  .trend-modal-backdrop {
+    position: fixed; inset: 0; background: rgba(20, 30, 25, 0.55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000; padding: 1.2rem;
+  }
+  .trend-modal {
+    background: var(--ivory);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 1.4rem 1.3rem 1.2rem;
+    max-width: 420px; width: 100%;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  }
+  .trend-modal h4 {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 400;
+    font-size: 1.2rem; color: var(--forest); margin: 0 0 0.7rem;
+  }
+  .trend-modal .modal-row { display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px dotted var(--rule); font-family: 'Fraunces', serif; font-size: 0.92rem; }
+  .trend-modal .modal-row:last-child { border-bottom: none; }
+  .trend-modal .modal-row .lbl { color: var(--slate); }
+  .trend-modal .modal-row .val { color: var(--forest); font-weight: 500; }
+  .trend-modal button.close {
+    margin-top: 1rem; width: 100%; padding: 0.6rem;
+    background: var(--forest); color: var(--ivory); border: none; border-radius: 2px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase;
+    cursor: pointer;
+  }
+
   .sireet-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.55rem; }
   .sireet-card {
     background: var(--ivory-warm);
@@ -1175,10 +1281,10 @@
     <div class="section">
       <div class="section-head"><h3>Kipkenda Poultry</h3><span class="meta">this month</span></div>
       <div class="biz-grid">
-        <div class="biz-card"><div class="lbl">Eggs income</div><div class="val" id="poultry-eggs-month">Ksh 0</div><div class="sub">received this month</div></div>
-        <div class="biz-card"><div class="lbl">Live birds income</div><div class="val" id="poultry-birds-month">Ksh 0</div><div class="sub">chicks &amp; chicken</div></div>
-        <div class="biz-card"><div class="lbl">Eggs sold</div><div class="val" id="poultry-eggs-count">0</div><div class="sub">sales this month</div></div>
-        <div class="biz-card"><div class="lbl">Live birds sold</div><div class="val" id="poultry-birds-count">0</div><div class="sub">sales this month</div></div>
+        <div class="biz-card"><div class="lbl">Eggs income</div><div class="val" id="poultry-eggs-month">Ksh 0</div><div class="sub" id="poultry-eggs-sub">—</div></div>
+        <div class="biz-card"><div class="lbl">Live birds income</div><div class="val" id="poultry-birds-month">Ksh 0</div><div class="sub" id="poultry-birds-sub">—</div></div>
+        <div class="biz-card"><div class="lbl">Eggs sold</div><div class="val" id="poultry-eggs-count">0</div><div class="sub">transactions</div></div>
+        <div class="biz-card"><div class="lbl">Live birds sold</div><div class="val" id="poultry-birds-count">0</div><div class="sub">transactions</div></div>
       </div>
     </div>
 
@@ -1187,9 +1293,10 @@
       <div id="block-bars"></div>
     </div>
 
-    <div class="section" id="home-recon-section" style="display:none">
-      <div class="section-head"><h3>Recorded vs Actual</h3><span class="meta">this month</span></div>
-      <div id="home-recon"></div>
+    <div class="section" id="home-yoy-section">
+      <div class="section-head"><h3>Year-over-year</h3><span class="meta" id="yoy-period">YTD</span></div>
+      <div id="yoy-comparison"></div>
+      <div id="yoy-trend" style="margin-top:1rem"></div>
     </div>
 
     <div class="section">
@@ -1609,7 +1716,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v3.7</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v3.8</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3288,13 +3395,36 @@ function renderHome() {
   // Zone 2b — Kipkenda Poultry this month
   const eggsRows = poultryMonth.filter(p => p.product === 'Eggs');
   const birdRows = poultryMonth.filter(p => p.product === 'Chicks' || p.product === 'Chicken');
+  const chickRows = poultryMonth.filter(p => p.product === 'Chicks');
+  const chickenRows = poultryMonth.filter(p => p.product === 'Chicken');
   const eggsIncome = eggsRows.reduce((s, p) => s + (p.amount || 0), 0);
   const birdsIncome = birdRows.reduce((s, p) => s + (p.amount || 0), 0);
+  const eggsQty = eggsRows.reduce((s, p) => s + (Number(p.quantity) || 0), 0);
+  const chicksQty = chickRows.reduce((s, p) => s + (Number(p.quantity) || 0), 0);
+  const chickenQty = chickenRows.reduce((s, p) => s + (Number(p.quantity) || 0), 0);
 
   document.getElementById('poultry-eggs-month').textContent = 'Ksh ' + moneyRound(eggsIncome);
   document.getElementById('poultry-birds-month').textContent = 'Ksh ' + moneyRound(birdsIncome);
   document.getElementById('poultry-eggs-count').textContent = String(eggsRows.length);
   document.getElementById('poultry-birds-count').textContent = String(birdRows.length);
+
+  // Operational subtitles — volume + quality benchmark for eggs, mix breakdown for birds
+  const eggsSub = document.getElementById('poultry-eggs-sub');
+  if (eggsRows.length === 0) {
+    eggsSub.textContent = 'no sales this month';
+  } else {
+    const avgPrice = eggsQty > 0 ? eggsIncome / eggsQty : 0;
+    eggsSub.textContent = `${moneyRound(eggsQty)} eggs · ${avgPrice.toFixed(0)} KES avg`;
+  }
+  const birdsSub = document.getElementById('poultry-birds-sub');
+  if (birdRows.length === 0) {
+    birdsSub.textContent = 'no sales this month';
+  } else {
+    const parts = [];
+    if (chicksQty > 0) parts.push(`${moneyRound(chicksQty)} chicks`);
+    if (chickenQty > 0) parts.push(`${moneyRound(chickenQty)} chicken`);
+    birdsSub.textContent = parts.join(' · ');
+  }
 
   // Zone 3 — Tea block bars (unchanged from prior behaviour)
   const byBlock = {};
@@ -3322,45 +3452,8 @@ function renderHome() {
       </div>`).join('');
   }
 
-  // Reconciliation: actuals vs recorded, by factory + block (unchanged)
-  const reconSection = document.getElementById('home-recon-section');
-  const reconBox = document.getElementById('home-recon');
-  if (actualsMonth.length === 0) {
-    reconSection.style.display = 'none';
-  } else {
-    reconSection.style.display = '';
-    const byCombo = {};
-    actualsMonth.forEach(a => {
-      const block = a.block || 'All blocks';
-      const key = a.factory + '::' + block;
-      byCombo[key] = byCombo[key] || { factory: a.factory, block, actual: 0, recorded: 0 };
-      byCombo[key].actual += a.kg;
-    });
-    Object.values(byCombo).forEach(c => {
-      c.recorded = entries
-        .filter(e => {
-          if (e.factory !== c.factory) return false;
-          if (c.block !== 'All blocks' && e.block !== c.block) return false;
-          return true;
-        })
-        .reduce((s, e) => s + e.qty, 0);
-    });
-    const rows = Object.values(byCombo).sort((a, b) => b.actual - a.actual);
-    reconBox.innerHTML = rows.map(c => {
-      const gap = c.actual - c.recorded;
-      const gapPct = c.actual > 0 ? (gap / c.actual) * 100 : 0;
-      const gc = gap > 0 ? 'warn' : gap < 0 ? 'ok' : '';
-      return `
-        <div class="recon-row">
-          <div class="recon-name">${c.factory} <span style="color:var(--brass);font-weight:400;font-style:italic">· ${c.block}</span></div>
-          <div class="recon-nums">
-            <div><span class="rl">Recorded</span><span class="rv">${kg(c.recorded)} kg</span></div>
-            <div><span class="rl">Actual</span><span class="rv">${kg(c.actual)} kg</span></div>
-            <div class="${gc}"><span class="rl">Gap</span><span class="rv">${gap >= 0 ? '+' : ''}${kg(gap)} kg${c.actual > 0 ? ` · ${gapPct.toFixed(1)}%` : ''}</span></div>
-          </div>
-        </div>`;
-    }).join('');
-  }
+  // Year-over-year + rolling 4-month trend (replaces Recorded vs Actual)
+  renderYoYAndTrend();
 
   // Top pluckers (unchanged)
   const byP = {};
@@ -3464,6 +3557,184 @@ function filterRecords() {
     });
   }
   return list.sort((a,b) => (b.ts || '').localeCompare(a.ts || ''));
+}
+
+/* ========= YEAR-OVER-YEAR + ROLLING 4-MONTH TREND =========
+   Compares current YTD (Jan 1 → today) vs same period prior year, across
+   total income (banked + poultry) and total expenses. Below the comparison,
+   a rolling 4-month trend bar chart shows monthly income vs expenses with
+   tap-to-detail. Designed for a CEO's "am I growing?" question to answer
+   in three seconds. */
+
+function renderYoYAndTrend() {
+  const today = new Date();
+  const ytdStart = new Date(today.getFullYear(), 0, 1);
+  const priorStart = new Date(today.getFullYear() - 1, 0, 1);
+  const priorEnd = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
+
+  function inRange(dateStr, fromDate, toDate) {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    return d >= fromDate && d <= toDate;
+  }
+
+  // Helper: total income (banked + poultry) and total expenses for a date range
+  function totalsFor(fromDate, toDate) {
+    let income = 0, expenses = 0;
+    (STATE.banked || []).forEach(b => { if (inRange(b.date, fromDate, toDate)) income += (b.amount || 0); });
+    (STATE.poultry || []).forEach(p => { if (inRange(p.date, fromDate, toDate)) income += (p.amount || 0); });
+    STATE.expenses.forEach(x => { if (inRange(x.date, fromDate, toDate)) expenses += (x.amount || 0); });
+    return { income, expenses, margin: income - expenses };
+  }
+
+  const cur = totalsFor(ytdStart, today);
+  const prior = totalsFor(priorStart, priorEnd);
+
+  const periodLbl = today.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
+  document.getElementById('yoy-period').textContent = `Jan 1 → ${periodLbl}`;
+
+  const curYear = today.getFullYear();
+  const priorYear = curYear - 1;
+
+  function pct(current, base) {
+    if (base === 0) {
+      if (current === 0) return { txt: '—', cls: 'delta-neutral' };
+      return { txt: 'new', cls: 'delta-up' };
+    }
+    const p = ((current - base) / Math.abs(base)) * 100;
+    const sign = p >= 0 ? '+' : '';
+    const cls = p > 0.5 ? 'delta-up' : p < -0.5 ? 'delta-down' : 'delta-neutral';
+    return { txt: `${sign}${p.toFixed(0)}%`, cls };
+  }
+  const dInc  = pct(cur.income, prior.income);
+  const dExp  = pct(cur.expenses, prior.expenses);
+  const dMar  = pct(cur.margin, prior.margin);
+
+  const cmpBox = document.getElementById('yoy-comparison');
+  const noPrior = prior.income === 0 && prior.expenses === 0;
+
+  cmpBox.innerHTML = `
+    <div class="yoy-grid">
+      <div class="yoy-col current">
+        <div class="col-lbl">This year</div>
+        <div class="col-period">${curYear}</div>
+        <div class="col-row"><span class="rl">Income</span><span class="rv">Ksh ${moneyRound(cur.income)}</span></div>
+        <div class="col-row"><span class="rl">Expenses</span><span class="rv">Ksh ${moneyRound(cur.expenses)}</span></div>
+        <div class="col-row"><span class="rl">Margin</span><span class="rv ${cur.margin >= 0 ? 'margin-pos' : 'margin-neg'}">Ksh ${moneyRound(cur.margin)}</span></div>
+      </div>
+      <div class="yoy-col prior">
+        <div class="col-lbl">Same period</div>
+        <div class="col-period">${priorYear}</div>
+        ${noPrior
+          ? `<div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.85rem;color:var(--slate-light);text-align:center;padding:1.4rem 0">No prior-year data in this range</div>`
+          : `
+          <div class="col-row"><span class="rl">Income</span><span class="rv">Ksh ${moneyRound(prior.income)}</span></div>
+          <div class="col-row"><span class="rl">Expenses</span><span class="rv">Ksh ${moneyRound(prior.expenses)}</span></div>
+          <div class="col-row"><span class="rl">Margin</span><span class="rv ${prior.margin >= 0 ? 'margin-pos' : 'margin-neg'}">Ksh ${moneyRound(prior.margin)}</span></div>
+        `}
+      </div>
+    </div>
+    ${noPrior ? '' : `
+    <div class="yoy-summary">
+      Income <span class="${dInc.cls}">${dInc.txt}</span> · Expenses <span class="${dExp.cls}">${dExp.txt}</span> · Margin <span class="${dMar.cls}">${dMar.txt}</span>
+    </div>`}
+  `;
+
+  // Rolling 4-month trend
+  const months = [];
+  for (let i = 3; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    const next = new Date(today.getFullYear(), today.getMonth() - i + 1, 1);
+    const endOfMonth = new Date(next.getTime() - 1);
+    const ym = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const t = totalsFor(d, endOfMonth);
+    months.push({ ym, label: d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }), ...t });
+  }
+  const maxVal = Math.max(1, ...months.map(m => Math.max(m.income, m.expenses)));
+
+  const trendBox = document.getElementById('yoy-trend');
+  trendBox.innerHTML = `
+    <div class="trend-chart">
+      <div class="trend-title">Rolling 4 months · monthly income vs expenses</div>
+      <div class="trend-legend">
+        <span class="legend-dot income"></span> Income
+        &nbsp;&nbsp;<span class="legend-dot expense"></span> Expenses
+        &nbsp;·&nbsp; tap any month for detail
+      </div>
+      ${months.map(m => `
+        <div class="month-row" data-ym="${m.ym}">
+          <div class="month-lbl">${m.label}</div>
+          <div class="bars">
+            <div class="bar-row">
+              <div class="bar-track"><div class="bar-fill income" style="width:${(m.income/maxVal)*100}%"></div></div>
+              <div class="bar-val">${moneyRound(m.income)}</div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-track"><div class="bar-fill expense" style="width:${(m.expenses/maxVal)*100}%"></div></div>
+              <div class="bar-val">${moneyRound(m.expenses)}</div>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  // Wire tap-to-detail
+  trendBox.querySelectorAll('.month-row').forEach(row => {
+    row.addEventListener('click', () => showMonthDetail(row.dataset.ym));
+  });
+}
+
+function showMonthDetail(ym) {
+  const [y, mo] = ym.split('-').map(Number);
+  const d = new Date(y, mo - 1, 1);
+  const endOfMonth = new Date(y, mo, 0, 23, 59, 59);
+  function inRange(dateStr) {
+    if (!dateStr) return false;
+    const dd = new Date(dateStr);
+    return dd >= d && dd <= endOfMonth;
+  }
+  // Compute breakdown
+  const banked = (STATE.banked || []).filter(b => inRange(b.date)).reduce((s,b) => s + (b.amount || 0), 0);
+  const poultry = (STATE.poultry || []).filter(p => inRange(p.date)).reduce((s,p) => s + (p.amount || 0), 0);
+  const eggsIncome = (STATE.poultry || []).filter(p => inRange(p.date) && p.product === 'Eggs').reduce((s,p) => s + (p.amount || 0), 0);
+  const birdsIncome = (STATE.poultry || []).filter(p => inRange(p.date) && (p.product === 'Chicks' || p.product === 'Chicken')).reduce((s,p) => s + (p.amount || 0), 0);
+  const expenses = STATE.expenses.filter(x => inRange(x.date)).reduce((s,x) => s + (x.amount || 0), 0);
+  const income = banked + poultry;
+  const margin = income - expenses;
+  const monthLbl = d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+
+  // Top 3 expense categories for the month
+  const byCat = {};
+  STATE.expenses.filter(x => inRange(x.date)).forEach(x => {
+    byCat[x.category] = (byCat[x.category] || 0) + (x.amount || 0);
+  });
+  const topCats = Object.entries(byCat).sort((a,b) => b[1] - a[1]).slice(0, 3);
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'trend-modal-backdrop';
+  backdrop.innerHTML = `
+    <div class="trend-modal">
+      <h4>${monthLbl}</h4>
+      <div class="modal-row"><span class="lbl">Banked income</span><span class="val">Ksh ${moneyRound(banked)}</span></div>
+      <div class="modal-row"><span class="lbl">Eggs income</span><span class="val">Ksh ${moneyRound(eggsIncome)}</span></div>
+      <div class="modal-row"><span class="lbl">Live birds income</span><span class="val">Ksh ${moneyRound(birdsIncome)}</span></div>
+      <div class="modal-row"><span class="lbl"><strong>Total income</strong></span><span class="val"><strong>Ksh ${moneyRound(income)}</strong></span></div>
+      <div class="modal-row"><span class="lbl"><strong>Total expenses</strong></span><span class="val"><strong>Ksh ${moneyRound(expenses)}</strong></span></div>
+      <div class="modal-row"><span class="lbl"><strong>Margin</strong></span><span class="val" style="color:${margin >= 0 ? 'var(--forest)' : '#b8714d'}"><strong>Ksh ${moneyRound(margin)}</strong></span></div>
+      ${topCats.length > 0 ? `
+        <div style="margin-top:0.8rem;padding-top:0.6rem;border-top:1px solid var(--rule);font-family:'IBM Plex Mono',monospace;font-size:0.6rem;letter-spacing:0.16em;color:var(--slate);text-transform:uppercase;margin-bottom:0.3rem">Top expenses</div>
+        ${topCats.map(([cat, amt]) => `<div class="modal-row"><span class="lbl">${cat}</span><span class="val">Ksh ${moneyRound(amt)}</span></div>`).join('')}
+      ` : ''}
+      <button class="close">Close</button>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop || e.target.classList.contains('close')) {
+      backdrop.remove();
+    }
+  });
 }
 
 function renderRecords() {
