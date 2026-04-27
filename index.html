@@ -1254,16 +1254,16 @@
       <div class="motto">Sinonin Tea · The Tea of Champions</div>
       <div class="stats hero-cashflow">
         <div>
-          <div class="stat-lbl">Income · this month</div>
+          <div class="stat-lbl">Group income · this month</div>
           <div class="stat-val" id="hero-income">0</div>
         </div>
         <div>
-          <div class="stat-lbl">Expenses · this month</div>
+          <div class="stat-lbl">Group expenses · this month</div>
           <div class="stat-val" id="hero-expenses">0</div>
         </div>
       </div>
       <div class="hero-margin-row">
-        <div class="margin-lbl">Margin</div>
+        <div class="margin-lbl">Group margin</div>
         <div class="margin-val" id="hero-margin">Ksh 0</div>
       </div>
     </div>
@@ -1273,7 +1273,7 @@
       <div class="biz-grid">
         <div class="biz-card"><div class="lbl">Factory-confirmed kg</div><div class="val" id="tea-kg-month">0</div><div class="sub">all factories</div></div>
         <div class="biz-card"><div class="lbl">Expected income</div><div class="val" id="tea-expected-month">Ksh 0</div><div class="sub">net after transport &amp; equity</div></div>
-        <div class="biz-card"><div class="lbl">Wages paid</div><div class="val" id="tea-wages-month">Ksh 0</div><div class="sub">to pluckers, daily cash</div></div>
+        <div class="biz-card"><div class="lbl">Tea expenses</div><div class="val" id="tea-expenses-month">Ksh 0</div><div class="sub" id="tea-expenses-sub">tea blocks &amp; tea ops</div></div>
         <div class="biz-card"><div class="lbl">Sireet equity built</div><div class="val" id="tea-shares-month">Ksh 0</div><div class="sub">5 KES/kg accrued</div></div>
       </div>
     </div>
@@ -1283,8 +1283,8 @@
       <div class="biz-grid">
         <div class="biz-card"><div class="lbl">Eggs income</div><div class="val" id="poultry-eggs-month">Ksh 0</div><div class="sub" id="poultry-eggs-sub">—</div></div>
         <div class="biz-card"><div class="lbl">Live birds income</div><div class="val" id="poultry-birds-month">Ksh 0</div><div class="sub" id="poultry-birds-sub">—</div></div>
-        <div class="biz-card"><div class="lbl">Eggs sold</div><div class="val" id="poultry-eggs-count">0</div><div class="sub">transactions</div></div>
-        <div class="biz-card"><div class="lbl">Live birds sold</div><div class="val" id="poultry-birds-count">0</div><div class="sub">transactions</div></div>
+        <div class="biz-card"><div class="lbl">Poultry income</div><div class="val" id="poultry-total-income">Ksh 0</div><div class="sub">eggs + birds</div></div>
+        <div class="biz-card"><div class="lbl">Poultry margin</div><div class="val" id="poultry-margin">Ksh 0</div><div class="sub" id="poultry-margin-sub">income − expenses</div></div>
       </div>
     </div>
 
@@ -1716,7 +1716,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v3.8</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v3.9</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3377,19 +3377,19 @@ function renderHome() {
   // Zone 2a — Sinonin Tea this month
   const teaKgMonth = actualsMonth.reduce((s, a) => s + (Number(a.kg) || 0), 0);
   const teaExpectedMonth = actualsMonth.reduce((s, a) => s + (Number(a.kg) || 0) * netPerKg(a.factory, a.date), 0);
-  // Wages = sum of plucker wage costs from this month's Greenleaf entries (paid daily as cash)
-  let teaWagesMonth = 0;
-  entries.forEach(e => {
-    const c = computeEntry(e);
-    if (c) teaWagesMonth += c.labour;
-  });
   const teaShareMonth = actualsMonth
     .filter(a => a.factory === 'Sireet')
     .reduce((s, a) => s + (Number(a.kg) || 0) * 5, 0);
 
+  // Tea expenses MTD: any expense whose Allocation is a tea block, OR whose Tier is "Tea farm operations" / "Tea farm payroll"
+  const teaTiers = ['Tea farm operations', 'Tea farm payroll'];
+  const teaExpensesMonth = expensesMonth
+    .filter(x => BLOCKS.includes(x.block) || teaTiers.includes(x.tier))
+    .reduce((s, x) => s + (x.amount || 0), 0);
+
   document.getElementById('tea-kg-month').innerHTML = kg(teaKgMonth) + '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:0.7rem;color:var(--slate-light);margin-left:0.25rem;">kg</span>';
   document.getElementById('tea-expected-month').textContent = 'Ksh ' + moneyRound(teaExpectedMonth);
-  document.getElementById('tea-wages-month').textContent = 'Ksh ' + moneyRound(teaWagesMonth);
+  document.getElementById('tea-expenses-month').textContent = 'Ksh ' + moneyRound(teaExpensesMonth);
   document.getElementById('tea-shares-month').textContent = 'Ksh ' + moneyRound(teaShareMonth);
 
   // Zone 2b — Kipkenda Poultry this month
@@ -3402,11 +3402,21 @@ function renderHome() {
   const eggsQty = eggsRows.reduce((s, p) => s + (Number(p.quantity) || 0), 0);
   const chicksQty = chickRows.reduce((s, p) => s + (Number(p.quantity) || 0), 0);
   const chickenQty = chickenRows.reduce((s, p) => s + (Number(p.quantity) || 0), 0);
+  const poultryTotalIncome = eggsIncome + birdsIncome;
+  // Poultry expenses MTD: Allocation = "Kipkenda Poultry" OR Category = "Kipkenda Poultry"
+  const poultryExpensesMonth = expensesMonth
+    .filter(x => x.block === 'Kipkenda Poultry' || x.category === 'Kipkenda Poultry')
+    .reduce((s, x) => s + (x.amount || 0), 0);
+  const poultryMarginMonth = poultryTotalIncome - poultryExpensesMonth;
 
   document.getElementById('poultry-eggs-month').textContent = 'Ksh ' + moneyRound(eggsIncome);
   document.getElementById('poultry-birds-month').textContent = 'Ksh ' + moneyRound(birdsIncome);
-  document.getElementById('poultry-eggs-count').textContent = String(eggsRows.length);
-  document.getElementById('poultry-birds-count').textContent = String(birdRows.length);
+  document.getElementById('poultry-total-income').textContent = 'Ksh ' + moneyRound(poultryTotalIncome);
+  const poultryMarginEl = document.getElementById('poultry-margin');
+  poultryMarginEl.textContent = 'Ksh ' + moneyRound(poultryMarginMonth);
+  poultryMarginEl.style.color = poultryMarginMonth < 0 ? '#b8714d' : '';
+  // Margin subtitle shows the expense backing the margin, so the "−expenses" claim is verifiable
+  document.getElementById('poultry-margin-sub').textContent = `expenses Ksh ${moneyRound(poultryExpensesMonth)}`;
 
   // Operational subtitles — volume + quality benchmark for eggs, mix breakdown for birds
   const eggsSub = document.getElementById('poultry-eggs-sub');
