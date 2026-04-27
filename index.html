@@ -817,35 +817,6 @@
     filter: blur(0);
   }
 
-  /* Stealth toggle pill in Settings */
-  .stealth-toggle-row {
-    display: flex; align-items: center; justify-content: space-between;
-    background: var(--ivory-warm);
-    border: 1px solid var(--rule);
-    border-radius: 2px;
-    padding: 0.7rem 0.85rem;
-    margin-bottom: 0.85rem;
-  }
-  .stealth-toggle-row .stealth-info { flex: 1; }
-  .stealth-toggle-row .stealth-lbl {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.65rem; letter-spacing: 0.18em; text-transform: uppercase;
-    color: var(--slate);
-  }
-  .stealth-toggle-row .stealth-sub {
-    font-family: 'Fraunces', serif; font-style: italic;
-    font-size: 0.78rem; color: var(--slate-light);
-    margin-top: 0.18rem;
-  }
-  body.stealth-mode .stealth-toggle-row { border-left: 2px solid var(--brass); }
-  body.stealth-mode .stealth-toggle-row .stealth-sub::after {
-    content: ' · ON';
-    color: var(--brass-dim);
-    font-style: normal;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.1em;
-  }
   .sireet-card {
     background: var(--ivory-warm);
     border: 1px solid var(--rule);
@@ -1793,14 +1764,6 @@
 
   <!-- SETTINGS -->
   <section class="panel" id="panel-settings">
-    <div class="stealth-toggle-row" id="stealth-toggle-row">
-      <div class="stealth-info">
-        <div class="stealth-lbl">Stealth mode</div>
-        <div class="stealth-sub">Blur monetary values for screen-sharing</div>
-      </div>
-      <div class="toggle" id="s-stealth"></div>
-    </div>
-
     <div class="section">
       <div class="section-head"><h3>Global parameters</h3><span class="meta">every entry</span></div>
       <div class="setting-row">
@@ -1891,7 +1854,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v4.1.2</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v4.1.3</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -1907,6 +1870,14 @@
     <div class="section" style="border-left:2px solid var(--brass);padding-left:0.85rem;background:var(--ivory-warm);padding-top:0.7rem;padding-bottom:0.85rem;border-radius:2px">
       <div class="section-head"><h3 style="color:var(--brass-dim)">Update guidance</h3></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.55"><strong>Never uninstall the app to update.</strong> The app updates itself when a new version ships — just close it (swipe away from recent apps) and reopen. Uninstalling wipes new pluckers, sync queue, and any data not yet pushed to your Sheet. Export a backup first if you must reinstall.</div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>Privacy</h3><span class="meta">screen-sharing</span></div>
+      <div class="setting-row">
+        <div><div class="k">Stealth mode</div><div class="desc">Blur monetary values · hold the logo to toggle</div></div>
+        <div class="toggle" id="s-stealth"></div>
+      </div>
     </div>
 
     <div class="danger-zone">
