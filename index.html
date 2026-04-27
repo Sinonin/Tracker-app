@@ -1666,6 +1666,17 @@
           <div class="field" style="margin-bottom:0"><input type="text" id="new-plucker-name" placeholder="Plucker name"></div>
           <div class="field" style="margin-bottom:0"><input type="number" id="new-plucker-id" placeholder="ID" min="1" step="1"></div>
         </div>
+        <div class="field" style="margin-bottom:0.5rem">
+          <select id="new-plucker-block">
+            <option value="">— Primary block / farm —</option>
+            <option value="Septonok">Septonok</option>
+            <option value="Sangalo">Sangalo</option>
+            <option value="Cheptabach">Cheptabach</option>
+            <option value="Kipkorom">Kipkorom</option>
+            <option value="All farms">All farms</option>
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:0.5rem"><input type="text" id="new-plucker-notes" placeholder="Notes (optional) — referral, start date, relation"></div>
         <div style="display:flex;align-items:center;justify-content:center;gap:0.6rem;margin:0.3rem 0 0.6rem">
           <span style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--slate)">Bonus eligible</span>
           <div class="toggle on" id="new-plucker-bonus"></div>
@@ -1716,7 +1727,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v3.9</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v4.0</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2047,6 +2058,20 @@ const POULTRY_FORM_FIELDS = {
   payment_method: 'entry.417919136',
   buyer:          'entry.382131237'
 };
+
+/* Plucker roster — 6th Form. Adds and edits push here; cloud fetch
+   reads back the latest state per ID. Replaces the previous
+   localStorage-only roster, which couldn't survive uninstall or
+   propagate across devices. */
+const ROSTER_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSf7L802D1TuCDfOsFFkHF7tE1KaLocoxJVYqQIflG1sce8ETw/formResponse';
+const ROSTER_FORM_FIELDS = {
+  pluckerId:    'entry.1753606573',
+  pluckerName:  'entry.2034450395',
+  primaryBlock: 'entry.1406187767',
+  bonusFlag:    'entry.709219952',
+  notes:        'entry.398383069'
+};
+
 const K_SYNC_QUEUE = 'sinonin_sync_queue_v1';
 const K_SYNC_STATS = 'sinonin_sync_stats_v1';
 
@@ -2201,7 +2226,13 @@ async function pushActualToForm(actual) {
 async function queueForSync(record, kind) {
   kind = kind || 'greenleaf';
   const queue = await storageGet(K_SYNC_QUEUE, []);
-  queue.push({ kind, recordId: record.id, attempts: 0, queuedAt: new Date().toISOString() });
+  if (kind === 'roster') {
+    // Roster items don't have a STATE record to look up later — store the
+    // full snapshot payload directly so we can retry without external state.
+    queue.push({ kind, payload: record, attempts: 0, queuedAt: new Date().toISOString() });
+  } else {
+    queue.push({ kind, recordId: record.id, attempts: 0, queuedAt: new Date().toISOString() });
+  }
   await storageSet(K_SYNC_QUEUE, queue);
   updateSyncIndicator();
 }
@@ -2310,6 +2341,41 @@ async function syncPoultry(row) {
   return ok;
 }
 
+/* Plucker roster sync — pushes a roster row to the 6th Form. The row
+   is { id, name, primaryBlock, bonus, notes }. The Form's bonus field
+   is a multiple-choice with two options that must match exactly. */
+async function pushRosterToForm(row) {
+  const params = new URLSearchParams();
+  params.set(ROSTER_FORM_FIELDS.pluckerId, String(row.id));
+  params.set(ROSTER_FORM_FIELDS.pluckerName, row.name || '');
+  params.set(ROSTER_FORM_FIELDS.primaryBlock, row.primaryBlock || 'All farms');
+  params.set(ROSTER_FORM_FIELDS.bonusFlag, row.bonus ? 'Bonus Eligible' : 'No bonus (Work-n-Pay)');
+  params.set(ROSTER_FORM_FIELDS.notes, row.notes || '');
+  try {
+    await fetch(ROSTER_FORM_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function syncRoster(row) {
+  if (!navigator.onLine) return false;
+  const ok = await pushRosterToForm(row);
+  if (ok) {
+    const stats = await storageGet(K_SYNC_STATS, { synced: 0, lastSync: null });
+    stats.synced = (stats.synced || 0) + 1;
+    stats.lastSync = new Date().toISOString();
+    await storageSet(K_SYNC_STATS, stats);
+  }
+  return ok;
+}
+
 let flushInFlight = false;
 async function flushQueue() {
   if (flushInFlight) return;
@@ -2329,12 +2395,14 @@ async function flushQueue() {
       else if (kind === 'actual') record = STATE.actuals.find(a => a.id === recordId);
       else if (kind === 'banked') record = (STATE.banked || []).find(b => b.id === recordId);
       else if (kind === 'poultry') record = (STATE.poultry || []).find(p => p.id === recordId);
+      else if (kind === 'roster')  record = item.payload || null; // roster items carry their own payload
       if (!record) continue; // record was deleted locally, drop from queue
       let ok;
       if (kind === 'expense')      ok = await pushExpenseToForm(record);
       else if (kind === 'actual')  ok = await pushActualToForm(record);
       else if (kind === 'banked')  ok = await pushBankedToForm(record);
       else if (kind === 'poultry') ok = await pushPoultryToForm(record);
+      else if (kind === 'roster')  ok = await pushRosterToForm(record);
       else                         ok = await pushToForm(record);
       if (ok) {
         const stats = await storageGet(K_SYNC_STATS, { synced: 0, lastSync: null });
@@ -2536,6 +2604,30 @@ async function applyCloudResponse(data) {
   if (Array.isArray(data.poultry)) {
     STATE.poultry = mergeByKey(STATE.poultry || [], data.poultry, poultryKey, cloudToLocalPoultry);
     await storageSet(K_POULTRY, STATE.poultry);
+  }
+  if (Array.isArray(data.roster)) {
+    // Roster merge — cloud is authoritative for IDs that appear in cloud,
+    // local is authoritative for IDs that exist only locally (e.g. queued
+    // but not yet pushed). For IDs in both, cloud's most-recent submission
+    // wins because Apps Script already deduplicated to last-write-wins.
+    const cloudIds = new Set(data.roster.map(r => r.id));
+    const merged = data.roster.map(r => ({
+      id: r.id,
+      name: r.name || '',
+      bonus: !!r.bonus,
+      primaryBlock: r.primaryBlock || '',
+      notes: r.notes || '',
+      active: true
+    }));
+    // Preserve any local-only pluckers (IDs not in cloud yet — newly added,
+    // probably queued for push)
+    PLUCKERS.forEach(local => {
+      if (!cloudIds.has(local.id)) merged.push(local);
+    });
+    merged.sort((a, b) => a.id - b.id);
+    PLUCKERS = merged;
+    await storageSet(K_PLUCKERS, PLUCKERS);
+    repopulatePluckerDropdown();
   }
   const syncMeta = { lastCloudSync: new Date().toISOString(), lastSyncDate: new Date().toISOString().slice(0, 10) };
   await storageSet(K_CLOUD_SYNC, syncMeta);
@@ -4343,6 +4435,8 @@ function renderPluckers() {
 async function addPlucker() {
   const name = document.getElementById('new-plucker-name').value.trim();
   const idRaw = document.getElementById('new-plucker-id').value.trim();
+  const primaryBlock = document.getElementById('new-plucker-block').value || 'All farms';
+  const notes = document.getElementById('new-plucker-notes').value.trim();
   const bonus = document.getElementById('new-plucker-bonus').classList.contains('on');
   if (!name) { showToast('Enter a name'); return; }
   let id = parseInt(idRaw, 10);
@@ -4354,16 +4448,23 @@ async function addPlucker() {
   if (PLUCKERS.some(p => p.name.toLowerCase() === name.toLowerCase())) {
     if (!confirm(`A plucker named "${name}" already exists. Add anyway?`)) return;
   }
-  PLUCKERS.push({ id, name, bonus, active: true });
+  PLUCKERS.push({ id, name, bonus, active: true, primaryBlock, notes });
   PLUCKERS.sort((a, b) => a.id - b.id);
   await storageSet(K_PLUCKERS, PLUCKERS);
   document.getElementById('new-plucker-name').value = '';
   document.getElementById('new-plucker-id').value = '';
+  document.getElementById('new-plucker-block').value = '';
+  document.getElementById('new-plucker-notes').value = '';
   document.getElementById('new-plucker-bonus').classList.add('on');
   renderPluckers();
   repopulatePluckerDropdown();
   renderBatchList();
   showToast(`Added: ${id}. ${name}`);
+  // Push to cloud roster — if it fails, queue for retry
+  const rosterPayload = { id, name, primaryBlock, bonus, notes };
+  const synced = await syncRoster(rosterPayload);
+  if (!synced) await queueForSync(rosterPayload, 'roster');
+  updateSyncIndicator();
 }
 
 async function resetPluckers() {
