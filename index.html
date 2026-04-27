@@ -84,6 +84,14 @@
     width: 52px; height: 52px;
     border-radius: 50%;
     box-shadow: 0 2px 8px rgba(0,0,0,0.25), 0 0 0 1px rgba(184,147,90,0.3);
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, transform 0.1s ease;
+  }
+  header.brand .brand-logo:active {
+    transform: scale(0.92);
+  }
+  body.stealth-mode header.brand .brand-logo {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25), 0 0 0 2px var(--brass);
   }
   header.brand .header-screen-title {
     display: block;
@@ -1385,7 +1393,7 @@
   <div class="tagline">Tea · Poultry · Dorper · Coffee · Maize <span class="sync-inline"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span></div>
   <span class="header-screen-title" id="screen-title">Overview</span>
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
-  <img class="brand-logo" src="logo.png" alt="Sinonin Food Innovations">
+  <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Tap to toggle stealth mode">
 </header>
 
 <main>
@@ -1878,7 +1886,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v4.1</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v4.1.1</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5261,6 +5269,7 @@ function showToast(msg) {
   document.getElementById('s-cess').addEventListener('change', saveCess);
   document.getElementById('s-transport').addEventListener('click', toggleTransport);
   document.getElementById('s-stealth').addEventListener('click', toggleStealth);
+  document.getElementById('brand-logo').addEventListener('click', toggleStealth);
   document.getElementById('btn-add-factory').addEventListener('click', addFactory);
   document.getElementById('btn-add-plucker').addEventListener('click', addPlucker);
   document.getElementById('new-plucker-bonus').addEventListener('click', () => {
