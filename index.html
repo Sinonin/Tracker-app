@@ -689,7 +689,150 @@
     cursor: pointer;
   }
 
-  .sireet-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.55rem; }
+  /* Typed-confirmation modal — for destructive actions */
+  .confirm-modal {
+    background: var(--ivory);
+    border: 1px solid var(--rule);
+    border-left: 3px solid #b8714d;
+    border-radius: 2px;
+    padding: 1.4rem 1.3rem 1.2rem;
+    max-width: 440px; width: 100%;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+  }
+  .confirm-modal h4 {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 400;
+    font-size: 1.15rem; color: #b8714d; margin: 0 0 0.5rem;
+  }
+  .confirm-modal .confirm-body {
+    font-family: 'Fraunces', serif; font-size: 0.92rem; color: var(--slate);
+    line-height: 1.5; margin-bottom: 0.85rem;
+  }
+  .confirm-modal .confirm-list {
+    background: var(--ivory-warm);
+    border-radius: 2px;
+    padding: 0.55rem 0.85rem;
+    margin: 0.5rem 0 0.85rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem; color: var(--slate);
+    line-height: 1.65;
+  }
+  .confirm-modal .confirm-prompt {
+    font-family: 'Fraunces', serif; font-size: 0.88rem; color: var(--forest);
+    margin-bottom: 0.45rem;
+  }
+  .confirm-modal .confirm-phrase {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 500; color: #b8714d;
+    background: var(--ivory-warm);
+    padding: 0.08rem 0.4rem;
+    border-radius: 2px;
+    letter-spacing: 0.06em;
+  }
+  .confirm-modal input.confirm-input {
+    width: 100%; box-sizing: border-box;
+    padding: 0.6rem 0.7rem;
+    border: 1px solid var(--rule); border-radius: 2px;
+    background: white;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem;
+    color: var(--forest); letter-spacing: 0.04em;
+    margin-bottom: 1rem;
+  }
+  .confirm-modal input.confirm-input:focus {
+    outline: none; border-color: var(--forest);
+  }
+  .confirm-modal .confirm-buttons {
+    display: flex; gap: 0.5rem; justify-content: flex-end;
+  }
+  .confirm-modal button {
+    padding: 0.55rem 1rem;
+    border-radius: 2px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    cursor: pointer; border: none;
+  }
+  .confirm-modal button.cancel {
+    background: transparent; color: var(--slate);
+    border: 1px solid var(--rule);
+  }
+  .confirm-modal button.cancel:hover { background: var(--ivory-warm); }
+  .confirm-modal button.confirm {
+    background: #b8714d; color: var(--ivory);
+  }
+  .confirm-modal button.confirm:disabled {
+    background: #d9c8b8; cursor: not-allowed;
+  }
+
+  /* Stealth Mode — blur monetary values for screen-sharing without changing layout
+     Targets the existing money-bearing classes directly so we don't need to retag every
+     textContent assignment. kg/quantity/plucker counts intentionally NOT blurred. */
+  body.stealth-mode .stealth-money,
+  body.stealth-mode .stat-val,
+  body.stealth-mode .margin-val,
+  body.stealth-mode .biz-card .val,
+  body.stealth-mode .sireet-ksh,
+  body.stealth-mode .yoy-col .rv,
+  body.stealth-mode .yoy-summary .delta-up,
+  body.stealth-mode .yoy-summary .delta-down,
+  body.stealth-mode .yoy-summary .delta-neutral,
+  body.stealth-mode .trend-chart .bar-val,
+  body.stealth-mode .trend-modal .modal-row .val {
+    filter: blur(7px);
+    user-select: none;
+    transition: filter 0.2s ease;
+  }
+  /* But — kg/qty values inside the same containers should remain visible.
+     We re-sharpen them by class. */
+  body.stealth-mode .stealth-keep,
+  body.stealth-mode .biz-card .sub,
+  body.stealth-mode .sireet-kg,
+  body.stealth-mode #tea-kg-month,
+  body.stealth-mode #poultry-eggs-sub,
+  body.stealth-mode #poultry-birds-sub,
+  body.stealth-mode #poultry-margin-sub {
+    filter: none !important;
+    user-select: auto;
+  }
+  /* Tap to peek (1-second reveal then auto-blur back) — desktop hover too */
+  body.stealth-mode .stat-val:hover,
+  body.stealth-mode .margin-val:hover,
+  body.stealth-mode .biz-card .val:hover,
+  body.stealth-mode .sireet-ksh:hover,
+  body.stealth-mode .yoy-col .rv:hover,
+  body.stealth-mode .trend-chart .bar-val:hover,
+  body.stealth-mode .trend-modal .modal-row .val:hover {
+    filter: blur(0);
+  }
+
+  /* Stealth toggle pill in Settings */
+  .stealth-toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--ivory-warm);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 0.7rem 0.85rem;
+    margin-bottom: 0.85rem;
+  }
+  .stealth-toggle-row .stealth-info { flex: 1; }
+  .stealth-toggle-row .stealth-lbl {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--slate);
+  }
+  .stealth-toggle-row .stealth-sub {
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 0.78rem; color: var(--slate-light);
+    margin-top: 0.18rem;
+  }
+  body.stealth-mode .stealth-toggle-row { border-left: 2px solid var(--brass); }
+  body.stealth-mode .stealth-toggle-row .stealth-sub::after {
+    content: ' · ON';
+    color: var(--brass-dim);
+    font-style: normal;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+  }
   .sireet-card {
     background: var(--ivory-warm);
     border: 1px solid var(--rule);
@@ -1600,7 +1743,7 @@
           <div class="sireet-kg" id="sireet-mtd-kg">0 kg</div>
         </div>
         <div class="sireet-card">
-          <div class="sireet-lbl">YTD</div>
+          <div class="sireet-lbl" title="Based on factory-confirmed Actuals (SMS slips for Sireet, receipt printouts for Sang'alo). Greenleaf entries do not count toward equity until reconciled at the factory.">YTD <span style="opacity:0.5;font-size:0.85em">ⓘ</span></div>
           <div class="sireet-ksh" id="sireet-ytd-ksh">Ksh 0</div>
           <div class="sireet-kg" id="sireet-ytd-kg">0 kg</div>
         </div>
@@ -1637,6 +1780,14 @@
 
   <!-- SETTINGS -->
   <section class="panel" id="panel-settings">
+    <div class="stealth-toggle-row" id="stealth-toggle-row">
+      <div class="stealth-info">
+        <div class="stealth-lbl">Stealth mode</div>
+        <div class="stealth-sub">Blur monetary values for screen-sharing</div>
+      </div>
+      <div class="toggle" id="s-stealth"></div>
+    </div>
+
     <div class="section">
       <div class="section-head"><h3>Global parameters</h3><span class="meta">every entry</span></div>
       <div class="setting-row">
@@ -1727,7 +1878,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v4.0.1</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v4.1</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -1845,39 +1996,55 @@ function netPerKg(factory, dateStr) {
 }
 
 const DEFAULT_PLUCKERS = [
-  { id: 5,  name: "Cheptabach",          bonus: true,  active: true },
-  { id: 6,  name: "Gladys Yego",          bonus: true,  active: true },
-  { id: 9,  name: "Hillary Kimutai",      bonus: true,  active: true },
-  { id: 10, name: "Sheila Jesang",        bonus: true,  active: true },
-  { id: 11, name: "Colleta Jerono",       bonus: true,  active: true },
-  { id: 12, name: "Zacchariah Kipleting", bonus: true,  active: true },
-  { id: 16, name: "Zachariah Kipleting",  bonus: true,  active: true },
-  { id: 17, name: "Stanley Kosgei",       bonus: true,  active: true },
-  { id: 19, name: "Eunice Koech",         bonus: true,  active: true },
-  { id: 25, name: "Winnie Jepkemei",      bonus: false, active: true },
-  { id: 29, name: "Nancy Cherop",         bonus: false, active: true },
-  { id: 30, name: "Caren Jepngetich",     bonus: true,  active: true },
-  { id: 31, name: "Josphat Kipkemboi",    bonus: true,  active: true },
-  { id: 32, name: "Frankline Kirwa",      bonus: true,  active: true },
-  { id: 33, name: "Contractors",          bonus: false, active: true },
-  { id: 34, name: "Meshark Too",          bonus: false, active: true },
-  { id: 35, name: "Ezron Rudisha",        bonus: true,  active: true },
-  { id: 36, name: "Geofrey Malakwen",     bonus: false, active: true },
-  { id: 37, name: "Nahashon Kipchirchir", bonus: false, active: true },
-  { id: 38, name: "Lydia Jelagat",        bonus: true,  active: true },
-  { id: 40, name: "Juliet Jepkemboi",     bonus: true,  active: true },
-  { id: 41, name: "Sharon Cherotich",     bonus: true,  active: true },
-  { id: 42, name: "Mercy Chepleting",     bonus: true,  active: true },
-  { id: 44, name: "Mercy Jepkurui",       bonus: true,  active: true },
-  { id: 45, name: "Winnie Jepkoech",      bonus: true,  active: true },
-  { id: 46, name: "Caren Lagat",          bonus: true,  active: true },
-  { id: 47, name: "Kipkorom",             bonus: true,  active: true },
-  { id: 48, name: "Sylivia Chelimo",      bonus: true,  active: true }
+  { id: 4,  name: "Elias Kimaru Kemboi",  bonus: true,  active: true, primaryBlock: "All farms",  notes: "Farm Manager" },
+  { id: 5,  name: "Cheptabach",            bonus: true,  active: true, primaryBlock: "Cheptabach", notes: "" },
+  { id: 6,  name: "Gladys Yego",           bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 7,  name: "Victor Kiprono",        bonus: true,  active: true, primaryBlock: "All farms",  notes: "" },
+  { id: 8,  name: "Faith Chepchirchir",    bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 9,  name: "Hillary Kimutai",       bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 10, name: "Sheila Jesang",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 11, name: "Colleta Jerono",        bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 12, name: "Zacchariah Kipleting",  bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 16, name: "Abram Kipruto",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 17, name: "Stanley Kosgei",        bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 19, name: "Eunice Koech",          bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 25, name: "Winnie Jepkemei",       bonus: false, active: true, primaryBlock: "Sangalo",    notes: "" },
+  { id: 29, name: "Nancy Cherop",          bonus: false, active: true, primaryBlock: "Sangalo",    notes: "" },
+  { id: 30, name: "Caren Jepngetich",      bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 31, name: "Josphat Kipkemboi",     bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 32, name: "Frankline Kirwa",       bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 33, name: "Contractors",           bonus: false, active: true, primaryBlock: "All farms",  notes: "Day-and-disappear" },
+  { id: 34, name: "Meshark Too",           bonus: false, active: true, primaryBlock: "All farms",  notes: "" },
+  { id: 35, name: "Ezron Rudisha",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 36, name: "Geofrey Malakwen",      bonus: false, active: true, primaryBlock: "All farms",  notes: "" },
+  { id: 37, name: "Nahashon Kipchirchir",  bonus: false, active: true, primaryBlock: "All farms",  notes: "" },
+  { id: 38, name: "Lydia Jelagat",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 40, name: "Juliet Jepkemboi",      bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 41, name: "Sharon Cherotich",      bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 42, name: "Mercy Chepleting",      bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 44, name: "Mercy Jepkurui",        bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 45, name: "Winnie Jepkoech",       bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 46, name: "Caren Lagat",           bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 47, name: "Kipkorom",              bonus: true,  active: true, primaryBlock: "Kipkorom",   notes: "" },
+  { id: 48, name: "Sylivia Chelimo",       bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 49, name: "Violah Chepchumba",     bonus: true,  active: true, primaryBlock: "All farms",  notes: "" },
+  { id: 50, name: "Rosepela Cherotich",    bonus: true,  active: true, primaryBlock: "Sangalo",    notes: "" },
+  { id: 51, name: "Boaz Kiplimo",          bonus: true,  active: true, primaryBlock: "Sangalo",    notes: "" },
+  { id: 52, name: "Irine Chepkoech",       bonus: true,  active: true, primaryBlock: "Sangalo",    notes: "" },
+  { id: 53, name: "Faith Jepngetich",      bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 54, name: "Caren Jebitok",         bonus: true,  active: true, primaryBlock: "Sangalo",    notes: "" },
+  { id: 55, name: "Sharon Cheptoo",        bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 56, name: "Collins Kimeli",        bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 57, name: "Violah Chelimo",        bonus: true,  active: true, primaryBlock: "Sangalo",    notes: "" },
+  { id: 58, name: "Eugene Kipkemboi",      bonus: false, active: true, primaryBlock: "Sangalo",    notes: "Work-n-Pay" },
+  { id: 59, name: "Patroba Cheptoo",       bonus: false, active: true, primaryBlock: "Sangalo",    notes: "Work-n-Pay" },
+  { id: 60, name: "Vivian Chumba",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 61, name: "Josphat Kibet",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" }
 ];
 
 let PLUCKERS = JSON.parse(JSON.stringify(DEFAULT_PLUCKERS));
 
-const DEFAULT_SETTINGS = { teaCessPerKg: 0.22, transportActive: false, currency: 'Ksh' };
+const DEFAULT_SETTINGS = { teaCessPerKg: 0.22, transportActive: false, currency: 'Ksh', stealthMode: false };
 
 const DEFAULT_EXPENSE_CATEGORIES = [
   { name: "Fertilizer",             tier: "Tea farm operations",   active: true },
@@ -4338,6 +4505,7 @@ function renderMiniTable(id, firstCol, obj, _legacyLimit) {
 function renderSettings() {
   document.getElementById('s-cess').value = STATE.settings.teaCessPerKg;
   document.getElementById('s-transport').classList.toggle('on', STATE.settings.transportActive);
+  document.getElementById('s-stealth').classList.toggle('on', !!STATE.settings.stealthMode);
 
   const box = document.getElementById('factory-cards');
   box.innerHTML = STATE.factories.map((f, i) => `
@@ -4514,14 +4682,147 @@ async function addPlucker() {
   updateSyncIndicator();
 }
 
+/* ========= TYPED-CONFIRMATION MODAL =========
+   Replaces window.confirm() for destructive actions. The user must type the
+   exact phrase (case-sensitive) to enable the Confirm button. Defends against
+   accidental taps, curious children, and pocket-thumb activation. */
+
+function typedConfirm({ title, body, summary, phrase, confirmLabel = 'Confirm delete' }) {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'trend-modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="confirm-modal">
+        <h4>⚠ ${title}</h4>
+        <div class="confirm-body">${body}</div>
+        ${summary ? `<div class="confirm-list">${summary}</div>` : ''}
+        <div class="confirm-prompt">Type <span class="confirm-phrase">${phrase}</span> to confirm</div>
+        <input type="text" class="confirm-input" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" placeholder="Type the phrase exactly">
+        <div class="confirm-buttons">
+          <button class="cancel" type="button">Cancel</button>
+          <button class="confirm" type="button" disabled>${confirmLabel}</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+
+    const input = backdrop.querySelector('input.confirm-input');
+    const confirmBtn = backdrop.querySelector('button.confirm');
+    const cancelBtn = backdrop.querySelector('button.cancel');
+
+    setTimeout(() => input.focus(), 50);
+
+    function close(value) {
+      backdrop.remove();
+      document.removeEventListener('keydown', onKey);
+      resolve(value);
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') close(false);
+      if (e.key === 'Enter' && !confirmBtn.disabled) close(true);
+    }
+    document.addEventListener('keydown', onKey);
+
+    input.addEventListener('input', () => {
+      confirmBtn.disabled = input.value !== phrase;
+    });
+    confirmBtn.addEventListener('click', () => { if (!confirmBtn.disabled) close(true); });
+    cancelBtn.addEventListener('click', () => close(false));
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(false); });
+  });
+}
+
+/* ========= DESTRUCTIVE-ACTION HANDLERS (typed-confirmation gated) ========= */
+
 async function resetPluckers() {
-  if (!confirm('Reset the plucker roster to defaults? Any pluckers you added will be removed. Existing entries keep their recorded names.')) return;
+  const ok = await typedConfirm({
+    title: 'Reset plucker roster',
+    body: `Reset to the built-in default roster of ${DEFAULT_PLUCKERS.length} pluckers. Any pluckers you added or edited will be removed from this device. Existing kg entries keep their recorded names.`,
+    summary: `Pluckers will be reset · ${PLUCKERS.length} → ${DEFAULT_PLUCKERS.length}`,
+    phrase: 'RESET ROSTER',
+    confirmLabel: 'Reset roster'
+  });
+  if (!ok) return;
   PLUCKERS = JSON.parse(JSON.stringify(DEFAULT_PLUCKERS));
   await storageSet(K_PLUCKERS, PLUCKERS);
   renderPluckers();
   repopulatePluckerDropdown();
   renderBatchList();
-  showToast('Roster reset');
+  showToast('Roster reset to defaults');
+}
+
+async function resetCategories() {
+  const ok = await typedConfirm({
+    title: 'Reset expense categories',
+    body: 'Restore the built-in expense categories. Any custom categories you added will be removed. Existing expense rows keep their category names.',
+    summary: `Categories will be reset to defaults`,
+    phrase: 'RESET CATEGORIES',
+    confirmLabel: 'Reset categories'
+  });
+  if (!ok) return;
+  EXPENSE_CATEGORIES = JSON.parse(JSON.stringify(DEFAULT_EXPENSE_CATEGORIES));
+  await storageSet(K_EXPENSE_CATS, EXPENSE_CATEGORIES);
+  renderCategories();
+  repopulateCategoryDropdown();
+  showToast('Categories reset to defaults');
+}
+
+async function resetRates() {
+  const ok = await typedConfirm({
+    title: 'Reset rate cards',
+    body: 'Restore factory rates and core settings to defaults. Any custom factories you added or rate edits will be reverted.',
+    summary: 'Factories and core settings will be reset',
+    phrase: 'RESET RATES',
+    confirmLabel: 'Reset rates'
+  });
+  if (!ok) return;
+  STATE.factories = JSON.parse(JSON.stringify(DEFAULT_FACTORIES));
+  STATE.settings = { ...DEFAULT_SETTINGS };
+  await storageSet(K_FACTORIES, STATE.factories);
+  await storageSet(K_SETTINGS, STATE.settings);
+  repopulateFactoryDropdowns();
+  renderSettings();
+  showToast('Rates reset to defaults');
+}
+
+async function clearEntries() {
+  const counts = {
+    entries:  STATE.entries.length,
+    expenses: STATE.expenses.length,
+    actuals:  STATE.actuals.length,
+    banked:   (STATE.banked || []).length,
+    poultry:  (STATE.poultry || []).length,
+  };
+  const total = counts.entries + counts.expenses + counts.actuals + counts.banked + counts.poultry;
+  const summary = `
+    <strong>This will permanently delete:</strong><br>
+    · ${counts.entries.toLocaleString()} plucker entries<br>
+    · ${counts.expenses.toLocaleString()} expense rows<br>
+    · ${counts.actuals.toLocaleString()} actuals<br>
+    · ${counts.banked.toLocaleString()} banked income rows<br>
+    · ${counts.poultry.toLocaleString()} poultry rows<br>
+    <strong>Total: ${total.toLocaleString()} records</strong>
+  `;
+  const ok = await typedConfirm({
+    title: 'Delete ALL records',
+    body: 'This wipes every transactional record from this device. Plucker roster, factory rates, expense categories, and Sireet ledger are kept. <strong>Export a JSON backup first if you need recovery.</strong>',
+    summary,
+    phrase: 'DELETE EVERYTHING',
+    confirmLabel: 'Delete everything'
+  });
+  if (!ok) return;
+  STATE.entries = [];
+  STATE.expenses = [];
+  STATE.actuals = [];
+  STATE.banked = [];
+  STATE.poultry = [];
+  await storageSet(K_ENTRIES, STATE.entries);
+  await storageSet(K_EXPENSES, STATE.expenses);
+  await storageSet(K_ACTUALS, STATE.actuals);
+  await storageSet(K_BANKED, STATE.banked);
+  await storageSet(K_POULTRY, STATE.poultry);
+  showToast('All records cleared');
+  renderHome();
 }
 
 /* ========= EXPENSE CATEGORIES ========= */
@@ -4603,15 +4904,6 @@ async function addCategory() {
   showToast(`Added: ${name}`);
 }
 
-async function resetCategories() {
-  if (!confirm('Reset expense categories to defaults? Any you added will be removed. Existing expenses keep their category name.')) return;
-  EXPENSE_CATEGORIES = JSON.parse(JSON.stringify(DEFAULT_EXPENSE_CATEGORIES));
-  await storageSet(K_EXPENSE_CATS, EXPENSE_CATEGORIES);
-  renderCategories();
-  repopulateCategoryDropdown();
-  showToast('Categories reset');
-}
-
 async function addFactory() {
   const name = document.getElementById('new-factory-name').value.trim();
   if (!name) return;
@@ -4641,28 +4933,19 @@ async function toggleTransport() {
   showToast('Transport ' + (STATE.settings.transportActive ? 'on' : 'off'));
 }
 
-async function resetRates() {
-  if (!confirm('Reset rate cards to defaults? Custom factories will be removed.')) return;
-  STATE.factories = JSON.parse(JSON.stringify(DEFAULT_FACTORIES));
-  STATE.settings = { ...DEFAULT_SETTINGS };
-  await storageSet(K_FACTORIES, STATE.factories);
-  await storageSet(K_SETTINGS, STATE.settings);
-  repopulateFactoryDropdowns();
-  renderSettings();
-  showToast('Rates reset');
+/* Stealth Mode — blurs monetary values across all panels for safe screen-sharing.
+   Hover/tap individual values to peek. Persists across reloads via K_SETTINGS. */
+function applyStealthMode(on) {
+  document.body.classList.toggle('stealth-mode', !!on);
+  const t = document.getElementById('s-stealth');
+  if (t) t.classList.toggle('on', !!on);
 }
 
-async function clearEntries() {
-  if (!confirm('Delete ALL records permanently — greenleaf entries, expenses, and actuals? Export CSVs first if you need a backup.')) return;
-  if (!confirm('This cannot be undone. Continue?')) return;
-  STATE.entries = [];
-  STATE.expenses = [];
-  STATE.actuals = [];
-  await storageSet(K_ENTRIES, STATE.entries);
-  await storageSet(K_EXPENSES, STATE.expenses);
-  await storageSet(K_ACTUALS, STATE.actuals);
-  showToast('All records cleared');
-  renderHome();
+async function toggleStealth() {
+  STATE.settings.stealthMode = !STATE.settings.stealthMode;
+  applyStealthMode(STATE.settings.stealthMode);
+  await storageSet(K_SETTINGS, STATE.settings);
+  showToast('Stealth ' + (STATE.settings.stealthMode ? 'on — money values blurred' : 'off'));
 }
 
 /* ========= JSON BACKUP / RESTORE =========
@@ -4977,6 +5260,7 @@ function showToast(msg) {
   // Settings
   document.getElementById('s-cess').addEventListener('change', saveCess);
   document.getElementById('s-transport').addEventListener('click', toggleTransport);
+  document.getElementById('s-stealth').addEventListener('click', toggleStealth);
   document.getElementById('btn-add-factory').addEventListener('click', addFactory);
   document.getElementById('btn-add-plucker').addEventListener('click', addPlucker);
   document.getElementById('new-plucker-bonus').addEventListener('click', () => {
@@ -5047,6 +5331,9 @@ function showToast(msg) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js').catch(() => {});
   }
+
+  // Apply persisted stealth mode immediately (before any render)
+  applyStealthMode(!!(STATE.settings && STATE.settings.stealthMode));
 
   renderHome();
 
