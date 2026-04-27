@@ -1727,7 +1727,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v4.0</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v4.0.1</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2817,27 +2817,52 @@ function updateQuickCalc() {
 }
 
 async function submitQuick() {
-  const v = qValues();
-  const c = computeEntry(v);
-  if (!c) return;
-  const plucker = PLUCKERS.find(p => p.id === v.pluckerId);
-  const entry = {
-    id: 'E' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
-    ts: new Date().toISOString(),
-    date: v.date, block: v.block,
-    pluckerId: v.pluckerId, pluckerName: plucker.name,
-    factory: v.factory, qty: v.qty
-  };
-  STATE.entries.push(entry);
-  await storageSet(K_ENTRIES, STATE.entries);
-  document.getElementById('q-qty').value = '';
-  document.getElementById('q-plucker').value = '';
-  updateQuickCalc();
-  showToast(`Saved · ${plucker.name} · ${v.qty} kg`);
-  // Push to Google Sheet — if it fails, queue for retry
-  const synced = await syncEntry(entry);
-  if (!synced) await queueForSync(entry, 'greenleaf');
-  updateSyncIndicator();
+  console.log('[submitQuick] step 1: starting');
+  try {
+    const v = qValues();
+    console.log('[submitQuick] step 2: qValues =', JSON.stringify(v));
+    const c = computeEntry(v);
+    console.log('[submitQuick] step 3: computeEntry returned', c ? 'object' : 'NULL');
+    if (!c) {
+      console.warn('[submitQuick] EXIT: computeEntry returned null. Likely cause: factory not found in STATE.factories. STATE.factories names:', STATE.factories.map(f => f.name));
+      showToast('Cannot save — check date/block/factory/qty and try again');
+      return;
+    }
+    const plucker = PLUCKERS.find(p => p.id === v.pluckerId);
+    console.log('[submitQuick] step 4: plucker found?', !!plucker, plucker ? `${plucker.id}. ${plucker.name}` : 'NOT FOUND in PLUCKERS array. PLUCKERS length: ' + PLUCKERS.length);
+    if (!plucker) {
+      console.error('[submitQuick] EXIT: plucker not found in PLUCKERS. Looking for id=', v.pluckerId, 'Available ids:', PLUCKERS.map(p => p.id));
+      showToast(`Plucker id ${v.pluckerId} not found locally — try refreshing the app`);
+      return;
+    }
+    const entry = {
+      id: 'E' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      ts: new Date().toISOString(),
+      date: v.date, block: v.block,
+      pluckerId: v.pluckerId, pluckerName: plucker.name,
+      factory: v.factory, qty: v.qty
+    };
+    console.log('[submitQuick] step 5: entry built', entry);
+    STATE.entries.push(entry);
+    console.log('[submitQuick] step 6: pushed to STATE.entries, new length:', STATE.entries.length);
+    await storageSet(K_ENTRIES, STATE.entries);
+    console.log('[submitQuick] step 7: storageSet K_ENTRIES complete');
+    document.getElementById('q-qty').value = '';
+    document.getElementById('q-plucker').value = '';
+    updateQuickCalc();
+    showToast(`Saved · ${plucker.name} · ${v.qty} kg`);
+    console.log('[submitQuick] step 8: toast shown, about to sync');
+    // Push to Google Sheet — if it fails, queue for retry
+    const synced = await syncEntry(entry);
+    console.log('[submitQuick] step 9: syncEntry returned', synced);
+    if (!synced) await queueForSync(entry, 'greenleaf');
+    updateSyncIndicator();
+    console.log('[submitQuick] step 10: COMPLETE');
+  } catch (err) {
+    console.error('[submitQuick] EXCEPTION at step:', err);
+    console.error('[submitQuick] error stack:', err.stack);
+    showToast(`Error: ${err.message || 'unknown'} — check browser console (F12)`);
+  }
 }
 
 function renderBatchList() {
@@ -2878,34 +2903,56 @@ function updateBatchSummary() {
 }
 
 async function submitBatch() {
-  const { block, factory, date, rows } = batchRows();
-  if (!block || !factory || rows.length === 0) return;
-  let saved = 0;
-  const tsBase = Date.now();
-  const newEntries = [];
-  rows.forEach((r, i) => {
-    const plucker = PLUCKERS.find(p => p.id === r.pluckerId);
-    const entry = {
-      id: 'E' + (tsBase + i) + '-' + Math.random().toString(36).slice(2, 6),
-      ts: new Date(tsBase + i).toISOString(),
-      date, block,
-      pluckerId: r.pluckerId, pluckerName: plucker.name,
-      factory, qty: r.qty
-    };
-    STATE.entries.push(entry);
-    newEntries.push(entry);
-    saved++;
-  });
-  await storageSet(K_ENTRIES, STATE.entries);
-  document.querySelectorAll('.batch-kg').forEach(i => i.value = '');
-  updateBatchSummary();
-  showToast(`Saved ${saved} entr${saved === 1 ? 'y' : 'ies'}`);
-  // Push to Google Sheet — parallel, queue on failure
-  const results = await Promise.all(newEntries.map(e => syncEntry(e)));
-  for (let i = 0; i < results.length; i++) {
-    if (!results[i]) await queueForSync(newEntries[i], 'greenleaf');
+  console.log('[submitBatch] step 1: starting');
+  try {
+    const { block, factory, date, rows } = batchRows();
+    console.log('[submitBatch] step 2: batchRows extracted', { block, factory, date, rowCount: rows.length });
+    if (!block || !factory || rows.length === 0) {
+      console.warn('[submitBatch] EXIT: missing block/factory/rows');
+      return;
+    }
+    let saved = 0;
+    const tsBase = Date.now();
+    const newEntries = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const plucker = PLUCKERS.find(p => p.id === r.pluckerId);
+      console.log(`[submitBatch] step 3.${i}: row pluckerId=${r.pluckerId}, found?`, !!plucker, plucker ? plucker.name : 'NOT FOUND');
+      if (!plucker) {
+        console.error(`[submitBatch] SKIPPING row ${i}: plucker id ${r.pluckerId} not in PLUCKERS. Available ids:`, PLUCKERS.map(p => p.id));
+        continue;
+      }
+      const entry = {
+        id: 'E' + (tsBase + i) + '-' + Math.random().toString(36).slice(2, 6),
+        ts: new Date(tsBase + i).toISOString(),
+        date, block,
+        pluckerId: r.pluckerId, pluckerName: plucker.name,
+        factory, qty: r.qty
+      };
+      STATE.entries.push(entry);
+      newEntries.push(entry);
+      saved++;
+    }
+    console.log('[submitBatch] step 4: built and pushed entries, saved=', saved, 'STATE.entries length now:', STATE.entries.length);
+    await storageSet(K_ENTRIES, STATE.entries);
+    console.log('[submitBatch] step 5: storageSet K_ENTRIES complete');
+    document.querySelectorAll('.batch-kg').forEach(i => i.value = '');
+    updateBatchSummary();
+    showToast(`Saved ${saved} entr${saved === 1 ? 'y' : 'ies'}`);
+    console.log('[submitBatch] step 6: toast shown, about to sync');
+    // Push to Google Sheet — parallel, queue on failure
+    const results = await Promise.all(newEntries.map(e => syncEntry(e)));
+    console.log('[submitBatch] step 7: sync results', results);
+    for (let i = 0; i < results.length; i++) {
+      if (!results[i]) await queueForSync(newEntries[i], 'greenleaf');
+    }
+    updateSyncIndicator();
+    console.log('[submitBatch] step 8: COMPLETE');
+  } catch (err) {
+    console.error('[submitBatch] EXCEPTION:', err);
+    console.error('[submitBatch] error stack:', err.stack);
+    showToast(`Batch error: ${err.message || 'unknown'} — check browser console (F12)`);
   }
-  updateSyncIndicator();
 }
 
 function switchMode(m) {
