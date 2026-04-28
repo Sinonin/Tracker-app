@@ -778,7 +778,8 @@
 
   /* Stealth Mode — blur monetary values for screen-sharing without changing layout
      Targets the existing money-bearing classes directly so we don't need to retag every
-     textContent assignment. kg/quantity/plucker counts intentionally NOT blurred. */
+     textContent assignment. kg/quantity/plucker counts intentionally NOT blurred.
+     Audited and expanded in v4.1.6 to cover Records-tab tables and exports. */
   body.stealth-mode .stealth-money,
   body.stealth-mode .stat-val,
   body.stealth-mode .margin-val,
@@ -789,7 +790,12 @@
   body.stealth-mode .yoy-summary .delta-down,
   body.stealth-mode .yoy-summary .delta-neutral,
   body.stealth-mode .trend-chart .bar-val,
-  body.stealth-mode .trend-modal .modal-row .val {
+  body.stealth-mode .trend-modal .modal-row .val,
+  body.stealth-mode .mini-table td.ksh-cell,
+  body.stealth-mode .mini-table tr.total td.ksh-cell,
+  body.stealth-mode .records-totals .total-val.is-ksh,
+  body.stealth-mode .record-row .val,
+  body.stealth-mode #insights-exp-total {
     filter: blur(7px);
     user-select: none;
     transition: filter 0.2s ease;
@@ -828,6 +834,20 @@
     filter: blur(10px);
     user-select: none;
     transition: filter 0.25s ease;
+  }
+
+  /* v4.1.6 — Export buttons visually disabled under stealth.
+     The click handler also guards (defense in depth) — CSS just signals to the user. */
+  body.stealth-mode #btn-export,
+  body.stealth-mode #btn-export-json {
+    opacity: 0.4;
+    cursor: not-allowed;
+    position: relative;
+  }
+  body.stealth-mode #btn-export::after,
+  body.stealth-mode #btn-export-json::after {
+    content: ' 🔒';
+    font-size: 0.85em;
   }
 
   .sireet-card {
@@ -1867,7 +1887,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v4.1.5</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v4.1.6</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -4084,7 +4104,7 @@ function renderRecords() {
     }, 0);
     let lines = [];
     if (totalKsh > 0) {
-      lines.push(`<div class="total-row"><span class="total-lbl">Total Ksh</span><span class="total-val">Ksh ${moneyRound(totalKsh)}</span></div>`);
+      lines.push(`<div class="total-row"><span class="total-lbl">Total Ksh</span><span class="total-val is-ksh">Ksh ${moneyRound(totalKsh)}</span></div>`);
     }
     if (totalKg > 0) {
       lines.push(`<div class="total-row"><span class="total-lbl">Total kg</span><span class="total-val">${kg(totalKg)} kg</span></div>`);
@@ -4295,7 +4315,7 @@ function renderSireetShares() {
         <tr>
           <td>${r.year}${r.live ? ' <span style="color:var(--brass);font-size:0.7rem;letter-spacing:0.12em">LIVE</span>' : ''}</td>
           <td style="text-align:right;font-family:'IBM Plex Mono',monospace">${kg(r.kg)}</td>
-          <td style="text-align:right;font-family:'IBM Plex Mono',monospace">${moneyRound(r.ksh)}</td>
+          <td class="ksh-cell" style="text-align:right;font-family:'IBM Plex Mono',monospace">${moneyRound(r.ksh)}</td>
         </tr>`).join('')}
     </tbody>`;
 }
@@ -4432,8 +4452,8 @@ function renderExpenseTable(id, obj) {
   t.innerHTML = `
     <thead><tr><th>Category</th><th>Count</th><th>Ksh</th></tr></thead>
     <tbody>
-      ${show.map(([k,v]) => `<tr><td>${k}</td><td>${v.kg}</td><td>${moneyRound(v.total)}</td></tr>`).join('')}
-      <tr class="total"><td>Total</td><td>${tCount}</td><td>${moneyRound(tTotal)}</td></tr>
+      ${show.map(([k,v]) => `<tr><td>${k}</td><td>${v.kg}</td><td class="ksh-cell">${moneyRound(v.total)}</td></tr>`).join('')}
+      <tr class="total"><td>Total</td><td>${tCount}</td><td class="ksh-cell">${moneyRound(tTotal)}</td></tr>
     </tbody>`;
   if (!ctrl) return;
   if (rows.length <= defaultLimit) {
@@ -4482,8 +4502,8 @@ function renderMiniTable(id, firstCol, obj, _legacyLimit) {
   t.innerHTML = `
     <thead><tr><th>${firstCol}</th><th>Kg</th><th>Ksh</th></tr></thead>
     <tbody>
-      ${show.map(([k,v]) => `<tr><td>${k}</td><td>${kg(v.kg)}</td><td>${moneyRound(v.total)}</td></tr>`).join('')}
-      <tr class="total"><td>Total</td><td>${kg(tKg)}</td><td>${moneyRound(tVal)}</td></tr>
+      ${show.map(([k,v]) => `<tr><td>${k}</td><td>${kg(v.kg)}</td><td class="ksh-cell">${moneyRound(v.total)}</td></tr>`).join('')}
+      <tr class="total"><td>Total</td><td>${kg(tKg)}</td><td class="ksh-cell">${moneyRound(tVal)}</td></tr>
     </tbody>`;
   // Render or hide the expand control
   const ctrl = document.getElementById(id + '-expand');
@@ -5022,6 +5042,11 @@ async function toggleStealth() {
    recommend exporting first. */
 
 async function exportBackupJSON() {
+  // Stealth-mode guard: refuse to export when stealth is active (v4.1.6)
+  if (STATE.settings && STATE.settings.stealthMode) {
+    showToast('🔒 Backup export disabled in stealth mode');
+    return;
+  }
   const backup = {
     schema: 'sinonin-group-backup',
     version: 'v3.7',
@@ -5120,6 +5145,11 @@ function downloadCSV(filename, headerRow, rows) {
 }
 
 function exportCSV() {
+  // Stealth-mode guard: refuse to export when stealth is active (v4.1.6)
+  if (STATE.settings && STATE.settings.stealthMode) {
+    showToast('🔒 Export disabled in stealth mode');
+    return;
+  }
   const type = document.getElementById('filter-type').value;
   const today = new Date().toISOString().slice(0,10);
   let exported = 0;
