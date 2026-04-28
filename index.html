@@ -1436,7 +1436,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.0.1</span>
+  <span class="version-label" id="version-label">v5.0.2</span>
 </header>
 
 <main>
@@ -1921,7 +1921,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.0.1</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.0.2</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2483,6 +2483,17 @@ async function pushGreenleafToGate(entry) {
 }
 
 async function pushExpenseToForm(expense) {
+  // v5.0 Phase 2.2 — try gate first if configured
+  if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL) {
+    const gateResult = await pushExpenseToGate(expense);
+    if (gateResult) {
+      lastWriteResult = gateResult;
+      return gateResult.ok;
+    }
+    // Gate unreachable — fall through to Form fallback
+  }
+
+  // Form path (legacy, also used as fallback)
   const params = new URLSearchParams();
   params.set(EXPENSE_FORM_FIELDS.date, expense.date);
   params.set(EXPENSE_FORM_FIELDS.tier, expense.tier || tierForCategory(expense.category));
@@ -2498,9 +2509,47 @@ async function pushExpenseToForm(expense) {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params.toString()
     });
+    lastWriteResult = { ok: true, via: 'form' };
     return true;
   } catch (e) {
+    lastWriteResult = { ok: false, reason: 'network-error' };
     return false;
+  }
+}
+
+/* Push an Expense to Apps Script gate. Same contract as pushGreenleafToGate. */
+async function pushExpenseToGate(expense) {
+  try {
+    const body = {
+      action: 'expense',
+      payload: {
+        ts:          expense.ts || new Date().toISOString(),
+        date:        expense.date,
+        tier:        expense.tier || tierForCategory(expense.category),
+        category:    expense.category,
+        description: expense.description || '',
+        amount:      Number(expense.amount),
+        block:       expense.block || 'Whole farm',
+        payee:       expense.payee || ''
+      },
+      source: 'PWA v5.0 Phase 2.2'
+    };
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:   JSON.stringify(body)
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    if (json && json.ok) return { ok: true, via: 'gate' };
+    if (json && json.writesLocked) {
+      return { ok: false, reason: 'writes-locked', message: json.reason || 'Writes locked' };
+    }
+    if (json && json.phase1Limited) return null;
+    return { ok: false, reason: 'gate-rejected', message: (json && json.reason) || 'Rejected by gate' };
+  } catch (e) {
+    return null;
   }
 }
 
@@ -3436,7 +3485,12 @@ async function submitExpense() {
   showToast(`Expense recorded · Ksh ${moneyRound(v.amount)}`);
   // Push to Google Sheet — if it fails, queue for retry
   const synced = await syncExpense(expense);
-  if (!synced) await queueForSync(expense, 'expense');
+  if (!synced) {
+    await queueForSync(expense, 'expense');
+    if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
+      showToast('🔒 Writes locked — ping Mzee Cheison · expense queued', 4500);
+    }
+  }
   updateSyncIndicator();
 }
 
@@ -3572,8 +3626,12 @@ async function submitBatchExpenses() {
   await storageSet(K_EXPENSES, STATE.expenses);
   // Then push each to the form relay (any failure → queue for retry)
   const results = await Promise.all(newExpenses.map(e => syncExpense(e)));
+  let queuedCount = 0;
   for (let i = 0; i < newExpenses.length; i++) {
-    if (!results[i]) await queueForSync(newExpenses[i], 'expense');
+    if (!results[i]) {
+      await queueForSync(newExpenses[i], 'expense');
+      queuedCount++;
+    }
   }
   // Reset the form: clear rows, clear date, add one fresh empty row
   document.getElementById('xb-rows').innerHTML = '';
@@ -3582,6 +3640,12 @@ async function submitBatchExpenses() {
   // Toast
   const skipMsg = skippedRows.length > 0 ? ` · ${skippedRows.length} incomplete skipped` : '';
   showToast(`Saved ${newExpenses.length} expense${newExpenses.length === 1 ? '' : 's'}${skipMsg}`);
+  // v5.0 Phase 2.2 — gate-rejection feedback (any of the queued items locked)
+  if (queuedCount > 0 && lastWriteResult && lastWriteResult.reason === 'writes-locked') {
+    setTimeout(() => {
+      showToast(`🔒 Writes locked — ${queuedCount} expense${queuedCount === 1 ? '' : 's'} queued · ping Mzee Cheison`, 4500);
+    }, 800);
+  }
   updateSyncIndicator();
   renderRecentExpenses();
 }
