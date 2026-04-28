@@ -50,7 +50,7 @@
   header.brand {
     background: var(--forest);
     color: var(--ivory);
-    padding: 1.35rem 1.5rem 1.85rem;
+    padding: 1.35rem 1.5rem 2.15rem;
     border-bottom: 3px solid var(--brass);
     position: relative;
   }
@@ -116,7 +116,7 @@
      DORPER · COFFEE · MAIZE) can breathe at full width. */
   header.brand .header-sync {
     position: absolute;
-    top: 4.3rem;
+    top: 4.6rem;
     right: 1rem;
     display: inline-flex;
     align-items: center;
@@ -1436,7 +1436,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v4.2.1</span>
+  <span class="version-label" id="version-label">v5.0</span>
 </header>
 
 <main>
@@ -1921,7 +1921,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v4.2.1</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.0</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2126,6 +2126,25 @@ const K_POULTRY = 'sinonin_poultry_v1';
 const K_CLOUD_SYNC = 'sinonin_cloud_sync_v1';
 
 const CLOUD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwzHUz9She1PsVPNOWvssSiQcye8hpKZ9v_3d1aX6nsqPDnIN375z8krhMwsCyikVSLtQ/exec';
+
+/* ============================================================
+   v5.0 PHASE 1 — APPS SCRIPT GATE CONFIG
+   ============================================================
+   The gate is the v5.0 architecture: writes route through Apps Script,
+   which checks a cloud flag in Control_Panel before forwarding to the Sheet.
+
+   APPS_SCRIPT_GATE_URL: deploy URL of sinonin-ledger-endpoint-v5.gs
+   (different from CLOUD_ENDPOINT above — that's the v4 read endpoint).
+
+   USE_APPS_SCRIPT_GATE: kill switch. When false, ALL writes use the legacy
+   Form path regardless of gate URL. Flip to false from code if Apps Script
+   v5 misbehaves; legacy Forms still work.
+
+   PHASE 1 SCOPE: Greenleaf entries only. The other five write paths
+   (Actuals, Expenses, Banked, Poultry, Roster) still use Forms in Phase 1.
+   They migrate in Phase 2. */
+const APPS_SCRIPT_GATE_URL = 'https://script.google.com/macros/s/AKfycbwzHUz9She1PsVPNOWvssSiQcye8hpKZ9v_3d1aX6nsqPDnIN375z8krhMwsCyikVSLtQ/exec';
+const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass gate entirely
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -2364,7 +2383,37 @@ async function rolloverClosedYearsIfNeeded() {
   }
 }
 
+/* Push a Greenleaf entry. v5.0 Phase 1: tries Apps Script gate first if configured,
+   falls back to direct Form submission if the gate is unavailable or returns an error.
+
+   Returns one of:
+     { ok: true,  via: 'gate' | 'form' }     — write succeeded
+     { ok: false, reason: 'writes-locked', message: '...' }  — gate rejected (flag OFF)
+     { ok: false, reason: 'network-error' } — couldn't reach either path
+   For backward compatibility with existing callers that expect a boolean,
+   pushToForm() returns truthy on success, falsy otherwise. The detailed
+   result is also stored in a side channel for richer UX. */
+let lastWriteResult = null;
+
 async function pushToForm(entry) {
+  // Gate path — try first if configured and kill switch is on
+  if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL) {
+    const gateResult = await pushGreenleafToGate(entry);
+    if (gateResult) {
+      // Either accepted, or explicitly rejected by gate — DON'T fall back to Form
+      lastWriteResult = gateResult;
+      if (gateResult.ok) {
+        return true;
+      }
+      // Gate said no — respect the lock, do not bypass via Form
+      return false;
+    }
+    // Gate completely unreachable (network error, malformed response).
+    // Fall through to Form path as fallback. This is the kill-switch behavior:
+    // if Apps Script blows up, legacy Forms keep operations running.
+  }
+
+  // Form path (legacy, also used as fallback)
   const params = new URLSearchParams();
   params.set(FORM_FIELDS.date, entry.date);
   params.set(FORM_FIELDS.block, entry.block);
@@ -2378,9 +2427,58 @@ async function pushToForm(entry) {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params.toString()
     });
+    lastWriteResult = { ok: true, via: 'form' };
     return true;
   } catch (e) {
+    lastWriteResult = { ok: false, reason: 'network-error' };
     return false;
+  }
+}
+
+/* Push to Apps Script gate. Returns:
+     { ok: true, via: 'gate' }                — accepted, written
+     { ok: false, reason: 'writes-locked', message }  — gate said flag is OFF
+     null                                      — couldn't reach gate (network/parse error)
+   The null return tells pushToForm() to try the Form fallback. */
+async function pushGreenleafToGate(entry) {
+  try {
+    const body = {
+      action: 'greenleaf',
+      payload: {
+        ts:          entry.ts || new Date().toISOString(),
+        date:        entry.date,
+        block:       entry.block,
+        pluckerName: formatPluckerForForm(entry),
+        qty:         Number(entry.qty),
+        factory:     entry.factory
+      },
+      source: 'PWA v4.2.1'
+    };
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },  // Apps Script accepts this
+      body:   JSON.stringify(body)
+    });
+    if (!response.ok) {
+      // HTTP error from Apps Script — treat as unreachable, allow Form fallback
+      return null;
+    }
+    const json = await response.json();
+    if (json && json.ok) {
+      return { ok: true, via: 'gate' };
+    }
+    if (json && json.writesLocked) {
+      return { ok: false, reason: 'writes-locked', message: json.reason || 'Writes locked' };
+    }
+    if (json && json.phase1Limited) {
+      // Gate told us this action isn't yet handled in Phase 1 — fall through to Form
+      return null;
+    }
+    return { ok: false, reason: 'gate-rejected', message: (json && json.reason) || 'Rejected by gate' };
+  } catch (e) {
+    // Network error, JSON parse error, etc. — null tells caller to try Form fallback
+    return null;
   }
 }
 
@@ -3056,8 +3154,15 @@ async function submitQuick() {
     console.log('[submitQuick] step 8: toast shown, about to sync');
     // Push to Google Sheet — if it fails, queue for retry
     const synced = await syncEntry(entry);
-    console.log('[submitQuick] step 9: syncEntry returned', synced);
-    if (!synced) await queueForSync(entry, 'greenleaf');
+    console.log('[submitQuick] step 9: syncEntry returned', synced, 'lastWriteResult:', lastWriteResult);
+    if (!synced) {
+      await queueForSync(entry, 'greenleaf');
+      // v5.0 Phase 1: if the gate explicitly rejected with writes-locked,
+      // show the operator a clear message — they need to ping Cheison, not retry silently
+      if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
+        showToast('🔒 Writes locked — ping Mzee Cheison · entry queued', 4500);
+      }
+    }
     updateSyncIndicator();
     console.log('[submitQuick] step 10: COMPLETE');
   } catch (err) {
@@ -5094,11 +5199,11 @@ function exportCSV() {
   else showToast(`Exported ${exported} record${exported === 1 ? '' : 's'}`);
 }
 
-function showToast(msg) {
+function showToast(msg, durationMs) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2200);
+  setTimeout(() => t.classList.remove('show'), durationMs || 2200);
 }
 
 (async function init() {
