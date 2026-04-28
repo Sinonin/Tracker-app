@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-<title>Sinonin Group Management App</title>
+<title>Sinonin Group</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -806,6 +806,35 @@
     filter: none !important;
     user-select: auto;
   }
+  /* But-but — financial values nested inside an otherwise-visible container must still blur.
+     .stealth-money always wins, regardless of where it lives. */
+  body.stealth-mode .stealth-money {
+    filter: blur(7px) !important;
+    user-select: none !important;
+  }
+  body.stealth-mode .stealth-money:hover {
+    filter: blur(0) !important;
+  }
+
+  /* Issue #003 — visual leak: bar heights/widths convey magnitude even when numeric labels
+     are blurred. Apply a frosted-glass overlay to every chart container under stealth so
+     both the numbers AND the bar shapes become unreadable. Tap-to-peek still works. */
+  body.stealth-mode .yoy-col,
+  body.stealth-mode .yoy-summary,
+  body.stealth-mode .trend-chart,
+  body.stealth-mode .trend-modal,
+  body.stealth-mode #block-bars {
+    filter: blur(10px);
+    user-select: none;
+    transition: filter 0.25s ease;
+  }
+  body.stealth-mode .yoy-col:hover,
+  body.stealth-mode .yoy-summary:hover,
+  body.stealth-mode .trend-chart:hover,
+  body.stealth-mode .trend-modal:hover,
+  body.stealth-mode #block-bars:hover {
+    filter: blur(0);
+  }
   /* Tap to peek (1-second reveal then auto-blur back) — desktop hover too */
   body.stealth-mode .stat-val:hover,
   body.stealth-mode .margin-val:hover,
@@ -1365,7 +1394,7 @@
 <body>
 
 <header class="brand">
-  <h1>Sinonin Group Management App</h1>
+  <h1>Sinonin Group</h1>
   <div class="tagline">Tea · Poultry · Dorper · Coffee · Maize <span class="sync-inline"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span></div>
   <span class="header-screen-title" id="screen-title">Overview</span>
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
@@ -1854,8 +1883,8 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v4.1.3</span></div>
-      <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
+      <div class="section-head"><h3>About</h3><span class="meta">v4.1.4</span></div>
+      <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
 
@@ -3705,8 +3734,11 @@ function renderHome() {
   const poultryMarginEl = document.getElementById('poultry-margin');
   poultryMarginEl.textContent = 'Ksh ' + moneyRound(poultryMarginMonth);
   poultryMarginEl.style.color = poultryMarginMonth < 0 ? '#b8714d' : '';
-  // Margin subtitle shows the expense backing the margin, so the "−expenses" claim is verifiable
-  document.getElementById('poultry-margin-sub').textContent = `expenses Ksh ${moneyRound(poultryExpensesMonth)}`;
+  // Margin subtitle shows the expense backing the margin, so the "−expenses" claim is verifiable.
+  // The Ksh value goes inside a .stealth-money span so stealth mode blurs only the figure,
+  // leaving the "expenses" label visible (it's a label, not a sensitive number).
+  document.getElementById('poultry-margin-sub').innerHTML =
+    `expenses <span class="stealth-money">Ksh ${moneyRound(poultryExpensesMonth)}</span>`;
 
   // Operational subtitles — volume + quality benchmark for eggs, mix breakdown for birds
   const eggsSub = document.getElementById('poultry-eggs-sub');
@@ -4358,15 +4390,26 @@ function renderInsights() {
   });
   renderExpenseTable('tbl-expenses', byCat);
 
-  // Factory mix — kg and income expected, both from Actuals
+  // Factory mix — kg AND revenue both from Actuals (design contract: revenue = Actuals × rate).
+  // Uses rateForDate() so historical deliveries are valued at their era's rate, not today's.
+  // Also tolerates Kapchorua/Kapchorwa spelling drift between data and config.
+  function canonicalFactoryName(name) {
+    if (!name) return name;
+    const s = String(name).trim();
+    // Known variant: Kapchorwa → Kapchorua (W↔U is a common Bantu romanisation slip)
+    if (/^kapchor[wu]a$/i.test(s)) return 'Kapchorua';
+    if (/^sang['']?alo$/i.test(s)) return "Sang'alo";
+    return s;
+  }
   const byFac = {};
   actuals.forEach(a => {
-    const factory = STATE.factories.find(f => f.name === a.factory);
-    const price = factory ? (factory.priceKg || 0) : 0;
+    const factoryName = canonicalFactoryName(a.factory);
+    const era = rateForDate(factoryName, a.date);
+    const price = era ? era.priceKg : 0;
     const kg = Number(a.kg) || 0;
-    byFac[a.factory] = byFac[a.factory] || { kg: 0, total: 0 };
-    byFac[a.factory].kg += kg;
-    byFac[a.factory].total += kg * price;
+    byFac[factoryName] = byFac[factoryName] || { kg: 0, total: 0 };
+    byFac[factoryName].kg += kg;
+    byFac[factoryName].total += kg * price;
   });
   renderMiniTable('tbl-factory', 'Factory', byFac);
 
@@ -4716,9 +4759,62 @@ function typedConfirm({ title, body, summary, phrase, confirmLabel = 'Confirm de
   });
 }
 
+/* PIN gate for the Danger Zone (Issue #004). Requires the passphrase KIPTANGUS
+   before any destructive-action modal opens. Belt-and-suspenders alongside typedConfirm. */
+const DANGER_PASSPHRASE = 'KIPTANGUS';
+function pinGate() {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'trend-modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="confirm-modal">
+        <h4>🔒 Danger Zone locked</h4>
+        <div class="confirm-body">Enter the passphrase to unlock destructive actions. This is a second layer of protection — even after unlocking, you'll still be asked to type a phrase to confirm the specific action.</div>
+        <input type="password" class="confirm-input" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" placeholder="Passphrase">
+        <div class="confirm-buttons">
+          <button class="cancel" type="button">Cancel</button>
+          <button class="confirm" type="button">Unlock</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+
+    const input = backdrop.querySelector('input.confirm-input');
+    const unlockBtn = backdrop.querySelector('button.confirm');
+    const cancelBtn = backdrop.querySelector('button.cancel');
+
+    setTimeout(() => input.focus(), 50);
+
+    function close(value) {
+      backdrop.remove();
+      document.removeEventListener('keydown', onKey);
+      resolve(value);
+    }
+    function attempt() {
+      if (input.value.trim().toUpperCase() === DANGER_PASSPHRASE) {
+        close(true);
+      } else {
+        showToast('Wrong passphrase');
+        input.value = '';
+        input.focus();
+      }
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') close(false);
+      if (e.key === 'Enter') attempt();
+    }
+    document.addEventListener('keydown', onKey);
+
+    unlockBtn.addEventListener('click', attempt);
+    cancelBtn.addEventListener('click', () => close(false));
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(false); });
+  });
+}
+
 /* ========= DESTRUCTIVE-ACTION HANDLERS (typed-confirmation gated) ========= */
 
 async function resetPluckers() {
+  if (!await pinGate()) return;
   const ok = await typedConfirm({
     title: 'Reset plucker roster',
     body: `Reset to the built-in default roster of ${DEFAULT_PLUCKERS.length} pluckers. Any pluckers you added or edited will be removed from this device. Existing kg entries keep their recorded names.`,
@@ -4736,6 +4832,7 @@ async function resetPluckers() {
 }
 
 async function resetCategories() {
+  if (!await pinGate()) return;
   const ok = await typedConfirm({
     title: 'Reset expense categories',
     body: 'Restore the built-in expense categories. Any custom categories you added will be removed. Existing expense rows keep their category names.',
@@ -4752,6 +4849,7 @@ async function resetCategories() {
 }
 
 async function resetRates() {
+  if (!await pinGate()) return;
   const ok = await typedConfirm({
     title: 'Reset rate cards',
     body: 'Restore factory rates and core settings to defaults. Any custom factories you added or rate edits will be reverted.',
@@ -4770,6 +4868,7 @@ async function resetRates() {
 }
 
 async function clearEntries() {
+  if (!await pinGate()) return;
   const counts = {
     entries:  STATE.entries.length,
     expenses: STATE.expenses.length,
@@ -4994,7 +5093,7 @@ async function importBackupJSON(file) {
     return;
   }
   if (backup.schema !== 'sinonin-group-backup' || !backup.data) {
-    showToast('Not a Sinonin Group Management App backup file');
+    showToast('Not a Sinonin Group backup file');
     return;
   }
   const c = backup.summary || {};
