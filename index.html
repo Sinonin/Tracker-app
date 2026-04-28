@@ -50,7 +50,7 @@
   header.brand {
     background: var(--forest);
     color: var(--ivory);
-    padding: 1.35rem 1.5rem 1.15rem;
+    padding: 1.35rem 1.5rem 1.85rem;
     border-bottom: 3px solid var(--brass);
     position: relative;
   }
@@ -97,6 +97,41 @@
   }
   body.stealth-mode header.brand .brand-logo {
     box-shadow: 0 2px 8px rgba(0,0,0,0.25), 0 0 0 2px var(--brass);
+  }
+  header.brand .version-label {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 1.3rem;
+    width: 64px;
+    text-align: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    color: var(--brass-light);
+    opacity: 0.6;
+    user-select: none;
+  }
+  /* Sync indicator — standalone in right column, sits between logo and version label.
+     Was inline in the tagline before v4.2.1; moved out so the tagline (TEA · POULTRY ·
+     DORPER · COFFEE · MAIZE) can breathe at full width. */
+  header.brand .header-sync {
+    position: absolute;
+    top: 4.3rem;
+    right: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 2px 7px;
+    background: rgba(184,147,90,0.12);
+    border: 1px solid rgba(184,147,90,0.3);
+    border-radius: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--brass-light);
+    white-space: nowrap;
+    user-select: none;
   }
   header.brand .header-screen-title {
     display: block;
@@ -1297,48 +1332,44 @@
   .toggle.on { background: var(--forest); }
   .toggle.on::after { left: 22px; }
 
-  .danger-zone {
-    margin-top: 1.5rem;
-    padding: 0.95rem;
-    border: 1px solid var(--danger);
-    border-radius: 2px;
-    background: rgba(139, 58, 58, 0.04);
-  }
-  .danger-zone h4 {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.68rem;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--danger);
-    margin-bottom: 0.5rem;
-  }
-  .danger-zone button {
-    background: transparent;
-    border: 1px solid var(--danger);
-    color: var(--danger);
-    padding: 0.5rem 0.85rem;
+  /* Pull-to-refresh indicator (v4.2.0) — slides down from above the viewport when
+     the operator pulls down at the top of the page. Hidden until pull starts. */
+  #ptr-indicator {
+    position: fixed;
+    top: -50px;
+    left: 0; right: 0;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    background: var(--ivory-warm);
+    border-bottom: 1px solid var(--rule);
+    color: var(--forest);
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.7rem;
-    letter-spacing: 0.15em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    border-radius: 2px;
-    cursor: pointer;
-    margin-right: 0.4rem;
-    margin-top: 0.3rem;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 9999;
+    transition: transform 0.25s ease, opacity 0.25s ease;
   }
-  .danger-zone button:hover { background: var(--danger); color: var(--ivory); }
+  #ptr-indicator .ptr-arrow {
+    font-size: 1.1rem;
+    display: inline-block;
+    transition: transform 0.2s ease;
+  }
+  #ptr-indicator.ready .ptr-arrow { transform: rotate(180deg); }
+  #ptr-indicator.ready { color: var(--brass); }
+  #ptr-indicator.syncing .ptr-arrow {
+    animation: ptr-spin 0.8s linear infinite;
+  }
+  @keyframes ptr-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
 
-  .sync-inline {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    padding: 2px 7px;
-    margin-left: 0.5rem;
-    background: rgba(184, 147, 90, 0.15);
-    border-radius: 10px;
-    font-size: 0.56rem;
-    letter-spacing: 0.14em;
-  }
   .sync-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--success); vertical-align: middle; }
   .sync-dot.offline { background: var(--brass-light); }
   body { padding-bottom: 100px; }
@@ -1400,10 +1431,12 @@
 
 <header class="brand">
   <h1>Sinonin Group Management App</h1>
-  <div class="tagline">Tea · Poultry · Dorper · Coffee · Maize <span class="sync-inline"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span></div>
+  <div class="tagline">Tea · Poultry · Dorper · Coffee · Maize</div>
   <span class="header-screen-title" id="screen-title">Overview</span>
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
+  <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
+  <span class="version-label" id="version-label">v4.2.1</span>
 </header>
 
 <main>
@@ -1888,7 +1921,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v4.1.7</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v4.2.1</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -1906,22 +1939,6 @@
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.55"><strong>Never uninstall the app to update.</strong> The app updates itself when a new version ships — just close it (swipe away from recent apps) and reopen. Uninstalling wipes new pluckers, sync queue, and any data not yet pushed to your Sheet. Export a backup first if you must reinstall.</div>
     </div>
 
-    <div class="section">
-      <div class="section-head"><h3>Privacy</h3><span class="meta">screen-sharing</span></div>
-      <div class="setting-row">
-        <div><div class="k">Stealth mode</div><div class="desc">Blur monetary values · hold the logo to toggle</div></div>
-        <div class="toggle" id="s-stealth"></div>
-      </div>
-    </div>
-
-    <div class="danger-zone">
-      <h4>Danger Zone</h4>
-      <div style="font-family:'Fraunces',serif;font-size:0.86rem;color:var(--slate);font-style:italic;margin-bottom:0.7rem;line-height:1.45">These reset device-local state. Export a backup first.</div>
-      <button id="btn-reset-rates">Reset rate cards</button>
-      <button id="btn-reset-pluckers">Reset plucker roster</button>
-      <button id="btn-reset-categories">Reset categories</button>
-      <button id="btn-clear-entries">Clear all data</button>
-    </div>
   </section>
 </main>
 
@@ -1964,7 +1981,7 @@ const BUSINESS_UNITS = ['Kipkenda Poultry', 'Olomotit Coffee', 'Maize', 'Dorper 
 const DEFAULT_FACTORIES = [
   { name: "Sireet",    priceKg: 25,   transport: 3.90, shares: 5, wageKg: 9.5,  bonusKg: 0.5, greenleaf: 13 },
   { name: "Sang'alo",  priceKg: 23,   transport: 0,    shares: 0, wageKg: 8,    bonusKg: 0,   greenleaf: 0  },
-  { name: "Kapchorua", priceKg: 24,   transport: 3,    shares: 0, wageKg: 10,   bonusKg: 0,   greenleaf: 0  },
+  { name: "Kapchorwa", priceKg: 24,   transport: 3,    shares: 0, wageKg: 10,   bonusKg: 0,   greenleaf: 0  },
   { name: "Chebut",    priceKg: 26,   transport: 5,    shares: 0, wageKg: 7,    bonusKg: 0,   greenleaf: 15 }
 ];
 
@@ -1982,7 +1999,7 @@ const FACTORY_RATE_HISTORY = {
     { from: '2023-01-01', priceKg: 20, transport: 0, shares: 0 },     // 2023-2024
     { from: '2025-01-01', priceKg: 23, transport: 0, shares: 0 }      // 2025+
   ],
-  "Kapchorua": [
+  "Kapchorwa": [
     { from: '2026-01-01', priceKg: 24, transport: 3, shares: 0 }      // started 2026, Kipkorom only
   ],
   "Chebut": [
@@ -4397,12 +4414,13 @@ function renderInsights() {
 
   // Factory mix — kg AND revenue both from Actuals (design contract: revenue = Actuals × rate).
   // Uses rateForDate() so historical deliveries are valued at their era's rate, not today's.
-  // Also tolerates Kapchorua/Kapchorwa spelling drift between data and config.
+  // Canonical factory name follows the data, not the dictionary: weighing-shed receipts and
+  // SMS slips spell it "Kapchorwa" (with W). Code matches the operational truth.
+  // Safety-net regex still tolerates legacy "Kapchorua" (with U) → maps it to "Kapchorwa".
   function canonicalFactoryName(name) {
     if (!name) return name;
     const s = String(name).trim();
-    // Known variant: Kapchorwa → Kapchorua (W↔U is a common Bantu romanisation slip)
-    if (/^kapchor[wu]a$/i.test(s)) return 'Kapchorua';
+    if (/^kapchor[wu]a$/i.test(s)) return 'Kapchorwa';
     if (/^sang['']?alo$/i.test(s)) return "Sang'alo";
     return s;
   }
@@ -4537,7 +4555,6 @@ function renderMiniTable(id, firstCol, obj, _legacyLimit) {
 function renderSettings() {
   document.getElementById('s-cess').value = STATE.settings.teaCessPerKg;
   document.getElementById('s-transport').classList.toggle('on', STATE.settings.transportActive);
-  document.getElementById('s-stealth').classList.toggle('on', !!STATE.settings.stealthMode);
 
   const box = document.getElementById('factory-cards');
   box.innerHTML = STATE.factories.map((f, i) => `
@@ -4764,154 +4781,11 @@ function typedConfirm({ title, body, summary, phrase, confirmLabel = 'Confirm de
   });
 }
 
-/* PIN gate for the Danger Zone (Issue #004). Requires the passphrase KIPTANGUS
-   before any destructive-action modal opens. Belt-and-suspenders alongside typedConfirm. */
-const DANGER_PASSPHRASE = 'KIPTANGUS';
-function pinGate() {
-  return new Promise((resolve) => {
-    const backdrop = document.createElement('div');
-    backdrop.className = 'trend-modal-backdrop';
-    backdrop.innerHTML = `
-      <div class="confirm-modal">
-        <h4>🔒 Danger Zone locked</h4>
-        <div class="confirm-body">Enter the passphrase to unlock destructive actions. This is a second layer of protection — even after unlocking, you'll still be asked to type a phrase to confirm the specific action.</div>
-        <input type="password" class="confirm-input" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" placeholder="Passphrase">
-        <div class="confirm-buttons">
-          <button class="cancel" type="button">Cancel</button>
-          <button class="confirm" type="button">Unlock</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(backdrop);
-
-    const input = backdrop.querySelector('input.confirm-input');
-    const unlockBtn = backdrop.querySelector('button.confirm');
-    const cancelBtn = backdrop.querySelector('button.cancel');
-
-    setTimeout(() => input.focus(), 50);
-
-    function close(value) {
-      backdrop.remove();
-      document.removeEventListener('keydown', onKey);
-      resolve(value);
-    }
-    function attempt() {
-      if (input.value.trim().toUpperCase() === DANGER_PASSPHRASE) {
-        close(true);
-      } else {
-        showToast('Wrong passphrase');
-        input.value = '';
-        input.focus();
-      }
-    }
-    function onKey(e) {
-      if (e.key === 'Escape') close(false);
-      if (e.key === 'Enter') attempt();
-    }
-    document.addEventListener('keydown', onKey);
-
-    unlockBtn.addEventListener('click', attempt);
-    cancelBtn.addEventListener('click', () => close(false));
-    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(false); });
-  });
-}
-
-/* ========= DESTRUCTIVE-ACTION HANDLERS (typed-confirmation gated) ========= */
-
-async function resetPluckers() {
-  if (!await pinGate()) return;
-  const ok = await typedConfirm({
-    title: 'Reset plucker roster',
-    body: `Reset to the built-in default roster of ${DEFAULT_PLUCKERS.length} pluckers. Any pluckers you added or edited will be removed from this device. Existing kg entries keep their recorded names.`,
-    summary: `Pluckers will be reset · ${PLUCKERS.length} → ${DEFAULT_PLUCKERS.length}`,
-    phrase: 'RESET ROSTER',
-    confirmLabel: 'Reset roster'
-  });
-  if (!ok) return;
-  PLUCKERS = JSON.parse(JSON.stringify(DEFAULT_PLUCKERS));
-  await storageSet(K_PLUCKERS, PLUCKERS);
-  renderPluckers();
-  repopulatePluckerDropdown();
-  renderBatchList();
-  showToast('Roster reset to defaults');
-}
-
-async function resetCategories() {
-  if (!await pinGate()) return;
-  const ok = await typedConfirm({
-    title: 'Reset expense categories',
-    body: 'Restore the built-in expense categories. Any custom categories you added will be removed. Existing expense rows keep their category names.',
-    summary: `Categories will be reset to defaults`,
-    phrase: 'RESET CATEGORIES',
-    confirmLabel: 'Reset categories'
-  });
-  if (!ok) return;
-  EXPENSE_CATEGORIES = JSON.parse(JSON.stringify(DEFAULT_EXPENSE_CATEGORIES));
-  await storageSet(K_EXPENSE_CATS, EXPENSE_CATEGORIES);
-  renderCategories();
-  repopulateCategoryDropdown();
-  showToast('Categories reset to defaults');
-}
-
-async function resetRates() {
-  if (!await pinGate()) return;
-  const ok = await typedConfirm({
-    title: 'Reset rate cards',
-    body: 'Restore factory rates and core settings to defaults. Any custom factories you added or rate edits will be reverted.',
-    summary: 'Factories and core settings will be reset',
-    phrase: 'RESET RATES',
-    confirmLabel: 'Reset rates'
-  });
-  if (!ok) return;
-  STATE.factories = JSON.parse(JSON.stringify(DEFAULT_FACTORIES));
-  STATE.settings = { ...DEFAULT_SETTINGS };
-  await storageSet(K_FACTORIES, STATE.factories);
-  await storageSet(K_SETTINGS, STATE.settings);
-  repopulateFactoryDropdowns();
-  renderSettings();
-  showToast('Rates reset to defaults');
-}
-
-async function clearEntries() {
-  if (!await pinGate()) return;
-  const counts = {
-    entries:  STATE.entries.length,
-    expenses: STATE.expenses.length,
-    actuals:  STATE.actuals.length,
-    banked:   (STATE.banked || []).length,
-    poultry:  (STATE.poultry || []).length,
-  };
-  const total = counts.entries + counts.expenses + counts.actuals + counts.banked + counts.poultry;
-  const summary = `
-    <strong>This will permanently delete:</strong><br>
-    · ${counts.entries.toLocaleString()} plucker entries<br>
-    · ${counts.expenses.toLocaleString()} expense rows<br>
-    · ${counts.actuals.toLocaleString()} actuals<br>
-    · ${counts.banked.toLocaleString()} banked income rows<br>
-    · ${counts.poultry.toLocaleString()} poultry rows<br>
-    <strong>Total: ${total.toLocaleString()} records</strong>
-  `;
-  const ok = await typedConfirm({
-    title: 'Delete ALL records',
-    body: 'This wipes every transactional record from this device. Plucker roster, factory rates, expense categories, and Sireet ledger are kept. <strong>Export a JSON backup first if you need recovery.</strong>',
-    summary,
-    phrase: 'DELETE EVERYTHING',
-    confirmLabel: 'Delete everything'
-  });
-  if (!ok) return;
-  STATE.entries = [];
-  STATE.expenses = [];
-  STATE.actuals = [];
-  STATE.banked = [];
-  STATE.poultry = [];
-  await storageSet(K_ENTRIES, STATE.entries);
-  await storageSet(K_EXPENSES, STATE.expenses);
-  await storageSet(K_ACTUALS, STATE.actuals);
-  await storageSet(K_BANKED, STATE.banked);
-  await storageSet(K_POULTRY, STATE.poultry);
-  showToast('All records cleared');
-  renderHome();
-}
+/* Reset/destructive handlers were retired in v4.2.0 (Phase 0 Spring Cleaning).
+   Recovery path now is: surgical edit in Settings (admin-only), or uninstall + reinstall
+   which restores from the cloud Sheet via auto-resync on app open. The old four reset
+   buttons protected against problems we don't actually have, while creating risk we
+   don't want — accidental press during a momentary lapse. KIPTANGUS retired with them. */
 
 /* ========= EXPENSE CATEGORIES ========= */
 function categoryHasExpenses(name) {
@@ -5358,7 +5232,6 @@ function showToast(msg) {
   // Settings
   document.getElementById('s-cess').addEventListener('change', saveCess);
   document.getElementById('s-transport').addEventListener('click', toggleTransport);
-  document.getElementById('s-stealth').addEventListener('click', toggleStealth);
   // Long-press the brand logo (400ms hold) to toggle stealth mode.
   // Quick taps do nothing — prevents accidental flips during normal use.
   // Visual: brass ring grows + subtle squish during the hold so user feels it engage.
@@ -5396,10 +5269,6 @@ function showToast(msg) {
     document.getElementById('new-plucker-bonus').classList.toggle('on');
   });
   document.getElementById('btn-add-category').addEventListener('click', addCategory);
-  document.getElementById('btn-reset-rates').addEventListener('click', resetRates);
-  document.getElementById('btn-reset-pluckers').addEventListener('click', resetPluckers);
-  document.getElementById('btn-reset-categories').addEventListener('click', resetCategories);
-  document.getElementById('btn-clear-entries').addEventListener('click', clearEntries);
 
   // JSON Backup / Restore
   document.getElementById('btn-export-json').addEventListener('click', exportBackupJSON);
@@ -5466,12 +5335,14 @@ function showToast(msg) {
 
   renderHome();
 
-  // ======== CLOUD SYNC ON APP OPEN ========
-  // If this is the first install (no prior cloud sync), show the splash screen
-  // and block rendering until the full initial fetch completes. Otherwise
-  // run the incremental sync in the background and refresh views when done.
+  // ======== CLOUD SYNC ON APP OPEN (v4.2.0) ========
+  // First install → splash + blocking full sync.
+  // Returning user → incremental refresh ONLY if last sync was >5 minutes ago (Flavor B).
+  // Snappier perceived performance for frequent opens; pull-to-refresh always available
+  // for "I want it now" cases.
   const syncMeta = await storageGet(K_CLOUD_SYNC, null);
   const isFirstInstall = !syncMeta || !syncMeta.lastCloudSync;
+  const STALE_THRESHOLD_MS = 5 * 60 * 1000;  // 5 minutes
 
   if (isFirstInstall && navigator.onLine) {
     showFirstInstallSplash();
@@ -5479,12 +5350,97 @@ function showToast(msg) {
       await runCloudSync({ full: true });
     } catch (e) { /* swallow — app can still run on local-only */ }
     hideFirstInstallSplash();
-    // Re-render home after first-sync populates state
     renderHome();
-  } else {
-    // Returning user — fetch in background; views auto-refresh on completion
-    runCloudSync();
+  } else if (navigator.onLine) {
+    // Compute staleness
+    const lastSyncTs = syncMeta && syncMeta.lastCloudSync ? new Date(syncMeta.lastCloudSync).getTime() : 0;
+    const ageMs = Date.now() - lastSyncTs;
+    if (ageMs >= STALE_THRESHOLD_MS) {
+      // Stale — fetch in background; views auto-refresh on completion
+      runCloudSync();
+    }
+    // else: skip — local data is fresh enough, instant load
   }
+
+  // ======== PULL-TO-REFRESH (v4.2.0) ========
+  // Universal mobile gesture: swipe down from the top of any panel triggers a manual
+  // resync from cloud. Operators don't need to find a button — they already know this
+  // gesture from WhatsApp, Gmail, M-Pesa, every Kenyan mobile app. Threshold: 80px
+  // pull distance. Visual feedback: indicator slides down with finger, locks when
+  // threshold is met. Sync fires on release.
+  (function wirePullToRefresh() {
+    const main = document.querySelector('main');
+    if (!main) return;
+
+    // Insert the indicator element (initially hidden, slides into view during pull)
+    const ptr = document.createElement('div');
+    ptr.id = 'ptr-indicator';
+    ptr.innerHTML = '<span class="ptr-arrow">↓</span><span class="ptr-text">Pull to refresh</span>';
+    document.body.insertBefore(ptr, main);
+
+    let startY = 0;
+    let pullDistance = 0;
+    let pulling = false;
+    let syncing = false;
+    const THRESHOLD = 80;
+
+    function onTouchStart(e) {
+      if (syncing) return;
+      // Only allow pull when scrolled to the very top
+      if (window.scrollY > 0) { pulling = false; return; }
+      startY = e.touches[0].clientY;
+      pulling = true;
+      pullDistance = 0;
+    }
+    function onTouchMove(e) {
+      if (!pulling || syncing) return;
+      const y = e.touches[0].clientY;
+      pullDistance = Math.max(0, y - startY);
+      if (pullDistance > 0 && window.scrollY === 0) {
+        // Apply rubber-band damping: visible distance grows slower than finger
+        const visible = Math.min(pullDistance * 0.5, 100);
+        ptr.style.transform = `translateY(${visible}px)`;
+        ptr.style.opacity = Math.min(visible / THRESHOLD, 1);
+        ptr.classList.toggle('ready', pullDistance >= THRESHOLD);
+        if (e.cancelable) e.preventDefault();
+      }
+    }
+    async function onTouchEnd() {
+      if (!pulling || syncing) { pulling = false; return; }
+      pulling = false;
+      if (pullDistance >= THRESHOLD && navigator.onLine) {
+        syncing = true;
+        ptr.querySelector('.ptr-text').textContent = 'Refreshing…';
+        ptr.querySelector('.ptr-arrow').textContent = '⟳';
+        ptr.style.transform = `translateY(50px)`;
+        ptr.classList.add('syncing');
+        try {
+          await runCloudSync({ full: true });
+          ptr.querySelector('.ptr-text').textContent = 'Synced';
+          renderHome();
+        } catch (e) {
+          ptr.querySelector('.ptr-text').textContent = 'Sync failed';
+        }
+        await new Promise(r => setTimeout(r, 600));
+        // Reset
+        ptr.style.transform = '';
+        ptr.style.opacity = '';
+        ptr.classList.remove('syncing', 'ready');
+        ptr.querySelector('.ptr-text').textContent = 'Pull to refresh';
+        ptr.querySelector('.ptr-arrow').textContent = '↓';
+        syncing = false;
+      } else {
+        // Not enough distance — animate back
+        ptr.style.transform = '';
+        ptr.style.opacity = '';
+        ptr.classList.remove('ready');
+      }
+      pullDistance = 0;
+    }
+    document.addEventListener('touchstart', onTouchStart, { passive: true });
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd, { passive: true });
+  })();
 })();
 </script>
 </body>
