@@ -116,7 +116,7 @@
      DORPER · COFFEE · MAIZE) can breathe at full width. */
   header.brand .header-sync {
     position: absolute;
-    top: 4.6rem;
+    top: 5rem;
     right: 1rem;
     display: inline-flex;
     align-items: center;
@@ -1436,7 +1436,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.0</span>
+  <span class="version-label" id="version-label">v5.0.1</span>
 </header>
 
 <main>
@@ -1921,7 +1921,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.0</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.0.1</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2505,6 +2505,17 @@ async function pushExpenseToForm(expense) {
 }
 
 async function pushActualToForm(actual) {
+  // v5.0 Phase 2.1 — try gate first if configured
+  if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL) {
+    const gateResult = await pushActualToGate(actual);
+    if (gateResult) {
+      lastWriteResult = gateResult;
+      return gateResult.ok;
+    }
+    // Gate unreachable — fall through to Form fallback
+  }
+
+  // Form path (legacy, also used as fallback)
   const params = new URLSearchParams();
   params.set(ACTUAL_FORM_FIELDS.date, actual.date);
   params.set(ACTUAL_FORM_FIELDS.factory, actual.factory);
@@ -2517,9 +2528,47 @@ async function pushActualToForm(actual) {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params.toString()
     });
+    lastWriteResult = { ok: true, via: 'form' };
     return true;
   } catch (e) {
+    lastWriteResult = { ok: false, reason: 'network-error' };
     return false;
+  }
+}
+
+/* Push an Actual to Apps Script gate. Returns:
+     { ok: true, via: 'gate' }                — accepted, written
+     { ok: false, reason: 'writes-locked', message }  — gate said flag is OFF
+     null                                      — couldn't reach gate (network/parse error) */
+async function pushActualToGate(actual) {
+  try {
+    const body = {
+      action: 'actual',
+      payload: {
+        ts:      actual.ts || new Date().toISOString(),
+        date:    actual.date,
+        factory: actual.factory,
+        block:   actual.block || 'All blocks (consolidated)',
+        kg:      Number(actual.kg)
+      },
+      source: 'PWA v5.0 Phase 2.1'
+    };
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:   JSON.stringify(body)
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    if (json && json.ok) return { ok: true, via: 'gate' };
+    if (json && json.writesLocked) {
+      return { ok: false, reason: 'writes-locked', message: json.reason || 'Writes locked' };
+    }
+    if (json && json.phase1Limited) return null;  // gate doesn't handle this action — fallback to Form
+    return { ok: false, reason: 'gate-rejected', message: (json && json.reason) || 'Rejected by gate' };
+  } catch (e) {
+    return null;
   }
 }
 
@@ -3613,7 +3662,13 @@ async function submitActual() {
   showToast(`Actual saved · ${v.factory} · ${v.block} · ${v.kg} kg`);
   // Push to Google Sheet — if it fails, queue for retry
   const synced = await syncActual(actual);
-  if (!synced) await queueForSync(actual, 'actual');
+  if (!synced) {
+    await queueForSync(actual, 'actual');
+    // v5.0 Phase 2.1: gate-rejection feedback
+    if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
+      showToast('🔒 Writes locked — ping Mzee Cheison · actual queued', 4500);
+    }
+  }
   updateSyncIndicator();
 }
 
