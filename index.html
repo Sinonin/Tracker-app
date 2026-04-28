@@ -807,43 +807,27 @@
     user-select: auto;
   }
   /* But-but — financial values nested inside an otherwise-visible container must still blur.
-     .stealth-money always wins, regardless of where it lives. */
+     .stealth-money always wins, regardless of where it lives.
+     NO hover-to-peek — the cursor IS the act of looking, and on touch devices the touch IS
+     the reveal. Privacy ends as soon as a finger or cursor moves. To see the number, the
+     operator must explicitly disable stealth via long-press on the logo. (Issue #v4.1.4-005) */
   body.stealth-mode .stealth-money {
     filter: blur(7px) !important;
     user-select: none !important;
   }
-  body.stealth-mode .stealth-money:hover {
-    filter: blur(0) !important;
-  }
 
   /* Issue #003 — visual leak: bar heights/widths convey magnitude even when numeric labels
-     are blurred. Apply a frosted-glass overlay to every chart container under stealth so
-     both the numbers AND the bar shapes become unreadable. Tap-to-peek still works. */
+     are blurred. Apply a frosted-glass overlay to financial chart containers under stealth so
+     both the numbers AND the bar shapes become unreadable.
+     NOTE: #block-bars is NOT included here — block performance is operational kg data,
+     not financial, and stays sharp under stealth (Champion's call, 28 Apr 2026). */
   body.stealth-mode .yoy-col,
   body.stealth-mode .yoy-summary,
   body.stealth-mode .trend-chart,
-  body.stealth-mode .trend-modal,
-  body.stealth-mode #block-bars {
+  body.stealth-mode .trend-modal {
     filter: blur(10px);
     user-select: none;
     transition: filter 0.25s ease;
-  }
-  body.stealth-mode .yoy-col:hover,
-  body.stealth-mode .yoy-summary:hover,
-  body.stealth-mode .trend-chart:hover,
-  body.stealth-mode .trend-modal:hover,
-  body.stealth-mode #block-bars:hover {
-    filter: blur(0);
-  }
-  /* Tap to peek (1-second reveal then auto-blur back) — desktop hover too */
-  body.stealth-mode .stat-val:hover,
-  body.stealth-mode .margin-val:hover,
-  body.stealth-mode .biz-card .val:hover,
-  body.stealth-mode .sireet-ksh:hover,
-  body.stealth-mode .yoy-col .rv:hover,
-  body.stealth-mode .trend-chart .bar-val:hover,
-  body.stealth-mode .trend-modal .modal-row .val:hover {
-    filter: blur(0);
   }
 
   .sireet-card {
@@ -1883,7 +1867,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v4.1.4</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v4.1.5</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
