@@ -145,9 +145,10 @@
   }
   header.brand .version-label {
     position: absolute;
-    bottom: 0.5rem;
-    right: 1.3rem;
-    width: 64px;
+    bottom: 0.3rem;
+    right: 0.8rem;
+    min-width: 64px;
+    padding: 0.4rem 0.7rem;
     text-align: center;
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.62rem;
@@ -155,6 +156,16 @@
     color: var(--brass-light);
     opacity: 0.6;
     user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+  }
+  header.brand .version-label.pressing {
+    background-color: rgba(212, 165, 91, 0.25);
+    opacity: 1;
+    color: var(--brass);
   }
   /* Sync indicator — standalone in right column, sits between logo and version label.
      Was inline in the tagline before v4.2.1; moved out so the tagline (TEA · POULTRY ·
@@ -1651,7 +1662,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.0.20</span>
+  <span class="version-label" id="version-label">v5.0.21</span>
 </header>
 
 <main>
@@ -2166,7 +2177,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.0.20</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.0.21</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2396,7 +2407,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.0.20';
+const APP_VERSION = 'v5.0.21';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -2742,52 +2753,98 @@ async function setAdminMode(isAdmin) {
   applyAdminVisibility();
 }
 
-/* v5.0.19 — Admin escape hatch. When IS_ADMIN is false but the user is
+/* v5.0.21 — Admin escape hatch. When IS_ADMIN is false but the user is
    actually Cheison (e.g., fresh install OR data cleared), they need a way to
-   reveal Settings + Admin section to enter their passphrase. Long-press
-   (3 seconds) on the version label in the header reveals Settings tab
-   temporarily; entering correct passphrase upgrades to permanent admin. */
+   reveal Settings + Admin section to enter their passphrase.
+
+   Long-press (1.5 seconds) on the version label in the header reveals
+   Settings tab temporarily. The press is intentional but not exhausting:
+   1.5 sec is short enough to hold steady on a small target, long enough that
+   a regular tap won't trigger it. Visual feedback (.pressing class) confirms
+   the press is registering. Console logging diagnoses any future failures. */
 function wireAdminEscapeHatch() {
   const versionLabel = document.getElementById('version-label');
-  if (!versionLabel || versionLabel.dataset.wired === '1') return;
+  if (!versionLabel) {
+    console.warn('[escape-hatch] version-label element not found');
+    return;
+  }
+  if (versionLabel.dataset.wired === '1') return;
   versionLabel.dataset.wired = '1';
   let pressTimer = null;
-  function startPress() {
-    pressTimer = setTimeout(() => {
-      // Temporarily reveal Settings tab + Admin section so user can enter passphrase
-      const settingsNavBtn = document.getElementById('nav-settings');
-      const adminSection = document.getElementById('settings-admin-section');
-      if (settingsNavBtn) settingsNavBtn.style.display = '';
-      if (adminSection)   adminSection.style.display = '';
-      // Wire admin UI now that section is visible
-      wireAdminUI();
-      fetchAdminStatus().then(() => {
-        renderAdminSection();
-        renderGateBanner();
-      });
-      // Show feedback toast and navigate to Settings
-      showToast('Admin reveal · enter passphrase to confirm');
+  let pressing = false;
+
+  function reveal() {
+    console.log('[escape-hatch] revealing admin section');
+    const settingsNavBtn = document.getElementById('nav-settings');
+    const adminSection = document.getElementById('settings-admin-section');
+    if (settingsNavBtn) settingsNavBtn.style.display = '';
+    if (adminSection)   adminSection.style.display = '';
+    wireAdminUI();
+    fetchAdminStatus().then(() => {
+      renderAdminSection();
+      renderGateBanner();
+    });
+    showToast('Admin reveal · enter passphrase to confirm');
+    setTimeout(() => {
+      if (settingsNavBtn) settingsNavBtn.click();
       setTimeout(() => {
-        if (settingsNavBtn) settingsNavBtn.click();
-        setTimeout(() => {
-          const passInput = document.getElementById('admin-passphrase');
-          if (passInput) {
-            passInput.focus();
-            passInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }, 200);
-      }, 300);
-    }, 3000); // 3-second long-press
+        const passInput = document.getElementById('admin-passphrase');
+        if (passInput) {
+          passInput.focus();
+          passInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 200);
+    }, 300);
+  }
+
+  function startPress(e) {
+    if (pressing) return;
+    pressing = true;
+    versionLabel.classList.add('pressing');
+    console.log('[escape-hatch] press started');
+    pressTimer = setTimeout(() => {
+      versionLabel.classList.remove('pressing');
+      pressing = false;
+      reveal();
+    }, 1500); // 1.5-second long-press (was 3s, too long)
   }
   function cancelPress() {
-    if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+    versionLabel.classList.remove('pressing');
+    pressing = false;
   }
+
   versionLabel.addEventListener('mousedown', startPress);
   versionLabel.addEventListener('touchstart', startPress, { passive: true });
   versionLabel.addEventListener('mouseup', cancelPress);
   versionLabel.addEventListener('mouseleave', cancelPress);
   versionLabel.addEventListener('touchend', cancelPress);
   versionLabel.addEventListener('touchcancel', cancelPress);
+
+  // v5.0.21 — Backup escape hatch: triple-tap the app title within 1 second.
+  // For users who can't long-press steadily on the small version label.
+  // Using app title (not logo) to avoid conflict with logo's stealth-mode hold.
+  const titleEl = document.querySelector('header.brand h1');
+  if (titleEl && titleEl.dataset.escapeWired !== '1') {
+    titleEl.dataset.escapeWired = '1';
+    titleEl.style.cursor = 'pointer';
+    let tapCount = 0;
+    let tapTimer = null;
+    titleEl.addEventListener('click', () => {
+      tapCount++;
+      if (tapTimer) clearTimeout(tapTimer);
+      if (tapCount >= 3) {
+        tapCount = 0;
+        console.log('[escape-hatch] triple-tap on title');
+        reveal();
+      } else {
+        tapTimer = setTimeout(() => { tapCount = 0; }, 700);
+      }
+    });
+  }
 }
 
 // In-memory cache of last known gate state (populated by fetchAdminStatus)
