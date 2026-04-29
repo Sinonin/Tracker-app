@@ -50,7 +50,7 @@
   header.brand {
     background: var(--forest);
     color: var(--ivory);
-    padding: 1.35rem 1.5rem 2.15rem;
+    padding: 1.35rem 1.5rem 2.5rem;
     border-bottom: 3px solid var(--brass);
     position: relative;
   }
@@ -61,6 +61,22 @@
     letter-spacing: -0.02em;
     font-variation-settings: 'opsz' 80;
     line-height: 1;
+    padding-right: 4.5rem;  /* reserve space for the brass logo at top-right */
+  }
+  /* v5.0.5 — Smart H1: shrink the font on phones so "Sinonin Group Management
+     App" fits on the available width without overflowing under the logo.
+     Branding ("Group") is preserved at every screen size. Mars discipline:
+     change the font, never the words. */
+  @media (max-width: 480px) {
+    header.brand h1 {
+      font-size: 1.35rem;
+      padding-right: 4rem;
+    }
+  }
+  @media (max-width: 380px) {
+    header.brand h1 {
+      font-size: 1.15rem;
+    }
   }
   header.brand .tagline {
     font-family: 'IBM Plex Mono', monospace;
@@ -116,7 +132,7 @@
      DORPER · COFFEE · MAIZE) can breathe at full width. */
   header.brand .header-sync {
     position: absolute;
-    top: 5rem;
+    top: 5.4rem;
     right: 1rem;
     display: inline-flex;
     align-items: center;
@@ -1436,7 +1452,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.0.2</span>
+  <span class="version-label" id="version-label">v5.0.7</span>
 </header>
 
 <main>
@@ -1817,13 +1833,13 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>Factory mix</h3><span class="meta">by kilograms</span></div>
+      <div class="section-head"><h3 title="Total kg here is factory-confirmed (Actuals from SMS slips and weighing-shed receipts). The Plucker rankings card below shows field-side kg, which is always slightly lower because pluckers are paid in whole kg (decimals dropped). The gap is normal — by design.">Factory mix <span style="opacity:0.5;font-size:0.7em">ⓘ</span></h3><span class="meta">by kilograms</span></div>
       <table class="mini-table" id="tbl-factory"></table>
       <div class="records-more" id="tbl-factory-expand" style="display:none"></div>
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>Plucker rankings</h3><span class="meta">top performers</span></div>
+      <div class="section-head"><h3 title="Total kg here is field-side (what pluckers logged when leaf was weighed in the field). This is always slightly lower than the Factory mix total above because pluckers are paid in whole kg (decimals dropped) and field weighing has friction (bag tare, moisture). The gap is normal — by design.">Plucker rankings <span style="opacity:0.5;font-size:0.7em">ⓘ</span></h3><span class="meta">top performers</span></div>
       <table class="mini-table" id="tbl-plucker"></table>
       <div class="records-more" id="tbl-plucker-expand" style="display:none"></div>
     </div>
@@ -1921,7 +1937,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.0.2</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.0.7</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5551,7 +5567,35 @@ function showToast(msg, durationMs) {
   setInterval(flushQueue, 60000);
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js').then((reg) => {
+      // v5.0.3 — Active update polling.
+      // Every 5 minutes while the app is open, ask the browser to check
+      // if a new service worker is available. If so, it auto-installs and
+      // activates (because the new SW calls skipWaiting + clients.claim).
+      // This is what makes "no more clear-cache" promise hold.
+      setInterval(() => {
+        reg.update().catch(() => {});
+      }, 5 * 60 * 1000);
+
+      // Also check immediately when the tab becomes visible after being hidden
+      // (covers the "operator opened the app after lunch" case)
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          reg.update().catch(() => {});
+        }
+      });
+    }).catch(() => {});
+
+    // When the new SW activates and takes control, show the operator a toast
+    // confirming they're now on the latest version
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'SW_ACTIVATED') {
+        // Soft refresh: show a toast then trigger a re-render so any new
+        // CSS / markup changes appear without a hard reload.
+        // (We don't auto-reload to avoid losing the operator's mid-entry state.)
+        try { showToast('App updated — refresh for full effect', 4500); } catch (e) {}
+      }
+    });
   }
 
   // Apply persisted stealth mode immediately (before any render)
