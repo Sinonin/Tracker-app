@@ -1586,7 +1586,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.0.12</span>
+  <span class="version-label" id="version-label">v5.0.13</span>
 </header>
 
 <main>
@@ -2071,7 +2071,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.0.12</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.0.13</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2300,7 +2300,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.0.12';
+const APP_VERSION = 'v5.0.13';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -3582,7 +3582,7 @@ async function submitQuick() {
       // v5.0 Phase 1: if the gate explicitly rejected with writes-locked,
       // show the operator a clear message — they need to ping Cheison, not retry silently
       if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-        showToast('🔒 Writes locked — ping Mzee Cheison · entry queued', 6000);
+        showToast('🔒 Writes locked — ping Kiruogindet araap Cheison · entry queued', 6000);
       }
     }
     updateSyncIndicator();
@@ -3812,7 +3812,7 @@ async function submitExpense() {
   if (!synced) {
     await queueForSync(expense, 'expense');
     if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-      showToast('🔒 Writes locked — ping Mzee Cheison · expense queued', 6000);
+      showToast('🔒 Writes locked — ping Kiruogindet araap Cheison · expense queued', 6000);
     }
   }
   updateSyncIndicator();
@@ -3967,7 +3967,7 @@ async function submitBatchExpenses() {
   // v5.0 Phase 2.2 — gate-rejection feedback (any of the queued items locked)
   if (queuedCount > 0 && lastWriteResult && lastWriteResult.reason === 'writes-locked') {
     setTimeout(() => {
-      showToast(`🔒 Writes locked — ${queuedCount} expense${queuedCount === 1 ? '' : 's'} queued · ping Mzee Cheison`, 6000);
+      showToast(`🔒 Writes locked — ${queuedCount} expense${queuedCount === 1 ? '' : 's'} queued · ping Kiruogindet araap Cheison`, 6000);
     }, 800);
   }
   updateSyncIndicator();
@@ -4054,7 +4054,7 @@ async function submitActual() {
     await queueForSync(actual, 'actual');
     // v5.0 Phase 2.1: gate-rejection feedback
     if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-      showToast('🔒 Writes locked — ping Mzee Cheison · actual queued', 6000);
+      showToast('🔒 Writes locked — ping Kiruogindet araap Cheison · actual queued', 6000);
     }
   }
   updateSyncIndicator();
@@ -4122,7 +4122,7 @@ async function submitBanked() {
   if (!synced) {
     await queueForSync(row, 'banked');
     if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-      showToast('🔒 Writes locked — ping Mzee Cheison · income queued', 6000);
+      showToast('🔒 Writes locked — ping Kiruogindet araap Cheison · income queued', 6000);
     }
   }
   updateSyncIndicator();
@@ -4218,7 +4218,7 @@ async function submitPoultry() {
   if (!synced) {
     await queueForSync(row, 'poultry');
     if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-      showToast('🔒 Writes locked — ping Mzee Cheison · sale queued', 6000);
+      showToast('🔒 Writes locked — ping Kiruogindet araap Cheison · sale queued', 6000);
     }
   }
   updateSyncIndicator();
@@ -5288,7 +5288,7 @@ async function addPlucker() {
   if (!synced) {
     await queueForSync(rosterPayload, 'roster');
     if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-      showToast('🔒 Writes locked — ping Mzee Cheison · plucker queued', 6000);
+      showToast('🔒 Writes locked — ping Kiruogindet araap Cheison · plucker queued', 6000);
     }
   }
   updateSyncIndicator();
