@@ -98,6 +98,22 @@
     color: var(--brass-light);
     margin-top: 0.45rem;
   }
+  /* v5.0.9 — Tagline responsive shrink (Option A, decided 29 Apr 2026 after
+     v5.0.8 phone testing). Five business units kept identical at every breakpoint;
+     only font-size and letter-spacing shrink so the line fits in the constrained
+     phone width without wrapping to two lines. Identity preserved; aesthetic adapts. */
+  @media (max-width: 480px) {
+    header.brand .tagline {
+      font-size: 0.6rem;
+      letter-spacing: 0.16em;
+    }
+  }
+  @media (max-width: 380px) {
+    header.brand .tagline {
+      font-size: 0.54rem;
+      letter-spacing: 0.12em;
+    }
+  }
   header.brand .leaf {
     position: absolute;
     top: 1.35rem;
@@ -1033,6 +1049,61 @@
     text-transform: uppercase;
     color: var(--slate);
   }
+  /* v5.0.9 — Tap-to-toggle tooltip popover (cross-device replacement for title=).
+     The previous title= attribute worked only on desktop mouse-hover. This pattern
+     works on phone, tablet, stylus, mouse, finger — anything that can fire a click. */
+  .info-tip {
+    display: inline-block;
+    background: transparent;
+    border: none;
+    color: var(--slate-light);
+    font-size: 0.7em;
+    line-height: 1;
+    padding: 2px 4px;
+    margin-left: 0.15em;
+    cursor: pointer;
+    vertical-align: middle;
+    opacity: 0.6;
+    transition: opacity 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+  }
+  .info-tip:hover { opacity: 1; }
+  .info-tip[data-tooltip-open]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    width: 280px;
+    max-width: 80vw;
+    background: var(--ivory-card);
+    color: var(--ink);
+    border: 1px solid var(--brass-dim);
+    border-radius: 4px;
+    padding: 0.7rem 0.85rem;
+    font-family: 'Fraunces', Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    letter-spacing: 0;
+    text-transform: none;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+    z-index: 1000;
+    white-space: normal;
+    text-align: left;
+  }
+  .info-tip[data-tooltip-open]::before {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 6px;
+    width: 0; height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 7px solid var(--brass-dim);
+    z-index: 1001;
+  }
 
   .block-bar { margin-bottom: 0.85rem; }
   .block-bar:last-child { margin-bottom: 0; }
@@ -1465,7 +1536,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.0.8</span>
+  <span class="version-label" id="version-label">v5.0.9</span>
 </header>
 
 <main>
@@ -1846,13 +1917,13 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3 title="Total kg here is factory-confirmed (Actuals from SMS slips and weighing-shed receipts). The Plucker rankings card below shows field-side kg, which is always slightly lower because pluckers are paid in whole kg (decimals dropped). The gap is normal — by design.">Factory mix <span style="opacity:0.5;font-size:0.7em">ⓘ</span></h3><span class="meta">by kilograms</span></div>
+      <div class="section-head"><h3>Factory mix <button class="info-tip" type="button" aria-label="What does this mean?" data-tooltip="Total kg here is factory-confirmed (Actuals from SMS slips and weighing-shed receipts). The Plucker rankings card below shows field-side kg, which is always slightly lower because pluckers are paid in whole kg (decimals dropped). The gap is normal — by design.">ⓘ</button></h3><span class="meta">by kilograms</span></div>
       <table class="mini-table" id="tbl-factory"></table>
       <div class="records-more" id="tbl-factory-expand" style="display:none"></div>
     </div>
 
     <div class="section">
-      <div class="section-head"><h3 title="Total kg here is field-side (what pluckers logged when leaf was weighed in the field). This is always slightly lower than the Factory mix total above because pluckers are paid in whole kg (decimals dropped) and field weighing has friction (bag tare, moisture). The gap is normal — by design.">Plucker rankings <span style="opacity:0.5;font-size:0.7em">ⓘ</span></h3><span class="meta">top performers</span></div>
+      <div class="section-head"><h3>Plucker rankings <button class="info-tip" type="button" aria-label="What does this mean?" data-tooltip="Total kg here is field-side (what pluckers logged when leaf was weighed in the field). This is always slightly lower than the Factory mix total above because pluckers are paid in whole kg (decimals dropped) and field weighing has friction (bag tare, moisture). The gap is normal — by design.">ⓘ</button></h3><span class="meta">top performers</span></div>
       <table class="mini-table" id="tbl-plucker"></table>
       <div class="records-more" id="tbl-plucker-expand" style="display:none"></div>
     </div>
@@ -1950,7 +2021,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.0.8</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.0.9</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2734,6 +2805,17 @@ async function syncBanked(row) {
 }
 
 async function pushPoultryToForm(row) {
+  // v5.0.9 Phase 2.3 — try gate first if configured
+  if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL) {
+    const gateResult = await pushPoultryToGate(row);
+    if (gateResult) {
+      lastWriteResult = gateResult;
+      return gateResult.ok;
+    }
+    // Gate unreachable — fall through to Form fallback
+  }
+
+  // Form path (legacy, also used as fallback)
   const params = new URLSearchParams();
   params.set(POULTRY_FORM_FIELDS.date, row.date);
   params.set(POULTRY_FORM_FIELDS.product, row.product);
@@ -2750,9 +2832,48 @@ async function pushPoultryToForm(row) {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params.toString()
     });
+    lastWriteResult = { ok: true, via: 'form' };
     return true;
   } catch (e) {
+    lastWriteResult = { ok: false, reason: 'network-error' };
     return false;
+  }
+}
+
+/* Push a Poultry sale to Apps Script gate. Same contract as other gate pushes. */
+async function pushPoultryToGate(row) {
+  try {
+    const body = {
+      action: 'poultry',
+      payload: {
+        ts:             row.ts || new Date().toISOString(),
+        date:           row.date,
+        product:        row.product,
+        stage:          row.stage || '',
+        quantity:       Number(row.quantity),
+        unit:           row.unit || '',
+        amount:         Number(row.amount),
+        payment_method: row.payment_method || '',
+        buyer:          row.buyer || ''
+      },
+      source: 'PWA v5.0.9 Phase 2.3'
+    };
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:   JSON.stringify(body)
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    if (json && json.ok) return { ok: true, via: 'gate' };
+    if (json && json.writesLocked) {
+      return { ok: false, reason: 'writes-locked', message: json.reason || 'Writes locked' };
+    }
+    if (json && json.phase1Limited) return null;
+    return { ok: false, reason: 'gate-rejected', message: (json && json.reason) || 'Rejected by gate' };
+  } catch (e) {
+    return null;
   }
 }
 
@@ -3915,7 +4036,12 @@ async function submitPoultry() {
   renderRecentPoultry();
   showToast(`Sale recorded · ${v.product} · ${v.payment_method} · Ksh ${moneyRound(v.amount)}`);
   const synced = await syncPoultry(row);
-  if (!synced) await queueForSync(row, 'poultry');
+  if (!synced) {
+    await queueForSync(row, 'poultry');
+    if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
+      showToast('🔒 Writes locked — ping Mzee Cheison · sale queued', 4500);
+    }
+  }
   updateSyncIndicator();
 }
 
@@ -5485,6 +5611,31 @@ function showToast(msg, durationMs) {
   // Settings
   document.getElementById('s-cess').addEventListener('change', saveCess);
   document.getElementById('s-transport').addEventListener('click', toggleTransport);
+  // v5.0.9 — Tap-to-toggle info tooltips (cross-device replacement for title=).
+  // Click any .info-tip ⓘ button → popover appears via [data-tooltip-open] CSS.
+  // Click again, or click anywhere outside, → popover closes. Single open at a time.
+  (function wireInfoTips(){
+    document.addEventListener('click', (e) => {
+      const tip = e.target.closest('.info-tip');
+      if (tip) {
+        // Toggle THIS tip; close any others
+        const wasOpen = tip.hasAttribute('data-tooltip-open');
+        document.querySelectorAll('.info-tip[data-tooltip-open]').forEach(el => {
+          el.removeAttribute('data-tooltip-open');
+        });
+        if (!wasOpen) {
+          tip.setAttribute('data-tooltip-open', '');
+        }
+        e.stopPropagation();
+        return;
+      }
+      // Click outside any tip → close all open tips
+      document.querySelectorAll('.info-tip[data-tooltip-open]').forEach(el => {
+        el.removeAttribute('data-tooltip-open');
+      });
+    });
+  })();
+
   // Long-press the brand logo (400ms hold) to toggle stealth mode.
   // Quick taps do nothing — prevents accidental flips during normal use.
   // Visual: brass ring grows + subtle squish during the hold so user feels it engage.
