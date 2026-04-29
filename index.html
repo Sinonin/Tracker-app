@@ -1651,7 +1651,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.0.18</span>
+  <span class="version-label" id="version-label">v5.0.20</span>
 </header>
 
 <main>
@@ -2046,6 +2046,36 @@
 
   <!-- SETTINGS -->
   <section class="panel" id="panel-settings">
+    <div class="section" id="settings-admin-section">
+      <div class="section-head"><h3>Admin</h3><span class="meta" id="admin-status-meta">checking…</span></div>
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:0.6rem">
+        <div>
+          <div class="k">Gate state</div>
+          <div class="desc" id="admin-gate-desc">Loading current state from cloud…</div>
+        </div>
+        <div id="admin-controls" style="display:none">
+          <div style="position:relative;margin-bottom:0.7rem">
+            <input type="password" id="admin-passphrase" placeholder="Enter passphrase" autocomplete="off"
+                   style="width:100%;padding:0.7rem 2.6rem 0.7rem 0.8rem;border:1px solid var(--rule);border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:0.95rem;background:var(--ivory);color:var(--ink);box-sizing:border-box" />
+            <button type="button" id="admin-passphrase-reveal" aria-label="Show passphrase"
+                    style="position:absolute;right:0.4rem;top:50%;transform:translateY(-50%);background:transparent;border:none;cursor:pointer;padding:0.4rem;font-size:1.05rem;color:var(--slate);line-height:1">👁</button>
+          </div>
+          <div id="admin-grant-buttons" style="display:flex;flex-wrap:wrap;gap:0.5rem">
+            <button class="export-btn admin-grant-btn" data-window="15min" data-minutes="15">15 min</button>
+            <button class="export-btn admin-grant-btn" data-window="1hour" data-minutes="60">1 hour</button>
+            <button class="export-btn admin-grant-btn" data-window="until-6pm" data-until="18:00">Until 6pm</button>
+            <button class="export-btn admin-grant-btn" data-window="until-midnight" data-until="23:59">Until midnight</button>
+            <button class="export-btn admin-grant-btn" data-window="indefinite">Indefinite</button>
+          </div>
+          <button id="admin-revoke-btn" class="export-btn"
+                  style="display:none;width:100%;margin-top:0.6rem;background:#8B2E2E;color:#fff;border-color:#8B2E2E">
+            Close gate now
+          </button>
+          <div id="admin-feedback" style="display:none;margin-top:0.7rem;padding:0.6rem 0.8rem;border-radius:6px;font-family:'Fraunces',serif;font-size:0.9rem"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="section">
       <div class="section-head"><h3>Global parameters</h3><span class="meta">every entry</span></div>
       <div class="setting-row">
@@ -2103,36 +2133,6 @@
       </div>
     </div>
 
-    <div class="section" id="settings-admin-section">
-      <div class="section-head"><h3>Admin</h3><span class="meta" id="admin-status-meta">checking…</span></div>
-      <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:0.6rem">
-        <div>
-          <div class="k">Gate state</div>
-          <div class="desc" id="admin-gate-desc">Loading current state from cloud…</div>
-        </div>
-        <div id="admin-controls" style="display:none">
-          <div style="position:relative;margin-bottom:0.7rem">
-            <input type="password" id="admin-passphrase" placeholder="Enter passphrase" autocomplete="off"
-                   style="width:100%;padding:0.7rem 2.6rem 0.7rem 0.8rem;border:1px solid var(--rule);border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:0.95rem;background:var(--ivory);color:var(--ink);box-sizing:border-box" />
-            <button type="button" id="admin-passphrase-reveal" aria-label="Show passphrase"
-                    style="position:absolute;right:0.4rem;top:50%;transform:translateY(-50%);background:transparent;border:none;cursor:pointer;padding:0.4rem;font-size:1.05rem;color:var(--slate);line-height:1">👁</button>
-          </div>
-          <div id="admin-grant-buttons" style="display:flex;flex-wrap:wrap;gap:0.5rem">
-            <button class="export-btn admin-grant-btn" data-window="15min" data-minutes="15">15 min</button>
-            <button class="export-btn admin-grant-btn" data-window="1hour" data-minutes="60">1 hour</button>
-            <button class="export-btn admin-grant-btn" data-window="until-6pm" data-until="18:00">Until 6pm</button>
-            <button class="export-btn admin-grant-btn" data-window="until-midnight" data-until="23:59">Until midnight</button>
-            <button class="export-btn admin-grant-btn" data-window="indefinite">Indefinite</button>
-          </div>
-          <button id="admin-revoke-btn" class="export-btn"
-                  style="display:none;width:100%;margin-top:0.6rem;background:#8B2E2E;color:#fff;border-color:#8B2E2E">
-            Close gate now
-          </button>
-          <div id="admin-feedback" style="display:none;margin-top:0.7rem;padding:0.6rem 0.8rem;border-radius:6px;font-family:'Fraunces',serif;font-size:0.9rem"></div>
-        </div>
-      </div>
-    </div>
-
     <div class="section">
       <div class="section-head"><h3>Google Sheet sync</h3><span class="meta" id="sync-queue-meta">—</span></div>
       <div class="setting-row">
@@ -2166,7 +2166,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.0.18</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.0.20</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2205,7 +2205,7 @@
       <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg>
       <span>Insights</span>
     </button>
-    <button data-view="settings">
+    <button data-view="settings" id="nav-settings">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
       <span>Settings</span>
     </button>
@@ -2369,6 +2369,7 @@ const K_SIREET_LEDGER = 'sinonin_sireet_ledger_v1';
 const K_BANKED = 'sinonin_banked_v1';
 const K_POULTRY = 'sinonin_poultry_v1';
 const K_CLOUD_SYNC = 'sinonin_cloud_sync_v1';
+const K_IS_ADMIN = 'sinonin_is_admin_v1';  // v5.0.19 — set true on first successful passphrase grant/revoke
 
 const CLOUD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwzHUz9She1PsVPNOWvssSiQcye8hpKZ9v_3d1aX6nsqPDnIN375z8krhMwsCyikVSLtQ/exec';
 
@@ -2395,7 +2396,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.0.18';
+const APP_VERSION = 'v5.0.20';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -2698,6 +2699,97 @@ async function pushToForm(entry) {
    problem and unblocks shareable Vercel links for Steve Rotich and visitors.
    ============================================================================ */
 
+/* v5.0.19 — Admin vs operator UI separation. The IS_ADMIN flag is set to true
+   ONLY after a successful admin-grant or admin-revoke (proves the user knows
+   the passphrase). When IS_ADMIN is false: Settings tab is hidden from the
+   bottom nav, the gate-open banner is hidden, and the Admin section in Settings
+   is hidden if the user reaches it via deep link or stealth mode. Operators
+   (Elias, Victor) get a clean operator-only experience. Cheison sees everything
+   after one successful passphrase entry. The flag persists across reloads but
+   can be cleared via uninstall + reinstall. */
+let IS_ADMIN = false;  // populated from storage in init()
+
+function applyAdminVisibility() {
+  // Show/hide admin-only UI elements based on IS_ADMIN flag.
+  // Idempotent — safe to call multiple times after state changes.
+  const settingsNavBtn = document.getElementById('nav-settings');
+  const adminSection = document.getElementById('settings-admin-section');
+  const gateBanner = document.getElementById('gate-banner');
+
+  if (IS_ADMIN) {
+    if (settingsNavBtn) settingsNavBtn.style.display = '';
+    if (adminSection)   adminSection.style.display = '';
+    // Banner visibility still controlled by ADMIN_STATE in renderGateBanner()
+  } else {
+    // Operator mode: hide all admin chrome
+    if (settingsNavBtn) settingsNavBtn.style.display = 'none';
+    if (adminSection)   adminSection.style.display = 'none';
+    if (gateBanner) {
+      gateBanner.classList.remove('show');
+      document.body.classList.remove('has-gate-banner');
+    }
+    // If operator was on Settings tab when downgraded, send them home
+    if (STATE.view === 'settings') {
+      const homeBtn = document.querySelector('[data-view="home"]');
+      if (homeBtn) homeBtn.click();
+    }
+  }
+}
+
+async function setAdminMode(isAdmin) {
+  IS_ADMIN = !!isAdmin;
+  await storageSet(K_IS_ADMIN, IS_ADMIN);
+  applyAdminVisibility();
+}
+
+/* v5.0.19 — Admin escape hatch. When IS_ADMIN is false but the user is
+   actually Cheison (e.g., fresh install OR data cleared), they need a way to
+   reveal Settings + Admin section to enter their passphrase. Long-press
+   (3 seconds) on the version label in the header reveals Settings tab
+   temporarily; entering correct passphrase upgrades to permanent admin. */
+function wireAdminEscapeHatch() {
+  const versionLabel = document.getElementById('version-label');
+  if (!versionLabel || versionLabel.dataset.wired === '1') return;
+  versionLabel.dataset.wired = '1';
+  let pressTimer = null;
+  function startPress() {
+    pressTimer = setTimeout(() => {
+      // Temporarily reveal Settings tab + Admin section so user can enter passphrase
+      const settingsNavBtn = document.getElementById('nav-settings');
+      const adminSection = document.getElementById('settings-admin-section');
+      if (settingsNavBtn) settingsNavBtn.style.display = '';
+      if (adminSection)   adminSection.style.display = '';
+      // Wire admin UI now that section is visible
+      wireAdminUI();
+      fetchAdminStatus().then(() => {
+        renderAdminSection();
+        renderGateBanner();
+      });
+      // Show feedback toast and navigate to Settings
+      showToast('Admin reveal · enter passphrase to confirm');
+      setTimeout(() => {
+        if (settingsNavBtn) settingsNavBtn.click();
+        setTimeout(() => {
+          const passInput = document.getElementById('admin-passphrase');
+          if (passInput) {
+            passInput.focus();
+            passInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 200);
+      }, 300);
+    }, 3000); // 3-second long-press
+  }
+  function cancelPress() {
+    if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+  }
+  versionLabel.addEventListener('mousedown', startPress);
+  versionLabel.addEventListener('touchstart', startPress, { passive: true });
+  versionLabel.addEventListener('mouseup', cancelPress);
+  versionLabel.addEventListener('mouseleave', cancelPress);
+  versionLabel.addEventListener('touchend', cancelPress);
+  versionLabel.addEventListener('touchcancel', cancelPress);
+}
+
 // In-memory cache of last known gate state (populated by fetchAdminStatus)
 let ADMIN_STATE = {
   writesEnabled: null,        // null until first fetch; true|false after
@@ -2821,6 +2913,14 @@ function renderGateBanner() {
   const banner = document.getElementById('gate-banner');
   const text   = document.getElementById('gate-banner-text');
   if (!banner || !text) return;
+  // v5.0.19 — Operators never see the gate banner. They get writes-locked toasts
+  // when the gate closes, which is enough operational signal. The banner is for
+  // the admin who needs the visible reminder + one-tap revoke.
+  if (!IS_ADMIN) {
+    banner.classList.remove('show');
+    document.body.classList.remove('has-gate-banner');
+    return;
+  }
   if (ADMIN_STATE.writesEnabled) {
     let label = '🟢 Gate OPEN';
     if (ADMIN_STATE.expiresAt) {
@@ -2937,6 +3037,9 @@ function wireAdminUI() {
       const result = await adminGrant(passphrase, windowLabel, expiresAt);
       btn.disabled = false;
       if (result.ok) {
+        // v5.0.19 — Successful passphrase grant proves admin status. Set flag
+        // so this device gets the full admin UI on subsequent app opens.
+        await setAdminMode(true);
         if (passInput) {
           passInput.value = ''; // clear passphrase from DOM
           passInput.type = 'password'; // reset reveal toggle
@@ -2967,6 +3070,8 @@ function wireAdminUI() {
       const result = await adminRevoke(passphrase);
       revokeBtn.disabled = false;
       if (result.ok) {
+        // v5.0.19 — Successful passphrase revoke also proves admin status.
+        await setAdminMode(true);
         if (passInput) {
           passInput.value = '';
           passInput.type = 'password';
@@ -6122,6 +6227,12 @@ function showUpdateBanner() {
   STATE.banked = await storageGet(K_BANKED, []);
   STATE.poultry = await storageGet(K_POULTRY, []);
 
+  // v5.0.19 — Load admin mode flag IMMEDIATELY so applyAdminVisibility can
+  // hide admin chrome before any operator sees it. Default false (operator).
+  IS_ADMIN = await storageGet(K_IS_ADMIN, false);
+  applyAdminVisibility();
+  wireAdminEscapeHatch();  // Long-press version label to reveal admin (for fresh installs)
+
   /* v5.0.15 — ROLLBACK of v5.0.14 client-side cleanup migration. The cleanup
      was too aggressive and may have removed legitimate Actuals (Sang'alo 195.7,
      Sinonin 29.7) along with phantoms. The server-side filter in Apps Script
@@ -6440,11 +6551,15 @@ function showUpdateBanner() {
   // v5.0.16 — Fetch admin gate status at app open. Non-blocking; UI renders
   // first, then banner appears if gate is open. Wire admin UI elements
   // immediately so banner-tap → settings flow works even before fetch resolves.
-  wireAdminUI();
-  fetchAdminStatus().then(() => {
-    renderGateBanner();
-    if (STATE.view === 'settings') renderAdminSection();
-  });
+  // v5.0.19 — Only fetch admin status if the user IS admin. Operators don't
+  // need this call (they get writes-locked feedback at submit time instead).
+  if (IS_ADMIN) {
+    wireAdminUI();
+    fetchAdminStatus().then(() => {
+      renderGateBanner();
+      if (STATE.view === 'settings') renderAdminSection();
+    });
+  }
 
   // ======== CLOUD SYNC ON APP OPEN (v4.2.0) ========
   // First install → splash + blocking full sync.
