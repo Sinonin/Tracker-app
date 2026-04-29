@@ -1536,7 +1536,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.0.10</span>
+  <span class="version-label" id="version-label">v5.0.11</span>
 </header>
 
 <main>
@@ -2021,7 +2021,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.0.10</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.0.11</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2724,12 +2724,14 @@ async function pushActualToGate(actual) {
 async function queueForSync(record, kind) {
   kind = kind || 'greenleaf';
   const queue = await storageGet(K_SYNC_QUEUE, []);
+  // v5.0.11 — if the just-failed write was gate-rejected (writes-locked),
+  // mark this queue item as blocked from the start so it doesn't generate
+  // 60-sec retry noise. It'll only flush on manual trigger or successful write.
+  const blockedByGate = !!(lastWriteResult && lastWriteResult.reason === 'writes-locked');
   if (kind === 'roster') {
-    // Roster items don't have a STATE record to look up later — store the
-    // full snapshot payload directly so we can retry without external state.
-    queue.push({ kind, payload: record, attempts: 0, queuedAt: new Date().toISOString() });
+    queue.push({ kind, payload: record, attempts: 0, queuedAt: new Date().toISOString(), blockedByGate });
   } else {
-    queue.push({ kind, recordId: record.id, attempts: 0, queuedAt: new Date().toISOString() });
+    queue.push({ kind, recordId: record.id, attempts: 0, queuedAt: new Date().toISOString(), blockedByGate });
   }
   await storageSet(K_SYNC_QUEUE, queue);
   updateSyncIndicator();
@@ -3017,7 +3019,14 @@ async function syncRoster(row) {
 }
 
 let flushInFlight = false;
-async function flushQueue() {
+async function flushQueue(opts) {
+  // v5.0.11 — Stop the gigabyte gibberish. When the gate rejects a write with
+  // `writes-locked`, the item is marked `blockedByGate: true` and skipped on
+  // the 60-second auto-retry. It only retries when:
+  //   - flushQueue({ manual: true }) is called (pull-to-refresh, app reopen)
+  //   - any write succeeds elsewhere (signal that the gate may be open)
+  // Without this, a single rejected entry generated 60 audit rows per hour.
+  const manual = !!(opts && opts.manual);
   if (flushInFlight) return;
   if (!navigator.onLine) return;
   flushInFlight = true;
@@ -3025,7 +3034,13 @@ async function flushQueue() {
     let queue = await storageGet(K_SYNC_QUEUE, []);
     if (queue.length === 0) return;
     const remaining = [];
+    let anySuccess = false;
     for (const item of queue) {
+      // Skip gate-blocked items unless this is a manual/triggered flush
+      if (item.blockedByGate && !manual) {
+        remaining.push(item);
+        continue;
+      }
       // Backfill: pre-expense queue items used `entryId` and had no kind
       const kind = item.kind || 'greenleaf';
       const recordId = item.recordId || item.entryId;
@@ -3045,6 +3060,7 @@ async function flushQueue() {
       else if (kind === 'roster')  ok = await pushRosterToForm(record);
       else                         ok = await pushToForm(record);
       if (ok) {
+        anySuccess = true;
         const stats = await storageGet(K_SYNC_STATS, { synced: 0, lastSync: null });
         stats.synced = (stats.synced || 0) + 1;
         stats.lastSync = new Date().toISOString();
@@ -3054,8 +3070,18 @@ async function flushQueue() {
         item.kind = kind;
         item.recordId = recordId;
         delete item.entryId;
+        // Detect gate-rejection vs other failure: set blockedByGate so the
+        // 60-second auto-tick skips this item until something changes.
+        if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
+          item.blockedByGate = true;
+        }
         if (item.attempts < 10) remaining.push(item);
       }
+    }
+    // If ANY write succeeded this round, the gate is presumed OPEN now.
+    // Unblock all remaining items so the next flush retries them once.
+    if (anySuccess) {
+      remaining.forEach(it => { it.blockedByGate = false; });
     }
     await storageSet(K_SYNC_QUEUE, remaining);
     updateSyncIndicator();
@@ -5848,6 +5874,9 @@ function showToast(msg, durationMs) {
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
           reg.update().catch(() => {});
+          // v5.0.11 — also do a manual queue flush. If the gate was opened
+          // by Cheison while the operator was away, blocked items retry now.
+          flushQueue({ manual: true }).catch(() => {});
         }
       });
     }).catch(() => {});
@@ -5950,6 +5979,9 @@ function showToast(msg, durationMs) {
         ptr.classList.add('syncing');
         try {
           await runCloudSync({ full: true });
+          // v5.0.11 — manual queue flush unblocks gate-rejected items so
+          // operators can use pull-to-refresh as their "try again now" gesture
+          await flushQueue({ manual: true });
           ptr.querySelector('.ptr-text').textContent = 'Synced';
           renderHome();
         } catch (e) {
