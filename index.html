@@ -1586,7 +1586,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.0.14</span>
+  <span class="version-label" id="version-label">v5.0.15</span>
 </header>
 
 <main>
@@ -2071,7 +2071,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.0.14</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.0.15</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2300,7 +2300,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.0.14';
+const APP_VERSION = 'v5.0.15';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -5706,74 +5706,14 @@ function showUpdateBanner() {
   STATE.banked = await storageGet(K_BANKED, []);
   STATE.poultry = await storageGet(K_POULTRY, []);
 
-  /* v5.0.14 — Phantom record cleanup. Pre-v5.0.14 cloud syncs created phantom
-     local records when the Sheet had blank/junk rows (formula leftovers, header-
-     style rows, incomplete historical entries). These accumulated as "C-P-" / "C-A-"
-     / "C-X-" / etc. records with empty essential fields and zero amounts. They
-     polluted Records tab totals and made the dashboard report nonsense numbers.
-     This migration runs ONCE at every app open and is idempotent (cleaning an
-     already-clean state is a no-op). v5.0.14's reader-side filter prevents new
-     phantoms; this cleans up the existing pile. */
-  try {
-    const cleanups = [];
-    // Greenleaf phantoms: empty plucker name AND zero qty
-    const cleanedEntries = STATE.entries.filter(e => {
-      const isPhantom = (!e.pluckerName || e.pluckerName === '') && (!e.qty || e.qty <= 0);
-      return !isPhantom;
-    });
-    if (cleanedEntries.length !== STATE.entries.length) {
-      cleanups.push(`${STATE.entries.length - cleanedEntries.length} greenleaf`);
-      STATE.entries = cleanedEntries;
-      await storageSet(K_ENTRIES, STATE.entries);
-    }
-    // Actuals phantoms: empty factory AND zero kg
-    const cleanedActuals = STATE.actuals.filter(a => {
-      const isPhantom = (!a.factory || a.factory === '') && (!a.kg || a.kg <= 0);
-      // Also clean the C-A-...-0.00 specifically (zero kg with C-A id prefix)
-      const isComputedZero = a.id && String(a.id).startsWith('C-A-') && (!a.kg || a.kg <= 0);
-      return !isPhantom && !isComputedZero;
-    });
-    if (cleanedActuals.length !== STATE.actuals.length) {
-      cleanups.push(`${STATE.actuals.length - cleanedActuals.length} actuals`);
-      STATE.actuals = cleanedActuals;
-      await storageSet(K_ACTUALS, STATE.actuals);
-    }
-    // Expense phantoms: empty category AND zero amount
-    const cleanedExpenses = STATE.expenses.filter(x => {
-      const isPhantom = (!x.category || x.category === '') && (!x.amount || x.amount <= 0);
-      return !isPhantom;
-    });
-    if (cleanedExpenses.length !== STATE.expenses.length) {
-      cleanups.push(`${STATE.expenses.length - cleanedExpenses.length} expenses`);
-      STATE.expenses = cleanedExpenses;
-      await storageSet(K_EXPENSES, STATE.expenses);
-    }
-    // Banked phantoms: empty source AND zero amount
-    const cleanedBanked = (STATE.banked || []).filter(b => {
-      const isPhantom = (!b.source || b.source === '') && (!b.amount || b.amount <= 0);
-      return !isPhantom;
-    });
-    if (cleanedBanked.length !== (STATE.banked || []).length) {
-      cleanups.push(`${(STATE.banked || []).length - cleanedBanked.length} banked`);
-      STATE.banked = cleanedBanked;
-      await storageSet(K_BANKED, STATE.banked);
-    }
-    // Poultry phantoms: empty product/type AND zero amount
-    const cleanedPoultry = (STATE.poultry || []).filter(p => {
-      const isPhantom = (!p.product && !p.type) && (!p.amount || p.amount <= 0);
-      return !isPhantom;
-    });
-    if (cleanedPoultry.length !== (STATE.poultry || []).length) {
-      cleanups.push(`${(STATE.poultry || []).length - cleanedPoultry.length} poultry`);
-      STATE.poultry = cleanedPoultry;
-      await storageSet(K_POULTRY, STATE.poultry);
-    }
-    if (cleanups.length > 0) {
-      console.log(`[v5.0.14] Phantom cleanup: removed ${cleanups.join(', ')}`);
-    }
-  } catch (e) {
-    console.warn('[v5.0.14] Phantom cleanup failed (non-fatal):', e);
-  }
+  /* v5.0.15 — ROLLBACK of v5.0.14 client-side cleanup migration. The cleanup
+     was too aggressive and may have removed legitimate Actuals (Sang'alo 195.7,
+     Sinonin 29.7) along with phantoms. The server-side filter in Apps Script
+     v5.0.14 (readPluckers / readActuals etc) handles phantom prevention safely
+     at source. Cloud sync now rebuilds clean local state from the Sheet without
+     destructive client-side deletion. If phantom records persist in localStorage
+     after this rollback, they'll be naturally overwritten on the next full sync
+     since the filtered Sheet read returns clean data only. */
 
   /* v5.0.12 — Queue migration. Pre-v5.0.11 queued items don't have the
      `blockedByGate` flag, so the 60-second auto-tick was retrying them
