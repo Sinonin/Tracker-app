@@ -559,6 +559,56 @@
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+  /* v5.0.12 — Update banner: slides down from the top of the viewport when a
+     new app version activates. Tap anywhere on it to reload the page with the
+     new code. Auto-dismisses after 12 seconds if ignored. Distinct visually
+     from the toast (top vs bottom, brass border vs forest, persistent vs
+     transient) so operators don't confuse them. */
+  #update-banner {
+    position: fixed;
+    top: -100px;
+    left: 0; right: 0;
+    background: var(--forest);
+    color: var(--ivory);
+    padding: 0.85rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 3px solid var(--brass);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    z-index: 10000;
+    cursor: pointer;
+    transition: top 0.3s ease;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.74rem;
+    letter-spacing: 0.1em;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #update-banner.show { top: 0; }
+  #update-banner .update-banner-text {
+    color: var(--brass-light);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+  #update-banner .update-banner-action {
+    background: var(--brass);
+    color: var(--forest-dark);
+    border: none;
+    padding: 0.5rem 0.9rem;
+    border-radius: 3px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.74rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 500;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  #update-banner .update-banner-action:active {
+    background: var(--brass-light);
+  }
+
   .hero {
     background: linear-gradient(135deg, var(--forest-dark), var(--forest) 55%, var(--forest-mid));
     color: var(--ivory);
@@ -1536,7 +1586,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.0.11</span>
+  <span class="version-label" id="version-label">v5.0.12</span>
 </header>
 
 <main>
@@ -2021,7 +2071,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.0.11</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.0.12</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2245,6 +2295,12 @@ const CLOUD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwzHUz9She1PsVPN
    They migrate in Phase 2. */
 const APPS_SCRIPT_GATE_URL = 'https://script.google.com/macros/s/AKfycbwzHUz9She1PsVPNOWvssSiQcye8hpKZ9v_3d1aX6nsqPDnIN375z8krhMwsCyikVSLtQ/exec';
 const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass gate entirely
+
+/* v5.0.12 — Single source-of-truth for app version. Used by every pushXxxToGate
+   function so audit log entries always reflect the CURRENTLY RUNNING code, not
+   the version the function was originally written under. Update this on every
+   deploy in lockstep with About-section meta and version-label header. */
+const APP_VERSION = 'v5.0.12';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -2552,7 +2608,7 @@ async function pushGreenleafToGate(entry) {
         qty:         Number(entry.qty),
         factory:     entry.factory
       },
-      source: 'PWA v4.2.1'
+      source: `PWA ${APP_VERSION} greenleaf`
     };
     const response = await fetch(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
@@ -2632,7 +2688,7 @@ async function pushExpenseToGate(expense) {
         block:       expense.block || 'Whole farm',
         payee:       expense.payee || ''
       },
-      source: 'PWA v5.0 Phase 2.2'
+      source: `PWA ${APP_VERSION} expense`
     };
     const response = await fetch(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
@@ -2700,7 +2756,7 @@ async function pushActualToGate(actual) {
         block:   actual.block || 'All blocks (consolidated)',
         kg:      Number(actual.kg)
       },
-      source: 'PWA v5.0 Phase 2.1'
+      source: `PWA ${APP_VERSION} actual`
     };
     const response = await fetch(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
@@ -2820,7 +2876,7 @@ async function pushBankedToGate(row) {
         period:    row.period || '',
         reference: row.reference || ''
       },
-      source: 'PWA v5.0.10 Phase 2.4'
+      source: `PWA ${APP_VERSION} banked`
     };
     const response = await fetch(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
@@ -2905,7 +2961,7 @@ async function pushPoultryToGate(row) {
         payment_method: row.payment_method || '',
         buyer:          row.buyer || ''
       },
-      source: 'PWA v5.0.9 Phase 2.3'
+      source: `PWA ${APP_VERSION} poultry`
     };
     const response = await fetch(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
@@ -2985,7 +3041,7 @@ async function pushRosterToGate(row) {
         bonus:        !!row.bonus,
         notes:        row.notes || ''
       },
-      source: 'PWA v5.0.10 Phase 2.5'
+      source: `PWA ${APP_VERSION} roster`
     };
     const response = await fetch(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
@@ -3526,7 +3582,7 @@ async function submitQuick() {
       // v5.0 Phase 1: if the gate explicitly rejected with writes-locked,
       // show the operator a clear message — they need to ping Cheison, not retry silently
       if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-        showToast('🔒 Writes locked — ping Mzee Cheison · entry queued', 4500);
+        showToast('🔒 Writes locked — ping Mzee Cheison · entry queued', 6000);
       }
     }
     updateSyncIndicator();
@@ -3756,7 +3812,7 @@ async function submitExpense() {
   if (!synced) {
     await queueForSync(expense, 'expense');
     if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-      showToast('🔒 Writes locked — ping Mzee Cheison · expense queued', 4500);
+      showToast('🔒 Writes locked — ping Mzee Cheison · expense queued', 6000);
     }
   }
   updateSyncIndicator();
@@ -3911,7 +3967,7 @@ async function submitBatchExpenses() {
   // v5.0 Phase 2.2 — gate-rejection feedback (any of the queued items locked)
   if (queuedCount > 0 && lastWriteResult && lastWriteResult.reason === 'writes-locked') {
     setTimeout(() => {
-      showToast(`🔒 Writes locked — ${queuedCount} expense${queuedCount === 1 ? '' : 's'} queued · ping Mzee Cheison`, 4500);
+      showToast(`🔒 Writes locked — ${queuedCount} expense${queuedCount === 1 ? '' : 's'} queued · ping Mzee Cheison`, 6000);
     }, 800);
   }
   updateSyncIndicator();
@@ -3998,7 +4054,7 @@ async function submitActual() {
     await queueForSync(actual, 'actual');
     // v5.0 Phase 2.1: gate-rejection feedback
     if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-      showToast('🔒 Writes locked — ping Mzee Cheison · actual queued', 4500);
+      showToast('🔒 Writes locked — ping Mzee Cheison · actual queued', 6000);
     }
   }
   updateSyncIndicator();
@@ -4066,7 +4122,7 @@ async function submitBanked() {
   if (!synced) {
     await queueForSync(row, 'banked');
     if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-      showToast('🔒 Writes locked — ping Mzee Cheison · income queued', 4500);
+      showToast('🔒 Writes locked — ping Mzee Cheison · income queued', 6000);
     }
   }
   updateSyncIndicator();
@@ -4162,7 +4218,7 @@ async function submitPoultry() {
   if (!synced) {
     await queueForSync(row, 'poultry');
     if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-      showToast('🔒 Writes locked — ping Mzee Cheison · sale queued', 4500);
+      showToast('🔒 Writes locked — ping Mzee Cheison · sale queued', 6000);
     }
   }
   updateSyncIndicator();
@@ -5232,7 +5288,7 @@ async function addPlucker() {
   if (!synced) {
     await queueForSync(rosterPayload, 'roster');
     if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-      showToast('🔒 Writes locked — ping Mzee Cheison · plucker queued', 4500);
+      showToast('🔒 Writes locked — ping Mzee Cheison · plucker queued', 6000);
     }
   }
   updateSyncIndicator();
@@ -5608,6 +5664,40 @@ function showToast(msg, durationMs) {
   setTimeout(() => t.classList.remove('show'), durationMs || 2200);
 }
 
+/* v5.0.12 — Tappable update banner. Shown when SW_ACTIVATED message fires.
+   Replaces the old "refresh for full effect" toast that operators couldn't
+   action on a PWA (no browser address bar to refresh). One tap on the banner
+   reloads the page; auto-dismisses after 12 seconds if ignored. The reload
+   is conditional — if the operator is mid-entry (any text input has focus),
+   we wait until they blur before reloading. */
+function showUpdateBanner() {
+  // Don't stack multiple banners
+  if (document.getElementById('update-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'update-banner';
+  banner.innerHTML = `
+    <span class="update-banner-text">App updated to ${APP_VERSION}</span>
+    <button type="button" class="update-banner-action">Tap to reload</button>
+  `;
+  document.body.appendChild(banner);
+  // Slide in
+  setTimeout(() => banner.classList.add('show'), 30);
+
+  function dismiss(reload) {
+    banner.classList.remove('show');
+    setTimeout(() => banner.remove(), 320);
+    if (reload) {
+      // Wait briefly for the slide-out animation, then reload the page
+      setTimeout(() => window.location.reload(), 250);
+    }
+  }
+  banner.addEventListener('click', () => dismiss(true));
+  // Auto-dismiss without reload after 12 seconds (operator can ignore)
+  setTimeout(() => {
+    if (document.getElementById('update-banner')) dismiss(false);
+  }, 12000);
+}
+
 (async function init() {
   STATE.entries = await storageGet(K_ENTRIES, []);
   STATE.expenses = await storageGet(K_EXPENSES, []);
@@ -5615,6 +5705,28 @@ function showToast(msg, durationMs) {
   STATE.actuals = storedActuals.map(a => ({ block: 'All blocks', ...a }));
   STATE.banked = await storageGet(K_BANKED, []);
   STATE.poultry = await storageGet(K_POULTRY, []);
+
+  /* v5.0.12 — Queue migration. Pre-v5.0.11 queued items don't have the
+     `blockedByGate` flag, so the 60-second auto-tick was retrying them
+     forever (audit log polluted, Apps Script quota wasted). Heuristic:
+     any item with attempts >= 1 was likely gate-rejected (transient network
+     failures rarely retry once and only once). Mark them blocked so they
+     only retry on manual triggers. New successful writes will unblock all
+     remaining items for one retry, naturally healing legitimate stuck items. */
+  try {
+    const existingQueue = await storageGet(K_SYNC_QUEUE, []);
+    let migrated = 0;
+    existingQueue.forEach(item => {
+      if (!item.blockedByGate && (item.attempts || 0) >= 1) {
+        item.blockedByGate = true;
+        migrated++;
+      }
+    });
+    if (migrated > 0) {
+      await storageSet(K_SYNC_QUEUE, existingQueue);
+      console.log(`[v5.0.12] Migrated ${migrated} pre-existing queue item(s) → blockedByGate=true`);
+    }
+  } catch (e) { /* non-fatal — first-install has empty queue */ }
   const storedFactories = await storageGet(K_FACTORIES, null);
   if (storedFactories && Array.isArray(storedFactories) && storedFactories.length > 0) STATE.factories = storedFactories;
   const storedPluckers = await storageGet(K_PLUCKERS, null);
@@ -5636,6 +5748,7 @@ function showToast(msg, durationMs) {
     }
     if (migrated) await storageSet(K_EXPENSE_CATS, EXPENSE_CATEGORIES);
   }
+
   const storedSettings = await storageGet(K_SETTINGS, null);
   if (storedSettings) STATE.settings = { ...DEFAULT_SETTINGS, ...storedSettings };
   const storedLedger = await storageGet(K_SIREET_LEDGER, null);
@@ -5881,14 +5994,15 @@ function showToast(msg, durationMs) {
       });
     }).catch(() => {});
 
-    // When the new SW activates and takes control, show the operator a toast
-    // confirming they're now on the latest version
+    // v5.0.12 — When the new SW activates and takes control, show a TAPPABLE
+    // banner that operators can use to reload the page with one tap. The previous
+    // toast said "refresh for full effect" but operators didn't know what 'refresh'
+    // meant inside a PWA (no browser address bar). The banner makes the action
+    // explicit. It dismisses on tap (reloads the page) or after 12 seconds (gives
+    // the operator time to read and decide).
     navigator.serviceWorker.addEventListener('message', (event) => {
       if (event.data && event.data.type === 'SW_ACTIVATED') {
-        // Soft refresh: show a toast then trigger a re-render so any new
-        // CSS / markup changes appear without a hard reload.
-        // (We don't auto-reload to avoid losing the operator's mid-entry state.)
-        try { showToast('App updated — refresh for full effect', 4500); } catch (e) {}
+        try { showUpdateBanner(); } catch (e) {}
       }
     });
   }
