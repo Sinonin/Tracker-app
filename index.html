@@ -1651,7 +1651,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.0.16</span>
+  <span class="version-label" id="version-label">v5.0.18</span>
 </header>
 
 <main>
@@ -2111,8 +2111,12 @@
           <div class="desc" id="admin-gate-desc">Loading current state from cloud…</div>
         </div>
         <div id="admin-controls" style="display:none">
-          <input type="password" id="admin-passphrase" placeholder="Enter passphrase" autocomplete="off"
-                 style="width:100%;padding:0.7rem 0.8rem;border:1px solid var(--rule);border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:0.95rem;background:var(--ivory);color:var(--ink);margin-bottom:0.7rem" />
+          <div style="position:relative;margin-bottom:0.7rem">
+            <input type="password" id="admin-passphrase" placeholder="Enter passphrase" autocomplete="off"
+                   style="width:100%;padding:0.7rem 2.6rem 0.7rem 0.8rem;border:1px solid var(--rule);border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:0.95rem;background:var(--ivory);color:var(--ink);box-sizing:border-box" />
+            <button type="button" id="admin-passphrase-reveal" aria-label="Show passphrase"
+                    style="position:absolute;right:0.4rem;top:50%;transform:translateY(-50%);background:transparent;border:none;cursor:pointer;padding:0.4rem;font-size:1.05rem;color:var(--slate);line-height:1">👁</button>
+          </div>
           <div id="admin-grant-buttons" style="display:flex;flex-wrap:wrap;gap:0.5rem">
             <button class="export-btn admin-grant-btn" data-window="15min" data-minutes="15">15 min</button>
             <button class="export-btn admin-grant-btn" data-window="1hour" data-minutes="60">1 hour</button>
@@ -2162,7 +2166,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.0.16</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.0.18</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2391,7 +2395,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.0.16';
+const APP_VERSION = 'v5.0.18';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -2899,6 +2903,22 @@ function computeExpiryFromButton(btn) {
 
 function wireAdminUI() {
   // Wire all Admin section buttons. Idempotent — safe to call multiple times.
+
+  // v5.0.18 — Passphrase reveal toggle. Tap eye icon to show/hide passphrase.
+  // Helps catch typos on mobile keyboards. Returns to hidden after grant succeeds
+  // (passphrase is cleared from input anyway).
+  const revealBtn = document.getElementById('admin-passphrase-reveal');
+  const passInputEl = document.getElementById('admin-passphrase');
+  if (revealBtn && passInputEl && revealBtn.dataset.wired !== '1') {
+    revealBtn.dataset.wired = '1';
+    revealBtn.addEventListener('click', () => {
+      const isHidden = passInputEl.type === 'password';
+      passInputEl.type = isHidden ? 'text' : 'password';
+      revealBtn.textContent = isHidden ? '🙈' : '👁';
+      revealBtn.setAttribute('aria-label', isHidden ? 'Hide passphrase' : 'Show passphrase');
+    });
+  }
+
   const grantButtons = document.querySelectorAll('.admin-grant-btn');
   grantButtons.forEach(btn => {
     if (btn.dataset.wired === '1') return;
@@ -2917,7 +2937,12 @@ function wireAdminUI() {
       const result = await adminGrant(passphrase, windowLabel, expiresAt);
       btn.disabled = false;
       if (result.ok) {
-        if (passInput) passInput.value = ''; // clear passphrase from DOM
+        if (passInput) {
+          passInput.value = ''; // clear passphrase from DOM
+          passInput.type = 'password'; // reset reveal toggle
+        }
+        const reveal = document.getElementById('admin-passphrase-reveal');
+        if (reveal) { reveal.textContent = '👁'; reveal.setAttribute('aria-label', 'Show passphrase'); }
         showAdminFeedback(`Gate opened · ${result.windowLabel}`, true);
         renderAdminSection();
         renderGateBanner();
@@ -2942,7 +2967,12 @@ function wireAdminUI() {
       const result = await adminRevoke(passphrase);
       revokeBtn.disabled = false;
       if (result.ok) {
-        if (passInput) passInput.value = '';
+        if (passInput) {
+          passInput.value = '';
+          passInput.type = 'password';
+        }
+        const reveal = document.getElementById('admin-passphrase-reveal');
+        if (reveal) { reveal.textContent = '👁'; reveal.setAttribute('aria-label', 'Show passphrase'); }
         showAdminFeedback('Gate closed.', true);
         renderAdminSection();
         renderGateBanner();
