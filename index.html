@@ -29,6 +29,11 @@
     --rule: #D9D2BE;
     --success: #4A6B4E;
     --danger: #8B3A3A;
+    /* v5.0.8 — Logo size as a single source of truth.
+       Used by .brand-logo width/height AND by header text padding-right
+       so text reflows cleanly without colliding with the absolute-positioned logo.
+       Change here → propagates to all consumers. */
+    --logo-size: 52px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; }
@@ -61,7 +66,6 @@
     letter-spacing: -0.02em;
     font-variation-settings: 'opsz' 80;
     line-height: 1;
-    padding-right: 4.5rem;  /* reserve space for the brass logo at top-right */
   }
   /* v5.0.5 — Smart H1: shrink the font on phones so "Sinonin Group Management
      App" fits on the available width without overflowing under the logo.
@@ -70,13 +74,21 @@
   @media (max-width: 480px) {
     header.brand h1 {
       font-size: 1.35rem;
-      padding-right: 4rem;
     }
   }
   @media (max-width: 380px) {
     header.brand h1 {
       font-size: 1.15rem;
     }
+  }
+  /* v5.0.8 — Reserve space so header text wraps before hitting the absolute
+     positioned brass logo (Option A, decided in handoff brief 29 Apr 2026).
+     Single source of truth: --logo-size on :root. Change once, propagates
+     to logo width/height AND to the right-padding here. */
+  header.brand h1,
+  header.brand .tagline,
+  header.brand .header-screen-title {
+    padding-right: calc(var(--logo-size) + 1rem);
   }
   header.brand .tagline {
     font-family: 'IBM Plex Mono', monospace;
@@ -97,7 +109,8 @@
     position: absolute;
     top: 1.1rem;
     right: 1.3rem;
-    width: 52px; height: 52px;
+    width: var(--logo-size);
+    height: var(--logo-size);
     border-radius: 50%;
     box-shadow: 0 2px 8px rgba(0,0,0,0.25), 0 0 0 1px rgba(184,147,90,0.3);
     cursor: pointer;
@@ -1452,7 +1465,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.0.7</span>
+  <span class="version-label" id="version-label">v5.0.8</span>
 </header>
 
 <main>
@@ -1937,7 +1950,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.0.7</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.0.8</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
