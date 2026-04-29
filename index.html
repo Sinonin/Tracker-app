@@ -1074,8 +1074,8 @@
     position: absolute;
     top: calc(100% + 8px);
     left: 0;
-    width: 280px;
-    max-width: 80vw;
+    width: max-content;
+    max-width: min(240px, 75vw);
     background: var(--ivory-card);
     color: var(--ink);
     border: 1px solid var(--brass-dim);
@@ -1536,7 +1536,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.0.9</span>
+  <span class="version-label" id="version-label">v5.0.10</span>
 </header>
 
 <main>
@@ -1917,13 +1917,13 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>Factory mix <button class="info-tip" type="button" aria-label="What does this mean?" data-tooltip="Total kg here is factory-confirmed (Actuals from SMS slips and weighing-shed receipts). The Plucker rankings card below shows field-side kg, which is always slightly lower because pluckers are paid in whole kg (decimals dropped). The gap is normal — by design.">ⓘ</button></h3><span class="meta">by kilograms</span></div>
+      <div class="section-head"><h3>Factory mix <button class="info-tip" type="button" aria-label="What does this mean?" data-tooltip="Factory-confirmed kg from SMS slips and weighing-shed receipts.">ⓘ</button></h3><span class="meta">by kilograms</span></div>
       <table class="mini-table" id="tbl-factory"></table>
       <div class="records-more" id="tbl-factory-expand" style="display:none"></div>
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>Plucker rankings <button class="info-tip" type="button" aria-label="What does this mean?" data-tooltip="Total kg here is field-side (what pluckers logged when leaf was weighed in the field). This is always slightly lower than the Factory mix total above because pluckers are paid in whole kg (decimals dropped) and field weighing has friction (bag tare, moisture). The gap is normal — by design.">ⓘ</button></h3><span class="meta">top performers</span></div>
+      <div class="section-head"><h3>Plucker rankings <button class="info-tip" type="button" aria-label="What does this mean?" data-tooltip="Field-side kg per plucker — paid in whole kg, so total is always lower than Factory mix.">ⓘ</button></h3><span class="meta">top performers</span></div>
       <table class="mini-table" id="tbl-plucker"></table>
       <div class="records-more" id="tbl-plucker-expand" style="display:none"></div>
     </div>
@@ -2021,7 +2021,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.0.9</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.0.10</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2772,6 +2772,16 @@ async function syncActual(actual) {
 }
 
 async function pushBankedToForm(row) {
+  // v5.0.10 Phase 2.4 — try gate first if configured
+  if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL) {
+    const gateResult = await pushBankedToGate(row);
+    if (gateResult) {
+      lastWriteResult = gateResult;
+      return gateResult.ok;
+    }
+  }
+
+  // Form path (legacy, also used as fallback)
   const params = new URLSearchParams();
   params.set(BANKED_FORM_FIELDS.date, row.date);
   params.set(BANKED_FORM_FIELDS.business, row.business);
@@ -2786,9 +2796,46 @@ async function pushBankedToForm(row) {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params.toString()
     });
+    lastWriteResult = { ok: true, via: 'form' };
     return true;
   } catch (e) {
+    lastWriteResult = { ok: false, reason: 'network-error' };
     return false;
+  }
+}
+
+/* Push a Banked income row to Apps Script gate. */
+async function pushBankedToGate(row) {
+  try {
+    const body = {
+      action: 'banked',
+      payload: {
+        ts:        row.ts || new Date().toISOString(),
+        date:      row.date,
+        business:  row.business,
+        source:    row.source,
+        amount:    Number(row.amount),
+        period:    row.period || '',
+        reference: row.reference || ''
+      },
+      source: 'PWA v5.0.10 Phase 2.4'
+    };
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:   JSON.stringify(body)
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    if (json && json.ok) return { ok: true, via: 'gate' };
+    if (json && json.writesLocked) {
+      return { ok: false, reason: 'writes-locked', message: json.reason || 'Writes locked' };
+    }
+    if (json && json.phase1Limited) return null;
+    return { ok: false, reason: 'gate-rejected', message: (json && json.reason) || 'Rejected by gate' };
+  } catch (e) {
+    return null;
   }
 }
 
@@ -2893,6 +2940,15 @@ async function syncPoultry(row) {
    is { id, name, primaryBlock, bonus, notes }. The Form's bonus field
    is a multiple-choice with two options that must match exactly. */
 async function pushRosterToForm(row) {
+  // v5.0.10 Phase 2.5 — try gate first if configured
+  if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL) {
+    const gateResult = await pushRosterToGate(row);
+    if (gateResult) {
+      lastWriteResult = gateResult;
+      return gateResult.ok;
+    }
+  }
+
   const params = new URLSearchParams();
   params.set(ROSTER_FORM_FIELDS.pluckerId, String(row.id));
   params.set(ROSTER_FORM_FIELDS.pluckerName, row.name || '');
@@ -2906,9 +2962,45 @@ async function pushRosterToForm(row) {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params.toString()
     });
+    lastWriteResult = { ok: true, via: 'form' };
     return true;
   } catch (e) {
+    lastWriteResult = { ok: false, reason: 'network-error' };
     return false;
+  }
+}
+
+/* Push a Roster entry (add/edit plucker) to Apps Script gate. */
+async function pushRosterToGate(row) {
+  try {
+    const body = {
+      action: 'roster',
+      payload: {
+        ts:           row.ts || new Date().toISOString(),
+        id:           Number(row.id),
+        name:         row.name || '',
+        primaryBlock: row.primaryBlock || 'All farms',
+        bonus:        !!row.bonus,
+        notes:        row.notes || ''
+      },
+      source: 'PWA v5.0.10 Phase 2.5'
+    };
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:   JSON.stringify(body)
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    if (json && json.ok) return { ok: true, via: 'gate' };
+    if (json && json.writesLocked) {
+      return { ok: false, reason: 'writes-locked', message: json.reason || 'Writes locked' };
+    }
+    if (json && json.phase1Limited) return null;
+    return { ok: false, reason: 'gate-rejected', message: (json && json.reason) || 'Rejected by gate' };
+  } catch (e) {
+    return null;
   }
 }
 
@@ -3945,7 +4037,12 @@ async function submitBanked() {
   renderRecentBanked();
   showToast(`Income recorded · ${v.business} · Ksh ${moneyRound(v.amount)}`);
   const synced = await syncBanked(row);
-  if (!synced) await queueForSync(row, 'banked');
+  if (!synced) {
+    await queueForSync(row, 'banked');
+    if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
+      showToast('🔒 Writes locked — ping Mzee Cheison · income queued', 4500);
+    }
+  }
   updateSyncIndicator();
 }
 
@@ -5106,7 +5203,12 @@ async function addPlucker() {
   // Push to cloud roster — if it fails, queue for retry
   const rosterPayload = { id, name, primaryBlock, bonus, notes };
   const synced = await syncRoster(rosterPayload);
-  if (!synced) await queueForSync(rosterPayload, 'roster');
+  if (!synced) {
+    await queueForSync(rosterPayload, 'roster');
+    if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
+      showToast('🔒 Writes locked — ping Mzee Cheison · plucker queued', 4500);
+    }
+  }
   updateSyncIndicator();
 }
 
