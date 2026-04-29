@@ -609,6 +609,64 @@
     background: var(--brass-light);
   }
 
+  /* v5.0.16 — Gate-open persistent banner. Shown at top of every screen when
+     the writes-gate is OPEN, reminding Cheison the gate is live and giving
+     one-tap revoke. Disappears automatically when gate closes (cloud or local). */
+  #gate-banner {
+    position: fixed;
+    top: 0;
+    left: 0; right: 0;
+    background: linear-gradient(90deg, #1f5c3d 0%, #2d7a52 100%);
+    color: var(--ivory);
+    padding: 0.55rem 1rem;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    z-index: 9999;
+    cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    -webkit-tap-highlight-color: transparent;
+    border-bottom: 2px solid #1a4a32;
+  }
+  #gate-banner.show { display: flex; }
+  #gate-banner .gate-banner-text {
+    color: #d4f1de;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #gate-banner .gate-banner-action {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.4);
+    padding: 0.35rem 0.75rem;
+    border-radius: 3px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 500;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  #gate-banner .gate-banner-action:active {
+    background: rgba(255,255,255,0.3);
+  }
+  /* When gate banner is shown, push everything down so it doesn't cover content */
+  body.has-gate-banner {
+    padding-top: 2.4rem;
+  }
+  body.has-gate-banner #update-banner.show {
+    top: 2.4rem;
+  }
+
   .hero {
     background: linear-gradient(135deg, var(--forest-dark), var(--forest) 55%, var(--forest-mid));
     color: var(--ivory);
@@ -1579,6 +1637,13 @@
 </head>
 <body>
 
+<!-- v5.0.16 — Gate-open persistent banner. Hidden by default; shown when
+     the admin gate is open. Tap to revoke. -->
+<div id="gate-banner">
+  <span class="gate-banner-text" id="gate-banner-text">🟢 Gate OPEN</span>
+  <button type="button" class="gate-banner-action" id="gate-banner-action">Revoke</button>
+</div>
+
 <header class="brand">
   <h1>Sinonin Group Management App</h1>
   <div class="tagline">Tea · Poultry · Dorper · Coffee · Maize</div>
@@ -1586,7 +1651,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.0.15</span>
+  <span class="version-label" id="version-label">v5.0.16</span>
 </header>
 
 <main>
@@ -2038,6 +2103,32 @@
       </div>
     </div>
 
+    <div class="section" id="settings-admin-section">
+      <div class="section-head"><h3>Admin</h3><span class="meta" id="admin-status-meta">checking…</span></div>
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:0.6rem">
+        <div>
+          <div class="k">Gate state</div>
+          <div class="desc" id="admin-gate-desc">Loading current state from cloud…</div>
+        </div>
+        <div id="admin-controls" style="display:none">
+          <input type="password" id="admin-passphrase" placeholder="Enter passphrase" autocomplete="off"
+                 style="width:100%;padding:0.7rem 0.8rem;border:1px solid var(--rule);border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:0.95rem;background:var(--ivory);color:var(--ink);margin-bottom:0.7rem" />
+          <div id="admin-grant-buttons" style="display:flex;flex-wrap:wrap;gap:0.5rem">
+            <button class="export-btn admin-grant-btn" data-window="15min" data-minutes="15">15 min</button>
+            <button class="export-btn admin-grant-btn" data-window="1hour" data-minutes="60">1 hour</button>
+            <button class="export-btn admin-grant-btn" data-window="until-6pm" data-until="18:00">Until 6pm</button>
+            <button class="export-btn admin-grant-btn" data-window="until-midnight" data-until="23:59">Until midnight</button>
+            <button class="export-btn admin-grant-btn" data-window="indefinite">Indefinite</button>
+          </div>
+          <button id="admin-revoke-btn" class="export-btn"
+                  style="display:none;width:100%;margin-top:0.6rem;background:#8B2E2E;color:#fff;border-color:#8B2E2E">
+            Close gate now
+          </button>
+          <div id="admin-feedback" style="display:none;margin-top:0.7rem;padding:0.6rem 0.8rem;border-radius:6px;font-family:'Fraunces',serif;font-size:0.9rem"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="section">
       <div class="section-head"><h3>Google Sheet sync</h3><span class="meta" id="sync-queue-meta">—</span></div>
       <div class="setting-row">
@@ -2071,7 +2162,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.0.15</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.0.16</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2300,7 +2391,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.0.15';
+const APP_VERSION = 'v5.0.16';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -2596,6 +2687,291 @@ async function pushToForm(entry) {
      { ok: false, reason: 'writes-locked', message }  — gate said flag is OFF
      null                                      — couldn't reach gate (network/parse error)
    The null return tells pushToForm() to try the Form fallback. */
+/* ============================================================================
+   PHASE 3 SHIP 1 — ADMIN GATE CONTROL (v5.0.16)
+   Three Apps Script endpoints let Cheison manage the gate from the Settings
+   tab without editing the Sheet directly. Solves the "even me I am blocked"
+   problem and unblocks shareable Vercel links for Steve Rotich and visitors.
+   ============================================================================ */
+
+// In-memory cache of last known gate state (populated by fetchAdminStatus)
+let ADMIN_STATE = {
+  writesEnabled: null,        // null until first fetch; true|false after
+  expiresAt: null,            // ISO string or null
+  grantedBy: null,
+  windowLabel: null,
+  reason: null,
+  fetchedAt: null
+};
+
+async function fetchAdminStatus() {
+  // Read-only — no passphrase required. Returns gate state for UI rendering.
+  if (!APPS_SCRIPT_GATE_URL) return null;
+  try {
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:   JSON.stringify({ action: 'admin-status', source: `PWA ${APP_VERSION} admin-status` })
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    if (!json || !json.ok) return null;
+    ADMIN_STATE = {
+      writesEnabled: !!json.writesEnabled,
+      expiresAt:     json.expiresAt || null,
+      grantedBy:     json.grantedBy || null,
+      windowLabel:   json.note || null,
+      reason:        json.reason || null,
+      fetchedAt:     new Date().toISOString()
+    };
+    return ADMIN_STATE;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function adminGrant(passphrase, windowLabel, expiresAt) {
+  if (!APPS_SCRIPT_GATE_URL) return { ok: false, reason: 'No gate URL configured' };
+  try {
+    const body = {
+      action: 'admin-grant',
+      payload: {
+        passphrase: passphrase,
+        windowLabel: windowLabel,
+        expiresAt: expiresAt ? expiresAt.toISOString() : null
+      },
+      source: `PWA ${APP_VERSION} admin-grant`
+    };
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:   JSON.stringify(body)
+    });
+    if (!response.ok) return { ok: false, reason: 'Network error — try again' };
+    const json = await response.json();
+    if (json && json.ok) {
+      // Refresh local state immediately
+      ADMIN_STATE.writesEnabled = true;
+      ADMIN_STATE.expiresAt     = json.expiresAt || null;
+      ADMIN_STATE.grantedBy     = 'Cheison';
+      ADMIN_STATE.windowLabel   = json.windowLabel || windowLabel;
+      ADMIN_STATE.fetchedAt     = new Date().toISOString();
+      return { ok: true, expiresAt: json.expiresAt || null, windowLabel: json.windowLabel || windowLabel };
+    }
+    return { ok: false, reason: (json && json.reason) || 'Grant rejected' };
+  } catch (e) {
+    return { ok: false, reason: 'Network error — try again' };
+  }
+}
+
+async function adminRevoke(passphrase) {
+  if (!APPS_SCRIPT_GATE_URL) return { ok: false, reason: 'No gate URL configured' };
+  try {
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:   JSON.stringify({
+        action: 'admin-revoke',
+        payload: { passphrase: passphrase },
+        source: `PWA ${APP_VERSION} admin-revoke`
+      })
+    });
+    if (!response.ok) return { ok: false, reason: 'Network error — try again' };
+    const json = await response.json();
+    if (json && json.ok) {
+      ADMIN_STATE.writesEnabled = false;
+      ADMIN_STATE.expiresAt     = null;
+      ADMIN_STATE.windowLabel   = 'Revoked by Cheison';
+      ADMIN_STATE.fetchedAt     = new Date().toISOString();
+      return { ok: true };
+    }
+    return { ok: false, reason: (json && json.reason) || 'Revoke rejected' };
+  } catch (e) {
+    return { ok: false, reason: 'Network error — try again' };
+  }
+}
+
+function formatExpiryShort(iso) {
+  // "2026-04-29T15:00:00Z" → "15:00" or "Tomorrow 06:00" depending on date
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const expDay = new Date(d);
+    expDay.setHours(0,0,0,0);
+    const dayDiff = Math.round((expDay - today) / 86400000);
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mm = String(d.getMinutes()).padStart(2,'0');
+    if (dayDiff === 0) return `${hh}:${mm}`;
+    if (dayDiff === 1) return `tomorrow ${hh}:${mm}`;
+    return d.toLocaleDateString() + ' ' + hh + ':' + mm;
+  } catch (e) { return ''; }
+}
+
+function renderGateBanner() {
+  const banner = document.getElementById('gate-banner');
+  const text   = document.getElementById('gate-banner-text');
+  if (!banner || !text) return;
+  if (ADMIN_STATE.writesEnabled) {
+    let label = '🟢 Gate OPEN';
+    if (ADMIN_STATE.expiresAt) {
+      const exp = formatExpiryShort(ADMIN_STATE.expiresAt);
+      if (exp) label += ` until ${exp}`;
+    } else if (ADMIN_STATE.windowLabel === 'Indefinite') {
+      label += ' · indefinite';
+    }
+    text.textContent = label;
+    banner.classList.add('show');
+    document.body.classList.add('has-gate-banner');
+  } else {
+    banner.classList.remove('show');
+    document.body.classList.remove('has-gate-banner');
+  }
+}
+
+function renderAdminSection() {
+  // Called when Settings is opened OR after grant/revoke action
+  const meta = document.getElementById('admin-status-meta');
+  const desc = document.getElementById('admin-gate-desc');
+  const controls = document.getElementById('admin-controls');
+  const revokeBtn = document.getElementById('admin-revoke-btn');
+  if (!meta || !desc || !controls) return;
+
+  if (ADMIN_STATE.writesEnabled === null) {
+    meta.textContent = 'checking…';
+    desc.textContent = 'Loading current state from cloud…';
+    controls.style.display = 'none';
+    return;
+  }
+  controls.style.display = '';
+  if (ADMIN_STATE.writesEnabled) {
+    meta.textContent = '🟢 OPEN';
+    let descText = 'Writes are flowing.';
+    if (ADMIN_STATE.expiresAt) {
+      const exp = formatExpiryShort(ADMIN_STATE.expiresAt);
+      if (exp) descText += ` Expires ${exp}.`;
+    } else if (ADMIN_STATE.windowLabel === 'Indefinite') {
+      descText += ' Open indefinitely.';
+    }
+    if (ADMIN_STATE.grantedBy) descText += ` Granted by ${ADMIN_STATE.grantedBy}.`;
+    desc.textContent = descText;
+    if (revokeBtn) revokeBtn.style.display = '';
+  } else {
+    meta.textContent = '🔒 CLOSED';
+    desc.textContent = ADMIN_STATE.reason || 'Writes locked. Enter passphrase + window to open.';
+    if (revokeBtn) revokeBtn.style.display = 'none';
+  }
+}
+
+function showAdminFeedback(message, ok) {
+  const fb = document.getElementById('admin-feedback');
+  if (!fb) return;
+  fb.style.display = '';
+  fb.textContent = message;
+  fb.style.background = ok ? '#e8f5ee' : '#fbeaea';
+  fb.style.color      = ok ? '#1f5c3d' : '#8B2E2E';
+  fb.style.border     = '1px solid ' + (ok ? '#1f5c3d' : '#8B2E2E');
+  setTimeout(() => { fb.style.display = 'none'; }, 5000);
+}
+
+function computeExpiryFromButton(btn) {
+  // Returns Date object or null (for indefinite)
+  const now = new Date();
+  if (btn.dataset.minutes) {
+    const mins = parseInt(btn.dataset.minutes, 10);
+    return new Date(now.getTime() + mins * 60000);
+  }
+  if (btn.dataset.until) {
+    const [hh, mm] = btn.dataset.until.split(':').map(s => parseInt(s, 10));
+    const exp = new Date(now);
+    exp.setHours(hh, mm, 0, 0);
+    // If the time today has already passed, set to tomorrow
+    if (exp.getTime() <= now.getTime()) exp.setDate(exp.getDate() + 1);
+    return exp;
+  }
+  return null; // indefinite
+}
+
+function wireAdminUI() {
+  // Wire all Admin section buttons. Idempotent — safe to call multiple times.
+  const grantButtons = document.querySelectorAll('.admin-grant-btn');
+  grantButtons.forEach(btn => {
+    if (btn.dataset.wired === '1') return;
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', async () => {
+      const passInput = document.getElementById('admin-passphrase');
+      const passphrase = passInput ? passInput.value : '';
+      if (!passphrase) {
+        showAdminFeedback('Enter passphrase first.', false);
+        if (passInput) passInput.focus();
+        return;
+      }
+      const expiresAt = computeExpiryFromButton(btn);
+      const windowLabel = (btn.dataset.window || 'unknown').replace(/-/g, ' ');
+      btn.disabled = true;
+      const result = await adminGrant(passphrase, windowLabel, expiresAt);
+      btn.disabled = false;
+      if (result.ok) {
+        if (passInput) passInput.value = ''; // clear passphrase from DOM
+        showAdminFeedback(`Gate opened · ${result.windowLabel}`, true);
+        renderAdminSection();
+        renderGateBanner();
+      } else {
+        showAdminFeedback(result.reason || 'Grant failed', false);
+      }
+    });
+  });
+
+  const revokeBtn = document.getElementById('admin-revoke-btn');
+  if (revokeBtn && revokeBtn.dataset.wired !== '1') {
+    revokeBtn.dataset.wired = '1';
+    revokeBtn.addEventListener('click', async () => {
+      const passInput = document.getElementById('admin-passphrase');
+      const passphrase = passInput ? passInput.value : '';
+      if (!passphrase) {
+        showAdminFeedback('Enter passphrase to revoke.', false);
+        if (passInput) passInput.focus();
+        return;
+      }
+      revokeBtn.disabled = true;
+      const result = await adminRevoke(passphrase);
+      revokeBtn.disabled = false;
+      if (result.ok) {
+        if (passInput) passInput.value = '';
+        showAdminFeedback('Gate closed.', true);
+        renderAdminSection();
+        renderGateBanner();
+      } else {
+        showAdminFeedback(result.reason || 'Revoke failed', false);
+      }
+    });
+  }
+
+  // Banner tap → focus passphrase + scroll Settings into view (one-tap revoke flow)
+  const bannerAction = document.getElementById('gate-banner-action');
+  if (bannerAction && bannerAction.dataset.wired !== '1') {
+    bannerAction.dataset.wired = '1';
+    bannerAction.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Navigate to Settings tab
+      const settingsTab = document.querySelector('[data-tab="settings"]');
+      if (settingsTab) settingsTab.click();
+      setTimeout(() => {
+        const passInput = document.getElementById('admin-passphrase');
+        if (passInput) {
+          passInput.focus();
+          passInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    });
+  }
+}
+
 async function pushGreenleafToGate(entry) {
   try {
     const body = {
@@ -5111,6 +5487,16 @@ function renderMiniTable(id, firstCol, obj, _legacyLimit) {
 }
 
 function renderSettings() {
+  // Phase 3 Ship 1 — Admin section. Render from cache immediately, then fetch
+  // fresh status in the background. Cache-first keeps the UI snappy; the fresh
+  // fetch corrects state if it changed elsewhere (e.g., another device).
+  renderAdminSection();
+  wireAdminUI();
+  fetchAdminStatus().then(() => {
+    renderAdminSection();
+    renderGateBanner();
+  });
+
   document.getElementById('s-cess').value = STATE.settings.teaCessPerKg;
   document.getElementById('s-transport').classList.toggle('on', STATE.settings.transportActive);
 
@@ -6020,6 +6406,15 @@ function showUpdateBanner() {
   applyStealthMode(!!(STATE.settings && STATE.settings.stealthMode));
 
   renderHome();
+
+  // v5.0.16 — Fetch admin gate status at app open. Non-blocking; UI renders
+  // first, then banner appears if gate is open. Wire admin UI elements
+  // immediately so banner-tap → settings flow works even before fetch resolves.
+  wireAdminUI();
+  fetchAdminStatus().then(() => {
+    renderGateBanner();
+    if (STATE.view === 'settings') renderAdminSection();
+  });
 
   // ======== CLOUD SYNC ON APP OPEN (v4.2.0) ========
   // First install → splash + blocking full sync.
