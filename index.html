@@ -1868,7 +1868,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.1.0</span>
+  <span class="version-label" id="version-label">v5.1.1</span>
 </header>
 
 <main>
@@ -2383,7 +2383,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.1.0</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.1.1</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2679,7 +2679,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.1.0';
+const APP_VERSION = 'v5.1.1';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -3207,7 +3207,7 @@ function wireAdminEscapeHatch() {
    Wires the bottom-nav Settings padlock into the new authentication flow:
 
    - When data-lock-state="locked" (operator default):
-       single-tap → toast "🔒 Triple-tap to authenticate"
+       single/double-tap → SILENT (no toast, no reveal — gesture stays secret)
        triple-tap → opens passphrase modal (hybrid: View only / Open writes)
        wrong passphrase → toast "Kiruogindet araap Cheison does not allow you to see Settings"
 
@@ -3219,6 +3219,9 @@ function wireAdminEscapeHatch() {
        admin-grant     → IS_ADMIN=true AND Control_Panel.WRITES_ENABLED=true (gate ON)
 
    - Title triple-tap escape hatch is preserved (backup path).
+
+   - v5.1.1 (30 Apr 2026 evening): removed single-tap toast that inadvertently
+     leaked the secret gesture to operators. Silent rejection now.
    ============================================================ */
 function wireLockIconAuth() {
   const lockBtn = document.getElementById('nav-settings');
@@ -3240,8 +3243,9 @@ function wireLockIconAuth() {
       return; // don't intercept
     }
 
-    // Locked: intercept the click. We need to tally taps and either show a
-    // toast (single tap) or open the modal (triple tap).
+    // Locked: intercept the click. Silently tally taps; only triple-tap reveals
+    // the modal. Single/double taps are deliberately silent — we do not reveal
+    // the secret gesture to operators or curious onlookers.
     ev.stopPropagation();
     ev.preventDefault();
 
@@ -3253,12 +3257,11 @@ function wireLockIconAuth() {
       console.log('[lock-auth] triple-tap on lock icon — opening modal');
       openAuthModal();
     } else {
-      // Reset tap counter after 700ms (matches title escape hatch)
+      // Reset tap counter after 700ms. NO TOAST on single/double tap —
+      // the gesture stays tribal knowledge, passed only by Cheison to himself.
+      // (v5.1.1 — removed leaky "Triple-tap to authenticate" toast that
+      //  inadvertently taught the gesture to anyone who tapped once.)
       tapTimer = setTimeout(() => {
-        if (tapCount > 0 && tapCount < 3) {
-          // Single or double tap — show locked toast
-          showToast('🔒 Triple-tap to authenticate', 2500);
-        }
         tapCount = 0;
       }, 700);
     }
