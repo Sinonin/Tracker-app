@@ -354,7 +354,8 @@
     border: 1px solid var(--forest-dark);
   }
   #kind-toggle-tea { grid-template-columns: 1fr 1fr 1fr; }
-  #kind-toggle-poultry, #kind-toggle-expenses { grid-template-columns: 1fr; }
+  #kind-toggle-poultry { grid-template-columns: 1fr 1fr; }
+  #kind-toggle-expenses { grid-template-columns: 1fr; }
   .kind-toggle button {
     background: transparent; border: none;
     padding: 0.75rem 0.3rem;
@@ -1868,7 +1869,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.1.1</span>
+  <span class="version-label" id="version-label">v5.2.0</span>
 </header>
 
 <main>
@@ -1978,6 +1979,7 @@
 
     <div class="kind-toggle" id="kind-toggle-poultry" style="display:none">
       <button class="active" data-kind="poultry">Sales</button>
+      <button data-kind="egg-collection">Egg Collection</button>
     </div>
 
     <div class="kind-toggle" id="kind-toggle-expenses" style="display:none">
@@ -2202,6 +2204,32 @@
         <div id="y-recent-list"></div>
       </div>
     </div>
+
+    <!-- ========= EGG COLLECTION (v6.0 SHIP 1) ========= -->
+    <div id="egg-collection-kind" style="display:none">
+      <div class="batch-instructions">Daily egg collection — pooled count across all layer houses (Ground Floor + Upper Deck). Use 0 for zero collection days.</div>
+
+      <div class="field"><label>Date</label><input type="date" id="ec-date"></div>
+      <div class="pair">
+        <div class="field"><label>Normal eggs</label><input type="number" id="ec-normal" inputmode="numeric" step="1" min="0" placeholder="0"></div>
+        <div class="field"><label>Small / abnormal</label><input type="number" id="ec-small" inputmode="numeric" step="1" min="0" placeholder="0"></div>
+      </div>
+      <div class="field"><label>Broken</label><input type="number" id="ec-broken" inputmode="numeric" step="1" min="0" placeholder="0"></div>
+      <div class="field"><label>Notes (optional)</label><input type="text" id="ec-notes" placeholder="e.g. cleaning day, hot weather" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
+
+      <button class="submit" id="ec-submit" disabled>Record Collection</button>
+
+      <div class="calc-card" id="ec-preview" style="display:none;margin-top:0.9rem">
+        <div class="lbl">Collection preview</div>
+        <div class="primary"><span id="ec-preview-total">0</span><span class="unit"> eggs</span></div>
+        <div class="breakdown">
+          <div class="k">Normal</div><div class="v" id="ec-preview-normal">0</div>
+          <div class="k">Small / abnormal</div><div class="v" id="ec-preview-small">0</div>
+          <div class="k">Broken</div><div class="v neg" id="ec-preview-broken">0</div>
+          <div class="k">Date</div><div class="v" id="ec-preview-date">—</div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- INSIGHTS -->
@@ -2383,7 +2411,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.1.1</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.2.0</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2679,7 +2707,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.1.1';
+const APP_VERSION = 'v5.2.0';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -4526,6 +4554,7 @@ async function flushQueue(opts) {
       else if (kind === 'actual') record = STATE.actuals.find(a => a.id === recordId);
       else if (kind === 'banked') record = (STATE.banked || []).find(b => b.id === recordId);
       else if (kind === 'poultry') record = (STATE.poultry || []).find(p => p.id === recordId);
+      else if (kind === 'egg-collection') record = (STATE.eggCollection || []).find(e => e.id === recordId);
       else if (kind === 'roster')  record = item.payload || null; // roster items carry their own payload
       if (!record) continue; // record was deleted locally, drop from queue
       let ok;
@@ -4533,6 +4562,7 @@ async function flushQueue(opts) {
       else if (kind === 'actual')  ok = await pushActualToForm(record);
       else if (kind === 'banked')  ok = await pushBankedToForm(record);
       else if (kind === 'poultry') ok = await pushPoultryToForm(record);
+      else if (kind === 'egg-collection') ok = await syncEggCollection(record);
       else if (kind === 'roster')  ok = await pushRosterToForm(record);
       else                         ok = await pushToForm(record);
       if (ok) {
@@ -4563,6 +4593,9 @@ async function flushQueue(opts) {
           } else if (kind === 'poultry' && Array.isArray(STATE.poultry)) {
             STATE.poultry = STATE.poultry.filter(p => p.id !== recordId);
             await storageSet(K_POULTRY, STATE.poultry);
+          } else if (kind === 'egg-collection' && Array.isArray(STATE.eggCollection)) {
+            STATE.eggCollection = STATE.eggCollection.filter(e => e.id !== recordId);
+            await storageSet(K_EGG_COLLECTION, STATE.eggCollection);
           }
           // Surface a quiet toast once per flush, listing how many were dropped
           showToast(`⚠️ Queue trimmed: 1 duplicate dropped (${kind})`, 5000);
@@ -5168,10 +5201,14 @@ function switchKind(k) {
   document.getElementById('actual-kind').style.display = k === 'actual' ? '' : 'none';
   document.getElementById('banked-kind').style.display = k === 'banked' ? '' : 'none';
   document.getElementById('poultry-kind').style.display = k === 'poultry' ? '' : 'none';
+  // v6.0 SHIP 1 — Egg Collection
+  const ecKindEl = document.getElementById('egg-collection-kind');
+  if (ecKindEl) ecKindEl.style.display = k === 'egg-collection' ? '' : 'none';
   if (k === 'expense') renderRecentExpenses();
   if (k === 'actual') renderRecentActuals();
   if (k === 'banked') renderRecentBanked();
   if (k === 'poultry') renderRecentPoultry();
+  if (k === 'egg-collection' && typeof initEggCollectionForm === 'function') initEggCollectionForm();
 }
 
 function renderRecentActuals() {
@@ -5722,6 +5759,199 @@ function renderRecentPoultry() {
       <div class="qty"></div>
       <div class="val">Ksh ${moneyRound(r.amount)}</div>
     </div>`).join('');
+}
+
+/* ============================================================
+   v6.0 SHIP 1 — Egg Collection (Kipkenda Poultry inventory MVP)
+   ============================================================
+   Smallest standing tower: write-only daily egg counts to Egg_Collection
+   sheet. Read + Home card + houses + census + efficiency KPI ship in
+   subsequent SHIPs. Kids-prototype-first doctrine.
+
+   Sheet schema (CREATE BEFORE DEPLOY):
+     Egg_Collection: Timestamp | Date | Normal | Small_Abnormal | Broken | Notes
+
+   FLAG-mode dedup: same-day re-submit is accepted but logged. One row per
+   day expected; iterate later if patterns demand stricter control.
+   ============================================================ */
+
+const K_EGG_COLLECTION = 'sinonin_egg_collection_v1';
+if (typeof STATE === 'object' && !Array.isArray(STATE.eggCollection)) {
+  STATE.eggCollection = [];
+}
+
+function initEggCollectionForm() {
+  // Default date to today (Option A confirmed by Cheison)
+  const dEl = document.getElementById('ec-date');
+  if (dEl && !dEl.value) {
+    dEl.value = new Date().toISOString().slice(0, 10);
+  }
+  validateEggCollection();
+  // Wire field listeners (idempotent — guarded by data-wired)
+  const fields = ['ec-date', 'ec-normal', 'ec-small', 'ec-broken', 'ec-notes'];
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.dataset.wired) {
+      el.dataset.wired = '1';
+      el.addEventListener('input', validateEggCollection);
+      el.addEventListener('change', validateEggCollection);
+    }
+  });
+  const submitBtn = document.getElementById('ec-submit');
+  if (submitBtn && !submitBtn.dataset.wired) {
+    submitBtn.dataset.wired = '1';
+    submitBtn.addEventListener('click', submitEggCollection);
+  }
+}
+
+function validateEggCollection() {
+  const date   = (document.getElementById('ec-date')   || {}).value || '';
+  const normal = (document.getElementById('ec-normal') || {}).value;
+  const small  = (document.getElementById('ec-small')  || {}).value;
+  const broken = (document.getElementById('ec-broken') || {}).value;
+  const submit = document.getElementById('ec-submit');
+  const preview = document.getElementById('ec-preview');
+
+  // At least one of the three counts must be filled (use 0 explicitly for none)
+  const hasAny = (normal !== '' && normal !== undefined) ||
+                 (small  !== '' && small  !== undefined) ||
+                 (broken !== '' && broken !== undefined);
+  const valid = !!date && hasAny;
+
+  if (submit) submit.disabled = !valid;
+
+  if (preview) {
+    if (valid) {
+      preview.style.display = '';
+      const n = Number(normal || 0);
+      const s = Number(small  || 0);
+      const b = Number(broken || 0);
+      const total = n + s + b;
+      const pn = document.getElementById('ec-preview-normal');
+      const ps = document.getElementById('ec-preview-small');
+      const pb = document.getElementById('ec-preview-broken');
+      const pt = document.getElementById('ec-preview-total');
+      const pd = document.getElementById('ec-preview-date');
+      if (pn) pn.textContent = n;
+      if (ps) ps.textContent = s;
+      if (pb) pb.textContent = b;
+      if (pt) pt.textContent = total.toLocaleString('en-KE');
+      if (pd) pd.textContent = date;
+    } else {
+      preview.style.display = 'none';
+    }
+  }
+}
+
+async function submitEggCollection() {
+  const date   = (document.getElementById('ec-date')   || {}).value || '';
+  const normal = (document.getElementById('ec-normal') || {}).value;
+  const small  = (document.getElementById('ec-small')  || {}).value;
+  const broken = (document.getElementById('ec-broken') || {}).value;
+  const notes  = ((document.getElementById('ec-notes') || {}).value || '').trim();
+
+  if (!date) {
+    showToast('Please pick a date', 3000);
+    return;
+  }
+
+  // Build the local-state record (optimistic)
+  const row = {
+    id:    'ec-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+    ts:    new Date().toISOString(),
+    date:  date,
+    normal:         normal === '' ? 0 : Number(normal),
+    small_abnormal: small  === '' ? 0 : Number(small),
+    broken:         broken === '' ? 0 : Number(broken),
+    notes: notes
+  };
+
+  // Add to local state optimistically
+  if (!Array.isArray(STATE.eggCollection)) STATE.eggCollection = [];
+  STATE.eggCollection.push(row);
+  try { await storageSet(K_EGG_COLLECTION, STATE.eggCollection); } catch (e) {}
+
+  const total = row.normal + row.small_abnormal + row.broken;
+  showToast(`Saved · ${total} eggs · ${row.date}`);
+
+  // Clear form (date stays for quick consecutive entry)
+  const fields = ['ec-normal', 'ec-small', 'ec-broken', 'ec-notes'];
+  fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  validateEggCollection();
+
+  // Push to Apps Script gate
+  const synced = await syncEggCollection(row);
+  if (!synced) {
+    // v5.0.23 / v6.0 — server-side dedup integration: if rejected as 'duplicate', don't queue
+    const wasDup = await handleDuplicateRejection(row, 'egg-collection', 'eggCollection', K_EGG_COLLECTION);
+    if (!wasDup) {
+      await queueForSync(row, 'egg-collection');
+      if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
+        showToast('🔒 Writes locked — ping Kiruogindet araap Cheison · collection queued', 6000);
+      }
+    }
+  } else {
+    // Egg collection uses FLAG-mode dedup — surface possible-duplicate review toast if any
+    showPossibleDuplicateToast('egg-collection');
+  }
+  updateSyncIndicator();
+}
+
+/* Push an Egg Collection entry to Apps Script gate. */
+async function pushEggCollectionToGate(row) {
+  try {
+    const body = {
+      action: 'egg-collection',
+      payload: {
+        ts:             row.ts || new Date().toISOString(),
+        date:           row.date,
+        normal:         Number(row.normal || 0),
+        small_abnormal: Number(row.small_abnormal || 0),
+        broken:         Number(row.broken || 0),
+        notes:          row.notes || ''
+      },
+      source: `PWA ${APP_VERSION} egg-collection`
+    };
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:   JSON.stringify(body)
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    if (json && json.ok) {
+      return { ok: true, via: 'gate', possibleDuplicate: !!json.possibleDuplicate, summary: json.summary };
+    }
+    if (json && json.writesLocked) {
+      return { ok: false, reason: 'writes-locked', message: json.reason || 'Writes locked' };
+    }
+    if (json && json.duplicate) {
+      return {
+        ok: false,
+        reason: 'duplicate',
+        message: json.summary || 'Already recorded — check Sheet to confirm.',
+        existing: json.existing
+      };
+    }
+    if (json && json.phase1Limited) return null;
+    return { ok: false, reason: 'gate-rejected', message: (json && json.reason) || 'Rejected by gate' };
+  } catch (e) {
+    return null;
+  }
+}
+
+async function syncEggCollection(row) {
+  if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL) {
+    const gateResult = await pushEggCollectionToGate(row);
+    if (gateResult) {
+      lastWriteResult = gateResult;
+      return gateResult.ok;
+    }
+    // Gate unreachable — egg-collection has no Form fallback (new schema), so we just queue
+  }
+  lastWriteResult = { ok: false, reason: 'gate-unreachable' };
+  return false;
 }
 
 function monthEntries() {
@@ -7197,6 +7427,8 @@ function showUpdateBanner() {
   STATE.actuals = storedActuals.map(a => ({ block: 'All blocks', ...a }));
   STATE.banked = await storageGet(K_BANKED, []);
   STATE.poultry = await storageGet(K_POULTRY, []);
+  // v6.0 SHIP 1 — Egg Collection state
+  STATE.eggCollection = await storageGet(K_EGG_COLLECTION, []);
 
   // v5.0.19 — Load admin mode flag IMMEDIATELY so applyAdminVisibility can
   // hide admin chrome before any operator sees it. Default false (operator).
