@@ -251,6 +251,50 @@
   }
   nav.bottom-nav button.central.active svg { background: var(--brass-light); }
 
+  /* v5.1.0 — Three-state padlock for #nav-settings */
+  /* Hide all three icon groups by default */
+  nav.bottom-nav #nav-settings .nav-lock-icon-locked,
+  nav.bottom-nav #nav-settings .nav-lock-icon-admin,
+  nav.bottom-nav #nav-settings .nav-lock-icon-open {
+    display: none;
+  }
+  /* Show the right group based on state */
+  nav.bottom-nav #nav-settings[data-lock-state="locked"] .nav-lock-icon-locked,
+  nav.bottom-nav #nav-settings[data-lock-state="admin"]  .nav-lock-icon-admin,
+  nav.bottom-nav #nav-settings[data-lock-state="open"]   .nav-lock-icon-open {
+    display: inline;
+  }
+  /* Locked padlock — amber/copper (warning, not alarming) */
+  nav.bottom-nav #nav-settings[data-lock-state="locked"] svg {
+    stroke: #c97b3a;  /* amber-copper */
+  }
+  nav.bottom-nav #nav-settings[data-lock-state="locked"].active svg {
+    stroke: #d68a47;  /* slightly brighter when active */
+  }
+  /* Admin gear — neutral (Cheison authenticated, gate still closed) */
+  nav.bottom-nav #nav-settings[data-lock-state="admin"] svg {
+    stroke: var(--brass-light);
+  }
+  /* Open padlock — green (writes ON) */
+  nav.bottom-nav #nav-settings[data-lock-state="open"] svg {
+    stroke: #6b9e5b;  /* sage/forest green — Sinonin palette */
+  }
+  nav.bottom-nav #nav-settings[data-lock-state="open"].active svg {
+    stroke: #82b774;
+  }
+  /* Subtle pop animation when state changes */
+  nav.bottom-nav #nav-settings svg {
+    transition: stroke 0.3s ease;
+  }
+  /* Pop animation triggered by .lock-pulse class added briefly on state-change */
+  @keyframes navLockPulse {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.18); }
+    100% { transform: scale(1); }
+  }
+  nav.bottom-nav #nav-settings.lock-pulse svg {
+    animation: navLockPulse 0.45s ease-out;
+  }
   .field { margin-bottom: 1.1rem; }
   .field label {
     display: block;
@@ -569,6 +613,168 @@
     text-align: center;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* v5.1.0 — Modal infrastructure (passphrase + revoke confirmation).
+     Sinonin-themed: rounded corners, brand greens, Inter font, soft shadow. */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 30, 25, 0.55);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+  }
+  .modal-backdrop.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .modal-card {
+    background: var(--ivory);
+    border-radius: 14px;
+    padding: 1.6rem 1.5rem 1.4rem;
+    width: calc(100% - 2.4rem);
+    max-width: 380px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+    border: 1px solid rgba(0,0,0,0.06);
+    transform: translateY(16px) scale(0.98);
+    transition: transform 0.22s ease;
+  }
+  .modal-backdrop.show .modal-card {
+    transform: translateY(0) scale(1);
+  }
+  .modal-header {
+    margin-bottom: 1.2rem;
+    text-align: center;
+  }
+  .modal-header h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--forest-dark);
+    margin: 0 0 0.25rem;
+    letter-spacing: -0.01em;
+  }
+  .modal-subtitle {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--slate);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+  .modal-body {
+    margin-bottom: 1.4rem;
+  }
+  .modal-body .field { margin-bottom: 0.9rem; }
+  .modal-body label {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--slate);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+  .passphrase-input-wrap {
+    position: relative;
+  }
+  .passphrase-input-wrap input {
+    width: 100%;
+    padding: 0.7rem 2.6rem 0.7rem 0.9rem;
+    border: 1px solid rgba(0,0,0,0.18);
+    border-radius: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.95rem;
+    color: var(--forest-dark);
+    background: #fff;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+  }
+  .passphrase-input-wrap input:focus {
+    outline: none;
+    border-color: var(--brass);
+  }
+  .passphrase-toggle {
+    position: absolute;
+    right: 8px; top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    padding: 6px;
+    color: var(--slate);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .passphrase-toggle svg {
+    stroke: currentColor;
+    stroke-width: 1.6;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .modal-hint {
+    font-family: 'Fraunces', serif;
+    font-size: 0.85rem;
+    color: var(--slate);
+    line-height: 1.5;
+    text-align: center;
+  }
+  .modal-hint.error {
+    color: #b03030;
+  }
+  .modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+  .modal-actions button {
+    flex: 1;
+    min-width: 96px;
+    padding: 0.7rem 0.8rem;
+    border-radius: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.15s, opacity 0.15s;
+    border: 1px solid transparent;
+  }
+  .modal-actions button:active { transform: scale(0.97); }
+  .modal-actions .btn-primary {
+    background: var(--forest-dark);
+    color: var(--ivory);
+    border-color: var(--forest-dark);
+  }
+  .modal-actions .btn-primary:hover { background: #1a3326; }
+  .modal-actions .btn-tertiary {
+    background: #fff;
+    color: var(--forest-dark);
+    border-color: rgba(0,0,0,0.18);
+  }
+  .modal-actions .btn-tertiary:hover { background: #f6f2ea; }
+  .modal-actions .btn-secondary {
+    background: transparent;
+    color: var(--slate);
+    border-color: rgba(0,0,0,0.12);
+  }
+  .modal-actions .btn-secondary:hover { background: rgba(0,0,0,0.04); }
+  .modal-actions .btn-danger {
+    background: #b03030;
+    color: #fff;
+    border-color: #b03030;
+  }
+  .modal-actions .btn-danger:hover { background: #c43838; }
+  .modal-actions button[disabled] { opacity: 0.45; cursor: wait; }
 
   /* v5.0.12 — Update banner: slides down from the top of the viewport when a
      new app version activates. Tap anywhere on it to reload the page with the
@@ -1662,7 +1868,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.0.23</span>
+  <span class="version-label" id="version-label">v5.1.0</span>
 </header>
 
 <main>
@@ -2177,7 +2383,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.0.23</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.1.0</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2216,14 +2422,80 @@
       <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg>
       <span>Insights</span>
     </button>
-    <button data-view="settings" id="nav-settings">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
-      <span>Settings</span>
+    <button data-view="settings" id="nav-settings" data-lock-state="locked" aria-label="Settings (locked)">
+      <!-- v5.1.0 — three-state padlock SVG. State controlled by data-lock-state attribute:
+           "locked"   → red/amber padlock body, shackle UP (operator default)
+           "admin"    → gear icon (Cheison authenticated, view-only)
+           "open"     → green padlock body, shackle UP-RIGHT (writes ON) -->
+      <svg class="nav-lock-svg" viewBox="0 0 24 24" aria-hidden="true">
+        <!-- Locked state: closed shackle + body -->
+        <g class="nav-lock-icon-locked">
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" fill="none"/>
+          <rect x="5" y="11" width="14" height="10" rx="2"/>
+          <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
+        </g>
+        <!-- Admin state: gear (visible only when data-lock-state='admin') -->
+        <g class="nav-lock-icon-admin">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>
+        </g>
+        <!-- Open state: open padlock (shackle pulled up and angled right) -->
+        <g class="nav-lock-icon-open">
+          <path d="M7 11V7a5 5 0 0 1 9.5-2" fill="none"/>
+          <rect x="5" y="11" width="14" height="10" rx="2"/>
+          <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
+        </g>
+      </svg>
+      <span class="nav-lock-label">Settings</span>
     </button>
   </nav>
 </div>
 
 <div class="toast" id="toast">Entry Saved</div>
+
+<!-- v5.1.0 — Passphrase modal (hybrid: View only / Open writes) -->
+<div class="modal-backdrop" id="auth-modal" aria-hidden="true">
+  <div class="modal-card" role="dialog" aria-labelledby="auth-modal-title" aria-modal="true">
+    <div class="modal-header">
+      <h2 id="auth-modal-title">Authenticate</h2>
+      <p class="modal-subtitle">Kiruogindet araap Cheison</p>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label for="auth-modal-passphrase">Passphrase</label>
+        <div class="passphrase-input-wrap">
+          <input type="password" id="auth-modal-passphrase" autocomplete="off" autocapitalize="off" spellcheck="false" />
+          <button type="button" class="passphrase-toggle" id="auth-modal-eye" aria-label="Show passphrase">
+            <svg viewBox="0 0 24 24" width="18" height="18"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="modal-hint" id="auth-modal-hint">Choose how to authenticate:</div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="auth-modal-cancel">Cancel</button>
+      <button type="button" class="btn-tertiary" id="auth-modal-view">View only</button>
+      <button type="button" class="btn-primary" id="auth-modal-grant">Open writes</button>
+    </div>
+  </div>
+</div>
+
+<!-- v5.1.0 — Revoke confirmation modal -->
+<div class="modal-backdrop" id="revoke-modal" aria-hidden="true">
+  <div class="modal-card" role="dialog" aria-labelledby="revoke-modal-title" aria-modal="true">
+    <div class="modal-header">
+      <h2 id="revoke-modal-title">Revoke writes?</h2>
+      <p class="modal-subtitle">Close the gate immediately</p>
+    </div>
+    <div class="modal-body">
+      <div class="modal-hint">The gate will close. Any in-flight queue items will be blocked until reopened. This action is logged in the audit trail.</div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="revoke-modal-cancel">Cancel</button>
+      <button type="button" class="btn-danger" id="revoke-modal-confirm">Revoke now</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const BLOCKS = ['Sinonin', 'Cheptabach', 'Bitonin', 'Kipkenda', 'Kipkorom', 'Sangalo'];
@@ -2407,7 +2679,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.0.23';
+const APP_VERSION = 'v5.1.0';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -2779,18 +3051,44 @@ let IS_ADMIN = false;  // populated from storage in init()
 function applyAdminVisibility() {
   // Show/hide admin-only UI elements based on IS_ADMIN flag.
   // Idempotent — safe to call multiple times after state changes.
+  // v5.1.0 — Settings nav button is now ALWAYS visible (state-coloured padlock).
+  //   data-lock-state values: "locked" | "admin" | "open"
+  //   - locked  → operator default; tap shows toast, triple-tap → passphrase modal
+  //   - admin   → Cheison authenticated (view-only OR gate-closed); gear icon
+  //   - open    → Cheison authenticated AND writes enabled; green padlock
   const settingsNavBtn = document.getElementById('nav-settings');
   const adminSection = document.getElementById('settings-admin-section');
   const gateBanner = document.getElementById('gate-banner');
 
   if (IS_ADMIN) {
-    if (settingsNavBtn) settingsNavBtn.style.display = '';
-    if (adminSection)   adminSection.style.display = '';
+    if (settingsNavBtn) {
+      settingsNavBtn.style.display = '';
+      // Decide between 'admin' (gate closed) and 'open' (writes ON)
+      const writesOn = !!(ADMIN_STATE && ADMIN_STATE.writesEnabled);
+      const newState = writesOn ? 'open' : 'admin';
+      const oldState = settingsNavBtn.dataset.lockState;
+      if (oldState !== newState) {
+        settingsNavBtn.dataset.lockState = newState;
+        settingsNavBtn.setAttribute('aria-label',
+          writesOn ? 'Settings (writes open)' : 'Settings (admin)');
+        // Brief pulse animation on state change
+        settingsNavBtn.classList.remove('lock-pulse');
+        // force reflow to restart animation
+        void settingsNavBtn.offsetWidth;
+        settingsNavBtn.classList.add('lock-pulse');
+      }
+    }
+    if (adminSection) adminSection.style.display = '';
     // Banner visibility still controlled by ADMIN_STATE in renderGateBanner()
   } else {
-    // Operator mode: hide all admin chrome
-    if (settingsNavBtn) settingsNavBtn.style.display = 'none';
-    if (adminSection)   adminSection.style.display = 'none';
+    // Operator mode: keep Settings nav VISIBLE but locked. The button now
+    // intercepts taps and shows a toast / modal instead of opening Settings.
+    if (settingsNavBtn) {
+      settingsNavBtn.style.display = '';
+      settingsNavBtn.dataset.lockState = 'locked';
+      settingsNavBtn.setAttribute('aria-label', 'Settings (locked)');
+    }
+    if (adminSection) adminSection.style.display = 'none';
     if (gateBanner) {
       gateBanner.classList.remove('show');
       document.body.classList.remove('has-gate-banner');
@@ -2899,6 +3197,385 @@ function wireAdminEscapeHatch() {
       } else {
         tapTimer = setTimeout(() => { tapCount = 0; }, 700);
       }
+    });
+  }
+}
+
+/* ============================================================
+   v5.1.0 — Lock-icon authentication module
+   ============================================================
+   Wires the bottom-nav Settings padlock into the new authentication flow:
+
+   - When data-lock-state="locked" (operator default):
+       single-tap → toast "🔒 Triple-tap to authenticate"
+       triple-tap → opens passphrase modal (hybrid: View only / Open writes)
+       wrong passphrase → toast "Kiruogindet araap Cheison does not allow you to see Settings"
+
+   - When data-lock-state="admin" or "open" (Cheison authenticated):
+       single-tap → opens Settings normally (no challenge)
+
+   - The passphrase modal calls:
+       admin-validate  → IS_ADMIN=true, no Control_Panel mutation (gate stays closed)
+       admin-grant     → IS_ADMIN=true AND Control_Panel.WRITES_ENABLED=true (gate ON)
+
+   - Title triple-tap escape hatch is preserved (backup path).
+   ============================================================ */
+function wireLockIconAuth() {
+  const lockBtn = document.getElementById('nav-settings');
+  if (!lockBtn || lockBtn.dataset.authWired === '1') return;
+  lockBtn.dataset.authWired = '1';
+
+  // Triple-tap detection state
+  let tapCount = 0;
+  let tapTimer = null;
+
+  // Capture-phase click handler so we run BEFORE the existing nav-routing code
+  // that switches views. We can stop propagation for taps that should NOT
+  // open Settings (locked state, single-tap-not-yet-triple).
+  lockBtn.addEventListener('click', function(ev) {
+    const state = lockBtn.dataset.lockState || 'locked';
+
+    if (state === 'admin' || state === 'open') {
+      // Authenticated — let the normal nav routing open Settings tab.
+      return; // don't intercept
+    }
+
+    // Locked: intercept the click. We need to tally taps and either show a
+    // toast (single tap) or open the modal (triple tap).
+    ev.stopPropagation();
+    ev.preventDefault();
+
+    tapCount++;
+    if (tapTimer) clearTimeout(tapTimer);
+
+    if (tapCount >= 3) {
+      tapCount = 0;
+      console.log('[lock-auth] triple-tap on lock icon — opening modal');
+      openAuthModal();
+    } else {
+      // Reset tap counter after 700ms (matches title escape hatch)
+      tapTimer = setTimeout(() => {
+        if (tapCount > 0 && tapCount < 3) {
+          // Single or double tap — show locked toast
+          showToast('🔒 Triple-tap to authenticate', 2500);
+        }
+        tapCount = 0;
+      }, 700);
+    }
+  }, true); // useCapture=true — runs before bubbling click handlers
+}
+
+/* ============================================================
+   v5.1.0 — Auth modal lifecycle
+   ============================================================ */
+let authModalState = {
+  busy: false,         // true while a request is in-flight
+  attemptCount: 0      // failed attempts in current session
+};
+
+function openAuthModal() {
+  const backdrop = document.getElementById('auth-modal');
+  const passInput = document.getElementById('auth-modal-passphrase');
+  const hint = document.getElementById('auth-modal-hint');
+  if (!backdrop) return;
+
+  // Reset state
+  if (passInput) passInput.value = '';
+  if (hint) {
+    hint.textContent = 'Choose how to authenticate:';
+    hint.classList.remove('error');
+  }
+  setAuthModalBusy(false);
+
+  backdrop.classList.add('show');
+  backdrop.setAttribute('aria-hidden', 'false');
+
+  // Focus the input after the transition starts
+  setTimeout(() => {
+    if (passInput) passInput.focus();
+  }, 150);
+
+  // Wire keyboard escape to close
+  document.addEventListener('keydown', authModalKeyHandler);
+}
+
+function closeAuthModal() {
+  const backdrop = document.getElementById('auth-modal');
+  if (!backdrop) return;
+  backdrop.classList.remove('show');
+  backdrop.setAttribute('aria-hidden', 'true');
+  document.removeEventListener('keydown', authModalKeyHandler);
+  // Reset eye toggle to hidden state
+  const passInput = document.getElementById('auth-modal-passphrase');
+  if (passInput) passInput.type = 'password';
+  const eyeBtn = document.getElementById('auth-modal-eye');
+  if (eyeBtn) eyeBtn.setAttribute('aria-label', 'Show passphrase');
+}
+
+function authModalKeyHandler(ev) {
+  if (ev.key === 'Escape') {
+    closeAuthModal();
+  }
+}
+
+function setAuthModalBusy(busy) {
+  authModalState.busy = busy;
+  const buttons = document.querySelectorAll('#auth-modal .modal-actions button');
+  buttons.forEach(b => {
+    if (busy) b.setAttribute('disabled', '');
+    else b.removeAttribute('disabled');
+  });
+  const passInput = document.getElementById('auth-modal-passphrase');
+  if (passInput) passInput.disabled = busy;
+}
+
+/* Authenticate without opening writes. Calls Apps Script admin-validate. */
+async function authModalSubmitView() {
+  const passInput = document.getElementById('auth-modal-passphrase');
+  const hint = document.getElementById('auth-modal-hint');
+  const passphrase = (passInput && passInput.value || '').trim();
+
+  if (!passphrase) {
+    if (hint) {
+      hint.textContent = 'Enter the passphrase first.';
+      hint.classList.add('error');
+    }
+    return;
+  }
+  if (!APPS_SCRIPT_GATE_URL) {
+    if (hint) {
+      hint.textContent = 'Apps Script URL not configured.';
+      hint.classList.add('error');
+    }
+    return;
+  }
+
+  setAuthModalBusy(true);
+  try {
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'admin-validate',
+        payload: { passphrase: passphrase },
+        source: `PWA ${APP_VERSION} admin-validate`
+      })
+    });
+    if (!response.ok) {
+      throw new Error('Network error · ' + response.status);
+    }
+    const json = await response.json();
+    if (json && json.ok) {
+      // Authentication succeeded — flip IS_ADMIN, do NOT touch the gate
+      authModalState.attemptCount = 0;
+      closeAuthModal();
+      await setAdminMode(true);
+      // Refresh admin status (read-only) so the lock icon updates correctly
+      await fetchAdminStatus();
+      applyAdminVisibility();
+      renderGateBanner();
+      renderAdminSection();
+      // Navigate to Settings
+      const settingsBtn = document.querySelector('[data-view="settings"]');
+      if (settingsBtn) settingsBtn.click();
+      showToast('✓ Authenticated · view-only mode', 3500);
+    } else {
+      authModalState.attemptCount++;
+      if (hint) {
+        hint.textContent = 'Kiruogindet araap Cheison does not allow you to see Settings';
+        hint.classList.add('error');
+      }
+      showToast('Kiruogindet araap Cheison does not allow you to see Settings', 5000);
+      if (passInput) {
+        passInput.value = '';
+        passInput.focus();
+      }
+    }
+  } catch (e) {
+    if (hint) {
+      hint.textContent = 'Network error · please retry.';
+      hint.classList.add('error');
+    }
+    console.error('[auth-modal] view error', e);
+  } finally {
+    setAuthModalBusy(false);
+  }
+}
+
+/* Authenticate AND open writes. Reuses existing pushAdminGrant pathway. */
+async function authModalSubmitGrant() {
+  const passInput = document.getElementById('auth-modal-passphrase');
+  const hint = document.getElementById('auth-modal-hint');
+  const passphrase = (passInput && passInput.value || '').trim();
+
+  if (!passphrase) {
+    if (hint) {
+      hint.textContent = 'Enter the passphrase first.';
+      hint.classList.add('error');
+    }
+    return;
+  }
+  if (!APPS_SCRIPT_GATE_URL) {
+    if (hint) {
+      hint.textContent = 'Apps Script URL not configured.';
+      hint.classList.add('error');
+    }
+    return;
+  }
+
+  setAuthModalBusy(true);
+  try {
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'admin-grant',
+        payload: {
+          passphrase: passphrase,
+          windowLabel: 'Indefinite'
+        },
+        source: `PWA ${APP_VERSION} admin-grant`
+      })
+    });
+    if (!response.ok) {
+      throw new Error('Network error · ' + response.status);
+    }
+    const json = await response.json();
+    if (json && json.ok) {
+      authModalState.attemptCount = 0;
+      closeAuthModal();
+      await setAdminMode(true);
+      await fetchAdminStatus();
+      applyAdminVisibility();
+      renderGateBanner();
+      renderAdminSection();
+      const settingsBtn = document.querySelector('[data-view="settings"]');
+      if (settingsBtn) settingsBtn.click();
+      showToast('✓ Writes opened · gate is GREEN', 4000);
+    } else {
+      authModalState.attemptCount++;
+      if (hint) {
+        hint.textContent = 'Kiruogindet araap Cheison does not allow you to see Settings';
+        hint.classList.add('error');
+      }
+      showToast('Kiruogindet araap Cheison does not allow you to see Settings', 5000);
+      if (passInput) {
+        passInput.value = '';
+        passInput.focus();
+      }
+    }
+  } catch (e) {
+    if (hint) {
+      hint.textContent = 'Network error · please retry.';
+      hint.classList.add('error');
+    }
+    console.error('[auth-modal] grant error', e);
+  } finally {
+    setAuthModalBusy(false);
+  }
+}
+
+/* Wire the modal buttons + eye toggle. Called once at boot. */
+function wireAuthModal() {
+  const cancelBtn = document.getElementById('auth-modal-cancel');
+  const viewBtn   = document.getElementById('auth-modal-view');
+  const grantBtn  = document.getElementById('auth-modal-grant');
+  const eyeBtn    = document.getElementById('auth-modal-eye');
+  const passInput = document.getElementById('auth-modal-passphrase');
+  const backdrop  = document.getElementById('auth-modal');
+
+  if (cancelBtn && !cancelBtn.dataset.wired) {
+    cancelBtn.dataset.wired = '1';
+    cancelBtn.addEventListener('click', closeAuthModal);
+  }
+  if (viewBtn && !viewBtn.dataset.wired) {
+    viewBtn.dataset.wired = '1';
+    viewBtn.addEventListener('click', authModalSubmitView);
+  }
+  if (grantBtn && !grantBtn.dataset.wired) {
+    grantBtn.dataset.wired = '1';
+    grantBtn.addEventListener('click', authModalSubmitGrant);
+  }
+  if (eyeBtn && passInput && !eyeBtn.dataset.wired) {
+    eyeBtn.dataset.wired = '1';
+    eyeBtn.addEventListener('click', () => {
+      const showing = passInput.type === 'text';
+      passInput.type = showing ? 'password' : 'text';
+      eyeBtn.setAttribute('aria-label', showing ? 'Show passphrase' : 'Hide passphrase');
+    });
+  }
+  // Click on backdrop (outside the card) closes modal
+  if (backdrop && !backdrop.dataset.wired) {
+    backdrop.dataset.wired = '1';
+    backdrop.addEventListener('click', (ev) => {
+      if (ev.target === backdrop) closeAuthModal();
+    });
+  }
+  // Enter key on input → "Open writes" (the primary action)
+  if (passInput && !passInput.dataset.wired) {
+    passInput.dataset.wired = '1';
+    passInput.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' && !authModalState.busy) {
+        ev.preventDefault();
+        authModalSubmitGrant();
+      }
+    });
+  }
+}
+
+/* ============================================================
+   v5.1.0 — Revoke confirmation modal
+   ============================================================ */
+function openRevokeModal() {
+  const backdrop = document.getElementById('revoke-modal');
+  if (!backdrop) return;
+  backdrop.classList.add('show');
+  backdrop.setAttribute('aria-hidden', 'false');
+  document.addEventListener('keydown', revokeModalKeyHandler);
+}
+
+function closeRevokeModal() {
+  const backdrop = document.getElementById('revoke-modal');
+  if (!backdrop) return;
+  backdrop.classList.remove('show');
+  backdrop.setAttribute('aria-hidden', 'true');
+  document.removeEventListener('keydown', revokeModalKeyHandler);
+}
+
+function revokeModalKeyHandler(ev) {
+  if (ev.key === 'Escape') closeRevokeModal();
+}
+
+async function revokeModalConfirm() {
+  closeRevokeModal();
+  // Reuse existing revoke logic via the Settings → Admin button path
+  if (typeof handleAdminRevokeClick === 'function') {
+    handleAdminRevokeClick();
+  } else {
+    // Fallback: direct call. Find the existing revoke button if present.
+    const existingRevoke = document.getElementById('admin-revoke-btn');
+    if (existingRevoke) existingRevoke.click();
+  }
+}
+
+function wireRevokeModal() {
+  const cancelBtn  = document.getElementById('revoke-modal-cancel');
+  const confirmBtn = document.getElementById('revoke-modal-confirm');
+  const backdrop   = document.getElementById('revoke-modal');
+  if (cancelBtn && !cancelBtn.dataset.wired) {
+    cancelBtn.dataset.wired = '1';
+    cancelBtn.addEventListener('click', closeRevokeModal);
+  }
+  if (confirmBtn && !confirmBtn.dataset.wired) {
+    confirmBtn.dataset.wired = '1';
+    confirmBtn.addEventListener('click', revokeModalConfirm);
+  }
+  if (backdrop && !backdrop.dataset.wired) {
+    backdrop.dataset.wired = '1';
+    backdrop.addEventListener('click', (ev) => {
+      if (ev.target === backdrop) closeRevokeModal();
     });
   }
 }
@@ -3172,6 +3849,14 @@ function wireAdminUI() {
   if (revokeBtn && revokeBtn.dataset.wired !== '1') {
     revokeBtn.dataset.wired = '1';
     revokeBtn.addEventListener('click', async () => {
+      // v5.1.0 — If user is already authenticated as admin (IS_ADMIN=true),
+      // open the confirmation modal instead of demanding the passphrase again.
+      // The lock-icon authentication IS the proof.
+      if (IS_ADMIN) {
+        openRevokeModal();
+        return;
+      }
+      // Fallback for legacy path: passphrase still required if not authenticated
       const passInput = document.getElementById('admin-passphrase');
       const passphrase = passInput ? passInput.value : '';
       if (!passphrase) {
@@ -3198,6 +3883,42 @@ function wireAdminUI() {
         showAdminFeedback(result.reason || 'Revoke failed', false);
       }
     });
+  }
+
+  // v5.1.0 — handleAdminRevokeClick used by the revoke confirmation modal
+  // (separate from the button click handler above so the modal can call it).
+  if (typeof window.handleAdminRevokeClick !== 'function') {
+    window.handleAdminRevokeClick = async function() {
+      // Caller (revoke confirmation modal) has already confirmed intent.
+      // We use the cached passphrase from the admin section if available,
+      // otherwise rely on session admin status to call adminRevoke.
+      // Note: admin-revoke endpoint still requires passphrase server-side.
+      // After v5.1.0, we'd prefer a session-token approach, but for now we
+      // re-prompt via the passphrase field if it's empty.
+      const passInput = document.getElementById('admin-passphrase');
+      let passphrase = passInput ? passInput.value : '';
+      if (!passphrase) {
+        // Cached but no longer in input — re-open auth modal asking for passphrase
+        // for revoke confirmation. This is rare since the user just authenticated.
+        showToast('Re-enter passphrase in Settings to confirm revoke', 4000);
+        if (passInput) passInput.focus();
+        return;
+      }
+      const result = await adminRevoke(passphrase);
+      if (result.ok) {
+        await setAdminMode(true);
+        if (passInput) { passInput.value = ''; passInput.type = 'password'; }
+        const reveal = document.getElementById('admin-passphrase-reveal');
+        if (reveal) { reveal.textContent = '👁'; reveal.setAttribute('aria-label', 'Show passphrase'); }
+        showAdminFeedback('Gate closed.', true);
+        renderAdminSection();
+        renderGateBanner();
+        applyAdminVisibility(); // refresh padlock state (open → admin/gear)
+      } else {
+        showAdminFeedback(result.reason || 'Revoke failed', false);
+        showToast('Revoke failed: ' + (result.reason || 'unknown'), 4000);
+      }
+    };
   }
 
   // Banner tap → focus passphrase + scroll Settings into view (one-tap revoke flow)
@@ -6479,6 +7200,10 @@ function showUpdateBanner() {
   IS_ADMIN = await storageGet(K_IS_ADMIN, false);
   applyAdminVisibility();
   wireAdminEscapeHatch();  // Long-press version label to reveal admin (for fresh installs)
+  // v5.1.0 — Lock-icon auth flow
+  wireLockIconAuth();      // Triple-tap on bottom-nav padlock to authenticate
+  wireAuthModal();         // Passphrase modal (View only / Open writes)
+  wireRevokeModal();       // Revoke confirmation modal
 
   /* v5.0.15 — ROLLBACK of v5.0.14 client-side cleanup migration. The cleanup
      was too aggressive and may have removed legitimate Actuals (Sang'alo 195.7,
