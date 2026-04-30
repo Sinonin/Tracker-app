@@ -1869,7 +1869,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.2.0</span>
+  <span class="version-label" id="version-label">v5.3.0</span>
 </header>
 
 <main>
@@ -1912,6 +1912,11 @@
         <div class="biz-card"><div class="lbl">Live birds income</div><div class="val" id="poultry-birds-month">Ksh 0</div><div class="sub" id="poultry-birds-sub">—</div></div>
         <div class="biz-card"><div class="lbl">Poultry income</div><div class="val" id="poultry-total-income">Ksh 0</div><div class="sub">eggs + birds</div></div>
         <div class="biz-card"><div class="lbl">Poultry margin</div><div class="val" id="poultry-margin">Ksh 0</div><div class="sub" id="poultry-margin-sub">income − expenses</div></div>
+      </div>
+      <!-- v6.0 SHIP 2 — Inventory MTD numbers -->
+      <div class="biz-grid" style="margin-top:0.7rem">
+        <div class="biz-card"><div class="lbl">🥚 Eggs collected MTD</div><div class="val" id="poultry-eggs-collected-month">0</div><div class="sub" id="poultry-eggs-collected-sub">—</div></div>
+        <div class="biz-card"><div class="lbl">🐔 Birds sold MTD</div><div class="val" id="poultry-birds-sold-month">0</div><div class="sub" id="poultry-birds-sold-sub">—</div></div>
       </div>
     </div>
 
@@ -2411,7 +2416,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.2.0</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.3.0</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2707,7 +2712,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.2.0';
+const APP_VERSION = 'v5.3.0';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -4692,6 +4697,11 @@ function bankedKey(r) {
 function poultryKey(r) {
   return `${r.date}|${(r.product||'').trim()}|${(r.unit||'').trim()}|${Number(r.quantity || 0).toFixed(2)}|${Number(r.amount || 0).toFixed(2)}`;
 }
+/* v6.0 SHIP 2 — Egg Collection cloud key.
+   Same as the server's STRICT dedup key (date + 3 counts). */
+function eggCollectionKey(r) {
+  return `${r.date}|${Number(r.normal || 0)}|${Number(r.small_abnormal || 0)}|${Number(r.broken || 0)}`;
+}
 
 function mergeByKey(local, cloud, keyFn, mapCloud) {
   // Build a set of local keys
@@ -4787,6 +4797,19 @@ function cloudToLocalPoultry(r) {
     _source: 'cloud'
   };
 }
+/* v6.0 SHIP 2 — Cloud-to-local mapper for egg collection rows. */
+function cloudToLocalEggCollection(r) {
+  return {
+    id: 'C-EC-' + r.date + '-' + Number(r.normal||0) + '-' + Number(r.small_abnormal||0) + '-' + Number(r.broken||0),
+    ts: r.ts || r.timestamp || r.date + 'T00:00:00Z',
+    date: r.date,
+    normal: Number(r.normal) || 0,
+    small_abnormal: Number(r.small_abnormal) || 0,
+    broken: Number(r.broken) || 0,
+    notes: r.notes || '',
+    _source: 'cloud'
+  };
+}
 
 async function applyCloudResponse(data) {
   if (!data) return;
@@ -4809,6 +4832,11 @@ async function applyCloudResponse(data) {
   if (Array.isArray(data.poultry)) {
     STATE.poultry = mergeByKey(STATE.poultry || [], data.poultry, poultryKey, cloudToLocalPoultry);
     await storageSet(K_POULTRY, STATE.poultry);
+  }
+  /* v6.0 SHIP 2 — Egg Collection sync */
+  if (Array.isArray(data.eggCollection)) {
+    STATE.eggCollection = mergeByKey(STATE.eggCollection || [], data.eggCollection, eggCollectionKey, cloudToLocalEggCollection);
+    await storageSet(K_EGG_COLLECTION, STATE.eggCollection);
   }
   if (Array.isArray(data.roster)) {
     // Roster merge — cloud is authoritative for IDs that appear in cloud,
@@ -6048,6 +6076,50 @@ function renderHome() {
     if (chicksQty > 0) parts.push(`${moneyRound(chicksQty)} chicks`);
     if (chickenQty > 0) parts.push(`${moneyRound(chickenQty)} chicken`);
     birdsSub.textContent = parts.join(' · ');
+  }
+
+  // v6.0 SHIP 2 — Inventory MTD: Eggs collected + Birds sold (volumes, not income)
+  // Eggs collected: from STATE.eggCollection (separate stream, not Poultry Sales)
+  // Birds sold: REUSE existing chicksQty + chickenQty (from Poultry Sales)
+  const eggCollectionMonth = (STATE.eggCollection || []).filter(e => (e.date || '').startsWith(ym));
+  const eggsCollectedNormal = eggCollectionMonth.reduce((s, e) => s + (Number(e.normal) || 0), 0);
+  const eggsCollectedSmall  = eggCollectionMonth.reduce((s, e) => s + (Number(e.small_abnormal) || 0), 0);
+  const eggsCollectedBroken = eggCollectionMonth.reduce((s, e) => s + (Number(e.broken) || 0), 0);
+
+  const eggsCollectedEl = document.getElementById('poultry-eggs-collected-month');
+  const eggsCollectedSubEl = document.getElementById('poultry-eggs-collected-sub');
+  if (eggsCollectedEl) {
+    if (eggCollectionMonth.length === 0) {
+      eggsCollectedEl.textContent = '—';
+      if (eggsCollectedSubEl) eggsCollectedSubEl.textContent = 'no records this month';
+    } else {
+      eggsCollectedEl.textContent = eggsCollectedNormal.toLocaleString('en-KE') + ' normal';
+      if (eggsCollectedSubEl) {
+        const subParts = [];
+        if (eggsCollectedSmall > 0)  subParts.push(`${eggsCollectedSmall} small`);
+        if (eggsCollectedBroken > 0) subParts.push(`${eggsCollectedBroken} broken`);
+        subParts.push(`${eggCollectionMonth.length} day${eggCollectionMonth.length === 1 ? '' : 's'} recorded`);
+        eggsCollectedSubEl.textContent = subParts.join(' · ');
+      }
+    }
+  }
+
+  const birdsSoldEl = document.getElementById('poultry-birds-sold-month');
+  const birdsSoldSubEl = document.getElementById('poultry-birds-sold-sub');
+  if (birdsSoldEl) {
+    const totalBirds = chicksQty + chickenQty;
+    if (totalBirds === 0) {
+      birdsSoldEl.textContent = '—';
+      if (birdsSoldSubEl) birdsSoldSubEl.textContent = 'no birds sold this month';
+    } else {
+      birdsSoldEl.textContent = moneyRound(totalBirds);
+      if (birdsSoldSubEl) {
+        const parts = [];
+        if (chicksQty > 0) parts.push(`${moneyRound(chicksQty)} chicks`);
+        if (chickenQty > 0) parts.push(`${moneyRound(chickenQty)} chicken`);
+        birdsSoldSubEl.textContent = parts.join(' · ');
+      }
+    }
   }
 
   // Zone 3 — Tea block bars (unchanged from prior behaviour)
