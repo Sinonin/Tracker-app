@@ -1869,7 +1869,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.3.0</span>
+  <span class="version-label" id="version-label">v5.3.1</span>
 </header>
 
 <main>
@@ -2324,6 +2324,17 @@
           <div id="admin-feedback" style="display:none;margin-top:0.7rem;padding:0.6rem 0.8rem;border-radius:6px;font-family:'Fraunces',serif;font-size:0.9rem"></div>
         </div>
       </div>
+      <!-- v5.3.1 — Lock & exit admin (returns Cheison to operator view).
+           Does NOT change gate state — use "Close gate now" first if you also want writes locked. -->
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:0.6rem;margin-top:0.8rem;border-top:1px solid var(--rule);padding-top:0.9rem">
+        <div>
+          <div class="k">Lock admin</div>
+          <div class="desc">Return to operator view · padlock turns red · Settings hides</div>
+        </div>
+        <button id="admin-lock-btn" class="export-btn" style="width:100%;background:var(--forest-dark);color:var(--ivory);border-color:var(--forest-dark)">
+          🔒 Lock & exit admin
+        </button>
+      </div>
     </div>
 
     <div class="section">
@@ -2416,7 +2427,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.3.0</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.3.1</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2526,6 +2537,23 @@
     <div class="modal-actions">
       <button type="button" class="btn-secondary" id="revoke-modal-cancel">Cancel</button>
       <button type="button" class="btn-danger" id="revoke-modal-confirm">Revoke now</button>
+    </div>
+  </div>
+</div>
+
+<!-- v5.3.1 — Lock confirmation modal (return to operator view) -->
+<div class="modal-backdrop" id="lock-modal" aria-hidden="true">
+  <div class="modal-card" role="dialog" aria-labelledby="lock-modal-title" aria-modal="true">
+    <div class="modal-header">
+      <h2 id="lock-modal-title">Lock & exit admin?</h2>
+      <p class="modal-subtitle">Return to operator view</p>
+    </div>
+    <div class="modal-body">
+      <div class="modal-hint">The padlock will turn red. Settings tab will hide. The gate state stays as it is — close it first if you also want writes locked.</div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="lock-modal-cancel">Cancel</button>
+      <button type="button" class="btn-primary" id="lock-modal-confirm">🔒 Lock now</button>
     </div>
   </div>
 </div>
@@ -2712,7 +2740,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.3.0';
+const APP_VERSION = 'v5.3.1';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -3272,8 +3300,25 @@ function wireLockIconAuth() {
     const state = lockBtn.dataset.lockState || 'locked';
 
     if (state === 'admin' || state === 'open') {
-      // Authenticated — let the normal nav routing open Settings tab.
-      return; // don't intercept
+      // v5.3.1 — Symmetric gesture: triple-tap to lock (mirror of triple-tap-to-unlock).
+      // Single tap on padlock = open Settings tab (existing nav behavior).
+      // Triple tap on padlock = open lock confirmation modal.
+      // We need to detect triple-tap here and intercept BEFORE Settings opens.
+      tapCount++;
+      if (tapTimer) clearTimeout(tapTimer);
+
+      if (tapCount >= 3) {
+        // Triple-tap detected: intercept, prevent Settings nav, open lock modal
+        tapCount = 0;
+        ev.stopPropagation();
+        ev.preventDefault();
+        console.log('[lock-auth] triple-tap on padlock (admin state) — opening lock modal');
+        openLockModal();
+      } else {
+        // 1 or 2 taps so far — let nav proceed (Settings opens). Reset counter on timeout.
+        tapTimer = setTimeout(() => { tapCount = 0; }, 700);
+      }
+      return;
     }
 
     // Locked: intercept the click. Silently tally taps; only triple-tap reveals
@@ -3613,6 +3658,79 @@ function wireRevokeModal() {
     backdrop.addEventListener('click', (ev) => {
       if (ev.target === backdrop) closeRevokeModal();
     });
+  }
+}
+
+/* ============================================================
+   v5.3.1 — Lock & exit admin module
+   ============================================================
+   Two paths into this module:
+     1. Settings → Admin section → "🔒 Lock & exit admin" button
+     2. Single-tap on bottom-nav padlock when state is "admin" or "open"
+
+   Both open the lock-modal confirmation. Confirmed → setAdminMode(false)
+   which:
+     - Sets IS_ADMIN to false
+     - Persists K_IS_ADMIN to storage (so reload doesn't bring it back)
+     - applyAdminVisibility() runs — padlock turns red, Settings hides
+
+   IMPORTANT: This does NOT close the gate (admin-revoke). The gate stays
+   in whatever state it was. To close the gate AND lock, use "Close gate now"
+   first, then "Lock & exit admin". Two clean actions, two clean intents.
+   ============================================================ */
+
+function openLockModal() {
+  const backdrop = document.getElementById('lock-modal');
+  if (!backdrop) return;
+  backdrop.classList.add('show');
+  backdrop.setAttribute('aria-hidden', 'false');
+  document.addEventListener('keydown', lockModalKeyHandler);
+}
+
+function closeLockModal() {
+  const backdrop = document.getElementById('lock-modal');
+  if (!backdrop) return;
+  backdrop.classList.remove('show');
+  backdrop.setAttribute('aria-hidden', 'true');
+  document.removeEventListener('keydown', lockModalKeyHandler);
+}
+
+function lockModalKeyHandler(ev) {
+  if (ev.key === 'Escape') closeLockModal();
+}
+
+async function lockModalConfirm() {
+  closeLockModal();
+  await setAdminMode(false);
+  // Send user back to Home — Settings is no longer accessible
+  const homeBtn = document.querySelector('[data-view="home"]');
+  if (homeBtn) homeBtn.click();
+  showToast('🔒 Locked · operator view', 3500);
+}
+
+function wireLockModal() {
+  const cancelBtn  = document.getElementById('lock-modal-cancel');
+  const confirmBtn = document.getElementById('lock-modal-confirm');
+  const backdrop   = document.getElementById('lock-modal');
+  const settingsBtn = document.getElementById('admin-lock-btn');
+
+  if (cancelBtn && !cancelBtn.dataset.wired) {
+    cancelBtn.dataset.wired = '1';
+    cancelBtn.addEventListener('click', closeLockModal);
+  }
+  if (confirmBtn && !confirmBtn.dataset.wired) {
+    confirmBtn.dataset.wired = '1';
+    confirmBtn.addEventListener('click', lockModalConfirm);
+  }
+  if (backdrop && !backdrop.dataset.wired) {
+    backdrop.dataset.wired = '1';
+    backdrop.addEventListener('click', (ev) => {
+      if (ev.target === backdrop) closeLockModal();
+    });
+  }
+  if (settingsBtn && !settingsBtn.dataset.wired) {
+    settingsBtn.dataset.wired = '1';
+    settingsBtn.addEventListener('click', openLockModal);
   }
 }
 
@@ -7511,6 +7629,7 @@ function showUpdateBanner() {
   wireLockIconAuth();      // Triple-tap on bottom-nav padlock to authenticate
   wireAuthModal();         // Passphrase modal (View only / Open writes)
   wireRevokeModal();       // Revoke confirmation modal
+  wireLockModal();         // v5.3.1 — Lock & exit admin modal
 
   /* v5.0.15 — ROLLBACK of v5.0.14 client-side cleanup migration. The cleanup
      was too aggressive and may have removed legitimate Actuals (Sang'alo 195.7,
