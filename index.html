@@ -354,7 +354,7 @@
     border: 1px solid var(--forest-dark);
   }
   #kind-toggle-tea { grid-template-columns: 1fr 1fr 1fr; }
-  #kind-toggle-poultry { grid-template-columns: 1fr 1fr; }
+  #kind-toggle-poultry { grid-template-columns: 1fr 1fr 1fr; }
   #kind-toggle-expenses { grid-template-columns: 1fr; }
   .kind-toggle button {
     background: transparent; border: none;
@@ -1818,7 +1818,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.4.1</span>
+  <span class="version-label" id="version-label">v5.5.0</span>
 </header>
 
 <main>
@@ -1866,6 +1866,11 @@
       <div class="biz-grid" style="margin-top:0.7rem">
         <div class="biz-card"><div class="lbl">🥚 Eggs collected MTD</div><div class="val" id="poultry-eggs-collected-month">0</div><div class="sub" id="poultry-eggs-collected-sub">—</div></div>
         <div class="biz-card"><div class="lbl">🐔 Birds sold MTD</div><div class="val" id="poultry-birds-sold-month">0</div><div class="sub" id="poultry-birds-sold-sub">—</div></div>
+      </div>
+      <!-- v6.0 SHIP 4 — Lay rate KPI + live bird count -->
+      <div class="biz-grid" style="margin-top:0.7rem">
+        <div class="biz-card"><div class="lbl">📈 Lay rate MTD</div><div class="val" id="poultry-lay-rate">—</div><div class="sub" id="poultry-lay-rate-sub">no census yet</div></div>
+        <div class="biz-card"><div class="lbl">🏠 Live birds (census)</div><div class="val" id="poultry-live-birds">—</div><div class="sub" id="poultry-live-birds-sub">no census yet</div></div>
       </div>
     </div>
 
@@ -1934,6 +1939,7 @@
     <div class="kind-toggle" id="kind-toggle-poultry" style="display:none">
       <button class="active" data-kind="poultry">Sales</button>
       <button data-kind="egg-collection">Egg Collection</button>
+      <button data-kind="bird-census">Bird Census</button>
     </div>
 
     <div class="kind-toggle" id="kind-toggle-expenses" style="display:none">
@@ -2184,6 +2190,33 @@
         </div>
       </div>
     </div>
+
+    <!-- ========= BIRD CENSUS (v6.0 SHIP 4) ========= -->
+    <div id="bird-census-kind" style="display:none">
+      <div class="batch-instructions">Bird population count by house and stage. Census is a snapshot — record all stages currently in the house. Frequency: weekly recommended.</div>
+
+      <div class="field"><label>Date</label><input type="date" id="bc-date"></div>
+      <div class="field"><label>House</label>
+        <select id="bc-house"><option value="">— Select house —</option></select>
+      </div>
+      <div class="field"><label>Stage</label>
+        <select id="bc-stage"><option value="">— Select stage —</option></select>
+      </div>
+      <div class="field"><label>Count (number of birds)</label><input type="number" id="bc-count" inputmode="numeric" step="1" min="0" placeholder="0"></div>
+      <div class="field"><label>Notes (optional)</label><input type="text" id="bc-notes" placeholder="e.g. mortality 2 yesterday, recount" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
+
+      <button class="submit" id="bc-submit" disabled>Record Census</button>
+
+      <div class="calc-card" id="bc-preview" style="display:none;margin-top:0.9rem">
+        <div class="lbl">Census preview</div>
+        <div class="primary"><span id="bc-preview-count">0</span><span class="unit" id="bc-preview-stage"> birds</span></div>
+        <div class="breakdown">
+          <div class="k">House</div><div class="v" id="bc-preview-house">—</div>
+          <div class="k">Stage</div><div class="v" id="bc-preview-stage-text">—</div>
+          <div class="k">Date</div><div class="v" id="bc-preview-date">—</div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- INSIGHTS -->
@@ -2418,7 +2451,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.4.1</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.5.0</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2706,6 +2739,7 @@ const K_POULTRY = 'sinonin_poultry_v1';
 const K_CLOUD_SYNC = 'sinonin_cloud_sync_v1';
 const K_IS_ADMIN = 'sinonin_is_admin_v1';  // v5.0.19 — set true on first successful passphrase grant/revoke
 const K_HOUSES = 'sinonin_houses_v1';       // v6.0 SHIP 3 — Kipkenda houses config
+const K_BIRD_CENSUS = 'sinonin_bird_census_v1';  // v6.0 SHIP 4 — Bird population counts
 
 const CLOUD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwzHUz9She1PsVPNOWvssSiQcye8hpKZ9v_3d1aX6nsqPDnIN375z8krhMwsCyikVSLtQ/exec';
 
@@ -2732,7 +2766,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.4.1';
+const APP_VERSION = 'v5.5.0';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -4908,6 +4942,7 @@ async function flushQueue(opts) {
       else if (kind === 'banked') record = (STATE.banked || []).find(b => b.id === recordId);
       else if (kind === 'poultry') record = (STATE.poultry || []).find(p => p.id === recordId);
       else if (kind === 'egg-collection') record = (STATE.eggCollection || []).find(e => e.id === recordId);
+      else if (kind === 'bird-census') record = (STATE.birdCensus || []).find(b => b.id === recordId);
       else if (kind === 'roster')  record = item.payload || null; // roster items carry their own payload
       if (!record) continue; // record was deleted locally, drop from queue
       let ok;
@@ -4916,6 +4951,7 @@ async function flushQueue(opts) {
       else if (kind === 'banked')  ok = await pushBankedToForm(record);
       else if (kind === 'poultry') ok = await pushPoultryToForm(record);
       else if (kind === 'egg-collection') ok = await syncEggCollection(record);
+      else if (kind === 'bird-census') ok = await syncBirdCensus(record);
       else if (kind === 'roster')  ok = await pushRosterToForm(record);
       else                         ok = await pushToForm(record);
       if (ok) {
@@ -4949,6 +4985,9 @@ async function flushQueue(opts) {
           } else if (kind === 'egg-collection' && Array.isArray(STATE.eggCollection)) {
             STATE.eggCollection = STATE.eggCollection.filter(e => e.id !== recordId);
             await storageSet(K_EGG_COLLECTION, STATE.eggCollection);
+          } else if (kind === 'bird-census' && Array.isArray(STATE.birdCensus)) {
+            STATE.birdCensus = STATE.birdCensus.filter(b => b.id !== recordId);
+            await storageSet(K_BIRD_CENSUS, STATE.birdCensus);
           }
           // Surface a quiet toast once per flush, listing how many were dropped
           showToast(`⚠️ Queue trimmed: 1 duplicate dropped (${kind})`, 5000);
@@ -5054,6 +5093,11 @@ function eggCollectionKey(r) {
 /* v6.0 SHIP 3 — Houses cloud key (Name is unique, case-insensitive). */
 function houseKey(r) {
   return String(r.name || '').trim().toLowerCase();
+}
+
+/* v6.0 SHIP 4 — Bird Census cloud key (date + house + stage; Count not in key). */
+function birdCensusKey(r) {
+  return `${r.date}|${String(r.house||'').trim()}|${String(r.stage||'').trim()}`;
 }
 
 function mergeByKey(local, cloud, keyFn, mapCloud) {
@@ -5176,6 +5220,20 @@ function cloudToLocalHouse(r) {
   };
 }
 
+/* v6.0 SHIP 4 — Cloud-to-local mapper for bird census rows. */
+function cloudToLocalBirdCensus(r) {
+  return {
+    id: 'C-BC-' + r.date + '-' + String(r.house||'').trim() + '-' + String(r.stage||'').trim(),
+    ts: r.ts || r.date + 'T00:00:00Z',
+    date: r.date,
+    house: String(r.house || '').trim(),
+    stage: String(r.stage || '').trim(),
+    count: Number(r.count) || 0,
+    notes: String(r.notes || ''),
+    _source: 'cloud'
+  };
+}
+
 async function applyCloudResponse(data) {
   if (!data) return;
   if (Array.isArray(data.pluckers)) {
@@ -5207,6 +5265,11 @@ async function applyCloudResponse(data) {
   if (Array.isArray(data.houses)) {
     STATE.houses = data.houses.map(cloudToLocalHouse);
     await storageSet(K_HOUSES, STATE.houses);
+  }
+  /* v6.0 SHIP 4 — Bird Census sync (merge by date+house+stage) */
+  if (Array.isArray(data.birdCensus)) {
+    STATE.birdCensus = mergeByKey(STATE.birdCensus || [], data.birdCensus, birdCensusKey, cloudToLocalBirdCensus);
+    await storageSet(K_BIRD_CENSUS, STATE.birdCensus);
   }
   if (Array.isArray(data.roster)) {
     // Roster merge — cloud is authoritative for IDs that appear in cloud,
@@ -5602,11 +5665,15 @@ function switchKind(k) {
   // v6.0 SHIP 1 — Egg Collection
   const ecKindEl = document.getElementById('egg-collection-kind');
   if (ecKindEl) ecKindEl.style.display = k === 'egg-collection' ? '' : 'none';
+  // v6.0 SHIP 4 — Bird Census
+  const bcKindEl = document.getElementById('bird-census-kind');
+  if (bcKindEl) bcKindEl.style.display = k === 'bird-census' ? '' : 'none';
   if (k === 'expense') renderRecentExpenses();
   if (k === 'actual') renderRecentActuals();
   if (k === 'banked') renderRecentBanked();
   if (k === 'poultry') renderRecentPoultry();
   if (k === 'egg-collection' && typeof initEggCollectionForm === 'function') initEggCollectionForm();
+  if (k === 'bird-census' && typeof initBirdCensusForm === 'function') initBirdCensusForm();
 }
 
 function renderRecentActuals() {
@@ -6352,6 +6419,221 @@ async function syncEggCollection(row) {
   return false;
 }
 
+/* ============================================================
+   v6.0 SHIP 4 — Bird Census (Kipkenda Poultry inventory)
+   ============================================================
+   Periodic count of birds by house and stage. Captures live inventory
+   for KPI computation (lay rate, mortality reconciliation).
+
+   Sheet schema:
+     Bird_Census: Timestamp | Date | House | Stage | Count | Notes
+
+   FLAG-mode dedup: same date+house+stage = flag, not reject.
+   Operator may legitimately recount.
+
+   Stage list (BIRD stages only, filtered from POULTRY_STAGES):
+     Chicks 1-7 days, Chicks 7-28 days, Growers, Layers, Cockerels,
+     Retired birds, Deformities
+   Egg stages excluded (those go to Egg_Collection, not census).
+   ============================================================ */
+
+const BIRD_CENSUS_STAGES = [
+  'Chicks 1\u20137 days',
+  'Chicks 7\u201328 days',
+  'Growers',
+  'Layers',
+  'Cockerels',
+  'Retired birds',
+  'Deformities'
+];
+
+if (typeof STATE === 'object' && !Array.isArray(STATE.birdCensus)) {
+  STATE.birdCensus = [];
+}
+
+function initBirdCensusForm() {
+  // Date defaults to today
+  const dEl = document.getElementById('bc-date');
+  if (dEl && !dEl.value) {
+    dEl.value = new Date().toISOString().slice(0, 10);
+  }
+
+  // Populate House dropdown — active houses only, sorted alphabetically
+  const houseEl = document.getElementById('bc-house');
+  if (houseEl) {
+    const activeHouses = (STATE.houses || []).filter(h => h.active).sort((a,b) => 
+      String(a.name).localeCompare(String(b.name)));
+    houseEl.innerHTML = '<option value="">— Select house —</option>' +
+      activeHouses.map(h => `<option value="${String(h.name).replace(/"/g,'&quot;')}">${h.name}</option>`).join('');
+  }
+
+  // Populate Stage dropdown (bird stages only)
+  const stageEl = document.getElementById('bc-stage');
+  if (stageEl) {
+    stageEl.innerHTML = '<option value="">— Select stage —</option>' +
+      BIRD_CENSUS_STAGES.map(s => `<option value="${s}">${s}</option>`).join('');
+  }
+
+  validateBirdCensus();
+
+  // Wire field listeners (idempotent)
+  const fields = ['bc-date', 'bc-house', 'bc-stage', 'bc-count', 'bc-notes'];
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.dataset.wired) {
+      el.dataset.wired = '1';
+      el.addEventListener('input', validateBirdCensus);
+      el.addEventListener('change', validateBirdCensus);
+    }
+  });
+  const submitBtn = document.getElementById('bc-submit');
+  if (submitBtn && !submitBtn.dataset.wired) {
+    submitBtn.dataset.wired = '1';
+    submitBtn.addEventListener('click', submitBirdCensus);
+  }
+}
+
+function validateBirdCensus() {
+  const date = (document.getElementById('bc-date') || {}).value || '';
+  const house = (document.getElementById('bc-house') || {}).value || '';
+  const stage = (document.getElementById('bc-stage') || {}).value || '';
+  const count = (document.getElementById('bc-count') || {}).value;
+  const submit = document.getElementById('bc-submit');
+  const preview = document.getElementById('bc-preview');
+
+  const valid = !!date && !!house && !!stage &&
+                count !== '' && count !== undefined &&
+                !isNaN(Number(count)) && Number(count) >= 0;
+
+  if (submit) submit.disabled = !valid;
+
+  if (preview) {
+    if (valid) {
+      preview.style.display = '';
+      const c = Number(count);
+      const pc = document.getElementById('bc-preview-count');
+      const ph = document.getElementById('bc-preview-house');
+      const ps = document.getElementById('bc-preview-stage-text');
+      const pd = document.getElementById('bc-preview-date');
+      if (pc) pc.textContent = c.toLocaleString('en-KE');
+      if (ph) ph.textContent = house;
+      if (ps) ps.textContent = stage;
+      if (pd) pd.textContent = date;
+    } else {
+      preview.style.display = 'none';
+    }
+  }
+}
+
+async function submitBirdCensus() {
+  const date  = (document.getElementById('bc-date')  || {}).value || '';
+  const house = (document.getElementById('bc-house') || {}).value || '';
+  const stage = (document.getElementById('bc-stage') || {}).value || '';
+  const count = (document.getElementById('bc-count') || {}).value;
+  const notes = ((document.getElementById('bc-notes') || {}).value || '').trim();
+
+  if (!date || !house || !stage || count === '' || count === undefined) {
+    showToast('Please fill all required fields', 3000);
+    return;
+  }
+
+  const row = {
+    id:    'bc-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+    ts:    new Date().toISOString(),
+    date:  date,
+    house: house,
+    stage: stage,
+    count: Number(count),
+    notes: notes
+  };
+
+  // Optimistic local insert
+  if (!Array.isArray(STATE.birdCensus)) STATE.birdCensus = [];
+  STATE.birdCensus.push(row);
+  try { await storageSet(K_BIRD_CENSUS, STATE.birdCensus); } catch (e) {}
+
+  showToast(`Saved · ${row.count.toLocaleString('en-KE')} ${row.stage} · ${row.house}`);
+
+  // Clear form (date + house stay; operator typically counts multiple stages per house)
+  const countEl = document.getElementById('bc-count');
+  const stageEl = document.getElementById('bc-stage');
+  const notesEl = document.getElementById('bc-notes');
+  if (countEl) countEl.value = '';
+  if (stageEl) stageEl.value = '';
+  if (notesEl) notesEl.value = '';
+  validateBirdCensus();
+
+  // Push to gate
+  const synced = await syncBirdCensus(row);
+  if (!synced) {
+    const wasDup = await handleDuplicateRejection(row, 'bird-census', 'birdCensus', K_BIRD_CENSUS);
+    if (!wasDup) {
+      await queueForSync(row, 'bird-census');
+      if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
+        showToast('🔒 Writes locked — ping Kiruogindet araap Cheison · census queued', 6000);
+      }
+    }
+  } else {
+    showPossibleDuplicateToast('bird-census');
+  }
+  updateSyncIndicator();
+}
+
+async function pushBirdCensusToGate(row) {
+  try {
+    const body = {
+      action: 'bird-census',
+      payload: {
+        ts:    row.ts || new Date().toISOString(),
+        date:  row.date,
+        house: row.house,
+        stage: row.stage,
+        count: Number(row.count || 0),
+        notes: row.notes || ''
+      },
+      source: `PWA ${APP_VERSION} bird-census`
+    };
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:   JSON.stringify(body)
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    if (json && json.ok) {
+      return { ok: true, via: 'gate', possibleDuplicate: !!json.possibleDuplicate, summary: json.summary };
+    }
+    if (json && json.writesLocked) {
+      return { ok: false, reason: 'writes-locked', message: json.reason || 'Writes locked' };
+    }
+    if (json && json.duplicate) {
+      return {
+        ok: false,
+        reason: 'duplicate',
+        message: json.summary || 'Already recorded — check Sheet to confirm.',
+        existing: json.existing
+      };
+    }
+    if (json && json.phase1Limited) return null;
+    return { ok: false, reason: 'gate-rejected', message: (json && json.reason) || 'Rejected by gate' };
+  } catch (e) {
+    return null;
+  }
+}
+
+async function syncBirdCensus(row) {
+  if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL) {
+    const gateResult = await pushBirdCensusToGate(row);
+    if (gateResult) {
+      lastWriteResult = gateResult;
+      return gateResult.ok;
+    }
+  }
+  lastWriteResult = { ok: false, reason: 'gate-unreachable' };
+  return false;
+}
+
 function monthEntries() {
   const ym = new Date().toISOString().slice(0,7);
   return STATE.entries.filter(e => e.date.startsWith(ym));
@@ -6488,6 +6770,85 @@ function renderHome() {
         if (chicksQty > 0) parts.push(`${moneyRound(chicksQty)} chicks`);
         if (chickenQty > 0) parts.push(`${moneyRound(chickenQty)} chicken`);
         birdsSoldSubEl.textContent = parts.join(' · ');
+      }
+    }
+  }
+
+  // v6.0 SHIP 4 — Lay rate KPI + live bird count from Bird_Census
+  // Lay rate = SUM(Egg_Collection.Normal MTD) ÷ LATEST(Bird_Census Layers count) × 100%
+  // Display: "X% as of [census date]" — Q3-B semantics (always show with stamp)
+  const census = Array.isArray(STATE.birdCensus) ? STATE.birdCensus : [];
+  const layRateEl = document.getElementById('poultry-lay-rate');
+  const layRateSubEl = document.getElementById('poultry-lay-rate-sub');
+  const liveBirdsEl = document.getElementById('poultry-live-birds');
+  const liveBirdsSubEl = document.getElementById('poultry-live-birds-sub');
+
+  if (census.length === 0) {
+    if (layRateEl) layRateEl.textContent = '—';
+    if (layRateSubEl) layRateSubEl.textContent = 'no census yet';
+    if (liveBirdsEl) liveBirdsEl.textContent = '—';
+    if (liveBirdsSubEl) liveBirdsSubEl.textContent = 'no census yet';
+  } else {
+    // For each (house, stage) combination, find the LATEST count by date
+    // (then aggregate by stage across houses)
+    const latestByHouseStage = {};
+    census.forEach(c => {
+      const k = (c.house || '') + '|' + (c.stage || '');
+      const existing = latestByHouseStage[k];
+      const cDate = c.date || '';
+      if (!existing || cDate > (existing.date || '')) {
+        latestByHouseStage[k] = c;
+      }
+    });
+
+    // Aggregate: total layers, latest census date, total all-stages count
+    let layersCount = 0;
+    let totalBirds = 0;
+    let latestCensusDate = '';
+    const stageTotals = {};
+    Object.values(latestByHouseStage).forEach(c => {
+      const cnt = Number(c.count) || 0;
+      totalBirds += cnt;
+      const stg = c.stage || '';
+      stageTotals[stg] = (stageTotals[stg] || 0) + cnt;
+      if (stg === 'Layers') layersCount += cnt;
+      if ((c.date || '') > latestCensusDate) latestCensusDate = c.date;
+    });
+
+    // Live birds card
+    if (liveBirdsEl) {
+      liveBirdsEl.textContent = totalBirds.toLocaleString('en-KE');
+    }
+    if (liveBirdsSubEl) {
+      const stagesShown = ['Layers','Cockerels','Growers','Chicks 7\u201328 days','Chicks 1\u20137 days']
+        .filter(s => stageTotals[s] > 0)
+        .map(s => `${stageTotals[s]} ${s.replace('Chicks 1\u20137 days','chicks 1-7d').replace('Chicks 7\u201328 days','chicks 7-28d').toLowerCase()}`)
+        .slice(0, 3);
+      liveBirdsSubEl.textContent = stagesShown.length ? stagesShown.join(' · ') + ` · as of ${latestCensusDate}` : `as of ${latestCensusDate}`;
+    }
+
+    // Lay rate card
+    if (layRateEl && layRateSubEl) {
+      if (layersCount > 0) {
+        // Lay rate uses TODAY's normal eggs ÷ layers (NOT MTD — daily KPI)
+        // BUT label says "MTD" because it's the rolling daily rate aggregate
+        // Cheison's spec was "Lay rate MTD" — interpret as month average
+        const eggMonthRows = (STATE.eggCollection || []).filter(e => (e.date || '').startsWith(ym));
+        const totalNormalEggsMonth = eggMonthRows.reduce((s,e) => s + (Number(e.normal)||0), 0);
+        const daysWithCollection = eggMonthRows.length;
+        if (daysWithCollection > 0) {
+          // Average lay rate = (avg normal eggs/day) ÷ layers × 100%
+          const avgEggsPerDay = totalNormalEggsMonth / daysWithCollection;
+          const rate = (avgEggsPerDay / layersCount) * 100;
+          layRateEl.textContent = rate.toFixed(1) + '%';
+          layRateSubEl.textContent = `${Math.round(avgEggsPerDay)} eggs/day ÷ ${layersCount} layers · as of ${latestCensusDate}`;
+        } else {
+          layRateEl.textContent = '—';
+          layRateSubEl.textContent = `no eggs collected · ${layersCount} layers as of ${latestCensusDate}`;
+        }
+      } else {
+        layRateEl.textContent = '—';
+        layRateSubEl.textContent = `no layers in census · as of ${latestCensusDate}`;
       }
     }
   }
@@ -7873,6 +8234,8 @@ function showUpdateBanner() {
   STATE.eggCollection = await storageGet(K_EGG_COLLECTION, []);
   // v6.0 SHIP 3 — Houses config
   STATE.houses = await storageGet(K_HOUSES, []);
+  // v6.0 SHIP 4 — Bird Census
+  STATE.birdCensus = await storageGet(K_BIRD_CENSUS, []);
 
   // v5.0.19 — Load admin mode flag IMMEDIATELY so applyAdminVisibility can
   // hide admin chrome before any operator sees it. Default false (operator).
