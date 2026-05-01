@@ -354,7 +354,8 @@
     border: 1px solid var(--forest-dark);
   }
   #kind-toggle-tea { grid-template-columns: 1fr 1fr 1fr; }
-  #kind-toggle-poultry { grid-template-columns: 1fr 1fr 1fr; }
+  #kind-toggle-poultry { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  #kind-toggle-poultry button { font-size: 0.7rem; padding: 0.55rem 0.3rem; letter-spacing: 0.06em; }
   #kind-toggle-expenses { grid-template-columns: 1fr; }
   .kind-toggle button {
     background: transparent; border: none;
@@ -1818,7 +1819,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.5.0</span>
+  <span class="version-label" id="version-label">v5.7.0</span>
 </header>
 
 <main>
@@ -1867,10 +1868,26 @@
         <div class="biz-card"><div class="lbl">🥚 Eggs collected MTD</div><div class="val" id="poultry-eggs-collected-month">0</div><div class="sub" id="poultry-eggs-collected-sub">—</div></div>
         <div class="biz-card"><div class="lbl">🐔 Birds sold MTD</div><div class="val" id="poultry-birds-sold-month">0</div><div class="sub" id="poultry-birds-sold-sub">—</div></div>
       </div>
-      <!-- v6.0 SHIP 4 — Lay rate KPI + live bird count -->
+      <!-- v5.7 — Lay Efficiency triplet: Daily / MTD / Global -->
+      <div class="biz-grid" style="margin-top:0.7rem;grid-template-columns:1fr 1fr 1fr">
+        <div class="biz-card"><div class="lbl">📈 Daily LE</div><div class="val" id="poultry-le-daily">—</div><div class="sub" id="poultry-le-daily-sub">no data</div></div>
+        <div class="biz-card"><div class="lbl">📈 MTD LE</div><div class="val" id="poultry-le-mtd">—</div><div class="sub" id="poultry-le-mtd-sub">no data</div></div>
+        <div class="biz-card"><div class="lbl">📈 Global LE</div><div class="val" id="poultry-le-global">—</div><div class="sub" id="poultry-le-global-sub">no data</div></div>
+      </div>
+      <!-- v5.7 — Per-house Lay Efficiency MTD -->
       <div class="biz-grid" style="margin-top:0.7rem">
-        <div class="biz-card"><div class="lbl">📈 Lay rate MTD</div><div class="val" id="poultry-lay-rate">—</div><div class="sub" id="poultry-lay-rate-sub">no census yet</div></div>
+        <div class="biz-card"><div class="lbl">🏠 Ground Floor LE (MTD)</div><div class="val" id="poultry-le-gf">—</div><div class="sub" id="poultry-le-gf-sub">no data</div></div>
+        <div class="biz-card"><div class="lbl">⬆️ Upper Deck LE (MTD)</div><div class="val" id="poultry-le-ud">—</div><div class="sub" id="poultry-le-ud-sub">no data</div></div>
+      </div>
+      <!-- v6.0 SHIP 4 — live bird count -->
+      <div class="biz-grid" style="margin-top:0.7rem">
         <div class="biz-card"><div class="lbl">🏠 Live birds (census)</div><div class="val" id="poultry-live-birds">—</div><div class="sub" id="poultry-live-birds-sub">no census yet</div></div>
+        <div class="biz-card"><div class="lbl">📈 Lay rate MTD</div><div class="val" id="poultry-lay-rate" hidden>—</div><div class="val">&nbsp;</div><div class="sub" id="poultry-lay-rate-sub" hidden>—</div></div>
+      </div>
+      <!-- v6.0 SHIP 5 — Hatch rate + incubating batches (only shown when data exists) -->
+      <div class="biz-grid" style="margin-top:0.7rem" id="poultry-incubation-row" hidden>
+        <div class="biz-card"><div class="lbl">🐣 Hatch rate (latest)</div><div class="val" id="poultry-hatch-rate">—</div><div class="sub" id="poultry-hatch-rate-sub">no batches yet</div></div>
+        <div class="biz-card"><div class="lbl">🥚 Incubating now</div><div class="val" id="poultry-incubating-count">—</div><div class="sub" id="poultry-incubating-sub">no active batches</div></div>
       </div>
     </div>
 
@@ -1938,8 +1955,9 @@
 
     <div class="kind-toggle" id="kind-toggle-poultry" style="display:none">
       <button class="active" data-kind="poultry">Sales</button>
-      <button data-kind="egg-collection">Egg Collection</button>
-      <button data-kind="bird-census">Bird Census</button>
+      <button data-kind="egg-collection">Eggs</button>
+      <button data-kind="bird-census">Census</button>
+      <button data-kind="incubation">Incubation</button>
     </div>
 
     <div class="kind-toggle" id="kind-toggle-expenses" style="display:none">
@@ -2167,24 +2185,41 @@
 
     <!-- ========= EGG COLLECTION (v6.0 SHIP 1) ========= -->
     <div id="egg-collection-kind" style="display:none">
-      <div class="batch-instructions">Daily egg collection — pooled count across all layer houses (Ground Floor + Upper Deck). Use 0 for zero collection days.</div>
+      <div class="batch-instructions">Daily egg collection — record per house. One row per day captures all layer houses. Use 0 for zero-collection days.</div>
 
       <div class="field"><label>Date</label><input type="date" id="ec-date"></div>
-      <div class="pair">
-        <div class="field"><label>Normal eggs</label><input type="number" id="ec-normal" inputmode="numeric" step="1" min="0" placeholder="0"></div>
-        <div class="field"><label>Small / abnormal</label><input type="number" id="ec-small" inputmode="numeric" step="1" min="0" placeholder="0"></div>
+
+      <!-- Ground Floor section -->
+      <div style="background:rgba(107,158,91,0.06);border-radius:6px;padding:0.75rem;margin-top:0.7rem">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--forest-dark);margin-bottom:0.5rem">🏠 Ground Floor</div>
+        <div class="pair">
+          <div class="field"><label>Normal</label><input type="number" id="ec-gf-normal" inputmode="numeric" step="1" min="0" placeholder="0"></div>
+          <div class="field"><label>Small/abnormal</label><input type="number" id="ec-gf-small" inputmode="numeric" step="1" min="0" placeholder="0"></div>
+        </div>
+        <div class="field"><label>Broken</label><input type="number" id="ec-gf-broken" inputmode="numeric" step="1" min="0" placeholder="0"></div>
       </div>
-      <div class="field"><label>Broken</label><input type="number" id="ec-broken" inputmode="numeric" step="1" min="0" placeholder="0"></div>
-      <div class="field"><label>Notes (optional)</label><input type="text" id="ec-notes" placeholder="e.g. cleaning day, hot weather" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
+
+      <!-- Upper Deck section -->
+      <div style="background:rgba(107,158,91,0.06);border-radius:6px;padding:0.75rem;margin-top:0.7rem">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--forest-dark);margin-bottom:0.5rem">⬆️ Upper Deck</div>
+        <div class="pair">
+          <div class="field"><label>Normal</label><input type="number" id="ec-ud-normal" inputmode="numeric" step="1" min="0" placeholder="0"></div>
+          <div class="field"><label>Small/abnormal</label><input type="number" id="ec-ud-small" inputmode="numeric" step="1" min="0" placeholder="0"></div>
+        </div>
+        <div class="field"><label>Broken</label><input type="number" id="ec-ud-broken" inputmode="numeric" step="1" min="0" placeholder="0"></div>
+      </div>
+
+      <div class="field" style="margin-top:0.7rem"><label>Notes (optional)</label><input type="text" id="ec-notes" placeholder="e.g. cleaning day, hot weather" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
 
       <button class="submit" id="ec-submit" disabled>Record Collection</button>
 
       <div class="calc-card" id="ec-preview" style="display:none;margin-top:0.9rem">
         <div class="lbl">Collection preview</div>
-        <div class="primary"><span id="ec-preview-total">0</span><span class="unit"> eggs</span></div>
+        <div class="primary"><span id="ec-preview-total">0</span><span class="unit"> eggs · normal</span></div>
         <div class="breakdown">
-          <div class="k">Normal</div><div class="v" id="ec-preview-normal">0</div>
-          <div class="k">Small / abnormal</div><div class="v" id="ec-preview-small">0</div>
+          <div class="k">Ground Floor</div><div class="v" id="ec-preview-gf">0</div>
+          <div class="k">Upper Deck</div><div class="v" id="ec-preview-ud">0</div>
+          <div class="k">Small/abnormal</div><div class="v" id="ec-preview-small">0</div>
           <div class="k">Broken</div><div class="v neg" id="ec-preview-broken">0</div>
           <div class="k">Date</div><div class="v" id="ec-preview-date">—</div>
         </div>
@@ -2214,6 +2249,50 @@
           <div class="k">House</div><div class="v" id="bc-preview-house">—</div>
           <div class="k">Stage</div><div class="v" id="bc-preview-stage-text">—</div>
           <div class="k">Date</div><div class="v" id="bc-preview-date">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========= INCUBATION (v6.0 SHIP 5 TINY) ========= -->
+    <div id="incubation-kind" style="display:none">
+      <div class="batch-instructions">Track incubation batches: eggs in → 21 days → chicks out. Two flows: Start a new batch, or Record hatch for an existing batch.</div>
+
+      <!-- Sub-toggle: Start vs Hatch -->
+      <div class="kind-toggle" id="incubation-mode-toggle" style="display:grid;grid-template-columns:1fr 1fr;margin-bottom:0.9rem">
+        <button class="active" data-incmode="start">Start batch</button>
+        <button data-incmode="hatch">Record hatch</button>
+      </div>
+
+      <!-- START BATCH form -->
+      <div id="incubation-start-form">
+        <div class="field"><label>Batch ID</label><input type="text" id="ib-batch-id" placeholder="e.g. Nandi30APR1000" style="font-family:'IBM Plex Mono',monospace"></div>
+        <div class="field"><label>Date set</label><input type="date" id="ib-date-set"></div>
+        <div class="field"><label>Eggs in (count)</label><input type="number" id="ib-eggs-in" inputmode="numeric" step="1" min="1" placeholder="0"></div>
+        <div class="field"><label>Source</label><input type="text" id="ib-source" placeholder="e.g. Own Ground Floor, Bought Eldoret" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
+        <div class="field"><label>Expected hatch (auto = +21 days)</label><input type="date" id="ib-expected-hatch"></div>
+        <div class="field"><label>Notes</label><input type="text" id="ib-notes" placeholder="optional" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
+        <button class="submit" id="ib-start-submit" disabled>Start batch</button>
+      </div>
+
+      <!-- HATCH form -->
+      <div id="incubation-hatch-form" style="display:none">
+        <div class="field"><label>Batch</label>
+          <select id="ih-batch-id"><option value="">— Select incubating batch —</option></select>
+        </div>
+        <div class="field"><label>Date hatched</label><input type="date" id="ih-date-hatched"></div>
+        <div class="field"><label>Hatched count</label><input type="number" id="ih-hatched" inputmode="numeric" step="1" min="0" placeholder="0"></div>
+        <div class="field"><label>Failed count (optional, computed if blank)</label><input type="number" id="ih-failed" inputmode="numeric" step="1" min="0" placeholder="auto"></div>
+        <div class="field"><label>Notes</label><input type="text" id="ih-notes" placeholder="optional" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
+        <button class="submit" id="ih-submit" disabled>Record hatch</button>
+        <div class="calc-card" id="ih-preview" style="display:none;margin-top:0.9rem">
+          <div class="lbl">Hatch preview</div>
+          <div class="primary"><span id="ih-preview-rate">0</span><span class="unit">%</span></div>
+          <div class="breakdown">
+            <div class="k">Batch</div><div class="v" id="ih-preview-batch">—</div>
+            <div class="k">Hatched</div><div class="v" id="ih-preview-hatched">0</div>
+            <div class="k">Eggs in</div><div class="v" id="ih-preview-eggs">0</div>
+            <div class="k">Failed</div><div class="v neg" id="ih-preview-failed">0</div>
+          </div>
         </div>
       </div>
     </div>
@@ -2273,6 +2352,35 @@
       <div class="section-head"><h3>Plucker rankings <button class="info-tip" type="button" aria-label="What does this mean?" data-tooltip="Field-side kg per plucker — paid in whole kg, so total is always lower than Factory mix.">ⓘ</button></h3><span class="meta">top performers</span></div>
       <table class="mini-table" id="tbl-plucker"></table>
       <div class="records-more" id="tbl-plucker-expand" style="display:none"></div>
+    </div>
+
+    <!-- v6.0 SHIP 5 — Kipkenda Poultry insights (LITE: 3 sparkline charts) -->
+    <div class="section" id="insights-poultry-section" hidden>
+      <div class="section-head"><h3>Kipkenda Poultry</h3><span class="meta" id="insights-poultry-meta">last 30 days</span></div>
+
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:0.5rem;border-bottom:1px solid var(--rule);padding-bottom:0.8rem">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div class="k">🥚 Eggs collected (daily)</div>
+          <div class="desc" id="insights-eggs-latest" style="font-family:'IBM Plex Mono',monospace;font-size:0.75rem">—</div>
+        </div>
+        <svg id="insights-eggs-chart" viewBox="0 0 600 80" preserveAspectRatio="none" style="width:100%;height:60px;background:rgba(107,158,91,0.06);border-radius:4px"></svg>
+      </div>
+
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:0.5rem;border-bottom:1px solid var(--rule);padding-bottom:0.8rem;padding-top:0.8rem">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div class="k">📈 Lay rate (daily %)</div>
+          <div class="desc" id="insights-lay-latest" style="font-family:'IBM Plex Mono',monospace;font-size:0.75rem">—</div>
+        </div>
+        <svg id="insights-lay-chart" viewBox="0 0 600 80" preserveAspectRatio="none" style="width:100%;height:60px;background:rgba(107,158,91,0.06);border-radius:4px"></svg>
+      </div>
+
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:0.5rem;padding-top:0.8rem">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div class="k">🐣 Hatch rate (per batch)</div>
+          <div class="desc" id="insights-hatch-latest" style="font-family:'IBM Plex Mono',monospace;font-size:0.75rem">—</div>
+        </div>
+        <svg id="insights-hatch-chart" viewBox="0 0 600 80" preserveAspectRatio="none" style="width:100%;height:60px;background:rgba(107,158,91,0.06);border-radius:4px"></svg>
+      </div>
     </div>
   </section>
 
@@ -2451,7 +2559,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.5.0</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.7.0</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2740,6 +2848,7 @@ const K_CLOUD_SYNC = 'sinonin_cloud_sync_v1';
 const K_IS_ADMIN = 'sinonin_is_admin_v1';  // v5.0.19 — set true on first successful passphrase grant/revoke
 const K_HOUSES = 'sinonin_houses_v1';       // v6.0 SHIP 3 — Kipkenda houses config
 const K_BIRD_CENSUS = 'sinonin_bird_census_v1';  // v6.0 SHIP 4 — Bird population counts
+const K_INCUBATION = 'sinonin_incubation_v1';     // v6.0 SHIP 5 — Incubation batches
 
 const CLOUD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwzHUz9She1PsVPNOWvssSiQcye8hpKZ9v_3d1aX6nsqPDnIN375z8krhMwsCyikVSLtQ/exec';
 
@@ -2766,7 +2875,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.5.0';
+const APP_VERSION = 'v5.7.0';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -5084,10 +5193,10 @@ function bankedKey(r) {
 function poultryKey(r) {
   return `${r.date}|${(r.product||'').trim()}|${(r.unit||'').trim()}|${Number(r.quantity || 0).toFixed(2)}|${Number(r.amount || 0).toFixed(2)}`;
 }
-/* v6.0 SHIP 2 — Egg Collection cloud key.
-   Same as the server's STRICT dedup key (date + 3 counts). */
+/* v5.7 Wide-schema — Egg Collection cloud key.
+   One row per day → date IS the key. */
 function eggCollectionKey(r) {
-  return `${r.date}|${Number(r.normal || 0)}|${Number(r.small_abnormal || 0)}|${Number(r.broken || 0)}`;
+  return String(r.date || '');
 }
 
 /* v6.0 SHIP 3 — Houses cloud key (Name is unique, case-insensitive). */
@@ -5098,6 +5207,11 @@ function houseKey(r) {
 /* v6.0 SHIP 4 — Bird Census cloud key (date + house + stage; Count not in key). */
 function birdCensusKey(r) {
   return `${r.date}|${String(r.house||'').trim()}|${String(r.stage||'').trim()}`;
+}
+
+/* v6.0 SHIP 5 — Incubation cloud key (Batch_ID is unique). */
+function incubationKey(r) {
+  return String(r.batch_id || '').trim();
 }
 
 function mergeByKey(local, cloud, keyFn, mapCloud) {
@@ -5194,15 +5308,24 @@ function cloudToLocalPoultry(r) {
     _source: 'cloud'
   };
 }
-/* v6.0 SHIP 2 — Cloud-to-local mapper for egg collection rows. */
+/* v6.0 SHIP 2 / v5.7 Wide-schema cloud-to-local mapper for egg collection rows.
+   Server returns derived totals + per-house. We keep both. */
 function cloudToLocalEggCollection(r) {
+  const gfN = Number(r.gf_normal) || 0;
+  const gfS = Number(r.gf_small)  || 0;
+  const gfB = Number(r.gf_broken) || 0;
+  const udN = Number(r.ud_normal) || 0;
+  const udS = Number(r.ud_small)  || 0;
+  const udB = Number(r.ud_broken) || 0;
   return {
-    id: 'C-EC-' + r.date + '-' + Number(r.normal||0) + '-' + Number(r.small_abnormal||0) + '-' + Number(r.broken||0),
+    id: 'C-EC-' + r.date,
     ts: r.ts || r.timestamp || r.date + 'T00:00:00Z',
     date: r.date,
-    normal: Number(r.normal) || 0,
-    small_abnormal: Number(r.small_abnormal) || 0,
-    broken: Number(r.broken) || 0,
+    gf_normal: gfN, gf_small: gfS, gf_broken: gfB,
+    ud_normal: udN, ud_small: udS, ud_broken: udB,
+    normal: (Number(r.normal) || 0) || (gfN + udN),
+    small_abnormal: (Number(r.small_abnormal) || 0) || (gfS + udS),
+    broken: (Number(r.broken) || 0) || (gfB + udB),
     notes: r.notes || '',
     _source: 'cloud'
   };
@@ -5231,6 +5354,25 @@ function cloudToLocalBirdCensus(r) {
     count: Number(r.count) || 0,
     notes: String(r.notes || ''),
     _source: 'cloud'
+  };
+}
+
+/* v6.0 SHIP 5 — Cloud-to-local mapper for incubation batches. */
+function cloudToLocalIncubation(r) {
+  return {
+    batch_id:       String(r.batch_id || '').trim(),
+    ts:             r.ts || '',
+    date_set:       r.date_set || '',
+    eggs_in:        Number(r.eggs_in) || 0,
+    source:         String(r.source || ''),
+    expected_hatch: r.expected_hatch || '',
+    date_hatched:   r.date_hatched || '',
+    hatched_count:  Number(r.hatched_count) || 0,
+    failed_count:   Number(r.failed_count) || 0,
+    hatch_rate:     Number(r.hatch_rate) || 0,
+    status:         String(r.status || 'incubating'),
+    notes:          String(r.notes || ''),
+    _source:        'cloud'
   };
 }
 
@@ -5270,6 +5412,11 @@ async function applyCloudResponse(data) {
   if (Array.isArray(data.birdCensus)) {
     STATE.birdCensus = mergeByKey(STATE.birdCensus || [], data.birdCensus, birdCensusKey, cloudToLocalBirdCensus);
     await storageSet(K_BIRD_CENSUS, STATE.birdCensus);
+  }
+  /* v6.0 SHIP 5 — Incubation sync (cloud-replace-local; small set, mutable) */
+  if (Array.isArray(data.incubation)) {
+    STATE.incubation = data.incubation.map(cloudToLocalIncubation);
+    await storageSet(K_INCUBATION, STATE.incubation);
   }
   if (Array.isArray(data.roster)) {
     // Roster merge — cloud is authoritative for IDs that appear in cloud,
@@ -5668,12 +5815,16 @@ function switchKind(k) {
   // v6.0 SHIP 4 — Bird Census
   const bcKindEl = document.getElementById('bird-census-kind');
   if (bcKindEl) bcKindEl.style.display = k === 'bird-census' ? '' : 'none';
+  // v6.0 SHIP 5 — Incubation
+  const incKindEl = document.getElementById('incubation-kind');
+  if (incKindEl) incKindEl.style.display = k === 'incubation' ? '' : 'none';
   if (k === 'expense') renderRecentExpenses();
   if (k === 'actual') renderRecentActuals();
   if (k === 'banked') renderRecentBanked();
   if (k === 'poultry') renderRecentPoultry();
   if (k === 'egg-collection' && typeof initEggCollectionForm === 'function') initEggCollectionForm();
   if (k === 'bird-census' && typeof initBirdCensusForm === 'function') initBirdCensusForm();
+  if (k === 'incubation' && typeof initIncubationForm === 'function') initIncubationForm();
 }
 
 function renderRecentActuals() {
@@ -6246,14 +6397,15 @@ if (typeof STATE === 'object' && !Array.isArray(STATE.eggCollection)) {
 }
 
 function initEggCollectionForm() {
-  // Default date to today (Option A confirmed by Cheison)
+  // Default date to today
   const dEl = document.getElementById('ec-date');
   if (dEl && !dEl.value) {
     dEl.value = new Date().toISOString().slice(0, 10);
   }
   validateEggCollection();
-  // Wire field listeners (idempotent — guarded by data-wired)
-  const fields = ['ec-date', 'ec-normal', 'ec-small', 'ec-broken', 'ec-notes'];
+  // v5.7 Wide-schema fields: per-house counts + notes
+  const fields = ['ec-date', 'ec-gf-normal', 'ec-gf-small', 'ec-gf-broken',
+                  'ec-ud-normal', 'ec-ud-small', 'ec-ud-broken', 'ec-notes'];
   fields.forEach(id => {
     const el = document.getElementById(id);
     if (el && !el.dataset.wired) {
@@ -6270,38 +6422,35 @@ function initEggCollectionForm() {
 }
 
 function validateEggCollection() {
-  const date   = (document.getElementById('ec-date')   || {}).value || '';
-  const normal = (document.getElementById('ec-normal') || {}).value;
-  const small  = (document.getElementById('ec-small')  || {}).value;
-  const broken = (document.getElementById('ec-broken') || {}).value;
+  const date  = (document.getElementById('ec-date') || {}).value || '';
+  const gfN = (document.getElementById('ec-gf-normal') || {}).value;
+  const gfS = (document.getElementById('ec-gf-small')  || {}).value;
+  const gfB = (document.getElementById('ec-gf-broken') || {}).value;
+  const udN = (document.getElementById('ec-ud-normal') || {}).value;
+  const udS = (document.getElementById('ec-ud-small')  || {}).value;
+  const udB = (document.getElementById('ec-ud-broken') || {}).value;
   const submit = document.getElementById('ec-submit');
   const preview = document.getElementById('ec-preview');
 
-  // At least one of the three counts must be filled (use 0 explicitly for none)
-  const hasAny = (normal !== '' && normal !== undefined) ||
-                 (small  !== '' && small  !== undefined) ||
-                 (broken !== '' && broken !== undefined);
-  const valid = !!date && hasAny;
-
+  // At least one of the six counts must be filled
+  const anyFilled = [gfN,gfS,gfB,udN,udS,udB].some(v => v !== '' && v !== undefined);
+  const valid = !!date && anyFilled;
   if (submit) submit.disabled = !valid;
 
   if (preview) {
     if (valid) {
       preview.style.display = '';
-      const n = Number(normal || 0);
-      const s = Number(small  || 0);
-      const b = Number(broken || 0);
-      const total = n + s + b;
-      const pn = document.getElementById('ec-preview-normal');
-      const ps = document.getElementById('ec-preview-small');
-      const pb = document.getElementById('ec-preview-broken');
-      const pt = document.getElementById('ec-preview-total');
-      const pd = document.getElementById('ec-preview-date');
-      if (pn) pn.textContent = n;
-      if (ps) ps.textContent = s;
-      if (pb) pb.textContent = b;
-      if (pt) pt.textContent = total.toLocaleString('en-KE');
-      if (pd) pd.textContent = date;
+      const n = (v) => Number(v || 0);
+      const totalNormal = n(gfN) + n(udN);
+      const totalSmall  = n(gfS) + n(udS);
+      const totalBroken = n(gfB) + n(udB);
+      const setText = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+      setText('ec-preview-total', totalNormal.toLocaleString('en-KE'));
+      setText('ec-preview-gf', `${n(gfN)} (+${n(gfS)} small, ${n(gfB)} broken)`);
+      setText('ec-preview-ud', `${n(udN)} (+${n(udS)} small, ${n(udB)} broken)`);
+      setText('ec-preview-small', totalSmall);
+      setText('ec-preview-broken', totalBroken);
+      setText('ec-preview-date', date);
     } else {
       preview.style.display = 'none';
     }
@@ -6309,45 +6458,44 @@ function validateEggCollection() {
 }
 
 async function submitEggCollection() {
-  const date   = (document.getElementById('ec-date')   || {}).value || '';
-  const normal = (document.getElementById('ec-normal') || {}).value;
-  const small  = (document.getElementById('ec-small')  || {}).value;
-  const broken = (document.getElementById('ec-broken') || {}).value;
-  const notes  = ((document.getElementById('ec-notes') || {}).value || '').trim();
+  const date = (document.getElementById('ec-date') || {}).value || '';
+  const gfN = (document.getElementById('ec-gf-normal') || {}).value;
+  const gfS = (document.getElementById('ec-gf-small')  || {}).value;
+  const gfB = (document.getElementById('ec-gf-broken') || {}).value;
+  const udN = (document.getElementById('ec-ud-normal') || {}).value;
+  const udS = (document.getElementById('ec-ud-small')  || {}).value;
+  const udB = (document.getElementById('ec-ud-broken') || {}).value;
+  const notes = ((document.getElementById('ec-notes') || {}).value || '').trim();
 
-  if (!date) {
-    showToast('Please pick a date', 3000);
-    return;
-  }
+  if (!date) { showToast('Please pick a date', 3000); return; }
 
-  // Build the local-state record (optimistic)
+  const num = (v) => v === '' || v === undefined ? 0 : Number(v);
   const row = {
     id:    'ec-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
     ts:    new Date().toISOString(),
     date:  date,
-    normal:         normal === '' ? 0 : Number(normal),
-    small_abnormal: small  === '' ? 0 : Number(small),
-    broken:         broken === '' ? 0 : Number(broken),
+    gf_normal: num(gfN), gf_small: num(gfS), gf_broken: num(gfB),
+    ud_normal: num(udN), ud_small: num(udS), ud_broken: num(udB),
+    // Derived totals for backward compatibility
+    normal:         num(gfN) + num(udN),
+    small_abnormal: num(gfS) + num(udS),
+    broken:         num(gfB) + num(udB),
     notes: notes
   };
 
-  // Add to local state optimistically
   if (!Array.isArray(STATE.eggCollection)) STATE.eggCollection = [];
   STATE.eggCollection.push(row);
   try { await storageSet(K_EGG_COLLECTION, STATE.eggCollection); } catch (e) {}
 
-  const total = row.normal + row.small_abnormal + row.broken;
-  showToast(`Saved · ${total} eggs · ${row.date}`);
+  showToast(`Saved · GF ${row.gf_normal} · UD ${row.ud_normal} · ${row.date}`);
 
-  // Clear form (date stays for quick consecutive entry)
-  const fields = ['ec-normal', 'ec-small', 'ec-broken', 'ec-notes'];
-  fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  // Clear form (date stays)
+  ['ec-gf-normal','ec-gf-small','ec-gf-broken','ec-ud-normal','ec-ud-small','ec-ud-broken','ec-notes']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   validateEggCollection();
 
-  // Push to Apps Script gate
   const synced = await syncEggCollection(row);
   if (!synced) {
-    // v5.0.23 / v6.0 — server-side dedup integration: if rejected as 'duplicate', don't queue
     const wasDup = await handleDuplicateRejection(row, 'egg-collection', 'eggCollection', K_EGG_COLLECTION);
     if (!wasDup) {
       await queueForSync(row, 'egg-collection');
@@ -6356,24 +6504,27 @@ async function submitEggCollection() {
       }
     }
   } else {
-    // Egg collection uses FLAG-mode dedup — surface possible-duplicate review toast if any
     showPossibleDuplicateToast('egg-collection');
   }
   updateSyncIndicator();
+  renderHome();
 }
 
-/* Push an Egg Collection entry to Apps Script gate. */
+/* Push an Egg Collection entry to Apps Script gate (Wide schema). */
 async function pushEggCollectionToGate(row) {
   try {
     const body = {
       action: 'egg-collection',
       payload: {
-        ts:             row.ts || new Date().toISOString(),
-        date:           row.date,
-        normal:         Number(row.normal || 0),
-        small_abnormal: Number(row.small_abnormal || 0),
-        broken:         Number(row.broken || 0),
-        notes:          row.notes || ''
+        ts:        row.ts || new Date().toISOString(),
+        date:      row.date,
+        gf_normal: Number(row.gf_normal || 0),
+        gf_small:  Number(row.gf_small  || 0),
+        gf_broken: Number(row.gf_broken || 0),
+        ud_normal: Number(row.ud_normal || 0),
+        ud_small:  Number(row.ud_small  || 0),
+        ud_broken: Number(row.ud_broken || 0),
+        notes:     row.notes || ''
       },
       source: `PWA ${APP_VERSION} egg-collection`
     };
@@ -6634,6 +6785,275 @@ async function syncBirdCensus(row) {
   return false;
 }
 
+/* ============================================================
+   v6.0 SHIP 5 TINY — Incubation batches
+   ============================================================
+   Track incubation lifecycle: eggs in → 21 days → chicks out.
+
+   Sheet schema (12 columns):
+     Timestamp | Batch_ID | Date_Set | Eggs_In | Source | Expected_Hatch |
+     Date_Hatched | Hatched_Count | Failed_Count | Hatch_Rate | Status | Notes
+
+   Two flows in one form, sub-toggle:
+     · Start batch — appends row, Status='incubating', hatch fields blank
+     · Record hatch — updates row by Batch_ID, sets Status='hatched',
+                      computes Hatch_Rate
+
+   STRICT dedup on Batch_ID for 'start' mode.
+   'hatch' mode skips dedup (we want to find the existing row).
+   ============================================================ */
+
+if (typeof STATE === 'object' && !Array.isArray(STATE.incubation)) {
+  STATE.incubation = [];
+}
+
+let INCUBATION_MODE = 'start'; // 'start' or 'hatch'
+
+function initIncubationForm() {
+  // Wire mode toggle
+  const modeButtons = document.querySelectorAll('#incubation-mode-toggle button');
+  modeButtons.forEach(btn => {
+    if (!btn.dataset.wired) {
+      btn.dataset.wired = '1';
+      btn.addEventListener('click', () => {
+        const mode = btn.dataset.incmode;
+        INCUBATION_MODE = mode;
+        modeButtons.forEach(b => b.classList.toggle('active', b === btn));
+        document.getElementById('incubation-start-form').style.display = mode === 'start' ? '' : 'none';
+        document.getElementById('incubation-hatch-form').style.display = mode === 'hatch' ? '' : 'none';
+        if (mode === 'hatch') populateHatchBatchDropdown();
+      });
+    }
+  });
+
+  // Default Date_Set = today, Expected_Hatch = today + 21d
+  const today = new Date().toISOString().slice(0, 10);
+  const dsEl = document.getElementById('ib-date-set');
+  if (dsEl && !dsEl.value) {
+    dsEl.value = today;
+    autoFillExpectedHatch();
+  }
+  const dhEl = document.getElementById('ih-date-hatched');
+  if (dhEl && !dhEl.value) dhEl.value = today;
+
+  // Wire start form
+  const startFields = ['ib-batch-id', 'ib-date-set', 'ib-eggs-in', 'ib-source', 'ib-expected-hatch', 'ib-notes'];
+  startFields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.dataset.wired) {
+      el.dataset.wired = '1';
+      el.addEventListener('input', validateIncubationStart);
+      el.addEventListener('change', validateIncubationStart);
+    }
+  });
+  // Re-fire auto-expected when Date_Set changes
+  const dsField = document.getElementById('ib-date-set');
+  if (dsField) {
+    dsField.addEventListener('change', autoFillExpectedHatch);
+  }
+  const startBtn = document.getElementById('ib-start-submit');
+  if (startBtn && !startBtn.dataset.wired) {
+    startBtn.dataset.wired = '1';
+    startBtn.addEventListener('click', submitIncubationStart);
+  }
+
+  // Wire hatch form
+  const hatchFields = ['ih-batch-id', 'ih-date-hatched', 'ih-hatched', 'ih-failed', 'ih-notes'];
+  hatchFields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.dataset.wired) {
+      el.dataset.wired = '1';
+      el.addEventListener('input', validateIncubationHatch);
+      el.addEventListener('change', validateIncubationHatch);
+    }
+  });
+  const hatchBtn = document.getElementById('ih-submit');
+  if (hatchBtn && !hatchBtn.dataset.wired) {
+    hatchBtn.dataset.wired = '1';
+    hatchBtn.addEventListener('click', submitIncubationHatch);
+  }
+
+  // Initial validation
+  validateIncubationStart();
+}
+
+function autoFillExpectedHatch() {
+  const ds = (document.getElementById('ib-date-set') || {}).value;
+  const ehEl = document.getElementById('ib-expected-hatch');
+  if (!ds || !ehEl) return;
+  // Only auto-fill if user hasn't manually set it
+  if (!ehEl.value || ehEl.dataset.autofilled === '1') {
+    const d = new Date(ds);
+    d.setDate(d.getDate() + 21);
+    ehEl.value = d.toISOString().slice(0, 10);
+    ehEl.dataset.autofilled = '1';
+  }
+}
+
+function validateIncubationStart() {
+  const id = ((document.getElementById('ib-batch-id') || {}).value || '').trim();
+  const ds = (document.getElementById('ib-date-set') || {}).value;
+  const ei = (document.getElementById('ib-eggs-in') || {}).value;
+  const valid = !!id && !!ds && ei !== '' && !isNaN(Number(ei)) && Number(ei) > 0;
+  const btn = document.getElementById('ib-start-submit');
+  if (btn) btn.disabled = !valid;
+}
+
+function populateHatchBatchDropdown() {
+  const sel = document.getElementById('ih-batch-id');
+  if (!sel) return;
+  const incubating = (STATE.incubation || []).filter(b => b.status !== 'hatched' && b.status !== 'cancelled');
+  if (incubating.length === 0) {
+    sel.innerHTML = '<option value="">— No incubating batches —</option>';
+  } else {
+    sel.innerHTML = '<option value="">— Select batch —</option>' +
+      incubating.map(b => `<option value="${String(b.batch_id).replace(/"/g,'&quot;')}">${b.batch_id} (${b.eggs_in} eggs, set ${b.date_set})</option>`).join('');
+  }
+  validateIncubationHatch();
+}
+
+function validateIncubationHatch() {
+  const id = (document.getElementById('ih-batch-id') || {}).value;
+  const dh = (document.getElementById('ih-date-hatched') || {}).value;
+  const hc = (document.getElementById('ih-hatched') || {}).value;
+  const valid = !!id && !!dh && hc !== '' && !isNaN(Number(hc)) && Number(hc) >= 0;
+  const btn = document.getElementById('ih-submit');
+  if (btn) btn.disabled = !valid;
+
+  // Live preview
+  const preview = document.getElementById('ih-preview');
+  if (!preview) return;
+  if (valid) {
+    const batch = (STATE.incubation || []).find(b => b.batch_id === id);
+    const eggsIn = batch ? Number(batch.eggs_in) : 0;
+    const hatched = Number(hc);
+    const failedRaw = (document.getElementById('ih-failed') || {}).value;
+    const failed = failedRaw !== '' && !isNaN(Number(failedRaw)) ? Number(failedRaw) : Math.max(0, eggsIn - hatched);
+    const rate = eggsIn > 0 ? (hatched / eggsIn) * 100 : 0;
+    preview.style.display = '';
+    document.getElementById('ih-preview-rate').textContent = rate.toFixed(1);
+    document.getElementById('ih-preview-batch').textContent = id;
+    document.getElementById('ih-preview-hatched').textContent = hatched.toLocaleString('en-KE');
+    document.getElementById('ih-preview-eggs').textContent = eggsIn.toLocaleString('en-KE');
+    document.getElementById('ih-preview-failed').textContent = failed.toLocaleString('en-KE');
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+async function submitIncubationStart() {
+  const id = ((document.getElementById('ib-batch-id') || {}).value || '').trim();
+  const ds = (document.getElementById('ib-date-set') || {}).value;
+  const ei = Number((document.getElementById('ib-eggs-in') || {}).value);
+  const src = ((document.getElementById('ib-source') || {}).value || '').trim();
+  const eh = (document.getElementById('ib-expected-hatch') || {}).value;
+  const notes = ((document.getElementById('ib-notes') || {}).value || '').trim();
+
+  if (!id || !ds || !ei || ei <= 0) { showToast('Please fill all required fields', 3000); return; }
+
+  const row = {
+    batch_id: id, ts: new Date().toISOString(), date_set: ds, eggs_in: ei,
+    source: src, expected_hatch: eh, date_hatched: '', hatched_count: 0,
+    failed_count: 0, hatch_rate: 0, status: 'incubating', notes: notes
+  };
+
+  if (!Array.isArray(STATE.incubation)) STATE.incubation = [];
+  STATE.incubation.push(row);
+  try { await storageSet(K_INCUBATION, STATE.incubation); } catch (e) {}
+
+  showToast(`🐣 Started ${id} · ${ei} eggs · hatch ~${eh}`);
+
+  // Push to gate
+  try {
+    const body = {
+      action: 'incubation',
+      payload: {
+        mode: 'start', batch_id: id, date_set: ds, eggs_in: ei,
+        source: src, expected_hatch: eh, notes: notes
+      },
+      source: `PWA ${APP_VERSION} incubation-start`
+    };
+    const r = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST', mode: 'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+    const json = r.ok ? await r.json() : null;
+    if (json && json.duplicate) {
+      // Roll back local
+      STATE.incubation = STATE.incubation.filter(b => b.batch_id !== id);
+      await storageSet(K_INCUBATION, STATE.incubation);
+      showToast(json.summary || 'Batch already exists — choose another ID', 6000);
+      return;
+    }
+    if (json && json.writesLocked) {
+      STATE.incubation = STATE.incubation.filter(b => b.batch_id !== id);
+      await storageSet(K_INCUBATION, STATE.incubation);
+      showToast('🔒 Writes locked — ping Kiruogindet araap Cheison', 6000);
+      return;
+    }
+  } catch (e) { console.error('[incubation-start] error', e); }
+
+  // Clear form
+  document.getElementById('ib-batch-id').value = '';
+  document.getElementById('ib-eggs-in').value = '';
+  document.getElementById('ib-source').value = '';
+  document.getElementById('ib-notes').value = '';
+  validateIncubationStart();
+  renderHome();
+}
+
+async function submitIncubationHatch() {
+  const id = (document.getElementById('ih-batch-id') || {}).value;
+  const dh = (document.getElementById('ih-date-hatched') || {}).value;
+  const hc = Number((document.getElementById('ih-hatched') || {}).value);
+  const failedRaw = (document.getElementById('ih-failed') || {}).value;
+  const notes = ((document.getElementById('ih-notes') || {}).value || '').trim();
+
+  if (!id || !dh || isNaN(hc) || hc < 0) { showToast('Please fill all required fields', 3000); return; }
+
+  const batch = (STATE.incubation || []).find(b => b.batch_id === id);
+  if (!batch) { showToast('Batch not found in local state', 3000); return; }
+  const failed = (failedRaw !== '' && !isNaN(Number(failedRaw))) ? Number(failedRaw) : Math.max(0, Number(batch.eggs_in) - hc);
+
+  // Optimistic update
+  batch.date_hatched = dh;
+  batch.hatched_count = hc;
+  batch.failed_count = failed;
+  batch.hatch_rate = batch.eggs_in > 0 ? (hc / batch.eggs_in) : 0;
+  batch.status = 'hatched';
+  if (notes) batch.notes = notes;
+  await storageSet(K_INCUBATION, STATE.incubation);
+
+  const ratePct = (batch.hatch_rate * 100).toFixed(1);
+  showToast(`🐣 Hatched ${id} · ${hc}/${batch.eggs_in} · ${ratePct}%`, 5000);
+
+  try {
+    const body = {
+      action: 'incubation',
+      payload: {
+        mode: 'hatch', batch_id: id, date_hatched: dh,
+        hatched_count: hc, failed_count: failed, notes: notes
+      },
+      source: `PWA ${APP_VERSION} incubation-hatch`
+    };
+    await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST', mode: 'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+  } catch (e) { console.error('[incubation-hatch] error', e); }
+
+  // Clear hatch form
+  document.getElementById('ih-batch-id').value = '';
+  document.getElementById('ih-hatched').value = '';
+  document.getElementById('ih-failed').value = '';
+  document.getElementById('ih-notes').value = '';
+  validateIncubationHatch();
+  populateHatchBatchDropdown();
+  renderHome();
+}
+
 function monthEntries() {
   const ym = new Date().toISOString().slice(0,7);
   return STATE.entries.filter(e => e.date.startsWith(ym));
@@ -6774,82 +7194,158 @@ function renderHome() {
     }
   }
 
-  // v6.0 SHIP 4 — Lay rate KPI + live bird count from Bird_Census
-  // Lay rate = SUM(Egg_Collection.Normal MTD) ÷ LATEST(Bird_Census Layers count) × 100%
-  // Display: "X% as of [census date]" — Q3-B semantics (always show with stamp)
+  // v5.7 — Lay Efficiency triplet (Daily / MTD / Global) + per-house LE
+  // Formula: LE = normal_eggs_in_period ÷ days_in_period ÷ layers_count × 100%
+  //
+  // Key concept: layers count uses LATEST census per house (Layers stage).
+  // Per-house LE: house_normal_eggs ÷ days ÷ house_layers × 100%
   const census = Array.isArray(STATE.birdCensus) ? STATE.birdCensus : [];
-  const layRateEl = document.getElementById('poultry-lay-rate');
-  const layRateSubEl = document.getElementById('poultry-lay-rate-sub');
   const liveBirdsEl = document.getElementById('poultry-live-birds');
   const liveBirdsSubEl = document.getElementById('poultry-live-birds-sub');
 
-  if (census.length === 0) {
-    if (layRateEl) layRateEl.textContent = '—';
-    if (layRateSubEl) layRateSubEl.textContent = 'no census yet';
-    if (liveBirdsEl) liveBirdsEl.textContent = '—';
-    if (liveBirdsSubEl) liveBirdsSubEl.textContent = 'no census yet';
-  } else {
-    // For each (house, stage) combination, find the LATEST count by date
-    // (then aggregate by stage across houses)
-    const latestByHouseStage = {};
-    census.forEach(c => {
-      const k = (c.house || '') + '|' + (c.stage || '');
-      const existing = latestByHouseStage[k];
-      const cDate = c.date || '';
-      if (!existing || cDate > (existing.date || '')) {
-        latestByHouseStage[k] = c;
-      }
-    });
+  // Latest layers per house (Stage='Layers', most recent census date)
+  const latestLayersByHouse = {};
+  let latestCensusDate = '';
+  let totalBirds = 0;
+  const stageTotals = {};
+  census.forEach(c => {
+    const cnt = Number(c.count) || 0;
+    const stg = c.stage || '';
+    if ((c.date || '') > latestCensusDate) latestCensusDate = c.date;
 
-    // Aggregate: total layers, latest census date, total all-stages count
-    let layersCount = 0;
-    let totalBirds = 0;
-    let latestCensusDate = '';
-    const stageTotals = {};
-    Object.values(latestByHouseStage).forEach(c => {
-      const cnt = Number(c.count) || 0;
-      totalBirds += cnt;
-      const stg = c.stage || '';
-      stageTotals[stg] = (stageTotals[stg] || 0) + cnt;
-      if (stg === 'Layers') layersCount += cnt;
-      if ((c.date || '') > latestCensusDate) latestCensusDate = c.date;
-    });
-
-    // Live birds card
-    if (liveBirdsEl) {
-      liveBirdsEl.textContent = totalBirds.toLocaleString('en-KE');
+    // Latest by house+stage for live-birds aggregate
+    const key = (c.house || '') + '|' + stg;
+    const existing = latestLayersByHouse[key];
+    if (!existing || (c.date || '') > (existing.date || '')) {
+      latestLayersByHouse[key] = c;
     }
-    if (liveBirdsSubEl) {
+  });
+  // Recompute aggregates from latest-by-house+stage map
+  Object.values(latestLayersByHouse).forEach(c => {
+    const cnt = Number(c.count) || 0;
+    totalBirds += cnt;
+    stageTotals[c.stage] = (stageTotals[c.stage] || 0) + cnt;
+  });
+
+  const gfLayers = (latestLayersByHouse['Ground Floor|Layers'] && Number(latestLayersByHouse['Ground Floor|Layers'].count)) || 0;
+  const udLayers = (latestLayersByHouse['Upper Deck|Layers']   && Number(latestLayersByHouse['Upper Deck|Layers'].count))   || 0;
+  const totalLayers = gfLayers + udLayers;
+
+  // Live birds card
+  if (liveBirdsEl) {
+    liveBirdsEl.textContent = totalBirds > 0 ? totalBirds.toLocaleString('en-KE') : '—';
+  }
+  if (liveBirdsSubEl) {
+    if (census.length === 0) {
+      liveBirdsSubEl.textContent = 'no census yet';
+    } else {
       const stagesShown = ['Layers','Cockerels','Growers','Chicks 7\u201328 days','Chicks 1\u20137 days']
         .filter(s => stageTotals[s] > 0)
         .map(s => `${stageTotals[s]} ${s.replace('Chicks 1\u20137 days','chicks 1-7d').replace('Chicks 7\u201328 days','chicks 7-28d').toLowerCase()}`)
         .slice(0, 3);
       liveBirdsSubEl.textContent = stagesShown.length ? stagesShown.join(' · ') + ` · as of ${latestCensusDate}` : `as of ${latestCensusDate}`;
     }
+  }
 
-    // Lay rate card
-    if (layRateEl && layRateSubEl) {
-      if (layersCount > 0) {
-        // Lay rate uses TODAY's normal eggs ÷ layers (NOT MTD — daily KPI)
-        // BUT label says "MTD" because it's the rolling daily rate aggregate
-        // Cheison's spec was "Lay rate MTD" — interpret as month average
-        const eggMonthRows = (STATE.eggCollection || []).filter(e => (e.date || '').startsWith(ym));
-        const totalNormalEggsMonth = eggMonthRows.reduce((s,e) => s + (Number(e.normal)||0), 0);
-        const daysWithCollection = eggMonthRows.length;
-        if (daysWithCollection > 0) {
-          // Average lay rate = (avg normal eggs/day) ÷ layers × 100%
-          const avgEggsPerDay = totalNormalEggsMonth / daysWithCollection;
-          const rate = (avgEggsPerDay / layersCount) * 100;
-          layRateEl.textContent = rate.toFixed(1) + '%';
-          layRateSubEl.textContent = `${Math.round(avgEggsPerDay)} eggs/day ÷ ${layersCount} layers · as of ${latestCensusDate}`;
-        } else {
-          layRateEl.textContent = '—';
-          layRateSubEl.textContent = `no eggs collected · ${layersCount} layers as of ${latestCensusDate}`;
-        }
-      } else {
-        layRateEl.textContent = '—';
-        layRateSubEl.textContent = `no layers in census · as of ${latestCensusDate}`;
-      }
+  // ---- Lay Efficiency math ----
+  const allEggs = Array.isArray(STATE.eggCollection) ? STATE.eggCollection : [];
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayRow = allEggs.find(e => e.date === todayStr);
+  const monthRows = allEggs.filter(e => (e.date || '').startsWith(ym));
+
+  function setLE(elId, subId, rate, sub) {
+    const el = document.getElementById(elId);
+    const subEl = document.getElementById(subId);
+    if (el) el.textContent = (rate === null || rate === undefined) ? '—' : (rate.toFixed(1) + '%');
+    if (subEl) subEl.textContent = sub;
+  }
+
+  // Daily LE — TODAY's normal eggs ÷ today's layers (latest census)
+  if (totalLayers > 0 && todayRow) {
+    const todayNormal = Number(todayRow.normal) || ((Number(todayRow.gf_normal)||0) + (Number(todayRow.ud_normal)||0));
+    const dailyLE = (todayNormal / totalLayers) * 100;
+    setLE('poultry-le-daily', 'poultry-le-daily-sub', dailyLE,
+          `${todayNormal} eggs ÷ ${totalLayers} layers · today`);
+  } else if (totalLayers > 0) {
+    setLE('poultry-le-daily', 'poultry-le-daily-sub', null, `no eggs today · ${totalLayers} layers`);
+  } else {
+    setLE('poultry-le-daily', 'poultry-le-daily-sub', null, 'no layers in census');
+  }
+
+  // MTD LE — avg eggs/day in current month ÷ layers
+  if (totalLayers > 0 && monthRows.length > 0) {
+    const monthNormal = monthRows.reduce((s,e) => s + (Number(e.normal) || ((Number(e.gf_normal)||0)+(Number(e.ud_normal)||0))), 0);
+    const avgPerDay = monthNormal / monthRows.length;
+    const mtdLE = (avgPerDay / totalLayers) * 100;
+    setLE('poultry-le-mtd', 'poultry-le-mtd-sub', mtdLE,
+          `${Math.round(avgPerDay)} avg eggs/day · ${monthRows.length} day${monthRows.length===1?'':'s'}`);
+  } else if (totalLayers > 0) {
+    setLE('poultry-le-mtd', 'poultry-le-mtd-sub', null, `no eggs MTD · ${totalLayers} layers`);
+  } else {
+    setLE('poultry-le-mtd', 'poultry-le-mtd-sub', null, 'no layers in census');
+  }
+
+  // Global LE — avg eggs/day all-time ÷ layers
+  if (totalLayers > 0 && allEggs.length > 0) {
+    const allNormal = allEggs.reduce((s,e) => s + (Number(e.normal) || ((Number(e.gf_normal)||0)+(Number(e.ud_normal)||0))), 0);
+    const avgGlobal = allNormal / allEggs.length;
+    const globalLE = (avgGlobal / totalLayers) * 100;
+    setLE('poultry-le-global', 'poultry-le-global-sub', globalLE,
+          `${Math.round(avgGlobal)} avg eggs/day · ${allEggs.length} day${allEggs.length===1?'':'s'} all-time`);
+  } else {
+    setLE('poultry-le-global', 'poultry-le-global-sub', null, totalLayers > 0 ? 'no data yet' : 'no layers in census');
+  }
+
+  // Per-house LE (MTD)
+  function houseLE(houseLayers, houseEggsKey, elId, subId, label) {
+    if (houseLayers === 0) {
+      setLE(elId, subId, null, 'no layers');
+      return;
+    }
+    if (monthRows.length === 0) {
+      setLE(elId, subId, null, `${houseLayers} layers · no eggs MTD`);
+      return;
+    }
+    const houseNormal = monthRows.reduce((s,e) => s + (Number(e[houseEggsKey])||0), 0);
+    const avgPerDay = houseNormal / monthRows.length;
+    const le = (avgPerDay / houseLayers) * 100;
+    setLE(elId, subId, le, `${Math.round(avgPerDay)} eggs/day ÷ ${houseLayers} layers`);
+  }
+  houseLE(gfLayers, 'gf_normal', 'poultry-le-gf', 'poultry-le-gf-sub', 'GF');
+  houseLE(udLayers, 'ud_normal', 'poultry-le-ud', 'poultry-le-ud-sub', 'UD');
+
+  // v6.0 SHIP 5 — Hatch rate (latest hatched batch) + incubating count
+  const incub = Array.isArray(STATE.incubation) ? STATE.incubation : [];
+  const incubRow = document.getElementById('poultry-incubation-row');
+  if (incub.length === 0) {
+    if (incubRow) incubRow.hidden = true;
+  } else {
+    if (incubRow) incubRow.hidden = false;
+    // Latest hatched batch (by Date_Hatched)
+    const hatched = incub.filter(b => b.status === 'hatched' && b.date_hatched);
+    hatched.sort((a, b) => String(b.date_hatched).localeCompare(String(a.date_hatched)));
+    const latestHatch = hatched[0];
+    const hatchEl = document.getElementById('poultry-hatch-rate');
+    const hatchSubEl = document.getElementById('poultry-hatch-rate-sub');
+    if (latestHatch) {
+      const ratePct = (Number(latestHatch.hatch_rate) * 100);
+      if (hatchEl) hatchEl.textContent = ratePct.toFixed(1) + '%';
+      if (hatchSubEl) hatchSubEl.textContent = `${latestHatch.hatched_count}/${latestHatch.eggs_in} · ${latestHatch.batch_id} · ${latestHatch.date_hatched}`;
+    } else {
+      if (hatchEl) hatchEl.textContent = '—';
+      if (hatchSubEl) hatchSubEl.textContent = 'no hatch events yet';
+    }
+    // Incubating count
+    const incubating = incub.filter(b => b.status === 'incubating');
+    const incubCountEl = document.getElementById('poultry-incubating-count');
+    const incubSubEl = document.getElementById('poultry-incubating-sub');
+    if (incubating.length > 0) {
+      const totalEggs = incubating.reduce((s, b) => s + (Number(b.eggs_in) || 0), 0);
+      if (incubCountEl) incubCountEl.textContent = totalEggs.toLocaleString('en-KE');
+      if (incubSubEl) incubSubEl.textContent = `${incubating.length} batch${incubating.length === 1 ? '' : 'es'} · oldest set ${incubating.map(b => b.date_set).sort()[0]}`;
+    } else {
+      if (incubCountEl) incubCountEl.textContent = '—';
+      if (incubSubEl) incubSubEl.textContent = 'no active batches';
     }
   }
 
@@ -7522,6 +8018,124 @@ function renderInsights() {
     pluckerDisplay[current ? current.name : v._name] = { kg: v.kg, total: v.total };
   });
   renderMiniTable('tbl-plucker', 'Plucker', pluckerDisplay, 12);
+
+  // v6.0 SHIP 5 — Kipkenda Poultry insights LITE
+  if (typeof renderPoultryInsights === 'function') renderPoultryInsights();
+}
+
+/* v6.0 SHIP 5 — Insights LITE: 3 sparkline charts for Kipkenda Poultry.
+   Each chart renders an SVG polyline of recent data. No D3, no chart library.
+   Hides the entire section when no data exists for ANY of the three streams.
+
+   Charts:
+     1. Eggs collected — last 30 days, normal eggs per day
+     2. Lay rate — daily rate where census + eggs both exist, last 30 days
+     3. Hatch rate — per hatched batch (chronological by Date_Hatched)
+*/
+function renderPoultryInsights() {
+  const section = document.getElementById('insights-poultry-section');
+  if (!section) return;
+
+  const eggColl = Array.isArray(STATE.eggCollection) ? STATE.eggCollection : [];
+  const census  = Array.isArray(STATE.birdCensus) ? STATE.birdCensus : [];
+  const incub   = Array.isArray(STATE.incubation) ? STATE.incubation : [];
+
+  // If no data anywhere, hide section entirely (lean)
+  if (eggColl.length === 0 && incub.length === 0 && census.length === 0) {
+    section.hidden = true;
+    return;
+  }
+  section.hidden = false;
+
+  // ---- Chart 1: Eggs collected daily, last 30 days ----
+  const today = new Date();
+  const days30 = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    days30.push(d.toISOString().slice(0, 10));
+  }
+  const eggsByDay = {};
+  eggColl.forEach(e => {
+    if (e.date && days30.includes(e.date)) {
+      eggsByDay[e.date] = (eggsByDay[e.date] || 0) + (Number(e.normal) || 0);
+    }
+  });
+  const eggsSeries = days30.map(d => eggsByDay[d] || 0);
+  drawSparkline('insights-eggs-chart', eggsSeries, '#6b9e5b');
+  const eggsLatest = eggsSeries[eggsSeries.length - 1] || 0;
+  const eggsLatestEl = document.getElementById('insights-eggs-latest');
+  if (eggsLatestEl) eggsLatestEl.textContent = eggsSeries.some(v => v > 0)
+    ? `today: ${eggsLatest} · max: ${Math.max(...eggsSeries)}`
+    : 'no data in last 30 days';
+
+  // ---- Chart 2: Lay rate daily (last 30d) ----
+  // Lay rate per day = eggs that day ÷ latest layer count (as of that day)
+  // Simplified: use today's layer count as reference (most recent census)
+  const latestLayers = census
+    .filter(c => c.stage === 'Layers')
+    .sort((a, b) => String(b.date).localeCompare(String(a.date)))[0];
+  const layersCount = latestLayers ? Number(latestLayers.count) : 0;
+  let laySeries = [];
+  if (layersCount > 0) {
+    laySeries = eggsSeries.map(eggs => layersCount > 0 ? Math.min(100, (eggs / layersCount) * 100) : 0);
+  } else {
+    laySeries = days30.map(() => 0);
+  }
+  drawSparkline('insights-lay-chart', laySeries, '#3a6e8f');
+  const layLatest = laySeries[laySeries.length - 1] || 0;
+  const layLatestEl = document.getElementById('insights-lay-latest');
+  if (layLatestEl) {
+    if (layersCount === 0) {
+      layLatestEl.textContent = 'no layers in census yet';
+    } else {
+      layLatestEl.textContent = `today: ${layLatest.toFixed(1)}% · ${layersCount} layers`;
+    }
+  }
+
+  // ---- Chart 3: Hatch rate per batch ----
+  const hatched = incub
+    .filter(b => b.status === 'hatched' && b.date_hatched)
+    .sort((a, b) => String(a.date_hatched).localeCompare(String(b.date_hatched)));
+  const hatchSeries = hatched.map(b => Number(b.hatch_rate) * 100);
+  drawSparkline('insights-hatch-chart', hatchSeries, '#c97b3a');
+  const hatchLatestEl = document.getElementById('insights-hatch-latest');
+  if (hatchLatestEl) {
+    if (hatched.length === 0) {
+      hatchLatestEl.textContent = 'no hatched batches yet';
+    } else {
+      const last = hatched[hatched.length - 1];
+      hatchLatestEl.textContent = `latest: ${(Number(last.hatch_rate)*100).toFixed(1)}% · ${last.batch_id}`;
+    }
+  }
+}
+
+/* Sparkline drawer — minimal SVG polyline.
+   Empty / all-zero series = "no data" placeholder text. */
+function drawSparkline(svgId, series, color) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  const W = 600, H = 80, pad = 4;
+  if (!series || series.length === 0 || series.every(v => v === 0)) {
+    svg.innerHTML = `<text x="${W/2}" y="${H/2}" text-anchor="middle" dominant-baseline="central" font-family="Fraunces, serif" font-size="14" fill="#9aa39c" font-style="italic">no data</text>`;
+    return;
+  }
+  const max = Math.max(...series, 1);
+  const min = 0; // start at 0 for fairness
+  const range = max - min || 1;
+  const stepX = (W - 2*pad) / Math.max(series.length - 1, 1);
+  const points = series.map((v, i) => {
+    const x = pad + i * stepX;
+    const y = H - pad - ((v - min) / range) * (H - 2*pad);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  // Area fill underneath
+  const areaPath = `M${pad},${H-pad} L ${points.split(' ').join(' L ')} L ${pad + (series.length - 1) * stepX},${H - pad} Z`;
+  svg.innerHTML = `
+    <path d="${areaPath}" fill="${color}" fill-opacity="0.18" />
+    <polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" />
+    <circle cx="${pad + (series.length - 1) * stepX}" cy="${(H - pad - ((series[series.length-1] - min) / range) * (H - 2*pad)).toFixed(1)}" r="3" fill="${color}" />
+  `;
 }
 
 function renderExpenseTable(id, obj) {
@@ -8236,6 +8850,8 @@ function showUpdateBanner() {
   STATE.houses = await storageGet(K_HOUSES, []);
   // v6.0 SHIP 4 — Bird Census
   STATE.birdCensus = await storageGet(K_BIRD_CENSUS, []);
+  // v6.0 SHIP 5 — Incubation batches
+  STATE.incubation = await storageGet(K_INCUBATION, []);
 
   // v5.0.19 — Load admin mode flag IMMEDIATELY so applyAdminVisibility can
   // hide admin chrome before any operator sees it. Default false (operator).
