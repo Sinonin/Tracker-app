@@ -1818,7 +1818,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.3.2</span>
+  <span class="version-label" id="version-label">v5.4.0</span>
 </header>
 
 <main>
@@ -2286,6 +2286,48 @@
       </div>
     </div>
 
+    <!-- v6.0 SHIP 3 — Houses admin (Kipkenda Poultry config) -->
+    <div class="section" id="settings-houses-section" style="display:none">
+      <div class="section-head"><h3>🏠 Kipkenda Houses</h3><span class="meta" id="houses-count">0</span></div>
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:0.6rem">
+        <div>
+          <div class="k">Houses</div>
+          <div class="desc">Physical structures for birds and operations. Used by census, mortality, and future incubation.</div>
+        </div>
+        <div id="houses-list" style="display:flex;flex-direction:column;gap:0.4rem"></div>
+        <button id="houses-add-btn" class="export-btn" style="width:100%;background:var(--forest-dark);color:var(--ivory);border-color:var(--forest-dark)">
+          + Add new house
+        </button>
+      </div>
+    </div>
+
+    <!-- v6.0 SHIP 3 — House add/edit form (slide-in below buttons) -->
+    <div class="section" id="house-form-section" style="display:none">
+      <div class="section-head"><h3 id="house-form-title">Add house</h3><span class="meta" id="house-form-mode">add</span></div>
+      <div class="field"><label>Name</label><input type="text" id="hf-name" placeholder="e.g. Brooder Pen 1"></div>
+      <div class="field"><label>Type</label>
+        <select id="hf-type">
+          <option value="layer-boxes">layer-boxes (eggs source)</option>
+          <option value="feed-and-cull">feed-and-cull (feed mill / sick bay)</option>
+          <option value="brooder">brooder (chicks 1-7d)</option>
+          <option value="grower-pen">grower-pen (chicks 7d-pre-lay)</option>
+          <option value="quarantine">quarantine (sick / isolation)</option>
+        </select>
+      </div>
+      <div class="field"><label>Active</label>
+        <select id="hf-active">
+          <option value="TRUE">TRUE — house in use</option>
+          <option value="FALSE">FALSE — deactivated (preserved for history)</option>
+        </select>
+      </div>
+      <div class="field"><label>Notes</label><input type="text" id="hf-notes" placeholder="e.g. Main flock"></div>
+      <div style="display:flex;gap:0.5rem;margin-top:0.8rem">
+        <button id="hf-cancel-btn" class="export-btn" style="flex:1">Cancel</button>
+        <button id="hf-submit-btn" class="export-btn" style="flex:1;background:var(--forest-dark);color:var(--ivory);border-color:var(--forest-dark)">Save</button>
+      </div>
+      <div id="hf-feedback" style="display:none;margin-top:0.7rem;padding:0.6rem 0.8rem;border-radius:6px;font-family:'Fraunces',serif;font-size:0.9rem"></div>
+    </div>
+
     <div class="section">
       <div class="section-head"><h3>Global parameters</h3><span class="meta">every entry</span></div>
       <div class="setting-row">
@@ -2376,7 +2418,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.3.2</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.4.0</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2663,6 +2705,7 @@ const K_BANKED = 'sinonin_banked_v1';
 const K_POULTRY = 'sinonin_poultry_v1';
 const K_CLOUD_SYNC = 'sinonin_cloud_sync_v1';
 const K_IS_ADMIN = 'sinonin_is_admin_v1';  // v5.0.19 — set true on first successful passphrase grant/revoke
+const K_HOUSES = 'sinonin_houses_v1';       // v6.0 SHIP 3 — Kipkenda houses config
 
 const CLOUD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwzHUz9She1PsVPNOWvssSiQcye8hpKZ9v_3d1aX6nsqPDnIN375z8krhMwsCyikVSLtQ/exec';
 
@@ -2689,7 +2732,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.3.2';
+const APP_VERSION = 'v5.4.0';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -3089,6 +3132,8 @@ function applyAdminVisibility() {
       }
     }
     if (adminSection) adminSection.style.display = '';
+    // v6.0 SHIP 3 — render houses admin section
+    if (typeof renderHousesAdmin === 'function') renderHousesAdmin();
     // Banner visibility still controlled by ADMIN_STATE in renderGateBanner()
   } else {
     // Operator mode: keep Settings nav VISIBLE but locked. The button now
@@ -3099,6 +3144,11 @@ function applyAdminVisibility() {
       settingsNavBtn.setAttribute('aria-label', 'Settings (locked)');
     }
     if (adminSection) adminSection.style.display = 'none';
+    // v6.0 SHIP 3 — hide houses admin section in operator mode
+    const housesSec = document.getElementById('settings-houses-section');
+    if (housesSec) housesSec.style.display = 'none';
+    const houseForm = document.getElementById('house-form-section');
+    if (houseForm) houseForm.style.display = 'none';
     // v5.3.2 — gate banner deleted; nothing to hide here.
     // If operator was on Settings tab when downgraded, send them home
     if (STATE.view === 'settings') {
@@ -3697,6 +3747,249 @@ function wireLockModal() {
   if (settingsBtn && !settingsBtn.dataset.wired) {
     settingsBtn.dataset.wired = '1';
     settingsBtn.addEventListener('click', openLockModal);
+  }
+}
+
+/* ============================================================
+   v6.0 SHIP 3 — Houses admin module
+   ============================================================
+   Manages the Houses sheet config (Name / Type / Active / Notes / Last_Modified).
+   Two-mode form: add (default) and update (editing existing house).
+   Soft-delete only — Active=FALSE preserves history.
+
+   Type taxonomy (Tax-B functional):
+     layer-boxes, feed-and-cull, brooder, grower-pen, quarantine
+
+   Houses are CONFIG, not transactions. Cloud is source of truth.
+   PWA pulls houses on every cloud sync, replacing local state.
+   ============================================================ */
+
+let HOUSE_FORM_MODE = 'add';      // 'add' or 'update'
+let HOUSE_FORM_ORIGINAL = null;   // original name when in update mode (allows rename)
+
+function renderHousesAdmin() {
+  // Visible only when Cheison is admin
+  const section = document.getElementById('settings-houses-section');
+  if (!section) return;
+  section.style.display = IS_ADMIN ? '' : 'none';
+  if (!IS_ADMIN) return;
+
+  const list = document.getElementById('houses-list');
+  const countEl = document.getElementById('houses-count');
+  if (!list) return;
+
+  const houses = Array.isArray(STATE.houses) ? STATE.houses : [];
+  const activeCount = houses.filter(h => h.active).length;
+  if (countEl) countEl.textContent = activeCount + ' active';
+
+  if (houses.length === 0) {
+    list.innerHTML = '<div style="font-family:\'Fraunces\',serif;font-size:0.85rem;color:var(--slate);padding:0.6rem 0.4rem">No houses yet — Resync to load from sheet, or tap "Add new house".</div>';
+    return;
+  }
+
+  // Sort: active first, then name alphabetical
+  const sorted = [...houses].sort((a, b) => {
+    if (a.active !== b.active) return a.active ? -1 : 1;
+    return String(a.name).localeCompare(String(b.name));
+  });
+
+  list.innerHTML = sorted.map(h => {
+    const safeName = String(h.name || '').replace(/"/g, '&quot;');
+    const safeType = String(h.type || '').replace(/"/g, '&quot;');
+    const safeNotes = String(h.notes || '').replace(/"/g, '&quot;');
+    const dimStyle = h.active ? '' : 'opacity:0.55';
+    return `
+      <div class="setting-row" style="${dimStyle};border:1px solid var(--rule);border-radius:6px;padding:0.6rem 0.7rem">
+        <div style="flex:1;min-width:0">
+          <div class="k" style="display:flex;align-items:center;gap:0.5rem">
+            ${safeName}
+            ${h.active ? '' : '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:0.6rem;background:#c97b3a;color:#fff;padding:1px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:0.08em">inactive</span>'}
+          </div>
+          <div class="desc" style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--slate);text-transform:uppercase;letter-spacing:0.08em;margin-top:2px">${safeType}</div>
+          ${h.notes ? `<div class="desc" style="margin-top:3px;font-size:0.8rem">${safeNotes}</div>` : ''}
+        </div>
+        <button class="export-btn house-edit-btn" data-name="${safeName}" style="flex-shrink:0;padding:0.4rem 0.7rem;font-size:0.7rem">Edit</button>
+      </div>
+    `;
+  }).join('');
+
+  // Wire Edit buttons
+  list.querySelectorAll('.house-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.name;
+      const house = houses.find(h => h.name === name);
+      if (house) openHouseForm('update', house);
+    });
+  });
+}
+
+function openHouseForm(mode, house) {
+  HOUSE_FORM_MODE = mode;
+  HOUSE_FORM_ORIGINAL = (mode === 'update' && house) ? house.name : null;
+
+  const formSection = document.getElementById('house-form-section');
+  const titleEl = document.getElementById('house-form-title');
+  const modeEl = document.getElementById('house-form-mode');
+  const nameEl = document.getElementById('hf-name');
+  const typeEl = document.getElementById('hf-type');
+  const activeEl = document.getElementById('hf-active');
+  const notesEl = document.getElementById('hf-notes');
+  const fb = document.getElementById('hf-feedback');
+
+  if (!formSection) return;
+
+  if (mode === 'update' && house) {
+    if (titleEl) titleEl.textContent = 'Edit house';
+    if (modeEl) modeEl.textContent = 'edit';
+    if (nameEl) nameEl.value = house.name || '';
+    if (typeEl) typeEl.value = house.type || 'layer-boxes';
+    if (activeEl) activeEl.value = house.active ? 'TRUE' : 'FALSE';
+    if (notesEl) notesEl.value = house.notes || '';
+  } else {
+    if (titleEl) titleEl.textContent = 'Add house';
+    if (modeEl) modeEl.textContent = 'add';
+    if (nameEl) nameEl.value = '';
+    if (typeEl) typeEl.value = 'layer-boxes';
+    if (activeEl) activeEl.value = 'TRUE';
+    if (notesEl) notesEl.value = '';
+  }
+
+  if (fb) { fb.style.display = 'none'; fb.textContent = ''; }
+  formSection.style.display = '';
+  // Scroll into view smoothly
+  setTimeout(() => formSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  if (nameEl) setTimeout(() => nameEl.focus(), 200);
+}
+
+function closeHouseForm() {
+  const formSection = document.getElementById('house-form-section');
+  if (formSection) formSection.style.display = 'none';
+  HOUSE_FORM_MODE = 'add';
+  HOUSE_FORM_ORIGINAL = null;
+}
+
+function showHouseFormFeedback(msg, ok) {
+  const fb = document.getElementById('hf-feedback');
+  if (!fb) return;
+  fb.style.display = '';
+  fb.textContent = msg;
+  fb.style.background = ok ? 'rgba(107,158,91,0.15)' : 'rgba(176,48,48,0.15)';
+  fb.style.color = ok ? '#3f5d36' : '#8b2e2e';
+}
+
+async function submitHouseForm() {
+  const nameEl = document.getElementById('hf-name');
+  const typeEl = document.getElementById('hf-type');
+  const activeEl = document.getElementById('hf-active');
+  const notesEl = document.getElementById('hf-notes');
+  const submitBtn = document.getElementById('hf-submit-btn');
+
+  const name = (nameEl && nameEl.value || '').trim();
+  const type = (typeEl && typeEl.value || 'layer-boxes').trim();
+  const active = (activeEl && activeEl.value || 'TRUE') === 'TRUE';
+  const notes = (notesEl && notesEl.value || '').trim();
+
+  if (!name) {
+    showHouseFormFeedback('Name is required.', false);
+    if (nameEl) nameEl.focus();
+    return;
+  }
+  if (!APPS_SCRIPT_GATE_URL) {
+    showHouseFormFeedback('Apps Script URL not configured.', false);
+    return;
+  }
+
+  if (submitBtn) submitBtn.disabled = true;
+  showHouseFormFeedback('Saving…', true);
+
+  try {
+    const body = {
+      action: 'house',
+      payload: {
+        mode: HOUSE_FORM_MODE,
+        name: name,
+        type: type,
+        active: active,
+        notes: notes
+      },
+      source: `PWA ${APP_VERSION} house-${HOUSE_FORM_MODE}`
+    };
+    if (HOUSE_FORM_MODE === 'update' && HOUSE_FORM_ORIGINAL) {
+      body.payload.originalName = HOUSE_FORM_ORIGINAL;
+    }
+
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) throw new Error('Network error · ' + response.status);
+    const json = await response.json();
+
+    if (json && json.ok) {
+      // Update local state optimistically
+      if (!Array.isArray(STATE.houses)) STATE.houses = [];
+      if (HOUSE_FORM_MODE === 'add') {
+        STATE.houses.push({
+          name: name,
+          type: type,
+          active: active,
+          notes: notes,
+          lastModified: new Date().toISOString(),
+          _source: 'local'
+        });
+      } else {
+        // Update mode: find by originalName, mutate in place
+        const idx = STATE.houses.findIndex(h => 
+          String(h.name).trim().toLowerCase() === String(HOUSE_FORM_ORIGINAL || '').trim().toLowerCase()
+        );
+        if (idx !== -1) {
+          STATE.houses[idx] = {
+            name: name,
+            type: type,
+            active: active,
+            notes: notes,
+            lastModified: new Date().toISOString(),
+            _source: 'local'
+          };
+        }
+      }
+      await storageSet(K_HOUSES, STATE.houses);
+      renderHousesAdmin();
+      closeHouseForm();
+      showToast(HOUSE_FORM_MODE === 'add' ? `🏠 Added "${name}"` : `🏠 Updated "${name}"`, 3500);
+    } else if (json && json.duplicate) {
+      showHouseFormFeedback(json.summary || 'A house with that name already exists.', false);
+    } else if (json && json.writesLocked) {
+      showHouseFormFeedback('Writes locked — open the gate first.', false);
+    } else {
+      showHouseFormFeedback((json && json.reason) || 'Save failed.', false);
+    }
+  } catch (e) {
+    showHouseFormFeedback('Network error · please retry.', false);
+    console.error('[house-form] submit error', e);
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+  }
+}
+
+function wireHousesAdmin() {
+  const addBtn = document.getElementById('houses-add-btn');
+  const cancelBtn = document.getElementById('hf-cancel-btn');
+  const submitBtn = document.getElementById('hf-submit-btn');
+
+  if (addBtn && !addBtn.dataset.wired) {
+    addBtn.dataset.wired = '1';
+    addBtn.addEventListener('click', () => openHouseForm('add'));
+  }
+  if (cancelBtn && !cancelBtn.dataset.wired) {
+    cancelBtn.dataset.wired = '1';
+    cancelBtn.addEventListener('click', closeHouseForm);
+  }
+  if (submitBtn && !submitBtn.dataset.wired) {
+    submitBtn.dataset.wired = '1';
+    submitBtn.addEventListener('click', submitHouseForm);
   }
 }
 
@@ -4750,6 +5043,11 @@ function eggCollectionKey(r) {
   return `${r.date}|${Number(r.normal || 0)}|${Number(r.small_abnormal || 0)}|${Number(r.broken || 0)}`;
 }
 
+/* v6.0 SHIP 3 — Houses cloud key (Name is unique, case-insensitive). */
+function houseKey(r) {
+  return String(r.name || '').trim().toLowerCase();
+}
+
 function mergeByKey(local, cloud, keyFn, mapCloud) {
   // Build a set of local keys
   const localKeys = new Set(local.map(keyFn));
@@ -4858,6 +5156,18 @@ function cloudToLocalEggCollection(r) {
   };
 }
 
+/* v6.0 SHIP 3 — Cloud-to-local mapper for houses. */
+function cloudToLocalHouse(r) {
+  return {
+    name: String(r.name || '').trim(),
+    type: String(r.type || 'layer-boxes').trim(),
+    active: !!r.active,
+    notes: String(r.notes || ''),
+    lastModified: r.lastModified || '',
+    _source: 'cloud'
+  };
+}
+
 async function applyCloudResponse(data) {
   if (!data) return;
   if (Array.isArray(data.pluckers)) {
@@ -4884,6 +5194,11 @@ async function applyCloudResponse(data) {
   if (Array.isArray(data.eggCollection)) {
     STATE.eggCollection = mergeByKey(STATE.eggCollection || [], data.eggCollection, eggCollectionKey, cloudToLocalEggCollection);
     await storageSet(K_EGG_COLLECTION, STATE.eggCollection);
+  }
+  /* v6.0 SHIP 3 — Houses sync (cloud-replace-local; config, not transactions) */
+  if (Array.isArray(data.houses)) {
+    STATE.houses = data.houses.map(cloudToLocalHouse);
+    await storageSet(K_HOUSES, STATE.houses);
   }
   if (Array.isArray(data.roster)) {
     // Roster merge — cloud is authoritative for IDs that appear in cloud,
@@ -7548,6 +7863,8 @@ function showUpdateBanner() {
   STATE.poultry = await storageGet(K_POULTRY, []);
   // v6.0 SHIP 1 — Egg Collection state
   STATE.eggCollection = await storageGet(K_EGG_COLLECTION, []);
+  // v6.0 SHIP 3 — Houses config
+  STATE.houses = await storageGet(K_HOUSES, []);
 
   // v5.0.19 — Load admin mode flag IMMEDIATELY so applyAdminVisibility can
   // hide admin chrome before any operator sees it. Default false (operator).
@@ -7559,6 +7876,7 @@ function showUpdateBanner() {
   wireAuthModal();         // Passphrase modal (View only / Open writes)
   wireRevokeModal();       // Revoke confirmation modal
   wireLockModal();         // v5.3.1 — Lock & exit admin modal
+  wireHousesAdmin();       // v6.0 SHIP 3 — Houses admin form
 
   /* v5.0.15 — ROLLBACK of v5.0.14 client-side cleanup migration. The cleanup
      was too aggressive and may have removed legitimate Actuals (Sang'alo 195.7,
