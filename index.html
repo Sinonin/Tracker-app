@@ -1818,7 +1818,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.4.0</span>
+  <span class="version-label" id="version-label">v5.4.1</span>
 </header>
 
 <main>
@@ -2418,7 +2418,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.4.0</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.4.1</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2732,7 +2732,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.4.0';
+const APP_VERSION = 'v5.4.1';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -3296,44 +3296,52 @@ function wireLockIconAuth() {
     const state = lockBtn.dataset.lockState || 'locked';
 
     if (state === 'admin' || state === 'open') {
-      // v5.3.2 — Gesture model when authenticated (admin/open state):
-      //   Single-tap → opens Settings tab (after 700ms wait to detect double/triple)
-      //   Double-tap → opens lock confirmation modal (intentional, low-friction exit)
-      //   Triple-tap → no-op (safety — cancels any pending action; user clearly didn't mean either)
+      // v5.4.1 — Gesture model when authenticated (admin/open state):
+      //   Single-tap → opens Settings (INSTANT, no delay) — let the click bubble normally
+      //   Double-tap → intercept, open lock confirmation modal
+      //   Triple-tap → intercept, no-op (safety)
       //
-      // Why double-tap for lock (not triple)? Cheison's reasoning:
-      //   "Single-tap can be accidental. Double-tap requires intent.
-      //    Triple-tap is overkill for leaving — locking is recoverable
-      //    (just re-authenticate). Letting someone in by accident is not."
+      // CRITICAL FIX from v5.3.2/v5.4.0:
+      //   Previous version called settingsBtn.click() programmatically inside
+      //   the 700ms timer. But the lock-icon button IS the same element as the
+      //   Settings nav button (#nav-settings has data-view="settings"). The
+      //   programmatic click() re-triggered this same capture-phase handler,
+      //   creating an infinite loop where Settings never actually opened.
       //
-      // Trade-off: single-tap to Settings now has a 700ms delay (vs instant before).
-      // Acceptable cost for the safety gain.
-      ev.stopPropagation();
-      ev.preventDefault();
-
+      // FIX: Single-tap doesn't intercept at all — let the natural click event
+      // bubble through to the existing nav routing. No timer, no programmatic
+      // click(), no loop. Only 2nd and 3rd taps need our intervention.
       tapCount++;
       if (tapTimer) clearTimeout(tapTimer);
 
-      if (tapCount >= 3) {
-        // Triple-tap = safety no-op. Cancel any pending action.
-        tapCount = 0;
-        console.log('[lock-auth] triple-tap on padlock (admin state) — no-op safety cancel');
-      } else {
-        // 1 or 2 taps so far. Wait 700ms to see what user actually meant.
-        tapTimer = setTimeout(() => {
-          if (tapCount === 1) {
-            // Single-tap → navigate to Settings
-            console.log('[lock-auth] single-tap on padlock (admin state) — opening Settings');
-            const settingsBtn = document.querySelector('[data-view="settings"]');
-            if (settingsBtn) settingsBtn.click();
-          } else if (tapCount === 2) {
-            // Double-tap → open lock confirmation modal
-            console.log('[lock-auth] double-tap on padlock (admin state) — opening lock modal');
-            openLockModal();
-          }
-          tapCount = 0;
-        }, 700);
+      if (tapCount === 1) {
+        // First tap: don't intercept. Let nav routing open Settings normally.
+        // We just arm a timer to detect if a 2nd tap is coming.
+        tapTimer = setTimeout(() => { tapCount = 0; }, 700);
+        return; // bubble — Settings opens via existing nav handler
       }
+
+      // 2nd or 3rd tap: NOW we intercept (Settings is already opening / open)
+      ev.stopPropagation();
+      ev.preventDefault();
+
+      if (tapCount >= 3) {
+        // Triple-tap = safety no-op. Cancel any pending double-tap action.
+        tapCount = 0;
+        if (tapTimer) clearTimeout(tapTimer);
+        console.log('[lock-auth] triple-tap on padlock (admin state) — no-op safety cancel');
+        return;
+      }
+
+      // tapCount === 2: schedule the lock modal after 700ms wait
+      // (so a 3rd tap can still cancel it)
+      tapTimer = setTimeout(() => {
+        if (tapCount === 2) {
+          console.log('[lock-auth] double-tap on padlock (admin state) — opening lock modal');
+          openLockModal();
+        }
+        tapCount = 0;
+      }, 700);
       return;
     }
 
