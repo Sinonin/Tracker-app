@@ -830,60 +830,9 @@
   /* v5.0.16 — Gate-open persistent banner. Shown at top of every screen when
      the writes-gate is OPEN, reminding Cheison the gate is live and giving
      one-tap revoke. Disappears automatically when gate closes (cloud or local). */
-  #gate-banner {
-    position: fixed;
-    top: 0;
-    left: 0; right: 0;
-    background: linear-gradient(90deg, #1f5c3d 0%, #2d7a52 100%);
-    color: var(--ivory);
-    padding: 0.55rem 1rem;
-    display: none;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.8rem;
-    z-index: 9999;
-    cursor: pointer;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.72rem;
-    letter-spacing: 0.1em;
-    -webkit-tap-highlight-color: transparent;
-    border-bottom: 2px solid #1a4a32;
-  }
-  #gate-banner.show { display: flex; }
-  #gate-banner .gate-banner-text {
-    color: #d4f1de;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  #gate-banner .gate-banner-action {
-    background: rgba(255,255,255,0.15);
-    color: #fff;
-    border: 1px solid rgba(255,255,255,0.4);
-    padding: 0.35rem 0.75rem;
-    border-radius: 3px;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    font-weight: 500;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-  #gate-banner .gate-banner-action:active {
-    background: rgba(255,255,255,0.3);
-  }
-  /* When gate banner is shown, push everything down so it doesn't cover content */
-  body.has-gate-banner {
-    padding-top: 2.4rem;
-  }
-  body.has-gate-banner #update-banner.show {
-    top: 2.4rem;
-  }
+  /* v5.3.2 — Gate banner CSS removed.
+     Banner deleted ("too loud, eats headspace"). Padlock color is the
+     gate state indicator now. */
 
   .hero {
     background: linear-gradient(135deg, var(--forest-dark), var(--forest) 55%, var(--forest-mid));
@@ -1855,12 +1804,12 @@
 </head>
 <body>
 
-<!-- v5.0.16 — Gate-open persistent banner. Hidden by default; shown when
-     the admin gate is open. Tap to revoke. -->
-<div id="gate-banner">
-  <span class="gate-banner-text" id="gate-banner-text">🟢 Gate OPEN</span>
-  <button type="button" class="gate-banner-action" id="gate-banner-action">Revoke</button>
-</div>
+<!-- v5.3.2 — Gate-open banner removed (Cheison: "too loud, eats headspace").
+     The bottom-nav padlock IS the gate state indicator now:
+       🔴 amber/copper = locked (operator)
+       ⚙️ gear         = admin authenticated, gate closed
+       🔓 green        = admin + gate OPEN
+     All gate controls now live in Settings → Admin section. -->
 
 <header class="brand">
   <h1>Sinonin Group Management App</h1>
@@ -1869,7 +1818,7 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.3.1</span>
+  <span class="version-label" id="version-label">v5.3.2</span>
 </header>
 
 <main>
@@ -2427,7 +2376,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.3.1</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.3.2</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2740,7 +2689,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.3.1';
+const APP_VERSION = 'v5.3.2';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -3119,7 +3068,7 @@ function applyAdminVisibility() {
   //   - open    → Cheison authenticated AND writes enabled; green padlock
   const settingsNavBtn = document.getElementById('nav-settings');
   const adminSection = document.getElementById('settings-admin-section');
-  const gateBanner = document.getElementById('gate-banner');
+  // v5.3.2 — gate banner removed; padlock color is the indicator now
 
   if (IS_ADMIN) {
     if (settingsNavBtn) {
@@ -3150,10 +3099,7 @@ function applyAdminVisibility() {
       settingsNavBtn.setAttribute('aria-label', 'Settings (locked)');
     }
     if (adminSection) adminSection.style.display = 'none';
-    if (gateBanner) {
-      gateBanner.classList.remove('show');
-      document.body.classList.remove('has-gate-banner');
-    }
+    // v5.3.2 — gate banner deleted; nothing to hide here.
     // If operator was on Settings tab when downgraded, send them home
     if (STATE.view === 'settings') {
       const homeBtn = document.querySelector('[data-view="home"]');
@@ -3300,23 +3246,43 @@ function wireLockIconAuth() {
     const state = lockBtn.dataset.lockState || 'locked';
 
     if (state === 'admin' || state === 'open') {
-      // v5.3.1 — Symmetric gesture: triple-tap to lock (mirror of triple-tap-to-unlock).
-      // Single tap on padlock = open Settings tab (existing nav behavior).
-      // Triple tap on padlock = open lock confirmation modal.
-      // We need to detect triple-tap here and intercept BEFORE Settings opens.
+      // v5.3.2 — Gesture model when authenticated (admin/open state):
+      //   Single-tap → opens Settings tab (after 700ms wait to detect double/triple)
+      //   Double-tap → opens lock confirmation modal (intentional, low-friction exit)
+      //   Triple-tap → no-op (safety — cancels any pending action; user clearly didn't mean either)
+      //
+      // Why double-tap for lock (not triple)? Cheison's reasoning:
+      //   "Single-tap can be accidental. Double-tap requires intent.
+      //    Triple-tap is overkill for leaving — locking is recoverable
+      //    (just re-authenticate). Letting someone in by accident is not."
+      //
+      // Trade-off: single-tap to Settings now has a 700ms delay (vs instant before).
+      // Acceptable cost for the safety gain.
+      ev.stopPropagation();
+      ev.preventDefault();
+
       tapCount++;
       if (tapTimer) clearTimeout(tapTimer);
 
       if (tapCount >= 3) {
-        // Triple-tap detected: intercept, prevent Settings nav, open lock modal
+        // Triple-tap = safety no-op. Cancel any pending action.
         tapCount = 0;
-        ev.stopPropagation();
-        ev.preventDefault();
-        console.log('[lock-auth] triple-tap on padlock (admin state) — opening lock modal');
-        openLockModal();
+        console.log('[lock-auth] triple-tap on padlock (admin state) — no-op safety cancel');
       } else {
-        // 1 or 2 taps so far — let nav proceed (Settings opens). Reset counter on timeout.
-        tapTimer = setTimeout(() => { tapCount = 0; }, 700);
+        // 1 or 2 taps so far. Wait 700ms to see what user actually meant.
+        tapTimer = setTimeout(() => {
+          if (tapCount === 1) {
+            // Single-tap → navigate to Settings
+            console.log('[lock-auth] single-tap on padlock (admin state) — opening Settings');
+            const settingsBtn = document.querySelector('[data-view="settings"]');
+            if (settingsBtn) settingsBtn.click();
+          } else if (tapCount === 2) {
+            // Double-tap → open lock confirmation modal
+            console.log('[lock-auth] double-tap on padlock (admin state) — opening lock modal');
+            openLockModal();
+          }
+          tapCount = 0;
+        }, 700);
       }
       return;
     }
@@ -3854,32 +3820,11 @@ function formatExpiryShort(iso) {
 }
 
 function renderGateBanner() {
-  const banner = document.getElementById('gate-banner');
-  const text   = document.getElementById('gate-banner-text');
-  if (!banner || !text) return;
-  // v5.0.19 — Operators never see the gate banner. They get writes-locked toasts
-  // when the gate closes, which is enough operational signal. The banner is for
-  // the admin who needs the visible reminder + one-tap revoke.
-  if (!IS_ADMIN) {
-    banner.classList.remove('show');
-    document.body.classList.remove('has-gate-banner');
-    return;
-  }
-  if (ADMIN_STATE.writesEnabled) {
-    let label = '🟢 Gate OPEN';
-    if (ADMIN_STATE.expiresAt) {
-      const exp = formatExpiryShort(ADMIN_STATE.expiresAt);
-      if (exp) label += ` until ${exp}`;
-    } else if (ADMIN_STATE.windowLabel === 'Indefinite') {
-      label += ' · indefinite';
-    }
-    text.textContent = label;
-    banner.classList.add('show');
-    document.body.classList.add('has-gate-banner');
-  } else {
-    banner.classList.remove('show');
-    document.body.classList.remove('has-gate-banner');
-  }
+  // v5.3.2 — Gate banner deleted (Cheison: "too loud, eats headspace").
+  // Function kept as defensive no-op to avoid breaking existing call sites.
+  // Gate state visualization now lives in the bottom-nav padlock color:
+  //   🔴 amber = locked   ⚙️ gear = admin (gate closed)   🔓 green = gate OPEN
+  return;
 }
 
 function renderAdminSection() {
@@ -4075,24 +4020,8 @@ function wireAdminUI() {
     };
   }
 
-  // Banner tap → focus passphrase + scroll Settings into view (one-tap revoke flow)
-  const bannerAction = document.getElementById('gate-banner-action');
-  if (bannerAction && bannerAction.dataset.wired !== '1') {
-    bannerAction.dataset.wired = '1';
-    bannerAction.addEventListener('click', (e) => {
-      e.stopPropagation();
-      // Navigate to Settings tab
-      const settingsTab = document.querySelector('[data-tab="settings"]');
-      if (settingsTab) settingsTab.click();
-      setTimeout(() => {
-        const passInput = document.getElementById('admin-passphrase');
-        if (passInput) {
-          passInput.focus();
-          passInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 100);
-    });
-  }
+  // v5.3.2 — Banner tap-to-revoke flow removed. Banner is gone; revoke 
+  // happens via Settings → Admin → "Close gate now" button.
 }
 
 async function pushGreenleafToGate(entry) {
