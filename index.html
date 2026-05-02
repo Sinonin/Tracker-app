@@ -1079,6 +1079,14 @@
   .biz-card .lbl { font-family: 'IBM Plex Mono', monospace; font-size: 0.57rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--slate); }
   .biz-card .val { font-family: 'Fraunces', serif; font-weight: 500; font-size: 1.15rem; color: var(--forest); margin-top: 0.18rem; letter-spacing: -0.01em; line-height: 1.15; }
   .biz-card .sub { font-family: 'Fraunces', serif; font-size: 0.78rem; color: var(--slate-light); margin-top: 0.22rem; font-style: italic; }
+  /* v5.8.6 — Aggregate variant: brass-tinted background + brass left accent.
+     Used for MTD/YTD all-factory totals to differentiate from month-only cards. */
+  .biz-card.biz-card-aggregate {
+    background: rgba(184, 147, 90, 0.08);
+    border-left: 2px solid var(--brass);
+  }
+  .biz-card.biz-card-aggregate .lbl { color: var(--brass); }
+  .biz-card.biz-card-aggregate .val { color: var(--ink); }
 
   /* Year-over-year comparison */
   .yoy-grid {
@@ -1955,7 +1963,7 @@
       <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"></path>
     </svg>
   </button>
-  <span class="version-label" id="version-label">v5.8.5</span>
+  <span class="version-label" id="version-label">v5.8.6</span>
 </header>
 
 <main>
@@ -1996,10 +2004,11 @@
         <div class="biz-card"><div class="lbl">Sireet equity built</div><div class="val" id="tea-shares-month">Ksh 0</div><div class="sub">5 KES/kg accrued</div></div>
       </div>
       <!-- v5.8.4 — All-factory totals row: kg & income aggregated across factories.
-           Per Cheison: "Call from Actuals totals MTD and YTD." -->
+           Per Cheison: "Call from Actuals totals MTD and YTD."
+           v5.8.6 — Brass-tinted styling to differentiate from month-only cards. -->
       <div class="biz-grid" style="margin-top:0.7rem">
-        <div class="biz-card"><div class="lbl">📊 MTD all factories</div><div class="val" id="tea-mtd-all-kg">0</div><div class="sub" id="tea-mtd-all-sub">Ksh 0 expected</div></div>
-        <div class="biz-card"><div class="lbl">📅 YTD all factories</div><div class="val" id="tea-ytd-all-kg">0</div><div class="sub" id="tea-ytd-all-sub">Ksh 0 expected</div></div>
+        <div class="biz-card biz-card-aggregate"><div class="lbl">📊 MTD all factories</div><div class="val" id="tea-mtd-all-kg">0</div><div class="sub" id="tea-mtd-all-sub">Ksh 0 expected</div></div>
+        <div class="biz-card biz-card-aggregate"><div class="lbl">📅 YTD all factories</div><div class="val" id="tea-ytd-all-kg">0</div><div class="sub" id="tea-ytd-all-sub">Ksh 0 expected</div></div>
       </div>
     </div>
 
@@ -2510,6 +2519,26 @@
       </details>
     </div>
 
+    <!-- v5.8.6 — Incubation progress on Insights tab.
+         Mirrors the same renderIncubationProgress function used on Add → Poultry,
+         but with a different container ID (insights-incubation-list).
+         Operator workflow: Add tab is for ENTRY, Insights for VIEWING. -->
+    <div class="section" id="insights-incubation-section">
+      <div class="section-head"><h3>🐣 Incubation progress</h3><span class="meta" id="insights-ip-meta">—</span></div>
+      <div id="insights-incubation-list">
+        <div style="text-align:center;padding:1.2rem 0.6rem;color:var(--slate);font-family:'Fraunces',serif;font-style:italic;font-size:0.88rem;opacity:0.75">No batches incubating yet</div>
+      </div>
+    </div>
+
+    <!-- v5.8.6 — Batch history: ALL batches (incubating + hatched).
+         Sorted newest-first by date_set. Status badges + hatch rate when known. -->
+    <div class="section" id="insights-batches-section">
+      <div class="section-head"><h3>📜 Batch history</h3><span class="meta" id="insights-batches-meta">—</span></div>
+      <div id="insights-batches-list">
+        <div style="text-align:center;padding:1.2rem 0.6rem;color:var(--slate);font-family:'Fraunces',serif;font-style:italic;font-size:0.88rem;opacity:0.75">No batches recorded yet</div>
+      </div>
+    </div>
+
     <div class="section">
       <div class="section-head"><h3>Expenses by category</h3><span class="meta" id="insights-exp-total">Ksh 0</span></div>
       <table class="mini-table" id="tbl-expenses"></table>
@@ -2764,7 +2793,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.8.5</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.8.6</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3080,7 +3109,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.8.5';
+const APP_VERSION = 'v5.8.6';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -7522,14 +7551,23 @@ async function submitIncubationHatch() {
    Sort: longest-running batches first (closest to hatch at top).
 */
 function renderIncubationProgress() {
-  const list = document.getElementById('incubation-progress-list');
-  const meta = document.getElementById('ip-meta');
-  if (!list) return;
+  // v5.8.6 — Now paints into TWO containers:
+  //   · Add → Poultry → Incubation: #incubation-progress-list (entry view)
+  //   · Insights tab: #insights-incubation-list (overview view)
+  // Same logic, computed once.
+  const addList = document.getElementById('incubation-progress-list');
+  const addMeta = document.getElementById('ip-meta');
+  const insList = document.getElementById('insights-incubation-list');
+  const insMeta = document.getElementById('insights-ip-meta');
+  if (!addList && !insList) return;
 
   const incubating = (STATE.incubation || []).filter(b => b.status === 'incubating');
   if (incubating.length === 0) {
-    list.innerHTML = `<div style="text-align:center;padding:1.2rem 0.6rem;color:var(--slate);font-family:'Fraunces',serif;font-style:italic;font-size:0.88rem;opacity:0.75">No batches incubating yet</div>`;
-    if (meta) meta.textContent = '—';
+    const emptyHtml = `<div style="text-align:center;padding:1.2rem 0.6rem;color:var(--slate);font-family:'Fraunces',serif;font-style:italic;font-size:0.88rem;opacity:0.75">No batches incubating yet</div>`;
+    if (addList) addList.innerHTML = emptyHtml;
+    if (insList) insList.innerHTML = emptyHtml;
+    if (addMeta) addMeta.textContent = '—';
+    if (insMeta) insMeta.textContent = '—';
     return;
   }
 
@@ -7537,14 +7575,14 @@ function renderIncubationProgress() {
   incubating.sort((a, b) => String(a.date_set).localeCompare(String(b.date_set)));
 
   const today = new Date();
-  today.setHours(0, 0, 0, 0); // strip time for clean day math
+  today.setHours(0, 0, 0, 0);
 
-  if (meta) {
-    const totalEggs = incubating.reduce((s, b) => s + (Number(b.eggs_in) || 0), 0);
-    meta.textContent = `${incubating.length} batch${incubating.length === 1 ? '' : 'es'} · ${totalEggs.toLocaleString('en-KE')} eggs`;
-  }
+  const totalEggs = incubating.reduce((s, b) => s + (Number(b.eggs_in) || 0), 0);
+  const metaText = `${incubating.length} batch${incubating.length === 1 ? '' : 'es'} · ${totalEggs.toLocaleString('en-KE')} eggs`;
+  if (addMeta) addMeta.textContent = metaText;
+  if (insMeta) insMeta.textContent = metaText;
 
-  list.innerHTML = incubating.map(b => {
+  const cardsHtml = incubating.map(b => {
     const dateSet = b.date_set ? new Date(b.date_set) : null;
     if (!dateSet || isNaN(dateSet.getTime())) {
       return `<div class="ip-card"><div class="ip-head"><span class="ip-batch-id">${b.batch_id}</span><span class="ip-meta">no date_set</span></div></div>`;
@@ -7553,7 +7591,7 @@ function renderIncubationProgress() {
     const daysElapsed = Math.floor((today - dateSet) / (1000 * 60 * 60 * 24));
 
     const expHatch = b.expected_hatch ? new Date(b.expected_hatch) : null;
-    let daysTotal = 21; // default chicken incubation
+    let daysTotal = 21;
     if (expHatch && !isNaN(expHatch.getTime())) {
       expHatch.setHours(0, 0, 0, 0);
       daysTotal = Math.max(1, Math.floor((expHatch - dateSet) / (1000 * 60 * 60 * 24)));
@@ -7561,7 +7599,6 @@ function renderIncubationProgress() {
 
     const progressPct = Math.min(100, Math.max(0, (daysElapsed / daysTotal) * 100));
 
-    // Phase coloring
     let phase, footText, footClass = '';
     if (daysElapsed < 16) {
       phase = 'phase-early';
@@ -7591,6 +7628,71 @@ function renderIncubationProgress() {
           <div class="ip-bar-fill ${phase}" style="width:${progressPct.toFixed(1)}%"></div>
         </div>
         <div class="ip-foot ${footClass}">${footText}</div>
+      </div>
+    `;
+  }).join('');
+
+  if (addList) addList.innerHTML = cardsHtml;
+  if (insList) insList.innerHTML = cardsHtml;
+}
+
+/* v5.8.6 — Batch history on Insights.
+   Shows ALL batches (incubating + hatched), newest-first by date_set.
+   For 'incubating': live progress bar (same as Insights incubation section above).
+   For 'hatched': hatch rate %, dates, status badge.
+*/
+function renderBatchHistory() {
+  const list = document.getElementById('insights-batches-list');
+  const meta = document.getElementById('insights-batches-meta');
+  if (!list) return;
+
+  const all = STATE.incubation || [];
+  if (all.length === 0) {
+    list.innerHTML = `<div style="text-align:center;padding:1.2rem 0.6rem;color:var(--slate);font-family:'Fraunces',serif;font-style:italic;font-size:0.88rem;opacity:0.75">No batches recorded yet</div>`;
+    if (meta) meta.textContent = '—';
+    return;
+  }
+
+  const sorted = [...all].sort((a, b) => String(b.date_set || '').localeCompare(String(a.date_set || '')));
+  const incCount = sorted.filter(b => b.status === 'incubating').length;
+  const hatchedCount = sorted.filter(b => b.status === 'hatched').length;
+  if (meta) {
+    meta.textContent = `${sorted.length} total · ${incCount} incubating · ${hatchedCount} hatched`;
+  }
+
+  list.innerHTML = sorted.map(b => {
+    const isHatched = b.status === 'hatched';
+    const eggsIn = Number(b.eggs_in) || 0;
+    const hatched = Number(b.hatched_count) || 0;
+    const failed = Number(b.failed_count) || 0;
+    const rate = eggsIn > 0 ? ((hatched / eggsIn) * 100) : 0;
+
+    let statusBadge, statusColor;
+    if (isHatched) {
+      if (rate >= 80) { statusBadge = '✅ Hatched'; statusColor = 'var(--forest)'; }
+      else if (rate >= 60) { statusBadge = '🟡 Hatched'; statusColor = 'var(--brass)'; }
+      else { statusBadge = '⚠️ Hatched (low rate)'; statusColor = '#b8453a'; }
+    } else {
+      statusBadge = '🐣 Incubating';
+      statusColor = 'var(--brass)';
+    }
+
+    const detailLine = isHatched
+      ? `${hatched.toLocaleString('en-KE')}/${eggsIn.toLocaleString('en-KE')} hatched · <strong>${rate.toFixed(1)}%</strong> · ${failed} failed`
+      : `${eggsIn.toLocaleString('en-KE')} eggs · expected ${b.expected_hatch || '—'}`;
+
+    const dateLine = isHatched
+      ? `Set ${b.date_set} · Hatched ${b.date_hatched}`
+      : `Set ${b.date_set}`;
+
+    return `
+      <div class="bh-card" style="background:rgba(184,147,90,0.04);border:1px solid rgba(184,147,90,0.18);border-radius:6px;padding:0.7rem 0.85rem;margin-bottom:0.6rem;border-left:3px solid ${statusColor}">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.3rem">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:0.82rem;font-weight:600;color:var(--brass);letter-spacing:0.04em">${b.batch_id}</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:${statusColor};letter-spacing:0.06em;text-transform:uppercase">${statusBadge}</span>
+        </div>
+        <div style="font-family:'Fraunces',serif;font-size:0.88rem;color:var(--ink);margin-bottom:0.25rem">${detailLine}</div>
+        <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.78rem;color:var(--slate)">${dateLine}${b.notes ? ' · ' + b.notes : ''}</div>
       </div>
     `;
   }).join('');
@@ -8687,6 +8789,10 @@ function renderInsights() {
 
   // v6.0 SHIP 5 — Kipkenda Poultry insights LITE
   if (typeof renderPoultryInsights === 'function') renderPoultryInsights();
+
+  // v5.8.6 — Incubation progress + Batch history on Insights tab
+  if (typeof renderIncubationProgress === 'function') renderIncubationProgress();
+  if (typeof renderBatchHistory === 'function') renderBatchHistory();
 }
 
 /* v6.0 SHIP 5 — Insights LITE: 3 sparkline charts for Kipkenda Poultry.
