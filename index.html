@@ -140,6 +140,17 @@
     box-shadow: 0 2px 12px rgba(0,0,0,0.35), 0 0 0 3px var(--brass);
     transition: box-shadow 0.4s ease, transform 0.4s ease;
   }
+  /* v5.8.4 — Sinonin logo spins during cloud refresh.
+     Triggered by header refresh button. Brand-perfect: the data IS Sinonin
+     thinking. Subtle rotation, brass ring brightens during spin. */
+  header.brand .brand-logo.spinning {
+    animation: brand-spin 1.2s linear infinite;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 0 2px var(--brass);
+  }
+  @keyframes brand-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
   body.stealth-mode header.brand .brand-logo {
     box-shadow: 0 2px 8px rgba(0,0,0,0.25), 0 0 0 2px var(--brass);
   }
@@ -1944,7 +1955,7 @@
       <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"></path>
     </svg>
   </button>
-  <span class="version-label" id="version-label">v5.8.3</span>
+  <span class="version-label" id="version-label">v5.8.4</span>
 </header>
 
 <main>
@@ -1983,6 +1994,12 @@
         <div class="biz-card"><div class="lbl">Expected income</div><div class="val" id="tea-expected-month">Ksh 0</div><div class="sub">net after transport &amp; equity</div></div>
         <div class="biz-card"><div class="lbl">Tea expenses</div><div class="val" id="tea-expenses-month">Ksh 0</div><div class="sub" id="tea-expenses-sub">tea blocks &amp; tea ops</div></div>
         <div class="biz-card"><div class="lbl">Sireet equity built</div><div class="val" id="tea-shares-month">Ksh 0</div><div class="sub">5 KES/kg accrued</div></div>
+      </div>
+      <!-- v5.8.4 — All-factory totals row: kg & income aggregated across factories.
+           Per Cheison: "Call from Actuals totals MTD and YTD." -->
+      <div class="biz-grid" style="margin-top:0.7rem">
+        <div class="biz-card"><div class="lbl">📊 MTD all factories</div><div class="val" id="tea-mtd-all-kg">0</div><div class="sub" id="tea-mtd-all-sub">Ksh 0 expected</div></div>
+        <div class="biz-card"><div class="lbl">📅 YTD all factories</div><div class="val" id="tea-ytd-all-kg">0</div><div class="sub" id="tea-ytd-all-sub">Ksh 0 expected</div></div>
       </div>
     </div>
 
@@ -2732,7 +2749,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.8.3</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.8.4</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3048,7 +3065,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.8.3';
+const APP_VERSION = 'v5.8.4';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -7612,6 +7629,23 @@ function renderHome() {
   document.getElementById('tea-expenses-month').textContent = 'Ksh ' + moneyRound(teaExpensesMonth);
   document.getElementById('tea-shares-month').textContent = 'Ksh ' + moneyRound(teaShareMonth);
 
+  // v5.8.4 — MTD / YTD all-factory totals (per Cheison: "Call from Actuals")
+  // MTD already computed above (teaKgMonth, teaExpectedMonth) — just display it
+  // YTD = current calendar year, ALL factories
+  const yyyy = new Date().toISOString().slice(0, 4);
+  const actualsYear = STATE.actuals.filter(a => (a.date || '').startsWith(yyyy));
+  const ytdKg = actualsYear.reduce((s, a) => s + (Number(a.kg) || 0), 0);
+  const ytdExpected = actualsYear.reduce((s, a) => s + (Number(a.kg) || 0) * netPerKg(a.factory, a.date), 0);
+
+  const mtdAllKgEl = document.getElementById('tea-mtd-all-kg');
+  const mtdAllSubEl = document.getElementById('tea-mtd-all-sub');
+  const ytdAllKgEl = document.getElementById('tea-ytd-all-kg');
+  const ytdAllSubEl = document.getElementById('tea-ytd-all-sub');
+  if (mtdAllKgEl) mtdAllKgEl.innerHTML = kg(teaKgMonth) + '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:0.7rem;color:var(--slate-light);margin-left:0.25rem;">kg</span>';
+  if (mtdAllSubEl) mtdAllSubEl.textContent = 'Ksh ' + moneyRound(teaExpectedMonth) + ' expected';
+  if (ytdAllKgEl) ytdAllKgEl.innerHTML = kg(ytdKg) + '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:0.7rem;color:var(--slate-light);margin-left:0.25rem;">kg</span>';
+  if (ytdAllSubEl) ytdAllSubEl.textContent = 'Ksh ' + moneyRound(ytdExpected) + ' expected';
+
   // Zone 2b — Kipkenda Poultry this month
   const eggsRows = poultryMonth.filter(p => p.product === 'Eggs');
   const birdRows = poultryMonth.filter(p => p.product === 'Chicks' || p.product === 'Chicken');
@@ -8443,7 +8477,20 @@ function renderInsights() {
     byBlock[bucket].cashNow += cash;
   });
 
-  // Expenses: block-specific to that block, "Whole farm" distributed by Actuals-kg share
+  // v5.8.4 — Whole-farm allocation REMOVED per Cheison's decision (Q2 = B-strict).
+  // 
+  // Background: Insights previously distributed "Whole farm" expenses across 
+  // blocks proportionally by kg revenue. This made Sangalo (a leased farm) 
+  // appear to cost ~Ksh 860k when the sheet filter showed only ~Ksh 506k.
+  // The allocation was sound accounting in theory but conflated leased farm 
+  // economics with shared overhead.
+  //
+  // New behavior: each block shows ONLY its directly-tagged expenses.
+  // "Whole farm" expenses appear under their own bucket (no allocation).
+  // This matches sheet filters exactly — no surprise inflation.
+  //
+  // Cheison's input-side fix: advise Victor to avoid "Whole farm" tagging
+  // and attribute every expense to its specific block from now on.
   let wholeFarmExp = 0;
   expenses.forEach(x => {
     if (x.block === 'Whole farm' || !byBlock[x.block]) {
@@ -8452,9 +8499,9 @@ function renderInsights() {
       byBlock[x.block].expenses += x.amount;
     }
   });
-  const totalKg = Object.values(byBlock).reduce((s, v) => s + v.kg, 0);
-  if (totalKg > 0 && wholeFarmExp > 0) {
-    Object.values(byBlock).forEach(v => { v.expenses += wholeFarmExp * (v.kg / totalKg); });
+  // Show Whole farm as its own bucket (not allocated)
+  if (wholeFarmExp > 0) {
+    byBlock['Whole farm'] = { kg: 0, cashNow: 0, expenses: wholeFarmExp };
   }
   Object.values(byBlock).forEach(v => { v.margin = v.cashNow - v.expenses; });
 
@@ -9591,6 +9638,9 @@ function showUpdateBanner() {
     headerRefreshBtn.addEventListener('click', async () => {
       if (headerRefreshBtn.classList.contains('spinning')) return; // already in flight
       headerRefreshBtn.classList.add('spinning');
+      // v5.8.4 — Spin the Sinonin logo too — brand-perfect: data IS Sinonin thinking
+      const brandLogo = document.getElementById('brand-logo');
+      if (brandLogo) brandLogo.classList.add('spinning');
       try {
         await runCloudSync({ full: true });
         showToast('🔄 Refreshed from cloud', 2500);
@@ -9599,7 +9649,10 @@ function showUpdateBanner() {
         console.error('[header-refresh] error:', e);
       } finally {
         // Keep spinning briefly for visual feedback even on fast networks
-        setTimeout(() => headerRefreshBtn.classList.remove('spinning'), 400);
+        setTimeout(() => {
+          headerRefreshBtn.classList.remove('spinning');
+          if (brandLogo) brandLogo.classList.remove('spinning');
+        }, 400);
       }
     });
   }
