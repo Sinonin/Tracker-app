@@ -1887,7 +1887,7 @@
       <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"></path>
     </svg>
   </button>
-  <span class="version-label" id="version-label">v5.8.0</span>
+  <span class="version-label" id="version-label">v5.8.1</span>
 </header>
 
 <main>
@@ -2284,15 +2284,14 @@
       </div>
 
       <!-- v5.8.0 — Collector dropdown: structured operator attribution.
-           Replaces free-text "Collected by Faith" pattern in Notes.
-           Names per Cheison: Hillary, Faith, FrankStanley, Elias, Victor, Other.
-           "Other" allows ad-hoc operators without forcing schema change. -->
+           v5.8.1 — Frank and Stanley confirmed as TWO different people. -->
       <div class="field" style="margin-top:0.7rem"><label>Collector</label>
         <select id="ec-collector">
           <option value="">— Select collector —</option>
           <option value="Hillary">Hillary</option>
           <option value="Faith">Faith</option>
-          <option value="FrankStanley">FrankStanley</option>
+          <option value="Frank">Frank</option>
+          <option value="Stanley">Stanley</option>
           <option value="Elias">Elias</option>
           <option value="Victor">Victor</option>
           <option value="Other">Other</option>
@@ -2476,6 +2475,40 @@
 
   <!-- SETTINGS -->
   <section class="panel" id="panel-settings">
+    <!-- v5.8.1 — Sync section moved to TOP per Cheison request:
+         "frequently used, place near top". -->
+    <div class="section">
+      <div class="section-head"><h3>Google Sheet sync</h3><span class="meta" id="sync-queue-meta">—</span></div>
+      <div class="setting-row">
+        <div>
+          <div class="k">Synced to Sheet</div>
+          <div class="desc" id="sync-synced-desc">All entries auto-push to your Drive ledger</div>
+        </div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.95rem;color:var(--forest);font-variant-numeric:tabular-nums;font-weight:500" id="sync-synced-count">0</div>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="k">Waiting to sync</div>
+          <div class="desc" id="sync-waiting-desc">Entries queued until signal returns</div>
+        </div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.95rem;color:var(--brass);font-variant-numeric:tabular-nums;font-weight:500" id="sync-waiting-count">0</div>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="k">Last sync</div>
+          <div class="desc" id="sync-last">Never</div>
+        </div>
+        <button id="btn-sync-now" class="export-btn">Sync now</button>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="k">Last cloud fetch</div>
+          <div class="desc" id="cloud-fetch-last">Never</div>
+        </div>
+        <button id="btn-cloud-resync" class="export-btn">Resync all</button>
+      </div>
+    </div>
+
     <div class="section" id="settings-admin-section">
       <div class="section-head"><h3>Admin</h3><span class="meta" id="admin-status-meta">checking…</span></div>
       <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:0.6rem">
@@ -2616,39 +2649,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>Google Sheet sync</h3><span class="meta" id="sync-queue-meta">—</span></div>
-      <div class="setting-row">
-        <div>
-          <div class="k">Synced to Sheet</div>
-          <div class="desc" id="sync-synced-desc">All entries auto-push to your Drive ledger</div>
-        </div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.95rem;color:var(--forest);font-variant-numeric:tabular-nums;font-weight:500" id="sync-synced-count">0</div>
-      </div>
-      <div class="setting-row">
-        <div>
-          <div class="k">Waiting to sync</div>
-          <div class="desc" id="sync-waiting-desc">Entries queued until signal returns</div>
-        </div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.95rem;color:var(--brass);font-variant-numeric:tabular-nums;font-weight:500" id="sync-waiting-count">0</div>
-      </div>
-      <div class="setting-row">
-        <div>
-          <div class="k">Last sync</div>
-          <div class="desc" id="sync-last">Never</div>
-        </div>
-        <button id="btn-sync-now" class="export-btn">Sync now</button>
-      </div>
-      <div class="setting-row">
-        <div>
-          <div class="k">Last cloud fetch</div>
-          <div class="desc" id="cloud-fetch-last">Never</div>
-        </div>
-        <button id="btn-cloud-resync" class="export-btn">Resync all</button>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.8.0</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.8.1</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2964,7 +2965,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.8.0';
+const APP_VERSION = 'v5.8.1';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -6652,6 +6653,7 @@ async function pushEggCollectionToGate(row) {
         ud_normal: Number(row.ud_normal || 0),
         ud_small:  Number(row.ud_small  || 0),
         ud_broken: Number(row.ud_broken || 0),
+        collector: row.collector || '',  // v5.8.1 — was missing in v5.8.0
         notes:     row.notes || ''
       },
       source: `PWA ${APP_VERSION} egg-collection`
@@ -7070,9 +7072,11 @@ function validateIncubationHatch() {
 }
 
 async function submitIncubationStart() {
-  // v5.8.0 — Silent-fail fix: every code path emits a toast.
-  // Yesterday's bug: submit "appeared silent" — likely button was disabled
-  // (validation gap) or an early-return path had no user feedback.
+  // v5.8.1 — DIAGNOSTIC: instrumented entry toast so silent-fails are visible.
+  // If you submit and DON'T see "[start] entered submit handler", the click
+  // handler isn't firing — possibly cache issue or button not wired.
+  console.log('[submitIncubationStart] entered');
+  showToast('🐣 [debug] Submit triggered — diagnosing…', 1500);
 
   const id = ((document.getElementById('ib-batch-id') || {}).value || '').trim();
   const ds = (document.getElementById('ib-date-set') || {}).value;
@@ -7080,6 +7084,8 @@ async function submitIncubationStart() {
   const src = ((document.getElementById('ib-source') || {}).value || '').trim();
   const eh = (document.getElementById('ib-expected-hatch') || {}).value;
   const notes = ((document.getElementById('ib-notes') || {}).value || '').trim();
+
+  console.log('[submitIncubationStart] values:', {id, ds, ei, src, eh, notes});
 
   // Explicit validation with specific feedback (NOT a generic "fill required")
   if (!id) { showToast('Missing: Batch ID', 3000); return; }
@@ -8579,7 +8585,11 @@ function renderSettings() {
   });
 
   document.getElementById('s-cess').value = STATE.settings.teaCessPerKg;
-  document.getElementById('s-transport').classList.toggle('on', STATE.settings.transportActive);
+  // v5.8.1 — s-transport element removed in v5.8.0 but this line was left,
+  // throwing TypeError which killed renderSettings before reaching
+  // renderPluckers (line 8611). That's why "Pluckers list gone" appeared.
+  const sTransport = document.getElementById('s-transport');
+  if (sTransport) sTransport.classList.toggle('on', STATE.settings.transportActive);
 
   const box = document.getElementById('factory-cards');
   box.innerHTML = STATE.factories.map((f, i) => `
