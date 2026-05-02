@@ -167,6 +167,41 @@
     opacity: 1;
     color: var(--brass);
   }
+  /* v5.8.0 — Refresh button: visible to ALL users (operator + admin).
+     Sits to the left of version-label. Triggers cloudSync.
+     Operator-friendly: Victor can refresh without accessing Settings. */
+  header.brand .header-refresh {
+    position: absolute;
+    bottom: 0.3rem;
+    right: 5.6rem;
+    background: transparent;
+    border: 1px solid var(--brass-light);
+    color: var(--brass-light);
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 4px;
+    cursor: pointer;
+    opacity: 0.7;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.15s ease, transform 0.6s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  header.brand .header-refresh:hover,
+  header.brand .header-refresh:active {
+    opacity: 1;
+    background: rgba(212, 165, 91, 0.15);
+  }
+  header.brand .header-refresh.spinning {
+    animation: hr-spin 0.8s linear infinite;
+    opacity: 1;
+  }
+  @keyframes hr-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
   /* Sync indicator — standalone in right column, sits between logo and version label.
      Was inline in the tagline before v4.2.1; moved out so the tagline (TEA · POULTRY ·
      DORPER · COFFEE · MAIZE) can breathe at full width. */
@@ -866,6 +901,31 @@
     margin-top: 0.25rem;
     color: var(--ivory);
     opacity: 0.88;
+  }
+  /* v5.8.0 — Empty-state hint: contextual messaging when no activity today.
+     Distinguishes "Labour Day, idle by design" from "data sync broken".
+     Honest UX: zero ≠ missing. */
+  .hero .empty-state-hint {
+    margin-top: 0.7rem;
+    padding: 0.55rem 0.85rem;
+    background: rgba(107, 158, 91, 0.12);
+    border: 1px solid rgba(107, 158, 91, 0.3);
+    border-radius: 6px;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 0.9rem;
+    color: var(--ivory);
+    opacity: 0.85;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .hero .empty-state-hint .esh-icon {
+    font-size: 1.1rem;
+    opacity: 0.8;
+  }
+  .hero .empty-state-hint .esh-text {
+    flex: 1;
   }
   .hero .motto {
     font-family: 'IBM Plex Mono', monospace;
@@ -1819,7 +1879,15 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <span class="version-label" id="version-label">v5.7.0</span>
+  <button id="header-refresh-btn" class="header-refresh" type="button" aria-label="Refresh data" title="Refresh from cloud">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+      <polyline points="23 4 23 10 17 10"></polyline>
+      <polyline points="1 20 1 14 7 14"></polyline>
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"></path>
+      <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"></path>
+    </svg>
+  </button>
+  <span class="version-label" id="version-label">v5.8.0</span>
 </header>
 
 <main>
@@ -1828,6 +1896,12 @@
     <div class="hero">
       <div class="greeting" id="hero-greeting">Habari ya asubuhi</div>
       <div class="date" id="hero-date"></div>
+      <!-- v5.8.0 — Empty-state hint: shown when no activity today (holidays / weekends).
+           Hidden by default; shown by renderEmptyStateHint() in renderHome. -->
+      <div class="empty-state-hint" id="empty-state-hint" style="display:none">
+        <span class="esh-icon">🌿</span>
+        <span class="esh-text" id="esh-text">No activity yet today</span>
+      </div>
       <div class="motto">Sinonin Tea · The Tea of Champions</div>
       <div class="stats hero-cashflow">
         <div>
@@ -2209,6 +2283,22 @@
         <div class="field"><label>Broken</label><input type="number" id="ec-ud-broken" inputmode="numeric" step="1" min="0" placeholder="0"></div>
       </div>
 
+      <!-- v5.8.0 — Collector dropdown: structured operator attribution.
+           Replaces free-text "Collected by Faith" pattern in Notes.
+           Names per Cheison: Hillary, Faith, FrankStanley, Elias, Victor, Other.
+           "Other" allows ad-hoc operators without forcing schema change. -->
+      <div class="field" style="margin-top:0.7rem"><label>Collector</label>
+        <select id="ec-collector">
+          <option value="">— Select collector —</option>
+          <option value="Hillary">Hillary</option>
+          <option value="Faith">Faith</option>
+          <option value="FrankStanley">FrankStanley</option>
+          <option value="Elias">Elias</option>
+          <option value="Victor">Victor</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
       <div class="field" style="margin-top:0.7rem"><label>Notes (optional)</label><input type="text" id="ec-notes" placeholder="e.g. cleaning day, hot weather" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
 
       <button class="submit" id="ec-submit" disabled>Record Collection</button>
@@ -2475,10 +2565,9 @@
         <div><div class="k">Tea Cess (Ksh/kg)</div><div class="desc">County deduction, every factory</div></div>
         <input type="number" step="0.01" min="0" id="s-cess">
       </div>
-      <div class="setting-row">
-        <div><div class="k">Transport active</div><div class="desc">Subtract transport deduction</div></div>
-        <div class="toggle" id="s-transport"></div>
-      </div>
+      <!-- v5.8.0 — Transport toggle removed. Was redundant: rate=0 already 
+           means no transport deduction. Per-factory transport rate in 
+           Factory rate cards is the single source of truth. -->
     </div>
 
     <div class="section">
@@ -2559,7 +2648,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.7.0</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.8.0</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -2875,7 +2964,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.7.0';
+const APP_VERSION = 'v5.8.0';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -5895,42 +5984,79 @@ function updateExpensePreview() {
 }
 
 async function submitExpense() {
+  // v5.8.0 — Submit-in-flight guard (defense in depth alongside server-side
+  // idempotency check). Disables submit button during async processing to
+  // prevent rapid double-clicks from queuing two writes. Server-side
+  // idempotency catches the network-retry case; this catches the user-tap case.
+  const submitBtn = document.getElementById('x-submit');
+  if (submitBtn && submitBtn.dataset.inFlight === '1') {
+    console.log('[submitExpense] guard: already in flight, ignoring');
+    return;
+  }
+
   const v = xValues();
   if (!v.date || !v.category || v.amount <= 0) return;
-  const expense = {
-    id: 'X' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
-    ts: new Date().toISOString(),
-    date: v.date,
-    tier: tierForCategory(v.category),
-    category: v.category,
-    description: v.description,
-    amount: v.amount,
-    block: v.block,
-    payee: v.payee
-  };
-  STATE.expenses.push(expense);
-  await storageSet(K_EXPENSES, STATE.expenses);
-  document.getElementById('x-amount').value = '';
-  document.getElementById('x-description').value = '';
-  document.getElementById('x-payee').value = '';
-  updateExpensePreview();
-  renderRecentExpenses();
-  showToast(`Expense recorded · Ksh ${moneyRound(v.amount)}`);
-  // Push to Google Sheet — if it fails, queue for retry
-  const synced = await syncExpense(expense);
-  if (!synced) {
-    // v5.0.23 — server-side dedup: if rejected as 'duplicate', don't queue
-    const wasDup = await handleDuplicateRejection(expense, 'expense', 'expenses', K_EXPENSES);
-    if (!wasDup) {
-      await queueForSync(expense, 'expense');
-      if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-        showToast('🔒 Writes locked — ping Kiruogindet araap Cheison · expense queued', 6000);
-      }
+
+  // v5.8.0 — Add tab protection: confirm first submission per session
+  if (!isSessionConfirmed('expense')) {
+    const summaryHtml = `
+      <div><strong>${v.category}</strong> · Ksh ${moneyRound(v.amount)}</div>
+      <div style="opacity:0.85;margin-top:0.3rem;">${v.date} · ${v.block || 'no block'}</div>
+      ${v.description ? `<div style="opacity:0.7;margin-top:0.3rem;font-size:0.78rem;">${v.description}</div>` : ''}
+    `;
+    const confirmed = await confirmFirstSubmit('expense', summaryHtml);
+    if (!confirmed) {
+      showToast('Cancelled', 1800);
+      return;
     }
-  } else {
-    showPossibleDuplicateToast('expense');
+    markSessionConfirmed('expense');
   }
-  updateSyncIndicator();
+
+  if (submitBtn) {
+    submitBtn.dataset.inFlight = '1';
+    submitBtn.disabled = true;
+  }
+  try {
+    const expense = {
+      id: 'X' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      ts: new Date().toISOString(),
+      date: v.date,
+      tier: tierForCategory(v.category),
+      category: v.category,
+      description: v.description,
+      amount: v.amount,
+      block: v.block,
+      payee: v.payee
+    };
+    STATE.expenses.push(expense);
+    await storageSet(K_EXPENSES, STATE.expenses);
+    document.getElementById('x-amount').value = '';
+    document.getElementById('x-description').value = '';
+    document.getElementById('x-payee').value = '';
+    updateExpensePreview();
+    renderRecentExpenses();
+    showToast(`Expense recorded · Ksh ${moneyRound(v.amount)}`);
+    // Push to Google Sheet — if it fails, queue for retry
+    const synced = await syncExpense(expense);
+    if (!synced) {
+      // v5.0.23 — server-side dedup: if rejected as 'duplicate', don't queue
+      const wasDup = await handleDuplicateRejection(expense, 'expense', 'expenses', K_EXPENSES);
+      if (!wasDup) {
+        await queueForSync(expense, 'expense');
+        if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
+          showToast('🔒 Writes locked — ping Kiruogindet araap Cheison · expense queued', 6000);
+        }
+      }
+    } else {
+      showPossibleDuplicateToast('expense');
+    }
+    updateSyncIndicator();
+  } finally {
+    if (submitBtn) {
+      submitBtn.dataset.inFlight = '0';
+      submitBtn.disabled = false;
+    }
+  }
 }
 
 /* ========= EXPENSE BATCH ENTRY =========
@@ -6465,6 +6591,7 @@ async function submitEggCollection() {
   const udN = (document.getElementById('ec-ud-normal') || {}).value;
   const udS = (document.getElementById('ec-ud-small')  || {}).value;
   const udB = (document.getElementById('ec-ud-broken') || {}).value;
+  const collector = ((document.getElementById('ec-collector') || {}).value || '').trim(); // v5.8.0
   const notes = ((document.getElementById('ec-notes') || {}).value || '').trim();
 
   if (!date) { showToast('Please pick a date', 3000); return; }
@@ -6480,6 +6607,7 @@ async function submitEggCollection() {
     normal:         num(gfN) + num(udN),
     small_abnormal: num(gfS) + num(udS),
     broken:         num(gfB) + num(udB),
+    collector: collector, // v5.8.0
     notes: notes
   };
 
@@ -6487,9 +6615,9 @@ async function submitEggCollection() {
   STATE.eggCollection.push(row);
   try { await storageSet(K_EGG_COLLECTION, STATE.eggCollection); } catch (e) {}
 
-  showToast(`Saved · GF ${row.gf_normal} · UD ${row.ud_normal} · ${row.date}`);
+  showToast(`Saved · GF ${row.gf_normal} · UD ${row.ud_normal} · ${row.date}${collector ? ' · ' + collector : ''}`);
 
-  // Clear form (date stays)
+  // Clear form (date + collector stays for batch entry sessions)
   ['ec-gf-normal','ec-gf-small','ec-gf-broken','ec-ud-normal','ec-ud-small','ec-ud-broken','ec-notes']
     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   validateEggCollection();
@@ -6942,6 +7070,10 @@ function validateIncubationHatch() {
 }
 
 async function submitIncubationStart() {
+  // v5.8.0 — Silent-fail fix: every code path emits a toast.
+  // Yesterday's bug: submit "appeared silent" — likely button was disabled
+  // (validation gap) or an early-return path had no user feedback.
+
   const id = ((document.getElementById('ib-batch-id') || {}).value || '').trim();
   const ds = (document.getElementById('ib-date-set') || {}).value;
   const ei = Number((document.getElementById('ib-eggs-in') || {}).value);
@@ -6949,114 +7081,307 @@ async function submitIncubationStart() {
   const eh = (document.getElementById('ib-expected-hatch') || {}).value;
   const notes = ((document.getElementById('ib-notes') || {}).value || '').trim();
 
-  if (!id || !ds || !ei || ei <= 0) { showToast('Please fill all required fields', 3000); return; }
+  // Explicit validation with specific feedback (NOT a generic "fill required")
+  if (!id) { showToast('Missing: Batch ID', 3000); return; }
+  if (!ds) { showToast('Missing: Date set', 3000); return; }
+  if (!ei || ei <= 0) { showToast('Missing or invalid: Eggs in (must be > 0)', 3000); return; }
 
-  const row = {
-    batch_id: id, ts: new Date().toISOString(), date_set: ds, eggs_in: ei,
-    source: src, expected_hatch: eh, date_hatched: '', hatched_count: 0,
-    failed_count: 0, hatch_rate: 0, status: 'incubating', notes: notes
-  };
+  // Submit-in-flight guard
+  const submitBtn = document.getElementById('ib-start-submit');
+  if (submitBtn && submitBtn.dataset.inFlight === '1') return;
+  if (submitBtn) { submitBtn.dataset.inFlight = '1'; submitBtn.disabled = true; }
 
-  if (!Array.isArray(STATE.incubation)) STATE.incubation = [];
-  STATE.incubation.push(row);
-  try { await storageSet(K_INCUBATION, STATE.incubation); } catch (e) {}
-
-  showToast(`🐣 Started ${id} · ${ei} eggs · hatch ~${eh}`);
-
-  // Push to gate
   try {
-    const body = {
-      action: 'incubation',
-      payload: {
-        mode: 'start', batch_id: id, date_set: ds, eggs_in: ei,
-        source: src, expected_hatch: eh, notes: notes
-      },
-      source: `PWA ${APP_VERSION} incubation-start`
+    const row = {
+      batch_id: id, ts: new Date().toISOString(), date_set: ds, eggs_in: ei,
+      source: src, expected_hatch: eh, date_hatched: '', hatched_count: 0,
+      failed_count: 0, hatch_rate: 0, status: 'incubating', notes: notes
     };
-    const r = await fetch(APPS_SCRIPT_GATE_URL, {
-      method: 'POST', mode: 'cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(body)
-    });
-    const json = r.ok ? await r.json() : null;
-    if (json && json.duplicate) {
-      // Roll back local
-      STATE.incubation = STATE.incubation.filter(b => b.batch_id !== id);
-      await storageSet(K_INCUBATION, STATE.incubation);
-      showToast(json.summary || 'Batch already exists — choose another ID', 6000);
-      return;
-    }
-    if (json && json.writesLocked) {
-      STATE.incubation = STATE.incubation.filter(b => b.batch_id !== id);
-      await storageSet(K_INCUBATION, STATE.incubation);
-      showToast('🔒 Writes locked — ping Kiruogindet araap Cheison', 6000);
-      return;
-    }
-  } catch (e) { console.error('[incubation-start] error', e); }
 
-  // Clear form
-  document.getElementById('ib-batch-id').value = '';
-  document.getElementById('ib-eggs-in').value = '';
-  document.getElementById('ib-source').value = '';
-  document.getElementById('ib-notes').value = '';
-  validateIncubationStart();
-  renderHome();
+    if (!Array.isArray(STATE.incubation)) STATE.incubation = [];
+    STATE.incubation.push(row);
+    try { await storageSet(K_INCUBATION, STATE.incubation); } catch (e) {
+      console.error('[incubation-start] local storage error:', e);
+    }
+
+    showToast(`🐣 Started ${id} · ${ei} eggs · hatch ~${eh}`);
+
+    // Push to gate with FULL error reporting
+    try {
+      const body = {
+        action: 'incubation',
+        payload: {
+          ts: row.ts, // include client ts for idempotency
+          mode: 'start', batch_id: id, date_set: ds, eggs_in: ei,
+          source: src, expected_hatch: eh, notes: notes
+        },
+        source: `PWA ${APP_VERSION} incubation-start`
+      };
+      const r = await fetch(APPS_SCRIPT_GATE_URL, {
+        method: 'POST', mode: 'cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(body)
+      });
+      if (!r.ok) {
+        showToast(`Server error ${r.status} — saved locally, will retry`, 5000);
+        console.error('[incubation-start] HTTP error:', r.status);
+        return;
+      }
+      const json = await r.json();
+      if (!json) {
+        showToast('Server returned empty response', 5000);
+        return;
+      }
+      if (json.duplicate) {
+        STATE.incubation = STATE.incubation.filter(b => b.batch_id !== id);
+        await storageSet(K_INCUBATION, STATE.incubation);
+        showToast(json.summary || 'Batch already exists — choose another ID', 6000);
+        return;
+      }
+      if (json.writesLocked) {
+        STATE.incubation = STATE.incubation.filter(b => b.batch_id !== id);
+        await storageSet(K_INCUBATION, STATE.incubation);
+        showToast('🔒 Writes locked — ping Kiruogindet araap Cheison', 6000);
+        return;
+      }
+      if (json.idempotent) {
+        showToast('Already saved (network retry detected)', 3000);
+        return;
+      }
+      if (json.ok === false) {
+        showToast(`Server rejected: ${json.reason || 'unknown'}`, 5000);
+        console.error('[incubation-start] server rejection:', json);
+        return;
+      }
+      // Success path — toast already fired
+    } catch (e) {
+      console.error('[incubation-start] network error:', e);
+      showToast('Network error — saved locally, will retry on resync', 5000);
+    }
+
+    // Clear form on success
+    document.getElementById('ib-batch-id').value = '';
+    document.getElementById('ib-eggs-in').value = '';
+    document.getElementById('ib-source').value = '';
+    document.getElementById('ib-notes').value = '';
+    validateIncubationStart();
+    renderHome();
+  } finally {
+    if (submitBtn) { submitBtn.dataset.inFlight = '0'; submitBtn.disabled = false; }
+  }
 }
 
 async function submitIncubationHatch() {
+  // v5.8.0 — Hatch HARD BLOCK validation + full error transparency.
+  // Cheison's wisdom: "Hatching doesn't make scientific sense! Incubated 
+  // today, hatching in 21 days, NOT POSSIBLE!"
+  //
+  // 21 days is the chicken incubation period. Allow some early hatchers
+  // (18+ days). Anything less = rejected as biologically impossible.
+
   const id = (document.getElementById('ih-batch-id') || {}).value;
   const dh = (document.getElementById('ih-date-hatched') || {}).value;
   const hc = Number((document.getElementById('ih-hatched') || {}).value);
   const failedRaw = (document.getElementById('ih-failed') || {}).value;
   const notes = ((document.getElementById('ih-notes') || {}).value || '').trim();
 
-  if (!id || !dh || isNaN(hc) || hc < 0) { showToast('Please fill all required fields', 3000); return; }
+  // Specific validation feedback
+  if (!id) { showToast('Missing: select a batch', 3000); return; }
+  if (!dh) { showToast('Missing: Date hatched', 3000); return; }
+  if (isNaN(hc) || hc < 0) { showToast('Invalid: Hatched count must be ≥ 0', 3000); return; }
 
   const batch = (STATE.incubation || []).find(b => b.batch_id === id);
-  if (!batch) { showToast('Batch not found in local state', 3000); return; }
-  const failed = (failedRaw !== '' && !isNaN(Number(failedRaw))) ? Number(failedRaw) : Math.max(0, Number(batch.eggs_in) - hc);
+  if (!batch) { showToast('Batch not found in local state — try resync', 4000); return; }
 
-  // Optimistic update
-  batch.date_hatched = dh;
-  batch.hatched_count = hc;
-  batch.failed_count = failed;
-  batch.hatch_rate = batch.eggs_in > 0 ? (hc / batch.eggs_in) : 0;
-  batch.status = 'hatched';
-  if (notes) batch.notes = notes;
-  await storageSet(K_INCUBATION, STATE.incubation);
+  // HARD BLOCK: enforce minimum 18-day incubation period.
+  // Chicken eggs: 21 days standard, 18 days minimum for early hatchers.
+  if (batch.date_set && dh) {
+    const dsDate = new Date(batch.date_set);
+    const dhDate = new Date(dh);
+    const daysDiff = Math.floor((dhDate - dsDate) / (1000 * 60 * 60 * 24));
+    if (daysDiff < 18) {
+      showToast(
+        `🚫 Hatch blocked — only ${daysDiff} day${daysDiff === 1 ? '' : 's'} since set. ` +
+        `Chicken eggs need 18-21 days minimum. Check Date set.`,
+        7000
+      );
+      return;
+    }
+    if (daysDiff > 28) {
+      // Soft warning only — late hatches happen but rarely > 28d
+      showToast(
+        `⚠️ ${daysDiff} days since set — late hatch. Confirm dates.`,
+        4000
+      );
+      // Don't return; allow with warning
+    }
+  }
 
-  const ratePct = (batch.hatch_rate * 100).toFixed(1);
-  showToast(`🐣 Hatched ${id} · ${hc}/${batch.eggs_in} · ${ratePct}%`, 5000);
+  // Validate hatched count doesn't exceed eggs_in
+  if (hc > Number(batch.eggs_in)) {
+    showToast(
+      `🚫 Hatched (${hc}) exceeds eggs in (${batch.eggs_in}). Check counts.`,
+      6000
+    );
+    return;
+  }
+
+  // Submit-in-flight guard
+  const submitBtn = document.getElementById('ih-submit');
+  if (submitBtn && submitBtn.dataset.inFlight === '1') return;
+  if (submitBtn) { submitBtn.dataset.inFlight = '1'; submitBtn.disabled = true; }
 
   try {
-    const body = {
-      action: 'incubation',
-      payload: {
-        mode: 'hatch', batch_id: id, date_hatched: dh,
-        hatched_count: hc, failed_count: failed, notes: notes
-      },
-      source: `PWA ${APP_VERSION} incubation-hatch`
-    };
-    await fetch(APPS_SCRIPT_GATE_URL, {
-      method: 'POST', mode: 'cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(body)
-    });
-  } catch (e) { console.error('[incubation-hatch] error', e); }
+    const failed = (failedRaw !== '' && !isNaN(Number(failedRaw))) ? Number(failedRaw) : Math.max(0, Number(batch.eggs_in) - hc);
+    const ts = new Date().toISOString();
 
-  // Clear hatch form
-  document.getElementById('ih-batch-id').value = '';
-  document.getElementById('ih-hatched').value = '';
-  document.getElementById('ih-failed').value = '';
-  document.getElementById('ih-notes').value = '';
-  validateIncubationHatch();
-  populateHatchBatchDropdown();
-  renderHome();
+    // Optimistic update
+    batch.date_hatched = dh;
+    batch.hatched_count = hc;
+    batch.failed_count = failed;
+    batch.hatch_rate = batch.eggs_in > 0 ? (hc / batch.eggs_in) : 0;
+    batch.status = 'hatched';
+    if (notes) batch.notes = notes;
+    await storageSet(K_INCUBATION, STATE.incubation);
+
+    const ratePct = (batch.hatch_rate * 100).toFixed(1);
+    showToast(`🐣 Hatched ${id} · ${hc}/${batch.eggs_in} · ${ratePct}%`, 5000);
+
+    try {
+      const body = {
+        action: 'incubation',
+        payload: {
+          ts: ts, // include for idempotency
+          mode: 'hatch', batch_id: id, date_hatched: dh,
+          hatched_count: hc, failed_count: failed, notes: notes
+        },
+        source: `PWA ${APP_VERSION} incubation-hatch`
+      };
+      const r = await fetch(APPS_SCRIPT_GATE_URL, {
+        method: 'POST', mode: 'cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(body)
+      });
+      if (!r.ok) {
+        showToast(`Server error ${r.status} — local update kept`, 5000);
+      } else {
+        const json = await r.json();
+        if (json && json.idempotent) showToast('Already saved (network retry)', 3000);
+        else if (json && json.writesLocked) showToast('🔒 Writes locked — ping Kiruogindet araap Cheison', 6000);
+        else if (json && json.ok === false) showToast(`Server rejected: ${json.reason || 'unknown'}`, 5000);
+      }
+    } catch (e) {
+      console.error('[incubation-hatch] network error:', e);
+      showToast('Network error — local update kept', 5000);
+    }
+
+    // Clear hatch form
+    document.getElementById('ih-batch-id').value = '';
+    document.getElementById('ih-hatched').value = '';
+    document.getElementById('ih-failed').value = '';
+    document.getElementById('ih-notes').value = '';
+    validateIncubationHatch();
+    populateHatchBatchDropdown();
+    renderHome();
+  } finally {
+    if (submitBtn) { submitBtn.dataset.inFlight = '0'; submitBtn.disabled = false; }
+  }
 }
 
 function monthEntries() {
   const ym = new Date().toISOString().slice(0,7);
   return STATE.entries.filter(e => e.date.startsWith(ym));
+}
+
+/* v5.8.0 — Empty-state hint: contextual messaging when no activity today.
+   Distinguishes "holiday/weekend, idle by design" from "data sync broken".
+   
+   KE public holidays 2026 (used as context):
+     · 1 Jan — New Year
+     · 3 Apr — Good Friday
+     · 6 Apr — Easter Monday
+     · 1 May — Labour Day
+     · 1 Jun — Madaraka
+     · 10 Oct — Huduma (renamed Mashujaa)
+     · 20 Oct — Mashujaa
+     · 12 Dec — Jamhuri
+     · 25 Dec — Christmas
+     · 26 Dec — Boxing Day
+   
+   Logic:
+     1. Check if any activity was logged today (greenleaf/actual/expense/eggs/etc.)
+     2. If YES → hide hint (data is flowing, no message needed)
+     3. If NO → check if today is a known holiday or weekend
+     4. Show appropriate contextual message
+*/
+const KE_HOLIDAYS_2026 = {
+  '2026-01-01': 'New Year',
+  '2026-04-03': 'Good Friday',
+  '2026-04-06': 'Easter Monday',
+  '2026-05-01': 'Labour Day',
+  '2026-06-01': 'Madaraka Day',
+  '2026-10-10': 'Huduma Day',
+  '2026-10-20': 'Mashujaa Day',
+  '2026-12-12': 'Jamhuri Day',
+  '2026-12-25': 'Christmas',
+  '2026-12-26': 'Boxing Day'
+};
+
+function renderEmptyStateHint() {
+  const hint = document.getElementById('empty-state-hint');
+  const text = document.getElementById('esh-text');
+  if (!hint || !text) return;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const dow = new Date().getDay(); // 0=Sun, 6=Sat
+
+  // Check for any activity today across all data streams
+  const anyEntry = (STATE.entries || []).some(e => e.date === today);
+  const anyExpense = (STATE.expenses || []).some(x => x.date === today);
+  const anyActual = (STATE.actuals || []).some(a => a.date === today);
+  const anyBanked = (STATE.banked || []).some(b => b.date === today);
+  const anyPoultry = (STATE.poultry || []).some(p => p.date === today);
+  const anyEggColl = (STATE.eggCollection || []).some(e => e.date === today);
+  const anyCensus = (STATE.birdCensus || []).some(c => c.date === today);
+  const anyIncub = (STATE.incubation || []).some(i => i.date_set === today || i.date_hatched === today);
+
+  const hasActivityToday = anyEntry || anyExpense || anyActual || anyBanked
+                        || anyPoultry || anyEggColl || anyCensus || anyIncub;
+
+  if (hasActivityToday) {
+    hint.style.display = 'none';
+    return;
+  }
+
+  // No activity today — choose contextual message
+  let message = '';
+  let icon = '🌿';
+
+  const holiday = KE_HOLIDAYS_2026[today];
+  if (holiday) {
+    message = `Today is ${holiday} — no activity expected`;
+    icon = '🇰🇪';
+  } else if (dow === 0) {
+    message = 'Sunday — no activity yet';
+    icon = '🌿';
+  } else if (dow === 6) {
+    message = 'Saturday — no activity yet';
+    icon = '🌿';
+  } else {
+    // Weekday with no activity yet — possibly early in the day
+    const hour = new Date().getHours();
+    if (hour < 10) {
+      message = 'No activity yet today — early morning';
+      icon = '☕';
+    } else {
+      message = 'No activity logged today';
+      icon = '🌿';
+    }
+  }
+
+  text.textContent = message;
+  hint.querySelector('.esh-icon').textContent = icon;
+  hint.style.display = '';
 }
 
 function renderHome() {
@@ -7065,6 +7390,9 @@ function renderHome() {
   document.getElementById('hero-greeting').textContent = greet;
   document.getElementById('hero-date').textContent =
     new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  // v5.8.0 — Empty-state hint (Labour Day / weekend / idle-day messaging)
+  if (typeof renderEmptyStateHint === 'function') renderEmptyStateHint();
 
   const entries = monthEntries();
   const ym = new Date().toISOString().slice(0,7);
@@ -8796,6 +9124,93 @@ function exportCSV() {
   else showToast(`Exported ${exported} record${exported === 1 ? '' : 's'}`);
 }
 
+/* v5.8.0 — Add tab protection: first-submit-confirm per session per kind.
+   
+   Threat model: phone in pocket triggers random taps that may navigate to 
+   Add tab, fill a form (e.g., type input is a single-character "1" or stray 
+   keypress), and tap Submit. Without this guard, gibberish posts to sheets.
+   
+   Defense: ONCE per session per kind, ask user to confirm before first
+   submission. Sessions reset after 30 min of idle (or app reload).
+   
+   Trade-off: one extra tap per kind per session. Operator-acceptable;
+   data-integrity-essential.
+   
+   Kinds tracked: 'expense', 'actual', 'banked', 'poultry', 'egg-collection',
+                  'bird-census', 'incubation', 'greenleaf', 'house', 'roster'
+*/
+const SESSION_CONFIRMED = {}; // { kind: lastConfirmTimestamp }
+const SESSION_CONFIRM_WINDOW_MS = 30 * 60 * 1000; // 30 min
+
+function isSessionConfirmed(kind) {
+  const last = SESSION_CONFIRMED[kind];
+  if (!last) return false;
+  return (Date.now() - last) < SESSION_CONFIRM_WINDOW_MS;
+}
+
+function markSessionConfirmed(kind) {
+  SESSION_CONFIRMED[kind] = Date.now();
+}
+
+/* Show a confirmation modal asking the user to confirm a first-time submission.
+   Returns Promise<boolean>: true=confirmed, false=cancelled. */
+function confirmFirstSubmit(kindLabel, summaryHtml) {
+  return new Promise(resolve => {
+    // Build modal
+    const overlay = document.createElement('div');
+    overlay.id = 'first-submit-overlay';
+    overlay.style.cssText = `
+      position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:9999;
+      display:flex; align-items:center; justify-content:center; padding:1rem;
+      backdrop-filter:blur(2px);
+    `;
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      background:var(--ink,#1a2826); border:1px solid var(--brass,#b8935a);
+      border-radius:8px; padding:1.4rem 1.2rem; max-width:380px; width:100%;
+      box-shadow:0 8px 32px rgba(0,0,0,0.5);
+      font-family:'Fraunces',serif; color:var(--ivory,#f5e8d3);
+    `;
+    modal.innerHTML = `
+      <div style="font-size:1.1rem;font-weight:600;margin-bottom:0.6rem;color:var(--brass-light,#d4a55b);">
+        Confirm first submission
+      </div>
+      <div style="font-size:0.95rem;line-height:1.45;margin-bottom:0.9rem;opacity:0.9;">
+        First <strong>${kindLabel}</strong> entry this session. Verify the values look right before submitting.
+      </div>
+      <div style="background:rgba(212,165,91,0.08);border:1px solid rgba(212,165,91,0.25);
+                  border-radius:5px;padding:0.7rem 0.8rem;margin-bottom:1rem;
+                  font-family:'IBM Plex Mono',monospace;font-size:0.82rem;line-height:1.5;">
+        ${summaryHtml}
+      </div>
+      <div style="display:flex;gap:0.6rem;justify-content:flex-end;">
+        <button id="fs-cancel" style="padding:0.55rem 1rem;background:transparent;
+                border:1px solid var(--brass-light,#d4a55b);color:var(--brass-light,#d4a55b);
+                border-radius:4px;font-family:inherit;font-size:0.88rem;cursor:pointer;">
+          Cancel
+        </button>
+        <button id="fs-confirm" style="padding:0.55rem 1rem;background:var(--brass,#b8935a);
+                border:1px solid var(--brass,#b8935a);color:#1a2826;
+                border-radius:4px;font-family:inherit;font-weight:600;font-size:0.88rem;cursor:pointer;">
+          Confirm submit
+        </button>
+      </div>
+    `;
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    const cleanup = (result) => {
+      document.body.removeChild(overlay);
+      resolve(result);
+    };
+    document.getElementById('fs-cancel').addEventListener('click', () => cleanup(false));
+    document.getElementById('fs-confirm').addEventListener('click', () => cleanup(true));
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) cleanup(false); // tap outside cancels
+    });
+  });
+}
+
 function showToast(msg, durationMs) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -8982,6 +9397,28 @@ function showUpdateBanner() {
   });
   document.getElementById('x-submit').addEventListener('click', submitExpense);
 
+  // v5.8.0 — Header refresh button: operator-accessible cloud sync.
+  // Triggers full cloud refresh (forces re-fetch of all data, not just delta).
+  // Visible to ALL users (admin and operator) — Victor can refresh without
+  // accessing Settings. Spinner animation while in flight.
+  const headerRefreshBtn = document.getElementById('header-refresh-btn');
+  if (headerRefreshBtn) {
+    headerRefreshBtn.addEventListener('click', async () => {
+      if (headerRefreshBtn.classList.contains('spinning')) return; // already in flight
+      headerRefreshBtn.classList.add('spinning');
+      try {
+        await runCloudSync({ full: true });
+        showToast('🔄 Refreshed from cloud', 2500);
+      } catch (e) {
+        showToast('Refresh failed — check connection', 4000);
+        console.error('[header-refresh] error:', e);
+      } finally {
+        // Keep spinning briefly for visual feedback even on fast networks
+        setTimeout(() => headerRefreshBtn.classList.remove('spinning'), 400);
+      }
+    });
+  }
+
   // Expense mode toggle (Quick / Batch) and batch controls
   document.getElementById('x-mode-quick').addEventListener('click', () => switchExpenseMode('quick'));
   document.getElementById('x-mode-batch').addEventListener('click', () => switchExpenseMode('batch'));
@@ -9019,7 +9456,10 @@ function showUpdateBanner() {
 
   // Settings
   document.getElementById('s-cess').addEventListener('change', saveCess);
-  document.getElementById('s-transport').addEventListener('click', toggleTransport);
+  // v5.8.0 — Transport toggle removed from Settings (redundant with rate=0).
+  // Listener wired only if element still exists (legacy safety).
+  const sTransportEl = document.getElementById('s-transport');
+  if (sTransportEl) sTransportEl.addEventListener('click', toggleTransport);
   // v5.0.9 — Tap-to-toggle info tooltips (cross-device replacement for title=).
   // Click any .info-tip ⓘ button → popover appears via [data-tooltip-open] CSS.
   // Click again, or click anywhere outside, → popover closes. Single open at a time.
