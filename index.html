@@ -1944,7 +1944,7 @@
       <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"></path>
     </svg>
   </button>
-  <span class="version-label" id="version-label">v5.8.2</span>
+  <span class="version-label" id="version-label">v5.8.3</span>
 </header>
 
 <main>
@@ -2715,17 +2715,24 @@
       </div>
     </div>
 
-    <div class="section">
-      <div class="section-head"><h3>Expense categories</h3><span class="meta" id="category-count">0 active</span></div>
-      <div id="category-list"></div>
-      <div class="add-factory">
-        <div class="field" style="margin-bottom:0.5rem"><input type="text" id="new-category-name" placeholder="New category name"></div>
-        <button id="btn-add-category">Add Category</button>
+    <div class="section" id="expense-categories-section">
+      <div class="section-head expense-categories-head" id="expense-categories-head" style="cursor:pointer;user-select:none;-webkit-user-select:none">
+        <h3>Expense categories <span class="chevron" id="category-chevron" style="font-size:0.7em;opacity:0.6;margin-left:0.4rem;transition:transform 0.2s ease">▸</span></h3>
+        <span class="meta" id="category-count">0 active</span>
+      </div>
+      <!-- v5.8.3 — Collapsible: matches Plucker roster pattern.
+           Tap header to expand. Default collapsed for lean Settings. -->
+      <div id="expense-categories-body" style="display:none">
+        <div id="category-list"></div>
+        <div class="add-factory">
+          <div class="field" style="margin-bottom:0.5rem"><input type="text" id="new-category-name" placeholder="New category name"></div>
+          <button id="btn-add-category">Add Category</button>
+        </div>
       </div>
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.8.2</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.8.3</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3041,7 +3048,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.8.2';
+const APP_VERSION = 'v5.8.3';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -9714,6 +9721,20 @@ function showUpdateBanner() {
     document.getElementById('new-plucker-bonus').classList.toggle('on');
   });
   document.getElementById('btn-add-category').addEventListener('click', addCategory);
+
+  // v5.8.3 — Expense categories collapse/expand (matches Plucker pattern)
+  const categoryHead = document.getElementById('expense-categories-head');
+  const categoryBody = document.getElementById('expense-categories-body');
+  const categoryChevron = document.getElementById('category-chevron');
+  if (categoryHead && categoryBody) {
+    categoryHead.addEventListener('click', () => {
+      const isOpen = categoryBody.style.display !== 'none';
+      categoryBody.style.display = isOpen ? 'none' : '';
+      if (categoryChevron) {
+        categoryChevron.textContent = isOpen ? '▸' : '▾';
+      }
+    });
+  }
 
   // JSON Backup / Restore
   document.getElementById('btn-export-json').addEventListener('click', exportBackupJSON);
