@@ -1955,7 +1955,7 @@
       <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"></path>
     </svg>
   </button>
-  <span class="version-label" id="version-label">v5.8.4</span>
+  <span class="version-label" id="version-label">v5.8.5</span>
 </header>
 
 <main>
@@ -2635,18 +2635,27 @@
       </div>
     </div>
 
-    <!-- v6.0 SHIP 3 — Houses admin (Kipkenda Poultry config) -->
+    <!-- v6.0 SHIP 3 — Houses admin (Kipkenda Poultry config)
+         v5.8.5 — Renamed "🏠 Kipkenda Houses" → "Kipkenda Poultry" per Cheison.
+         v5.8.5 — Collapsible: section-head pattern matches Plucker / Categories / Factories.
+         Note: outer display:none is the admin-only gate (set by Admin section logic).
+         Collapse layers ON TOP — when admin opens it, body still starts collapsed. -->
     <div class="section" id="settings-houses-section" style="display:none">
-      <div class="section-head"><h3>🏠 Kipkenda Houses</h3><span class="meta" id="houses-count">0</span></div>
-      <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:0.6rem">
-        <div>
-          <div class="k">Houses</div>
-          <div class="desc">Physical structures for birds and operations. Used by census, mortality, and future incubation.</div>
+      <div class="section-head houses-section-head" id="houses-section-head" style="cursor:pointer;user-select:none;-webkit-user-select:none">
+        <h3>🐔 Kipkenda Poultry <span class="chevron" id="houses-chevron" style="font-size:0.7em;opacity:0.6;margin-left:0.4rem;transition:transform 0.2s ease">▸</span></h3>
+        <span class="meta" id="houses-count">0</span>
+      </div>
+      <div id="houses-section-body" style="display:none">
+        <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:0.6rem">
+          <div>
+            <div class="k">Houses</div>
+            <div class="desc">Physical structures for birds and operations. Used by census, mortality, and future incubation.</div>
+          </div>
+          <div id="houses-list" style="display:flex;flex-direction:column;gap:0.4rem"></div>
+          <button id="houses-add-btn" class="export-btn" style="width:100%;background:var(--forest-dark);color:var(--ivory);border-color:var(--forest-dark)">
+            + Add new house
+          </button>
         </div>
-        <div id="houses-list" style="display:flex;flex-direction:column;gap:0.4rem"></div>
-        <button id="houses-add-btn" class="export-btn" style="width:100%;background:var(--forest-dark);color:var(--ivory);border-color:var(--forest-dark)">
-          + Add new house
-        </button>
       </div>
     </div>
 
@@ -2688,12 +2697,18 @@
            Factory rate cards is the single source of truth. -->
     </div>
 
-    <div class="section">
-      <div class="section-head"><h3>Factory rate cards</h3><span class="meta">tap to edit</span></div>
-      <div id="factory-cards"></div>
-      <div class="add-factory">
-        <div class="field" style="margin-bottom:0.5rem"><input type="text" id="new-factory-name" placeholder="New factory name"></div>
-        <button id="btn-add-factory">Add Factory</button>
+    <div class="section" id="factory-rates-section">
+      <div class="section-head factory-rates-head" id="factory-rates-head" style="cursor:pointer;user-select:none;-webkit-user-select:none">
+        <h3>Factory rate cards <span class="chevron" id="factory-chevron" style="font-size:0.7em;opacity:0.6;margin-left:0.4rem;transition:transform 0.2s ease">▸</span></h3>
+        <span class="meta">tap to edit</span>
+      </div>
+      <!-- v5.8.5 — Collapsible: matches Plucker / Categories pattern -->
+      <div id="factory-rates-body" style="display:none">
+        <div id="factory-cards"></div>
+        <div class="add-factory">
+          <div class="field" style="margin-bottom:0.5rem"><input type="text" id="new-factory-name" placeholder="New factory name"></div>
+          <button id="btn-add-factory">Add Factory</button>
+        </div>
       </div>
     </div>
 
@@ -2749,7 +2764,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.8.4</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.8.5</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3065,7 +3080,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.8.4';
+const APP_VERSION = 'v5.8.5';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -5838,6 +5853,18 @@ async function submitQuick() {
       showToast(`Plucker id ${v.pluckerId} not found locally — try refreshing the app`);
       return;
     }
+
+    // v5.8.5 — Add tab gibberish protection: confirm first submission per session
+    if (!isSessionConfirmed('greenleaf')) {
+      const summaryHtml = `
+        <div><strong>${plucker.name}</strong> · ${v.qty} kg</div>
+        <div style="opacity:0.85;margin-top:0.3rem;">${v.date} · ${v.block} · ${v.factory}</div>
+      `;
+      const ok = await confirmFirstSubmit('greenleaf', summaryHtml);
+      if (!ok) { showToast('Cancelled', 1800); return; }
+      markSessionConfirmed('greenleaf');
+    }
+
     const entry = {
       id: 'E' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
       ts: new Date().toISOString(),
@@ -6377,6 +6404,18 @@ function updateActualPreview() {
 async function submitActual() {
   const v = aValues();
   if (!v.date || !v.factory || v.kg <= 0) return;
+
+  // v5.8.5 — Add tab gibberish protection
+  if (!isSessionConfirmed('actual')) {
+    const summaryHtml = `
+      <div><strong>${v.factory}</strong> · ${v.kg} kg</div>
+      <div style="opacity:0.85;margin-top:0.3rem;">${v.date} · ${v.block || 'no block'}</div>
+    `;
+    const ok = await confirmFirstSubmit('actual', summaryHtml);
+    if (!ok) { showToast('Cancelled', 1800); return; }
+    markSessionConfirmed('actual');
+  }
+
   const actual = {
     id: 'A' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
     ts: new Date().toISOString(),
@@ -6447,6 +6486,18 @@ function updateBankedPreview() {
 async function submitBanked() {
   const v = iValues();
   if (!v.date || !v.business || !v.source || v.amount <= 0) return;
+
+  // v5.8.5 — Add tab gibberish protection
+  if (!isSessionConfirmed('banked')) {
+    const summaryHtml = `
+      <div><strong>${v.business}</strong> · Ksh ${moneyRound(v.amount)}</div>
+      <div style="opacity:0.85;margin-top:0.3rem;">${v.date} · from ${v.source}</div>
+    `;
+    const ok = await confirmFirstSubmit('banked', summaryHtml);
+    if (!ok) { showToast('Cancelled', 1800); return; }
+    markSessionConfirmed('banked');
+  }
+
   const row = {
     id: 'I' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
     ts: new Date().toISOString(),
@@ -6548,6 +6599,18 @@ function updatePoultryPreview() {
 async function submitPoultry() {
   const v = yValues();
   if (!v.date || !v.product || !v.stage || !v.unit || v.quantity <= 0 || v.amount <= 0 || !v.payment_method) return;
+
+  // v5.8.5 — Add tab gibberish protection
+  if (!isSessionConfirmed('poultry')) {
+    const summaryHtml = `
+      <div><strong>${v.product}</strong> · ${v.stage} · ${v.quantity} ${v.unit}</div>
+      <div style="opacity:0.85;margin-top:0.3rem;">${v.date} · Ksh ${moneyRound(v.amount)} · ${v.payment_method}</div>
+    `;
+    const ok = await confirmFirstSubmit('poultry', summaryHtml);
+    if (!ok) { showToast('Cancelled', 1800); return; }
+    markSessionConfirmed('poultry');
+  }
+
   const row = {
     id: 'P' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
     ts: new Date().toISOString(),
@@ -6699,6 +6762,19 @@ async function submitEggCollection() {
   if (!date) { showToast('Please pick a date', 3000); return; }
 
   const num = (v) => v === '' || v === undefined ? 0 : Number(v);
+  const totalNormal = num(gfN) + num(udN);
+
+  // v5.8.5 — Add tab gibberish protection
+  if (!isSessionConfirmed('egg-collection')) {
+    const summaryHtml = `
+      <div><strong>${totalNormal} normal eggs</strong> · GF ${num(gfN)} + UD ${num(udN)}</div>
+      <div style="opacity:0.85;margin-top:0.3rem;">${date}${collector ? ' · ' + collector : ''}</div>
+    `;
+    const ok = await confirmFirstSubmit('egg-collection', summaryHtml);
+    if (!ok) { showToast('Cancelled', 1800); return; }
+    markSessionConfirmed('egg-collection');
+  }
+
   const row = {
     id:    'ec-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
     ts:    new Date().toISOString(),
@@ -6917,6 +6993,17 @@ async function submitBirdCensus() {
   if (!date || !house || !stage || count === '' || count === undefined) {
     showToast('Please fill all required fields', 3000);
     return;
+  }
+
+  // v5.8.5 — Add tab gibberish protection
+  if (!isSessionConfirmed('bird-census')) {
+    const summaryHtml = `
+      <div><strong>${count}</strong> ${stage} in ${house}</div>
+      <div style="opacity:0.85;margin-top:0.3rem;">${date}</div>
+    `;
+    const ok = await confirmFirstSubmit('bird-census', summaryHtml);
+    if (!ok) { showToast('Cancelled', 1800); return; }
+    markSessionConfirmed('bird-census');
   }
 
   const row = {
@@ -7191,6 +7278,17 @@ async function submitIncubationStart() {
   if (!ds) { showToast('Missing: Date set', 3000); return; }
   if (!ei || ei <= 0) { showToast('Missing or invalid: Eggs in (must be > 0)', 3000); return; }
 
+  // v5.8.5 — Add tab gibberish protection
+  if (!isSessionConfirmed('incubation-start')) {
+    const summaryHtml = `
+      <div><strong>${id}</strong> · ${ei} eggs</div>
+      <div style="opacity:0.85;margin-top:0.3rem;">Set ${ds} · hatch ~${eh}</div>
+    `;
+    const ok = await confirmFirstSubmit('incubation-start', summaryHtml);
+    if (!ok) { showToast('Cancelled', 1800); return; }
+    markSessionConfirmed('incubation-start');
+  }
+
   // Submit-in-flight guard
   const submitBtn = document.getElementById('ib-start-submit');
   if (submitBtn && submitBtn.dataset.inFlight === '1') return;
@@ -7330,6 +7428,18 @@ async function submitIncubationHatch() {
       6000
     );
     return;
+  }
+
+  // v5.8.5 — Add tab gibberish protection
+  if (!isSessionConfirmed('incubation-hatch')) {
+    const ratePct = batch.eggs_in > 0 ? ((hc / Number(batch.eggs_in)) * 100).toFixed(1) : '0';
+    const summaryHtml = `
+      <div><strong>${id}</strong> · ${hc}/${batch.eggs_in} hatched · ${ratePct}%</div>
+      <div style="opacity:0.85;margin-top:0.3rem;">Date hatched: ${dh}</div>
+    `;
+    const ok = await confirmFirstSubmit('incubation-hatch', summaryHtml);
+    if (!ok) { showToast('Cancelled', 1800); return; }
+    markSessionConfirmed('incubation-hatch');
   }
 
   // Submit-in-flight guard
@@ -9785,6 +9895,36 @@ function showUpdateBanner() {
       categoryBody.style.display = isOpen ? 'none' : '';
       if (categoryChevron) {
         categoryChevron.textContent = isOpen ? '▸' : '▾';
+      }
+    });
+  }
+
+  // v5.8.5 — Factory rate cards collapse/expand
+  const factoryHead = document.getElementById('factory-rates-head');
+  const factoryBody = document.getElementById('factory-rates-body');
+  const factoryChevron = document.getElementById('factory-chevron');
+  if (factoryHead && factoryBody) {
+    factoryHead.addEventListener('click', () => {
+      const isOpen = factoryBody.style.display !== 'none';
+      factoryBody.style.display = isOpen ? 'none' : '';
+      if (factoryChevron) {
+        factoryChevron.textContent = isOpen ? '▸' : '▾';
+      }
+    });
+  }
+
+  // v5.8.5 — Kipkenda Poultry (Houses) collapse/expand
+  // Note: outer #settings-houses-section is admin-gated separately;
+  // this handler manages the inner body collapse only.
+  const housesHead = document.getElementById('houses-section-head');
+  const housesBody = document.getElementById('houses-section-body');
+  const housesChevron = document.getElementById('houses-chevron');
+  if (housesHead && housesBody) {
+    housesHead.addEventListener('click', () => {
+      const isOpen = housesBody.style.display !== 'none';
+      housesBody.style.display = isOpen ? 'none' : '';
+      if (housesChevron) {
+        housesChevron.textContent = isOpen ? '▸' : '▾';
       }
     });
   }
