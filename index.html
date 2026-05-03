@@ -2008,7 +2008,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v5.9.3</span>
+  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v5.9.4</span>
 </header>
 
 <main>
@@ -2081,10 +2081,13 @@
         <div class="biz-card"><div class="lbl">🏠 Ground Floor LE (MTD)</div><div class="val" id="poultry-le-gf">—</div><div class="sub" id="poultry-le-gf-sub">no data</div></div>
         <div class="biz-card"><div class="lbl">⬆️ Upper Deck LE (MTD)</div><div class="val" id="poultry-le-ud">—</div><div class="sub" id="poultry-le-ud-sub">no data</div></div>
       </div>
-      <!-- v6.0 SHIP 4 — live bird count -->
-      <div class="biz-grid" style="margin-top:0.7rem">
+      <!-- v6.0 SHIP 4 — live bird count.
+           v5.9.4 — Removed orphaned "Lay rate MTD" ghost card from this row.
+           That card's value/sub were both hidden=true (superseded by the LE
+           triplet above in v5.7) but the empty card frame stayed visible.
+           Live birds now takes full width with grid-template-columns:1fr. -->
+      <div class="biz-grid" style="margin-top:0.7rem;grid-template-columns:1fr">
         <div class="biz-card"><div class="lbl">🏠 Live birds (census)</div><div class="val" id="poultry-live-birds">—</div><div class="sub" id="poultry-live-birds-sub">no census yet</div></div>
-        <div class="biz-card"><div class="lbl">📈 Lay rate MTD</div><div class="val" id="poultry-lay-rate" hidden>—</div><div class="val">&nbsp;</div><div class="sub" id="poultry-lay-rate-sub" hidden>—</div></div>
       </div>
       <!-- v6.0 SHIP 5 — Hatch rate + incubating batches (only shown when data exists) -->
       <div class="biz-grid" style="margin-top:0.7rem" id="poultry-incubation-row" hidden>
@@ -2870,7 +2873,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.9.3</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.9.4</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3187,7 +3190,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.9.3';
+const APP_VERSION = 'v5.9.4';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
