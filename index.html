@@ -1662,6 +1662,16 @@
     border-radius: 2px;
   }
   .period-toggle button.active { background: var(--forest); color: var(--ivory); }
+  /* v5.8.7 — Locked period (All-Time when IS_ADMIN=false): muted, padlock visible */
+  .period-toggle button.period-locked {
+    color: var(--slate-light);
+    opacity: 0.65;
+  }
+  .period-toggle button.period-locked .period-lock {
+    font-size: 0.7em;
+    margin-left: 0.2em;
+    opacity: 0.85;
+  }
 
   .econ-card {
     background: var(--ivory-card);
@@ -1963,7 +1973,7 @@
       <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"></path>
     </svg>
   </button>
-  <span class="version-label" id="version-label">v5.8.6</span>
+  <span class="version-label" id="version-label">v5.8.7</span>
 </header>
 
 <main>
@@ -2486,7 +2496,8 @@
     <div class="period-toggle">
       <button data-p="week" class="active">Week</button>
       <button data-p="month">Month</button>
-      <button data-p="all">All Time</button>
+      <!-- v5.8.7 — All-Time gated behind IS_ADMIN. Padlock CSS added when not admin. -->
+      <button data-p="all" id="period-btn-all">All Time <span class="period-lock" id="period-lock-icon" style="display:none">🔒</span></button>
     </div>
 
     <div class="section">
@@ -2793,7 +2804,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.8.6</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.8.7</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3109,7 +3120,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.8.6';
+const APP_VERSION = 'v5.8.7';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -3486,9 +3497,22 @@ function applyAdminVisibility() {
   //   - locked  → operator default; tap shows toast, triple-tap → passphrase modal
   //   - admin   → Cheison authenticated (view-only OR gate-closed); gear icon
   //   - open    → Cheison authenticated AND writes enabled; green padlock
+  // v5.8.7 — Insights "All Time" button shows padlock icon when IS_ADMIN false.
   const settingsNavBtn = document.getElementById('nav-settings');
   const adminSection = document.getElementById('settings-admin-section');
   // v5.3.2 — gate banner removed; padlock color is the indicator now
+
+  // v5.8.7 — All-Time period lock indicator
+  const periodLockIcon = document.getElementById('period-lock-icon');
+  const periodBtnAll = document.getElementById('period-btn-all');
+  if (periodLockIcon) periodLockIcon.style.display = IS_ADMIN ? 'none' : '';
+  if (periodBtnAll) {
+    if (IS_ADMIN) {
+      periodBtnAll.classList.remove('period-locked');
+    } else {
+      periodBtnAll.classList.add('period-locked');
+    }
+  }
 
   if (IS_ADMIN) {
     if (settingsNavBtn) {
@@ -8663,6 +8687,16 @@ function renderSireetShares() {
 }
 
 function renderInsights() {
+  // v5.8.7 — Defensive admin gate: if non-admin somehow lands on All-Time
+  // (e.g. persisted state from previous admin session), redirect to Week.
+  if (STATE.insightsPeriod === 'all' && !IS_ADMIN) {
+    STATE.insightsPeriod = 'week';
+    document.querySelectorAll('.period-toggle button').forEach(x => {
+      x.classList.toggle('active', x.dataset.p === 'week');
+    });
+    showToast('🔒 All-Time is admin-only — switched to Week', 4000);
+  }
+
   document.getElementById('insights-period-label').textContent =
     STATE.insightsPeriod === 'week' ? 'last 7 days' :
     STATE.insightsPeriod === 'month' ? 'this month' : 'all time';
@@ -9899,10 +9933,21 @@ function showUpdateBanner() {
   document.getElementById('filter-type').addEventListener('change', updateFilterVisibility);
   document.getElementById('btn-export').addEventListener('click', exportCSV);
 
-  // Insights period
+  // Insights period — v5.8.7: All-Time period gated behind IS_ADMIN
+  // Boys can flash Week/Month, but cumulative All-Time requires admin.
+  // If non-admin taps All Time: show toast, redirect to admin reveal.
   document.querySelectorAll('.period-toggle button').forEach(b => {
     b.addEventListener('click', () => {
-      STATE.insightsPeriod = b.dataset.p;
+      const requestedPeriod = b.dataset.p;
+
+      // Gate: All-Time requires IS_ADMIN
+      if (requestedPeriod === 'all' && !IS_ADMIN) {
+        showToast('🔒 All-Time view is admin-only — long-press version label to authenticate', 5500);
+        // Don't change period; keep current selection visually correct
+        return;
+      }
+
+      STATE.insightsPeriod = requestedPeriod;
       document.querySelectorAll('.period-toggle button').forEach(x => x.classList.toggle('active', x === b));
       renderInsights();
     });
