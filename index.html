@@ -213,6 +213,36 @@
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
   }
+  /* v5.9.0 — Header biometric unlock button.
+     Position to LEFT of refresh button. Only visible when stealth ON
+     AND credential registered. Tap → native biometric/PIN prompt. */
+  header.brand .header-unlock {
+    position: absolute;
+    bottom: 0.3rem;
+    right: 8.7rem;
+    background: rgba(212, 165, 91, 0.15);
+    border: 1px solid var(--brass);
+    color: var(--brass);
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 4px;
+    cursor: pointer;
+    opacity: 0.85;
+    font-size: 1rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.15s ease, transform 0.15s ease, background 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  header.brand .header-unlock:hover,
+  header.brand .header-unlock:active {
+    opacity: 1;
+    background: rgba(212, 165, 91, 0.3);
+    transform: scale(1.06);
+  }
   /* v5.8.2 — Incubation progress bars.
      Color logic semantically matches biology:
        Days 0-15  → dark/black (early incubation, nothing visible to do)
@@ -1973,7 +2003,12 @@
       <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"></path>
     </svg>
   </button>
-  <span class="version-label" id="version-label">v5.8.7</span>
+  <!-- v5.9.0 — One-tap biometric unlock. Visible ONLY when stealth is on AND
+       a WebAuthn credential is registered. Tap → device prompts Face ID/PIN. -->
+  <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
+    🔓
+  </button>
+  <span class="version-label" id="version-label">v5.9.0</span>
 </header>
 
 <main>
@@ -2056,6 +2091,15 @@
         <div class="biz-card"><div class="lbl">🐣 Hatch rate (latest)</div><div class="val" id="poultry-hatch-rate">—</div><div class="sub" id="poultry-hatch-rate-sub">no batches yet</div></div>
         <div class="biz-card"><div class="lbl">🥚 Incubating now</div><div class="val" id="poultry-incubating-count">—</div><div class="sub" id="poultry-incubating-sub">no active batches</div></div>
       </div>
+
+      <!-- v5.9.0 — Incubation progress bars on HOME, inside Kipkenda Poultry section.
+           Cheison sealed Sunday 03 May 2026: visible at-a-glance, no navigation. -->
+      <div id="home-incubation-section" style="margin-top:0.9rem">
+        <div class="section-head" style="margin-bottom:0.5rem"><h4 style="font-size:0.78rem;letter-spacing:0.16em;color:var(--brass);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;font-weight:500;margin:0">🐣 Incubation progress</h4><span class="meta" id="home-ip-meta">—</span></div>
+        <div id="home-incubation-list">
+          <div style="text-align:center;padding:0.9rem 0.6rem;color:var(--slate);font-family:'Fraunces',serif;font-style:italic;font-size:0.85rem;opacity:0.75">No batches incubating yet</div>
+        </div>
+      </div>
     </div>
 
     <div class="section">
@@ -2063,11 +2107,8 @@
       <div id="block-bars"></div>
     </div>
 
-    <div class="section" id="home-yoy-section">
-      <div class="section-head"><h3>Year-over-year</h3><span class="meta" id="yoy-period">YTD</span></div>
-      <div id="yoy-comparison"></div>
-      <div id="yoy-trend" style="margin-top:1rem"></div>
-    </div>
+    <!-- v5.9.0 — Year-over-year section MOVED to Insights tab.
+         Per Cheison: Home stays at-a-glance, Insights is the deep-dive view. -->
 
     <div class="section">
       <div class="section-head"><h3>Top pluckers</h3><span class="meta">this month · by kg</span></div>
@@ -2530,6 +2571,14 @@
       </details>
     </div>
 
+    <!-- v5.9.0 — Year-over-year MOVED here from Home.
+         Includes the Rolling 4 months trend chart (also moved). -->
+    <div class="section" id="insights-yoy-section">
+      <div class="section-head"><h3>Year-over-year</h3><span class="meta" id="yoy-period">YTD</span></div>
+      <div id="yoy-comparison"></div>
+      <div id="yoy-trend" style="margin-top:1rem"></div>
+    </div>
+
     <!-- v5.8.6 — Incubation progress on Insights tab.
          Mirrors the same renderIncubationProgress function used on Add → Poultry,
          but with a different container ID (insights-incubation-list).
@@ -2673,6 +2722,24 @@
           🔒 Lock & exit admin
         </button>
       </div>
+
+      <!-- v5.9.0 — Biometric/PIN unlock (WebAuthn).
+           One-time registration creates a credential bound to this device's
+           biometric (Face ID / fingerprint) or PIN. Subsequent unlocks tap
+           that credential — no passphrase typing. Master passphrase remains
+           the recovery path. -->
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:0.6rem;margin-top:0.8rem;border-top:1px solid var(--rule);padding-top:0.9rem">
+        <div>
+          <div class="k">Biometric unlock</div>
+          <div class="desc" id="webauthn-status-desc">Use Face ID / Touch ID / PIN to unlock instead of typing passphrase</div>
+        </div>
+        <button id="webauthn-register-btn" class="export-btn" style="width:100%">
+          🪪 Set up biometric unlock
+        </button>
+        <button id="webauthn-clear-btn" class="export-btn" style="display:none;width:100%;background:transparent;color:var(--slate);border-color:var(--slate-light)">
+          ✕ Remove this device
+        </button>
+      </div>
     </div>
 
     <!-- v6.0 SHIP 3 — Houses admin (Kipkenda Poultry config)
@@ -2804,7 +2871,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.8.7</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.9.0</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3094,6 +3161,7 @@ const K_IS_ADMIN = 'sinonin_is_admin_v1';  // v5.0.19 — set true on first succ
 const K_HOUSES = 'sinonin_houses_v1';       // v6.0 SHIP 3 — Kipkenda houses config
 const K_BIRD_CENSUS = 'sinonin_bird_census_v1';  // v6.0 SHIP 4 — Bird population counts
 const K_INCUBATION = 'sinonin_incubation_v1';     // v6.0 SHIP 5 — Incubation batches
+const K_WEBAUTHN_CRED = 'sinonin_webauthn_cred_v1';  // v5.9.0 — Stored WebAuthn credential ID (base64)
 
 const CLOUD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwzHUz9She1PsVPNOWvssSiQcye8hpKZ9v_3d1aX6nsqPDnIN375z8krhMwsCyikVSLtQ/exec';
 
@@ -3120,7 +3188,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.8.7';
+const APP_VERSION = 'v5.9.0';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -3559,10 +3627,208 @@ function applyAdminVisibility() {
   }
 }
 
+/* ============================================================
+   v5.9.0 — WebAuthn Native Biometric Unlock
+   ============================================================
+   
+   Cheison sealed Sunday 03 May 2026: "Authenticate with normal
+   phone authentication (PIN or Biometrics)".
+   
+   This module uses the Web Authentication API's PLATFORM AUTHENTICATOR
+   (Face ID / Touch ID / Windows Hello / Android biometric / device PIN).
+   
+   First-time setup (registration):
+     1. User taps Settings → "Set up biometric unlock"
+     2. webauthnRegister() calls navigator.credentials.create()
+     3. Device prompts for biometric/PIN to register a credential
+     4. We store credential.rawId in localStorage as base64
+   
+   Subsequent unlocks:
+     1. User taps "Unlock with biometric" (e.g., on stealth screen)
+     2. webauthnUnlock() calls navigator.credentials.get() with stored ID
+     3. Device prompts for biometric/PIN
+     4. On success: we treat the user as authenticated (IS_ADMIN = true)
+   
+   IMPORTANT: This is LOCAL device unlock, not server identity proof.
+   The cryptographic signature isn't verified server-side because we
+   have no auth server. The signal is simply: "the OS confirmed the
+   user passed biometric/PIN check." That's the lock we want.
+   
+   Master passphrase remains as fallback (if user changes phone or 
+   biometric breaks). Long-press version label → enter passphrase 
+   to recover admin status, then re-register WebAuthn.
+   ============================================================ */
+
+function webauthnSupported() {
+  return !!(window.PublicKeyCredential
+    && navigator.credentials
+    && navigator.credentials.create
+    && navigator.credentials.get);
+}
+
+function _b64encode(buf) {
+  // Standard base64 (not base64url) for storage simplicity
+  const bytes = new Uint8Array(buf);
+  let bin = '';
+  for (let i = 0; i < bytes.byteLength; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
+function _b64decode(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes.buffer;
+}
+
+function _randChallenge() {
+  const arr = new Uint8Array(32);
+  crypto.getRandomValues(arr);
+  return arr.buffer;
+}
+
+async function webauthnIsRegistered() {
+  const stored = await storageGet(K_WEBAUTHN_CRED, null);
+  return !!(stored && stored.id);
+}
+
+/* webauthnRegister — first-time setup. Creates a platform credential
+   bound to this device's biometric/PIN. Stored credential ID is used
+   for subsequent unlocks.
+   
+   Returns: { ok: true } on success, { ok: false, reason: string } on failure. */
+async function webauthnRegister() {
+  if (!webauthnSupported()) {
+    return { ok: false, reason: 'Browser does not support biometric unlock' };
+  }
+  try {
+    // User ID: stable per app, NOT per call. Encodes Cheison's identity locally.
+    const userIdBytes = new TextEncoder().encode('cheison@sinonin');
+    const credential = await navigator.credentials.create({
+      publicKey: {
+        challenge: _randChallenge(),
+        rp: {
+          name: 'Sinonin Group Management App',
+          id: window.location.hostname  // e.g., sinonin.vercel.app
+        },
+        user: {
+          id: userIdBytes,
+          name: 'Kiruogindet araap Cheison',
+          displayName: 'Kiruogindet'
+        },
+        pubKeyCredParams: [
+          { type: 'public-key', alg: -7 },   // ES256
+          { type: 'public-key', alg: -257 }  // RS256
+        ],
+        authenticatorSelection: {
+          authenticatorAttachment: 'platform',  // Face ID / fingerprint / Windows Hello
+          userVerification: 'required',         // force biometric/PIN
+          residentKey: 'preferred'
+        },
+        timeout: 60000,
+        attestation: 'none'  // we don't need attestation for local unlock
+      }
+    });
+
+    if (!credential || !credential.rawId) {
+      return { ok: false, reason: 'Registration cancelled' };
+    }
+
+    const credId = _b64encode(credential.rawId);
+    await storageSet(K_WEBAUTHN_CRED, { id: credId, registeredAt: Date.now() });
+    return { ok: true };
+  } catch (e) {
+    console.warn('[webauthn] register failed:', e);
+    return { ok: false, reason: e.name === 'NotAllowedError' ? 'Cancelled' : (e.message || 'Registration failed') };
+  }
+}
+
+/* webauthnUnlock — runtime unlock. Prompts device for biometric/PIN
+   using the previously-registered credential.
+   
+   Returns: { ok: true } on success, { ok: false, reason: string } on failure. */
+async function webauthnUnlock() {
+  if (!webauthnSupported()) {
+    return { ok: false, reason: 'Browser does not support biometric unlock' };
+  }
+  const stored = await storageGet(K_WEBAUTHN_CRED, null);
+  if (!stored || !stored.id) {
+    return { ok: false, reason: 'No credential registered — set up biometric first' };
+  }
+  try {
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge: _randChallenge(),
+        allowCredentials: [{
+          type: 'public-key',
+          id: _b64decode(stored.id),
+          transports: ['internal']
+        }],
+        userVerification: 'required',
+        timeout: 60000,
+        rpId: window.location.hostname
+      }
+    });
+
+    if (!assertion) {
+      return { ok: false, reason: 'Authentication cancelled' };
+    }
+
+    // The OS performed userVerification (biometric/PIN). That's our signal.
+    // No server-side challenge verification is needed for local unlock.
+    return { ok: true };
+  } catch (e) {
+    console.warn('[webauthn] unlock failed:', e);
+    return { ok: false, reason: e.name === 'NotAllowedError' ? 'Cancelled or biometric failed' : (e.message || 'Authentication failed') };
+  }
+}
+
+/* Convenience: unlock + flip IS_ADMIN. Used by stealth unlock button. */
+async function webauthnUnlockAndElevate() {
+  const result = await webauthnUnlock();
+  if (result.ok) {
+    await setAdminMode(true);
+    showToast('🔓 Welcome, Kiruogindet — admin mode enabled', 4000);
+  } else {
+    showToast(`🔒 ${result.reason}`, 4000);
+  }
+  return result;
+}
+
 async function setAdminMode(isAdmin) {
   IS_ADMIN = !!isAdmin;
   await storageSet(K_IS_ADMIN, IS_ADMIN);
+
+  // v5.9.0 — Auto-stealth coupling.
+  // When admin OFF: force stealth ON (sensitive money values masked).
+  // When admin ON: auto-clear stealth (full reveal for Cheison).
+  // STATE.settings persists user override, but admin status takes precedence
+  // for the "lock down when not admin" rule Cheison sealed Sunday 03 May 2026.
+  if (STATE.settings) {
+    STATE.settings.stealthMode = !IS_ADMIN;
+    if (typeof applyStealthMode === 'function') applyStealthMode(!IS_ADMIN);
+    await storageSet(K_SETTINGS, STATE.settings);
+  }
+
   applyAdminVisibility();
+  if (typeof refreshHeaderUnlockVisibility === 'function') refreshHeaderUnlockVisibility();
+}
+
+/* v5.9.0 — Header unlock button visibility.
+   Show ONLY when:
+     · WebAuthn is supported
+     · A credential is registered
+     · IS_ADMIN is currently false (no point unlocking if already admin)
+   Hide otherwise. */
+async function refreshHeaderUnlockVisibility() {
+  const btn = document.getElementById('header-unlock-btn');
+  if (!btn) return;
+  if (IS_ADMIN || !webauthnSupported()) {
+    btn.style.display = 'none';
+    return;
+  }
+  const registered = await webauthnIsRegistered();
+  btn.style.display = registered ? '' : 'none';
 }
 
 /* v5.0.21 — Admin escape hatch. When IS_ADMIN is false but the user is
@@ -4724,6 +4990,61 @@ function wireAdminUI() {
 
   // v5.3.2 — Banner tap-to-revoke flow removed. Banner is gone; revoke 
   // happens via Settings → Admin → "Close gate now" button.
+
+  // v5.9.0 — WebAuthn biometric/PIN setup buttons.
+  const webauthnRegBtn = document.getElementById('webauthn-register-btn');
+  const webauthnClearBtn = document.getElementById('webauthn-clear-btn');
+  const webauthnDesc = document.getElementById('webauthn-status-desc');
+
+  async function refreshWebauthnUI() {
+    if (!webauthnRegBtn) return;
+    if (!webauthnSupported()) {
+      webauthnRegBtn.style.display = 'none';
+      if (webauthnClearBtn) webauthnClearBtn.style.display = 'none';
+      if (webauthnDesc) webauthnDesc.textContent = 'This browser does not support biometric unlock';
+      return;
+    }
+    const registered = await webauthnIsRegistered();
+    if (registered) {
+      webauthnRegBtn.style.display = 'none';
+      if (webauthnClearBtn) webauthnClearBtn.style.display = '';
+      if (webauthnDesc) webauthnDesc.textContent = '✅ Biometric unlock active on this device';
+    } else {
+      webauthnRegBtn.style.display = '';
+      if (webauthnClearBtn) webauthnClearBtn.style.display = 'none';
+      if (webauthnDesc) webauthnDesc.textContent = 'Use Face ID / Touch ID / PIN to unlock instead of typing passphrase';
+    }
+  }
+
+  if (webauthnRegBtn && webauthnRegBtn.dataset.wired !== '1') {
+    webauthnRegBtn.dataset.wired = '1';
+    webauthnRegBtn.addEventListener('click', async () => {
+      webauthnRegBtn.disabled = true;
+      webauthnRegBtn.textContent = '⏳ Registering…';
+      const result = await webauthnRegister();
+      webauthnRegBtn.disabled = false;
+      webauthnRegBtn.textContent = '🪪 Set up biometric unlock';
+      if (result.ok) {
+        showToast('🪪 Biometric unlock registered — try locking and unlocking', 4500);
+      } else {
+        showToast(`🔒 Setup failed: ${result.reason}`, 4000);
+      }
+      refreshWebauthnUI();
+    });
+  }
+
+  if (webauthnClearBtn && webauthnClearBtn.dataset.wired !== '1') {
+    webauthnClearBtn.dataset.wired = '1';
+    webauthnClearBtn.addEventListener('click', async () => {
+      if (!confirm('Remove biometric unlock from this device? You will need to re-register to use it again.')) return;
+      await storageSet(K_WEBAUTHN_CRED, null);
+      showToast('Biometric credential removed', 3000);
+      refreshWebauthnUI();
+    });
+  }
+
+  // Initial UI refresh — defer slightly so storage is ready
+  setTimeout(refreshWebauthnUI, 100);
 }
 
 async function pushGreenleafToGate(entry) {
@@ -7575,23 +7896,28 @@ async function submitIncubationHatch() {
    Sort: longest-running batches first (closest to hatch at top).
 */
 function renderIncubationProgress() {
-  // v5.8.6 — Now paints into TWO containers:
+  // v5.8.6 / v5.9.0 — Now paints into THREE containers:
   //   · Add → Poultry → Incubation: #incubation-progress-list (entry view)
   //   · Insights tab: #insights-incubation-list (overview view)
+  //   · Home → Kipkenda Poultry: #home-incubation-list (at-a-glance, v5.9.0)
   // Same logic, computed once.
   const addList = document.getElementById('incubation-progress-list');
   const addMeta = document.getElementById('ip-meta');
   const insList = document.getElementById('insights-incubation-list');
   const insMeta = document.getElementById('insights-ip-meta');
-  if (!addList && !insList) return;
+  const homeList = document.getElementById('home-incubation-list');
+  const homeMeta = document.getElementById('home-ip-meta');
+  if (!addList && !insList && !homeList) return;
 
   const incubating = (STATE.incubation || []).filter(b => b.status === 'incubating');
   if (incubating.length === 0) {
     const emptyHtml = `<div style="text-align:center;padding:1.2rem 0.6rem;color:var(--slate);font-family:'Fraunces',serif;font-style:italic;font-size:0.88rem;opacity:0.75">No batches incubating yet</div>`;
     if (addList) addList.innerHTML = emptyHtml;
     if (insList) insList.innerHTML = emptyHtml;
+    if (homeList) homeList.innerHTML = emptyHtml;
     if (addMeta) addMeta.textContent = '—';
     if (insMeta) insMeta.textContent = '—';
+    if (homeMeta) homeMeta.textContent = '—';
     return;
   }
 
@@ -7605,6 +7931,7 @@ function renderIncubationProgress() {
   const metaText = `${incubating.length} batch${incubating.length === 1 ? '' : 'es'} · ${totalEggs.toLocaleString('en-KE')} eggs`;
   if (addMeta) addMeta.textContent = metaText;
   if (insMeta) insMeta.textContent = metaText;
+  if (homeMeta) homeMeta.textContent = metaText;
 
   const cardsHtml = incubating.map(b => {
     const dateSet = b.date_set ? new Date(b.date_set) : null;
@@ -7658,6 +7985,7 @@ function renderIncubationProgress() {
 
   if (addList) addList.innerHTML = cardsHtml;
   if (insList) insList.innerHTML = cardsHtml;
+  if (homeList) homeList.innerHTML = cardsHtml;
 }
 
 /* v5.8.6 — Batch history on Insights.
@@ -8154,8 +8482,8 @@ function renderHome() {
       </div>`).join('');
   }
 
-  // Year-over-year + rolling 4-month trend (replaces Recorded vs Actual)
-  renderYoYAndTrend();
+  // v5.9.0 — Year-over-year + rolling 4-month trend MOVED to Insights.
+  // Was: renderYoYAndTrend();
 
   // Top pluckers (unchanged)
   const byP = {};
@@ -8180,6 +8508,9 @@ function renderHome() {
         <span class="kg">${kg(v.kg)} kg</span>
       </div>`).join('');
   }
+
+  // v5.9.0 — Paint home incubation progress in Kipkenda Poultry section
+  if (typeof renderIncubationProgress === 'function') renderIncubationProgress();
 }
 
 /* Records filter context-awareness — hide Block/Factory dropdowns when the
@@ -8694,7 +9025,7 @@ function renderInsights() {
     document.querySelectorAll('.period-toggle button').forEach(x => {
       x.classList.toggle('active', x.dataset.p === 'week');
     });
-    showToast('🔒 All-Time is admin-only — switched to Week', 4000);
+    showToast('🔒 Visible to Kiruogindet ONLY · Week shown', 3500);
   }
 
   document.getElementById('insights-period-label').textContent =
@@ -8827,6 +9158,9 @@ function renderInsights() {
   // v5.8.6 — Incubation progress + Batch history on Insights tab
   if (typeof renderIncubationProgress === 'function') renderIncubationProgress();
   if (typeof renderBatchHistory === 'function') renderBatchHistory();
+
+  // v5.9.0 — Year-over-year + Rolling 4 months trend (moved from Home)
+  if (typeof renderYoYAndTrend === 'function') renderYoYAndTrend();
 }
 
 /* v6.0 SHIP 5 — Insights LITE: 3 sparkline charts for Kipkenda Poultry.
@@ -9416,6 +9750,14 @@ function applyStealthMode(on) {
 }
 
 async function toggleStealth() {
+  // v5.9.0 — Toggling stealth OFF requires admin. Toggling ON is always allowed
+  // (privacy first). This prevents non-admin operators from revealing money
+  // values via the Settings toggle.
+  const turningOff = !!STATE.settings.stealthMode; // currently on, would go off
+  if (turningOff && !IS_ADMIN) {
+    showToast('🔒 Reveal requires Kiruogindet authentication', 4000);
+    return;
+  }
   STATE.settings.stealthMode = !STATE.settings.stealthMode;
   applyStealthMode(STATE.settings.stealthMode);
   await storageSet(K_SETTINGS, STATE.settings);
@@ -9907,6 +10249,27 @@ function showUpdateBanner() {
     });
   }
 
+  // v5.9.0 — Header biometric unlock button. One-tap from anywhere
+  // when stealth is on and credential is registered.
+  const headerUnlockBtn = document.getElementById('header-unlock-btn');
+  if (headerUnlockBtn) {
+    headerUnlockBtn.addEventListener('click', async () => {
+      if (headerUnlockBtn.disabled) return;
+      headerUnlockBtn.disabled = true;
+      headerUnlockBtn.textContent = '⏳';
+      try {
+        await webauthnUnlockAndElevate();
+      } finally {
+        headerUnlockBtn.disabled = false;
+        headerUnlockBtn.textContent = '🔓';
+        // Visibility refresh — if unlock succeeded, button hides itself
+        refreshHeaderUnlockVisibility();
+      }
+    });
+  }
+  // Initial visibility check
+  refreshHeaderUnlockVisibility();
+
   // Expense mode toggle (Quick / Batch) and batch controls
   document.getElementById('x-mode-quick').addEventListener('click', () => switchExpenseMode('quick'));
   document.getElementById('x-mode-batch').addEventListener('click', () => switchExpenseMode('batch'));
@@ -9942,7 +10305,7 @@ function showUpdateBanner() {
 
       // Gate: All-Time requires IS_ADMIN
       if (requestedPeriod === 'all' && !IS_ADMIN) {
-        showToast('🔒 All-Time view is admin-only — long-press version label to authenticate', 5500);
+        showToast('🔒 Visible to Kiruogindet ONLY', 4000);
         // Don't change period; keep current selection visually correct
         return;
       }
@@ -10172,8 +10535,20 @@ function showUpdateBanner() {
     });
   }
 
-  // Apply persisted stealth mode immediately (before any render)
-  applyStealthMode(!!(STATE.settings && STATE.settings.stealthMode));
+  // v5.9.0 — Stealth-default coupling. If not admin, FORCE stealth ON
+  // regardless of stored prefs. Cheison sealed Sunday 03 May 2026:
+  // "All sensitive info locked from anybody who is NOT IS_Admin."
+  // This prevents a rogue stealth=false in storage from leaking values
+  // when the device passes to non-admin hands.
+  if (!IS_ADMIN) {
+    if (STATE.settings) {
+      STATE.settings.stealthMode = true;
+      await storageSet(K_SETTINGS, STATE.settings);
+    }
+    applyStealthMode(true);
+  } else {
+    applyStealthMode(!!(STATE.settings && STATE.settings.stealthMode));
+  }
 
   renderHome();
 
