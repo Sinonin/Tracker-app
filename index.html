@@ -2008,7 +2008,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v5.9.2</span>
+  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v5.9.3</span>
 </header>
 
 <main>
@@ -2870,7 +2870,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.9.2</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.9.3</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3187,7 +3187,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.9.2';
+const APP_VERSION = 'v5.9.3';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -5820,16 +5820,90 @@ async function updateSyncIndicator() {
 
 async function cloudFetch(since) {
   if (!navigator.onLine) return null;
-  const url = since ? `${CLOUD_ENDPOINT}?since=${since}` : CLOUD_ENDPOINT;
+
+  // v5.9.3 — Hardened cloud fetch:
+  //   · URL constructor + searchParams (cleaner than string concat)
+  //   · Cache-buster `_ts` query param prevents iOS Safari/PWA from
+  //     serving stale Apps Script JSON (documented quirk)
+  //   · 20-sec AbortController timeout — without this, stuck fetches on
+  //     bad 4G hang indefinitely (critical for field operators)
+  //   · cache:'no-store' double-ensures fresh data
+  //   · credentials:'omit' = no cookie leak cross-origin
+  //   · Diagnostic logging on every failure path
+  //   · Backwards/forwards compat: greenleaf → pluckers field shim
+  const url = new URL(CLOUD_ENDPOINT);
+  if (since) url.searchParams.set('since', since);
+  url.searchParams.set('_ts', String(Date.now()));
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+
   try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
+    const res = await fetch(url.toString(), {
+      method: 'GET',
+      cache: 'no-store',
+      credentials: 'omit',
+      signal: controller.signal,
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!res.ok) {
+      console.warn('[cloudFetch] HTTP error', res.status, res.statusText);
+      return null;
+    }
     const data = await res.json();
-    if (!data || data.ok !== true) return null;
+    if (!data || data.ok !== true) {
+      // v5.9.3 — Log a compact summary instead of the full payload.
+      // The full data is structured-cloneable but may be large; a short
+      // summary string is friendlier to console + preview-toolbar pipelines.
+      const summary = data ? `ok=${data.ok} keys=[${Object.keys(data).join(',')}]` : 'null';
+      console.warn('[cloudFetch] Endpoint returned non-ok payload:', summary);
+      return null;
+    }
+    // Backwards/forwards compatibility: early endpoint drafts used `greenleaf`;
+    // current app state expects `pluckers` for picked-level rows.
+    if (!Array.isArray(data.pluckers) && Array.isArray(data.greenleaf)) {
+      data.pluckers = data.greenleaf;
+    }
     return data;
   } catch (e) {
+    // v5.9.3 — Stringify the error before logging. Passing the raw Error
+    // object to console.warn caused a DataCloneError under Vercel preview
+    // toolbar (and similar dev environments), which intercepts console.warn
+    // to forward it via window.postMessage(). The Error object transitively
+    // references the fetch options (which contain AbortSignal — NOT
+    // structured-cloneable), so postMessage choked. Strings clone trivially.
+    const reason = (e && e.name === 'AbortError') ? 'timeout'
+                 : (e && e.message) ? e.message
+                 : String(e);
+    console.warn('[cloudFetch] Failed:', reason);
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
+}
+
+// v5.9.3 — Defensive number parsing.
+// Handles: numeric strings with commas ("1,234"), currency strings
+// ("Ksh 1500"), null/undefined/empty. Returns 0 on any failure path,
+// preventing NaN propagation through aggregations.
+function cloudNumber(value) {
+  if (value === null || value === undefined || value === '') return 0;
+  if (typeof value === 'number') return value;
+  const n = Number(String(value).replace(/,/g, '').replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
+// v5.9.3 — Field-name fallback chain for ACTUAL kg.
+// Defends against schema drift between Sheet headers and JSON field names.
+// This is the v5.0.14 lesson institutionalized in CLIENT code:
+// "mismatched headers silently return zero" — same risk applies to JSON.
+function actualKgOf(r) {
+  return cloudNumber(r.kg ?? r.actualKg ?? r.actual_kg ?? r.actualKgDelivered ?? r['Actual Kg Delivered']);
+}
+
+// v5.9.3 — Field-name fallback chain for PLUCKED kg (greenleaf entries).
+function pluckedKgOf(r) {
+  return cloudNumber(r.kg ?? r.qty ?? r.qtyPlucked ?? r['Qty Plucked']);
 }
 
 // Content-based identity keys — used to dedupe cloud rows against
@@ -5838,10 +5912,12 @@ function pluckerKey(r) {
   // plucker row from cloud has .plucker as "6. Gladys Yego" string;
   // local row has .pluckerName. Normalise to the cloud form.
   const name = r.plucker || (r.pluckerId != null ? `${r.pluckerId}. ${r.pluckerName}` : r.pluckerName || '');
-  return `${r.date}|${(r.block||'').trim()}|${name.trim()}|${Number(r.kg || r.qty || 0).toFixed(2)}|${(r.factory||'').trim()}`;
+  // v5.9.3 — Use pluckedKgOf helper for consistent kg field resolution
+  return `${r.date}|${(r.block||'').trim()}|${name.trim()}|${pluckedKgOf(r).toFixed(2)}|${(r.factory||'').trim()}`;
 }
 function actualKey(r) {
-  return `${r.date}|${(r.factory||'').trim()}|${(r.block||'').trim()}|${Number(r.kg || 0).toFixed(2)}`;
+  // v5.9.3 — Use actualKgOf helper for consistent kg field resolution
+  return `${r.date}|${(r.factory||'').trim()}|${(r.block||'').trim()}|${actualKgOf(r).toFixed(2)}`;
 }
 function expenseKey(r) {
   return `${r.date}|${(r.category||'').trim()}|${Number(r.amount || 0).toFixed(2)}|${(r.block||'').trim()}|${(r.payee||'').trim()}`;
@@ -5899,25 +5975,27 @@ function cloudToLocalPlucker(r) {
     pluckerName = m[2].trim();
   }
   return {
-    id: 'C-P-' + r.date + '-' + (pluckerId || pluckerName) + '-' + Number(r.kg).toFixed(2),
+    // v5.9.3 — Use pluckedKgOf helper for consistent kg field resolution
+    id: 'C-P-' + r.date + '-' + (pluckerId || pluckerName) + '-' + pluckedKgOf(r).toFixed(2),
     ts: r.timestamp || r.date + 'T00:00:00Z',
     date: r.date,
     block: r.block,
     pluckerId: pluckerId,
     pluckerName: pluckerName,
-    qty: Number(r.kg) || 0,
+    qty: pluckedKgOf(r),
     factory: r.factory,
     _source: 'cloud'
   };
 }
 function cloudToLocalActual(r) {
   return {
-    id: 'C-A-' + r.date + '-' + (r.factory || '') + '-' + (r.block || '') + '-' + Number(r.kg).toFixed(2),
+    // v5.9.3 — Use actualKgOf helper for consistent kg field resolution
+    id: 'C-A-' + r.date + '-' + (r.factory || '') + '-' + (r.block || '') + '-' + actualKgOf(r).toFixed(2),
     ts: r.timestamp || r.date + 'T00:00:00Z',
     date: r.date,
     factory: r.factory,
     block: r.block || 'All blocks',
-    kg: Number(r.kg) || 0,
+    kg: actualKgOf(r),
     _source: 'cloud'
   };
 }
@@ -5932,7 +6010,8 @@ function cloudToLocalExpense(r) {
     amount: Number(r.amount) || 0,
     block: r.block || 'Whole farm',
     payee: r.payee || '',
-    _source: r.source === 'history' ? 'history' : 'cloud'
+    // v5.9.3 — Broader history matching: catches 'historical_expense' source label
+    _source: (r.source === 'history' || r.source === 'historical_expense') ? 'history' : 'cloud'
   };
 }
 function cloudToLocalBanked(r) {
@@ -6101,7 +6180,21 @@ async function applyCloudResponse(data) {
     await storageSet(K_PLUCKERS, PLUCKERS);
     repopulatePluckerDropdown();
   }
-  const syncMeta = { lastCloudSync: new Date().toISOString(), lastSyncDate: new Date().toISOString().slice(0, 10) };
+  // v5.9.3 — Enhanced syncMeta with row counts + generatedAt for operator
+  // observability. Settings can show "X entries · Y actuals · Z expenses"
+  // and operators can spot unexpected data loss between syncs.
+  const syncMeta = {
+    lastCloudSync: new Date().toISOString(),
+    lastSyncDate: new Date().toISOString().slice(0, 10),
+    rowCounts: {
+      pluckers: Array.isArray(data.pluckers) ? data.pluckers.length : 0,
+      actuals: Array.isArray(data.actuals) ? data.actuals.length : 0,
+      expenses: Array.isArray(data.expenses) ? data.expenses.length : 0,
+      banked: Array.isArray(data.banked) ? data.banked.length : 0,
+      poultry: Array.isArray(data.poultry) ? data.poultry.length : 0
+    },
+    generatedAt: data.generatedAt || null
+  };
   await storageSet(K_CLOUD_SYNC, syncMeta);
 }
 
@@ -8866,8 +8959,10 @@ function renderRecords() {
       return s + (r.amount || 0);
     }, 0);
     const totalKg = list.reduce((s, r) => {
-      if (r._kind === 'greenleaf') return s + (Number(r.qty) || 0);
-      if (r._kind === 'actual') return s + (Number(r.kg) || 0);
+      // v5.9.3 — Use semantically-correct helpers (actualKgOf for actuals,
+      // pluckedKgOf for greenleaf). Defends against schema field-name drift.
+      if (r._kind === 'greenleaf') return s + pluckedKgOf(r);
+      if (r._kind === 'actual') return s + actualKgOf(r);
       return s;
     }, 0);
     const totalUnits = list.reduce((s, r) => {
