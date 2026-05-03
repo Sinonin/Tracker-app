@@ -2008,7 +2008,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v5.9.1</span>
+  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v5.9.2</span>
 </header>
 
 <main>
@@ -2870,7 +2870,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.9.1</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v5.9.2</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3187,7 +3187,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.9.1';
+const APP_VERSION = 'v5.9.2';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -3795,31 +3795,45 @@ async function webauthnUnlockAndElevate() {
 }
 
 async function setAdminMode(isAdmin) {
+  const wasAdmin = IS_ADMIN;
   IS_ADMIN = !!isAdmin;
   await storageSet(K_IS_ADMIN, IS_ADMIN);
 
-  // v5.9.0 — Auto-stealth coupling.
-  // When admin OFF: force stealth ON (sensitive money values masked).
-  // When admin ON: auto-clear stealth (full reveal for Cheison).
-  // STATE.settings persists user override, but admin status takes precedence
-  // for the "lock down when not admin" rule Cheison sealed Sunday 03 May 2026.
+  // v5.9.2 — Directional stealth coupling (refined from v5.9.0).
+  // Old (v5.9.0): stealthMode = !IS_ADMIN always (blocked operator toggles).
+  // New (v5.9.2):
+  //   · Admin GRANTED (was false → true): auto-LIFT stealth (Cheison's convenience)
+  //   · Admin REVOKED (was true → false): auto-ENGAGE stealth (privacy lockdown)
+  //   · No change in admin: do NOT touch stealth (operator toggles preserved)
+  //
+  // This separates "reveal data" (stealth toggle, anyone) from "access settings"
+  // (admin auth, Cheison only). Sealed Sunday 03 May 2026.
   if (STATE.settings) {
-    STATE.settings.stealthMode = !IS_ADMIN;
-    if (typeof applyStealthMode === 'function') applyStealthMode(!IS_ADMIN);
-    await storageSet(K_SETTINGS, STATE.settings);
+    if (!wasAdmin && IS_ADMIN) {
+      // Admin granted: lift stealth for Cheison
+      STATE.settings.stealthMode = false;
+      if (typeof applyStealthMode === 'function') applyStealthMode(false);
+      await storageSet(K_SETTINGS, STATE.settings);
+    } else if (wasAdmin && !IS_ADMIN) {
+      // Admin revoked: re-engage stealth (manual lock OR idle auto-relock)
+      STATE.settings.stealthMode = true;
+      if (typeof applyStealthMode === 'function') applyStealthMode(true);
+      await storageSet(K_SETTINGS, STATE.settings);
+    }
+    // else: admin status unchanged — leave stealth as user set it
   }
 
   applyAdminVisibility();
   if (typeof refreshHeaderUnlockVisibility === 'function') refreshHeaderUnlockVisibility();
 
-  // v5.9.0 audit fix — If user is currently on Insights, re-render to
-  // refresh All-Time gate state (otherwise stale All-Time data may
-  // remain visible in DOM until next render). Also covers the inverse:
-  // when admin flips ON, stale "Week shown" state can refresh to All-Time
-  // if user re-clicks. Render-on-flip keeps view honest.
+  // v5.9.0 audit fix — re-render Insights if user is currently on it
   if (STATE.view === 'insights' && typeof renderInsights === 'function') {
     renderInsights();
   }
+
+  // v5.9.2 — Manage idle timer based on admin state.
+  // Started when admin granted, cleared when revoked.
+  if (typeof manageIdleTimer === 'function') manageIdleTimer();
 }
 
 /* v5.9.0 — Header unlock button visibility.
@@ -3837,6 +3851,62 @@ async function refreshHeaderUnlockVisibility() {
   }
   const registered = await webauthnIsRegistered();
   btn.style.display = registered ? '' : 'none';
+}
+
+/* ============================================================
+   v5.9.2 — Idle Auto-Relock (10 min)
+   ============================================================
+   When IS_ADMIN is true, watch for user activity. After 10 minutes
+   of no interaction, automatically revoke admin (which also engages
+   stealth via setAdminMode's directional coupling).
+   
+   Activity = any of: pointerdown, keydown, scroll, touchstart.
+   These are debounced — we only RESTART the timer, not run logic
+   on every event. Cheap.
+   
+   When IS_ADMIN is false, the timer is cleared (operators don't
+   need to be locked further — they're already operator-tier).
+   ============================================================ */
+
+const IDLE_MS = 10 * 60 * 1000; // 10 minutes
+let _idleTimer = null;
+let _idleListenersAttached = false;
+
+function _resetIdleTimer() {
+  if (_idleTimer) clearTimeout(_idleTimer);
+  if (!IS_ADMIN) return;
+  _idleTimer = setTimeout(async () => {
+    if (!IS_ADMIN) return;
+    console.log('[idle-relock] 10 min idle, revoking admin');
+    await setAdminMode(false);
+    showToast('🔒 Locked due to inactivity', 4000);
+    // Send back to Home — Settings is no longer accessible
+    const homeBtn = document.querySelector('[data-view="home"]');
+    if (homeBtn) homeBtn.click();
+  }, IDLE_MS);
+}
+
+function _attachIdleListeners() {
+  if (_idleListenersAttached) return;
+  _idleListenersAttached = true;
+  ['pointerdown', 'keydown', 'scroll', 'touchstart'].forEach(ev => {
+    document.addEventListener(ev, _resetIdleTimer, { passive: true });
+  });
+}
+
+function manageIdleTimer() {
+  // Called by setAdminMode after admin state changes.
+  // When admin true: ensure listeners attached + timer started.
+  // When admin false: clear timer (listeners stay attached; cheap).
+  if (IS_ADMIN) {
+    _attachIdleListeners();
+    _resetIdleTimer();
+  } else {
+    if (_idleTimer) {
+      clearTimeout(_idleTimer);
+      _idleTimer = null;
+    }
+  }
 }
 
 /* v5.0.21 — Admin escape hatch. When IS_ADMIN is false but the user is
@@ -3870,7 +3940,9 @@ function wireAdminEscapeHatch() {
       renderAdminSection();
       renderGateBanner();
     });
-    showToast('Admin reveal · enter passphrase to confirm');
+    // v5.9.2 — Silent reveal. Toast removed to prevent leaking the existence
+    // of a passphrase tier to anyone who happens to long-press the version
+    // label by accident. Cheison knows what to do.
     setTimeout(() => {
       if (settingsNavBtn) settingsNavBtn.click();
       setTimeout(() => {
@@ -9753,14 +9825,21 @@ function applyStealthMode(on) {
 }
 
 async function toggleStealth() {
-  // v5.9.0 — Toggling stealth OFF requires admin. Toggling ON is always allowed
-  // (privacy first). This prevents non-admin operators from revealing money
-  // values via the Settings toggle.
-  const turningOff = !!STATE.settings.stealthMode; // currently on, would go off
-  if (turningOff && !IS_ADMIN) {
-    showToast('🔒 Reveal requires Kiruogindet authentication', 4000);
-    return;
-  }
+  // v5.9.2 — Toggle is FREE for anyone. The previous v5.9.0 admin-gate
+  // was too tight: Elias and Victor (trusted operators) need to see
+  // money values to do their work. Restricting toggle to admin meant
+  // they had no path to lift stealth without prompting for Settings.
+  //
+  // New model:
+  //   · Stealth toggle = anyone can flip (operator-friendly)
+  //   · Settings access = admin-only (passphrase / biometric)
+  //   · These are TWO DIFFERENT permission tiers
+  //
+  // Saturday's "boys after church" protection is preserved by:
+  //   · Stealth defaults ON when admin is revoked (lockdown)
+  //   · Stealth defaults ON on 10-min idle relock
+  //   · Stealth defaults ON on fresh install
+  // The threat model treats Elias/Victor as TRUSTED, casual visitors as UNTRUSTED.
   STATE.settings.stealthMode = !STATE.settings.stealthMode;
   applyStealthMode(STATE.settings.stealthMode);
   await storageSet(K_SETTINGS, STATE.settings);
@@ -10099,6 +10178,9 @@ function showUpdateBanner() {
   // hide admin chrome before any operator sees it. Default false (operator).
   IS_ADMIN = await storageGet(K_IS_ADMIN, false);
   applyAdminVisibility();
+  // v5.9.2 — If init loads with IS_ADMIN=true (persisted from previous session),
+  // start the 10-min idle timer immediately.
+  if (typeof manageIdleTimer === 'function') manageIdleTimer();
   wireAdminEscapeHatch();  // Long-press version label to reveal admin (for fresh installs)
   // v5.1.0 — Lock-icon auth flow
   wireLockIconAuth();      // Triple-tap on bottom-nav padlock to authenticate
@@ -10552,20 +10634,21 @@ function showUpdateBanner() {
     });
   }
 
-  // v5.9.0 — Stealth-default coupling. If not admin, FORCE stealth ON
-  // regardless of stored prefs. Cheison sealed Sunday 03 May 2026:
-  // "All sensitive info locked from anybody who is NOT IS_Admin."
-  // This prevents a rogue stealth=false in storage from leaking values
-  // when the device passes to non-admin hands.
-  if (!IS_ADMIN) {
-    if (STATE.settings) {
-      STATE.settings.stealthMode = true;
-      await storageSet(K_SETTINGS, STATE.settings);
-    }
-    applyStealthMode(true);
-  } else {
-    applyStealthMode(!!(STATE.settings && STATE.settings.stealthMode));
+  // v5.9.2 — Apply persisted stealth mode (refined from v5.9.0 forced-coupling).
+  // Stealth is now a STANDALONE setting, decoupled from IS_ADMIN.
+  // Defaults:
+  //   · Fresh install: STATE.settings.stealthMode = false (DEFAULT_SETTINGS)
+  //   · BUT: on fresh install + non-admin, force stealth ON for safety
+  //         (boys-after-church protection at first run)
+  //   · Otherwise: respect whatever the user (operator or admin) last set
+  // This means Elias/Victor can toggle stealth freely; admin auth/revoke
+  // also coordinates stealth via setAdminMode's directional coupling.
+  if (!IS_ADMIN && STATE.settings && STATE.settings.stealthMode === false && !storedSettings) {
+    // Fresh install path: no stored settings AND default is off — engage privacy
+    STATE.settings.stealthMode = true;
+    await storageSet(K_SETTINGS, STATE.settings);
   }
+  applyStealthMode(!!(STATE.settings && STATE.settings.stealthMode));
 
   renderHome();
 
