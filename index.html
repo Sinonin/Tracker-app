@@ -276,7 +276,7 @@
     opacity: 0.85;
   }
   .ip-card .ip-bar-track {
-    height: 22px;
+    height: 24px;
     background: rgba(0, 0, 0, 0.08);
     border-radius: 4px;
     overflow: hidden;
@@ -291,12 +291,14 @@
   .ip-card .ip-bar-fill.phase-approach{ background: linear-gradient(90deg, #b8935a, #d4a55b); }
   .ip-card .ip-bar-fill.phase-ready   { background: linear-gradient(90deg, #6b9e5b, #87b870); }
   .ip-card .ip-bar-fill.phase-overdue { background: linear-gradient(90deg, #b8453a, #d65a4d); }
-  /* v6.0.1 — Text overlaid INSIDE the bar (Cheison's space-economy directive
-     04 May 2026). Replaces the foot-line below. Overlays on top of the fill so
-     it reads as part of the bar, not below it. White-on-fill for contrast.
-     The label is positioned absolutely so it never gets clipped by the fill
-     width — even at 5% fill, the full message is visible (just over a darker
-     background where fill hasn't reached yet). */
+  /* v6.0.1 — Text overlaid INSIDE the bar (Cheison's space-economy directive 04 May).
+     v6.1.2 — Contrast + size refinement (Cheison directive 04 May, post-deploy):
+              · font-size 0.72rem → 0.66rem (less overflow risk on long messages)
+              · font-weight 500 → 600 across all phases (better legibility)
+              · text-shadow strengthened on light backgrounds (amber/green/red)
+                — creates a tight dark halo behind the white text, restoring 
+                contrast even when fill color is luminous. WCAG AA-friendly.
+              · Bar height 22px → 24px (gives the heavier text room to breathe). */
   .ip-card .ip-bar-label {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -304,27 +306,37 @@
     align-items: center;
     justify-content: center;
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.72rem;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-    color: rgba(255, 255, 255, 0.95);
-    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: #FFFFFF;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55), 0 0 1px rgba(0, 0, 0, 0.4);
     pointer-events: none;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding: 0 0.6rem;
+    padding: 0 0.5rem;
   }
-  /* Phase-approach (amber) — Marek's prep PROMINENCE: bold + slight uppercase */
+  /* Phase-early: dark bg, less shadow needed */
+  .ip-card .ip-bar-label.phase-early {
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+  }
+  /* Phase-approach (amber/brass) — light bg needs strong dark halo for white text */
   .ip-card .ip-bar-label.phase-approach {
-    font-weight: 600;
-    letter-spacing: 0.06em;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7), 0 0 2px rgba(0, 0, 0, 0.5);
   }
-  /* Phase-ready and phase-overdue keep slightly higher contrast */
-  .ip-card .ip-bar-label.phase-ready,
+  /* Phase-ready (green) — lighter bg, moderate halo */
+  .ip-card .ip-bar-label.phase-ready {
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65), 0 0 2px rgba(0, 0, 0, 0.4);
+  }
+  /* Phase-overdue (red) — strong halo for the action CTA */
   .ip-card .ip-bar-label.phase-overdue {
-    font-weight: 600;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7), 0 0 2px rgba(0, 0, 0, 0.5);
   }
   /* Foot row no longer used in v6.0.1, but kept defined for backward-compat
      if any hatch'd batches still render it via legacy renderBatchHistory. */
@@ -2173,7 +2185,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.1.1</span>
+  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.1.3</span>
 </header>
 
 <main>
@@ -2790,8 +2802,8 @@
         <div class="field"><label>Stage</label>
           <select id="vc-stage">
             <option value="">— Stage —</option>
-            <option value="Chicks 1\u20137 days">Chicks 1–7 days</option>
-            <option value="Chicks 7\u201328 days">Chicks 7–28 days</option>
+            <option value="Chicks 1–7 days">Chicks 1–7 days</option>
+            <option value="Chicks 7–28 days">Chicks 8–28 days</option>
             <option value="Growers">Growers</option>
             <option value="Cockerels">Cockerels</option>
             <option value="Layers">Layers</option>
@@ -3161,7 +3173,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.1.1</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.1.3</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3482,7 +3494,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.1.1';
+const APP_VERSION = 'v6.1.3';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -6138,28 +6150,54 @@ async function cloudFetch(since) {
   if (since) url.searchParams.set('since', since);
   url.searchParams.set('_ts', String(Date.now()));
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000);
+  // v6.1.3 — Promise.race timeout (replaces AbortController).
+  // 
+  // WHY: Vercel preview toolbar intercepts console.warn via 
+  // window.postMessage() to forward warnings to its dev panel. When the 
+  // fetch options contain a `signal: AbortController.signal`, the resulting 
+  // error chain transitively references the AbortSignal — which fails 
+  // structuredClone() during postMessage(). The toolbar's own interception 
+  // throws "Failed to execute 'postMessage' on 'Window': AbortSignal object 
+  // could not be cloned." — and that thrown error becomes the rejection 
+  // value of the underlying fetch promise.
+  // 
+  // PRIOR FIX (v5.9.3 + v6.0.0): stringify the caught error before logging.
+  // That stops the SECONDARY postMessage failure but doesn't prevent the 
+  // PRIMARY one. The fetch still rejects → cloudFetch returns null → 
+  // applyCloudResponse never runs → STATE.houses (and other cloud data) 
+  // never populates. Cheison saw this as: "House dropdown empty under 
+  // vaccinations on the Vercel preview."
+  // 
+  // NEW APPROACH: Promise.race against a setTimeout-rejecting promise.
+  // Same 20-sec protection (stuck fetches still bail out), but no 
+  // AbortSignal anywhere in the fetch options. Nothing for the postMessage 
+  // forwarder to choke on.
+  // 
+  // TRADE-OFF: the fetch itself isn't actually aborted on timeout — it 
+  // continues in the background until network/browser drops it. For our 
+  // ~50KB JSON payload over 4G, that's fine. The 20-sec rejection just 
+  // tells US (the caller) to give up waiting. No memory leak in practice.
+  const TIMEOUT_MS = 20000;
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS)
+  );
 
   try {
-    const res = await fetch(url.toString(), {
-      method: 'GET',
-      cache: 'no-store',
-      credentials: 'omit',
-      signal: controller.signal,
-      headers: { 'Accept': 'application/json' }
-    });
+    const res = await Promise.race([
+      fetch(url.toString(), {
+        method: 'GET',
+        cache: 'no-store',
+        credentials: 'omit',
+        headers: { 'Accept': 'application/json' }
+      }),
+      timeoutPromise
+    ]);
     if (!res.ok) {
-      // v6.0.0 — Stringify status+statusText into a single string. Earlier
-      // version passed (status, statusText) as separate args; some console.warn
-      // forwarders try to clone each arg and choke on cross-realm objects.
       console.warn('[cloudFetch] HTTP error: ' + String(res.status) + ' ' + String(res.statusText || ''));
       return null;
     }
     const data = await res.json();
     if (!data || data.ok !== true) {
-      // v5.9.3 — Log a compact summary instead of the full payload.
-      // v6.0.0 — Concatenate into a single string arg for safer console fwd.
       const summary = data ? ('ok=' + String(data.ok) + ' keys=[' + Object.keys(data).join(',') + ']') : 'null';
       console.warn('[cloudFetch] Endpoint returned non-ok payload: ' + summary);
       return null;
@@ -6171,25 +6209,17 @@ async function cloudFetch(since) {
     }
     return data;
   } catch (e) {
-    // v5.9.3 / v6.0.0 — Stringify the error before logging. Passing the raw
-    // Error object to console.warn caused a DataCloneError under Vercel preview
-    // toolbar (and similar dev environments), which intercepts console.warn
-    // to forward it via window.postMessage(). The Error object transitively
-    // references the fetch options (which contain AbortSignal — NOT
-    // structured-cloneable), so postMessage choked. Strings clone trivially.
+    // Stringify defensively (no AbortSignal in chain anymore, but keep 
+    // belt-and-suspenders for unknown future failure modes)
     let reason;
     try {
-      if (e && e.name === 'AbortError') reason = 'timeout';
-      else if (e && typeof e.message === 'string') reason = e.message;
+      if (e && typeof e.message === 'string') reason = e.message;
       else reason = String(e);
     } catch (stringifyErr) {
       reason = 'unknown error (also failed to stringify)';
     }
-    // Concatenate into a single string arg — safer for console forwarders.
     console.warn('[cloudFetch] Failed: ' + reason);
     return null;
-  } finally {
-    clearTimeout(timeout);
   }
 }
 
@@ -8897,8 +8927,20 @@ function initVaccinationForm() {
   if (houseEl) {
     const houses = (Array.isArray(STATE.houses) ? STATE.houses : [])
       .filter(h => h.active === true || h.active === 'TRUE' || h.active === undefined);
-    houseEl.innerHTML = '<option value="">— House —</option>' +
-      houses.map(h => `<option value="${h.name}">${h.name}</option>`).join('');
+    if (houses.length === 0) {
+      // v6.1.3 — Defensive empty-state: explain WHY no houses, don't show 
+      // an empty dropdown that just says "— House —" forever. This catches 
+      // the case where cloud sync hasn't finished, OR the operator hasn't 
+      // configured houses yet. Operator immediately understands the cause.
+      houseEl.innerHTML = '<option value="">— House —</option>' +
+        '<option value="" disabled>(no active houses · sync or add via Settings)</option>';
+      console.warn('[vacc-form] STATE.houses has no active entries (count=' + 
+                   (Array.isArray(STATE.houses) ? STATE.houses.length : 0) + 
+                   '). Cloud sync may be incomplete.');
+    } else {
+      houseEl.innerHTML = '<option value="">— House —</option>' +
+        houses.map(h => `<option value="${h.name}">${h.name}</option>`).join('');
+    }
   }
 
   // Stage→Vaccine cascade
