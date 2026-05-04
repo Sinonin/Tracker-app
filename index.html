@@ -2263,7 +2263,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.1.4</span>
+  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.1.5</span>
 </header>
 
 <main>
@@ -3262,7 +3262,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.1.4</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.1.5</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3584,7 +3584,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.1.4';
+const APP_VERSION = 'v6.1.5';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -8802,22 +8802,24 @@ function ageAllCohorts() {
 }
 
 /* v6.1.4 — Deep litter tracking (Cheison sealed 04 May 2026).
+   v6.1.5 — Refinements (Cheison directives 04 May 2026 PM):
+     · Bar fill INVERTED: starts FULL green at Day 0, depletes toward empty.
+       Operator intuition: "the runway is shrinking" rather than "the meter
+       is filling." Same color thresholds, opposite direction.
+     · Native HTML5 date picker replaces window.prompt() — eliminates 
+       YYYY-MM-DD typing risk for non-Western locales (Kenya is DD/MM/YYYY 
+       culturally; OS picker handles localization automatically).
+     · NON-ADMIN operators are BLOCKED from overwriting an existing record 
+       (toast: "already recorded; contact admin to correct"). Protects 
+       production data from operator-tinkering errors.
+     · IS_ADMIN gets the picker → confirm modal flow with the previous-vs-new 
+       date side by side. Mars discipline: explicit overwrite, never silent.
+     · Timezone-consistent math: both lastDate and today parsed as LOCAL 
+       midnight (not UTC). Eliminates day-boundary off-by-one errors when 
+       operator records a date in their local TZ.
    
-   Hard-stop 8-week (56-day) cycle. Operator taps the bar in the Kipkenda 
-   Poultry section header → date picker prompts for the litter-change 
-   date → save. Traffic-light visualization across the cycle:
-   
-     Day 0     no record yet     phase-early    (dark) — invites first record
-     Day 0-34  >21d to next      phase-clean    (green) "Litter clean · Nd to next"
-     Day 35-41 15-21d to next    phase-approach (amber) "Litter due in Nd · heads up"
-     Day 42-55 ≤14d to next      phase-due      (red)   "🔴 Litter due in Nd · plan ahead"
-     Day 56+   overdue           phase-overdue  (red)   "⚠️ Litter OVERDUE Nd · TAP to record"
-   
-   Scope: Ground Floor only for v1 (operator instruction). Other houses
-   come later. Storage is local-only for now; Apps Script integration 
-   ('litter-change' action) deferred to Thursday's v5.0.30+ patch — 
-   harmless to attempt the gate-push now since the server will simply 
-   ignore unknown actions until that patch lands. */
+   Hard-stop 8-week (56-day) cycle. Ground Floor only for v1.
+   Storage local-only for now; Apps Script integration deferred to v5.0.30+. */
 const LITTER_CYCLE_DAYS = 56;        // 8 weeks — hard stop
 const LITTER_TARGET_HOUSE = 'Ground Floor'; // v1 scope
 function renderLitterBar() {
@@ -8834,33 +8836,42 @@ function renderLitterBar() {
 
   let phase, label, fillPct;
   if (!latest) {
-    // No record yet — invite first entry
+    // No record yet — invite first entry. Empty (0%) bar with dark phase.
     phase = 'phase-early';
     label = '🪶 Litter — TAP to record first change (' + LITTER_TARGET_HOUSE + ')';
     fillPct = 0;
   } else {
-    const lastDate = new Date(latest.date + 'T00:00:00Z');
+    // v6.1.5 — Timezone-consistent math: both dates in LOCAL reference frame.
+    // Parse 'YYYY-MM-DD' as local midnight by splitting and using new Date(y,m-1,d).
+    // Avoids the UTC-vs-local skew that would have caused day-boundary errors.
+    const parts = String(latest.date).split('-');
+    const lastDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    lastDate.setHours(0, 0, 0, 0);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const daysSince = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
+    const daysSince = Math.round((today - lastDate) / (1000 * 60 * 60 * 24));
     const daysUntil = LITTER_CYCLE_DAYS - daysSince;
-    fillPct = Math.min(100, Math.max(0, (daysSince / LITTER_CYCLE_DAYS) * 100));
+    
+    // v6.1.5 — INVERTED fill: starts at 100% (full green = plenty of runway), 
+    // depletes toward 0% (empty = change now). Operator reads the bar as 
+    // "remaining runway" not "elapsed cycle."
+    fillPct = Math.min(100, Math.max(0, (daysUntil / LITTER_CYCLE_DAYS) * 100));
 
     if (daysUntil > 21) {
       phase = 'phase-clean';
-      label = '🪶 Litter clean · ' + daysUntil + 'd to next change';
+      label = '🟢 Litter clean · ' + daysUntil + 'd to next change';
     } else if (daysUntil >= 15) {
       phase = 'phase-approach';
-      label = '🪶 Litter due in ' + daysUntil + 'd · heads up';
+      label = '🟡 Litter due in ' + daysUntil + 'd · heads up';
     } else if (daysUntil > 0) {
       phase = 'phase-due';
       label = '🔴 Litter due in ' + daysUntil + 'd · TAP to plan';
     } else if (daysUntil === 0) {
       phase = 'phase-due';
-      label = '🔴 Litter due TODAY · TAP to record change';
+      label = '🔴 CHANGE NOW · Day ' + LITTER_CYCLE_DAYS + ' of cycle';
     } else {
       phase = 'phase-overdue';
-      label = '⚠️ Litter OVERDUE ' + Math.abs(daysUntil) + 'd · TAP to record';
+      label = '⚠️ OVERDUE ' + Math.abs(daysUntil) + 'd · TAP to record';
     }
   }
 
@@ -8870,60 +8881,158 @@ function renderLitterBar() {
   fillEl.style.width = fillPct.toFixed(1) + '%';
   labelEl.textContent = label;
 
-  // Tap handler — opens date picker → save record (idempotent wiring)
+  // Tap handler — opens native date picker (idempotent wiring)
   if (!barEl.dataset.wired) {
     barEl.dataset.wired = '1';
     barEl.addEventListener('click', handleLitterBarTap);
   }
 }
 
-/* v6.1.4 — Handler for litter bar tap. Prompts operator for change date 
-   (defaulting to today), validates, saves to storage, refreshes UI. 
-   Best-effort gate-push to Apps Script — server ignores unknown 'litter-change' 
-   action until v5.0.30+ patch ships Thursday; no harm in attempting now. */
+/* v6.1.5 — Handler for litter bar tap. Three branches:
+   
+     1. NO record yet → open native date picker → save (any user)
+     2. Record EXISTS, user is NOT admin → block with toast
+     3. Record EXISTS, user IS admin → date picker → confirm modal → save
+   
+   Native <input type="date"> is created off-screen, focused, and triggers 
+   the OS calendar UI (iOS, Android, desktop all native). Locale-aware: 
+   Kenyan device shows DD/MM/YYYY in the picker UI; we receive YYYY-MM-DD 
+   ISO via input.value. No operator typing → no format corruption. */
 function handleLitterBarTap() {
-  const todayIso = new Date().toISOString().slice(0, 10);
-  const dateStr = window.prompt(
-    'Litter changed on which date?\n\n' +
-    '(YYYY-MM-DD format, leave as today if changed today)\n' +
-    'House: ' + LITTER_TARGET_HOUSE,
-    todayIso
-  );
-  if (!dateStr) return; // cancelled
-  const trimmed = String(dateStr).trim();
-  // Basic validation: must look like YYYY-MM-DD and parse to a real date
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    alert('Invalid date format. Please use YYYY-MM-DD (e.g. ' + todayIso + ')');
+  // Find existing record (if any) for the target house
+  const existing = (Array.isArray(STATE.litterChanges) ? STATE.litterChanges : [])
+    .filter(r => r && r.house === LITTER_TARGET_HOUSE && r.date)
+    .sort((a, b) => String(b.date).localeCompare(String(a.date)))[0];
+  
+  // Branch 2: existing record + non-admin → block with helpful toast
+  if (existing && !IS_ADMIN) {
+    if (typeof showToast === 'function') {
+      showToast('🪶 Litter recorded ' + existing.date + ' · contact admin to correct');
+    } else {
+      alert('Litter change already recorded on ' + existing.date + 
+            '\n\nContact admin to correct (Kiruogindet araap Cheison).');
+    }
     return;
   }
-  const parsed = new Date(trimmed + 'T00:00:00Z');
-  if (isNaN(parsed.getTime())) {
-    alert('Invalid date — could not parse "' + trimmed + '". Please try again.');
-    return;
-  }
-  // Reject future dates (operator typo guard)
-  if (parsed > new Date()) {
-    alert('Litter change date cannot be in the future. Please re-enter.');
-    return;
-  }
+  
+  // Branch 1 + 3: open native date picker
+  promptLitterDateNative(existing);
+}
 
+/* v6.1.5 — Spawns a hidden <input type="date">, focuses it (which on most
+   browsers + mobile triggers the native calendar UI), and resolves with 
+   the picked ISO date string. If existing record provided AND user is 
+   admin, shows a confirmation modal before committing the overwrite. */
+function promptLitterDateNative(existing) {
+  // Build hidden input
+  const input = document.createElement('input');
+  input.type = 'date';
+  input.style.position = 'fixed';
+  input.style.left = '-9999px';
+  input.style.opacity = '0';
+  input.style.pointerEvents = 'none';
+  
+  // Pre-fill with today (browser will accept yyyy-mm-dd in `value`)
+  const todayIso = new Date().toISOString().slice(0, 10);
+  input.value = todayIso;
+  // Constrain to past + today (no future dates)
+  input.max = todayIso;
+  
+  document.body.appendChild(input);
+  
+  let resolved = false;
+  const onChange = () => {
+    if (resolved) return;
+    resolved = true;
+    const picked = input.value;
+    cleanup();
+    if (picked && /^\d{4}-\d{2}-\d{2}$/.test(picked)) {
+      proceedAfterDatePicked(picked, existing);
+    }
+  };
+  // Some browsers fire 'blur' instead of 'change' if the user dismisses
+  // without picking; treat that as cancel
+  const onBlur = () => {
+    setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        cleanup();
+      }
+    }, 150);
+  };
+  function cleanup() {
+    input.removeEventListener('change', onChange);
+    input.removeEventListener('blur', onBlur);
+    if (input.parentNode) input.parentNode.removeChild(input);
+  }
+  input.addEventListener('change', onChange);
+  input.addEventListener('blur', onBlur);
+  
+  // Focus + click to summon native picker
+  input.focus();
+  // Modern browsers: showPicker() is the explicit API
+  if (typeof input.showPicker === 'function') {
+    try { input.showPicker(); } catch (e) { /* ignore — focus alone may suffice */ }
+  } else {
+    input.click();
+  }
+}
+
+/* v6.1.5 — After date is picked, branch on admin-vs-not. If admin AND 
+   existing record exists, show confirm modal (Replace X with Y? Yes/No). 
+   Otherwise commit directly. */
+function proceedAfterDatePicked(pickedDate, existing) {
+  // Validate not future (defensive — input.max should have prevented this)
+  const todayIso = new Date().toISOString().slice(0, 10);
+  if (pickedDate > todayIso) {
+    if (typeof showToast === 'function') {
+      showToast('🪶 Future dates not allowed');
+    }
+    return;
+  }
+  
+  // Admin overwrite confirmation
+  if (existing && IS_ADMIN) {
+    const ok = window.confirm(
+      'Replace previous litter change record?\n\n' +
+      'Previous:  ' + existing.date + '\n' +
+      'New:       ' + pickedDate + '\n\n' +
+      'House: ' + LITTER_TARGET_HOUSE
+    );
+    if (!ok) return;
+  }
+  
+  saveLitterRecord(pickedDate, existing);
+}
+
+/* v6.1.5 — Persist litter record. If admin overwriting, replaces the 
+   previous record entirely (since there's only ONE active record per 
+   house in v1). If no existing record, appends new. */
+function saveLitterRecord(pickedDate, existing) {
   const record = {
     house: LITTER_TARGET_HOUSE,
-    date: trimmed,
-    ts: new Date().toISOString()
+    date: pickedDate,
+    ts: new Date().toISOString(),
+    recorded_by: IS_ADMIN ? 'admin' : 'operator'
   };
 
-  // Save locally (idempotent: dedupe by house+date so taps on same date don't pile up)
   if (!Array.isArray(STATE.litterChanges)) STATE.litterChanges = [];
+  
+  // v6.1.5 — Admin overwrite REPLACES the previous record for this house
+  // (instead of accumulating multiple records across taps). Single-record-
+  // per-house keeps the model simple and avoids stale-record confusion.
+  // If we want a full audit trail, a future v6.2 can add a Litter_History 
+  // sheet that retains every entry; for v1, latest=truth.
   STATE.litterChanges = STATE.litterChanges.filter(r =>
-    !(r && r.house === record.house && r.date === record.date)
+    !(r && r.house === record.house)
   );
   STATE.litterChanges.push(record);
+  
   storageSet(K_LITTER_CHANGES, STATE.litterChanges).catch(err => {
     console.warn('[litter] storage write failed: ' + String(err && err.message || err));
   });
 
-  // Best-effort gate push (no queue if it fails — local truth is canonical for now)
+  // Best-effort gate push
   if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL && (IS_ADMIN || STATE.writesEnabled)) {
     try {
       fetch(APPS_SCRIPT_GATE_URL, {
@@ -8942,12 +9051,11 @@ function handleLitterBarTap() {
     }
   }
 
-  // Re-render the bar to show new clean state
   renderLitterBar();
 
-  // Calm confirmation toast (re-using existing toast helper if available)
   if (typeof showToast === 'function') {
-    showToast('🪶 Litter change recorded · ' + LITTER_TARGET_HOUSE + ' · ' + trimmed);
+    const verb = existing ? 'updated' : 'recorded';
+    showToast('🪶 Litter change ' + verb + ' · ' + LITTER_TARGET_HOUSE + ' · ' + pickedDate);
   }
 }
 
