@@ -276,21 +276,58 @@
     opacity: 0.85;
   }
   .ip-card .ip-bar-track {
-    height: 12px;
+    height: 22px;
     background: rgba(0, 0, 0, 0.08);
-    border-radius: 6px;
+    border-radius: 4px;
     overflow: hidden;
     position: relative;
   }
   .ip-card .ip-bar-fill {
     height: 100%;
-    border-radius: 6px;
+    border-radius: 4px;
     transition: width 0.3s ease, background-color 0.3s ease;
   }
   .ip-card .ip-bar-fill.phase-early   { background: linear-gradient(90deg, #2c3a36, #3a4d44); }
   .ip-card .ip-bar-fill.phase-approach{ background: linear-gradient(90deg, #b8935a, #d4a55b); }
   .ip-card .ip-bar-fill.phase-ready   { background: linear-gradient(90deg, #6b9e5b, #87b870); }
   .ip-card .ip-bar-fill.phase-overdue { background: linear-gradient(90deg, #b8453a, #d65a4d); }
+  /* v6.0.1 — Text overlaid INSIDE the bar (Cheison's space-economy directive
+     04 May 2026). Replaces the foot-line below. Overlays on top of the fill so
+     it reads as part of the bar, not below it. White-on-fill for contrast.
+     The label is positioned absolutely so it never gets clipped by the fill
+     width — even at 5% fill, the full message is visible (just over a darker
+     background where fill hasn't reached yet). */
+  .ip-card .ip-bar-label {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: rgba(255, 255, 255, 0.95);
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 0.6rem;
+  }
+  /* Phase-approach (amber) — Marek's prep PROMINENCE: bold + slight uppercase */
+  .ip-card .ip-bar-label.phase-approach {
+    font-weight: 600;
+    letter-spacing: 0.06em;
+  }
+  /* Phase-ready and phase-overdue keep slightly higher contrast */
+  .ip-card .ip-bar-label.phase-ready,
+  .ip-card .ip-bar-label.phase-overdue {
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  }
+  /* Foot row no longer used in v6.0.1, but kept defined for backward-compat
+     if any hatch'd batches still render it via legacy renderBatchHistory. */
   .ip-card .ip-foot {
     margin-top: 0.4rem;
     font-family: 'Fraunces', serif;
@@ -300,6 +337,26 @@
   }
   .ip-card .ip-foot.ready { color: var(--forest); font-weight: 600; font-style: normal; }
   .ip-card .ip-foot.overdue { color: #b8453a; font-weight: 600; font-style: normal; }
+  /* v6.1.0 — Actionable cards (phase-ready + phase-overdue) get tap affordance.
+     Hover: subtle lift. Active: tap depression. Phase-overdue cards get a
+     stronger red border to telegraph "operator action required NOW." */
+  .ip-card.ip-card-actionable {
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  }
+  .ip-card.ip-card-actionable:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
+  .ip-card.ip-card-actionable:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+  /* Cards with overdue phase get a stronger red left-border to scream urgency */
+  .ip-card.ip-card-actionable:has(.ip-bar-fill.phase-overdue) {
+    border-left: 3px solid #b8453a;
+    background: rgba(184, 69, 58, 0.05);
+  }
   /* Sync indicator — standalone in right column, sits between logo and version label.
      Was inline in the tagline before v4.2.1; moved out so the tagline (TEA · POULTRY ·
      DORPER · COFFEE · MAIZE) can breathe at full width. */
@@ -2116,7 +2173,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.0.0</span>
+  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.1.1</span>
 </header>
 
 <main>
@@ -3104,7 +3161,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.0.0</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.1.1</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3396,6 +3453,7 @@ const K_BIRD_CENSUS = 'sinonin_bird_census_v1';  // v6.0 SHIP 4 — Bird populat
 const K_INCUBATION = 'sinonin_incubation_v1';     // v6.0 SHIP 5 — Incubation batches
 const K_VACCINATIONS = 'sinonin_vaccinations_v1';  // v6.0.0 — D4: Vaccination records
 const K_VACC_SCHEDULE = 'sinonin_vacc_schedule_v1'; // v6.0.0 — D4: Vaccination schedule (config)
+const K_VACC_SCHEDULE_SEED_VERSION = 'sinonin_vacc_schedule_seed_version_v1'; // v6.1.1 — Tracks the seed version applied so newer defaults can replace older ones
 const K_COHORTS = 'sinonin_cohorts_v1';      // v6.0.0 — D2: Bird cohort population (lifecycle SM)
 const K_WEBAUTHN_CRED = 'sinonin_webauthn_cred_v1';  // v5.9.0 — Stored WebAuthn credential ID (base64)
 
@@ -3424,7 +3482,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.0.0';
+const APP_VERSION = 'v6.1.1';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -7990,19 +8048,27 @@ if (typeof STATE === 'object' && !Array.isArray(STATE.cohorts)) {
 }
 
 // v6.0.0 — D4: Standard layer chicken vaccination schedule (Kenyan layer industry standard).
+// v6.1.0 — Cleaned labels (dropped Latin/parenthetical jargon for field-staff readability),
+//          added Fowl Typhoid (endemic in Kenyan layer flocks, day 56 killed vaccine).
+// v6.1.1 — Added VACC_SCHEDULE_SEED_VERSION so a new default schedule can REPLACE
+//          an outdated stored one (PWA upgrade keeps stored schedule from v6.0.0
+//          unless seed version bumps; bump this number whenever the default
+//          schedule changes meaningfully).
 // This is the DEFAULT seed; operator can add/edit via Settings → Vaccination Schedule.
 // Day_Of_Life is days since hatch.
+const VACC_SCHEDULE_SEED_VERSION = 2; // v6.1.1 — bumped from implicit v1 (v6.0.0 schedule)
 const VACC_SCHEDULE_DEFAULT = [
-  { stage: 'Chicks 1\u20137 days',   vaccine: 'Marek\u2019s',                         day_of_life: 1,   booster_days: 0,   notes: 'Hatchery — usually given at chick acquisition' },
-  { stage: 'Chicks 1\u20137 days',   vaccine: 'Newcastle (NDV) + IB',                 day_of_life: 7,   booster_days: 14,  notes: 'Day 7 — first NDV + IB combo' },
-  { stage: 'Chicks 7\u201328 days',  vaccine: 'Gumboro (IBD)',                        day_of_life: 14,  booster_days: 7,   notes: 'Day 14 — IBD primary' },
-  { stage: 'Chicks 7\u201328 days',  vaccine: 'Newcastle (NDV) booster',              day_of_life: 21,  booster_days: 14,  notes: 'Day 21 — NDV booster' },
-  { stage: 'Growers',                vaccine: 'Fowl Pox',                             day_of_life: 35,  booster_days: 0,   notes: 'Day 35 — Fowl Pox wing-stab' },
-  { stage: 'Growers',                vaccine: 'AE (Avian Encephalomyelitis)',         day_of_life: 56,  booster_days: 0,   notes: 'Day 56 — AE oral' },
-  { stage: 'Growers',                vaccine: 'ILT (regional)',                       day_of_life: 70,  booster_days: 0,   notes: 'Day 70 — ILT (if regional risk)' },
-  { stage: 'Growers',                vaccine: 'Newcastle (NDV) booster',              day_of_life: 105, booster_days: 90,  notes: 'Day 105 — NDV pre-pre-lay booster' },
-  { stage: 'Growers',                vaccine: 'Pre-lay (NDV+IB+EDS)',                 day_of_life: 112, booster_days: 0,   notes: 'Day 112 — pre-lay vaccine' },
-  { stage: 'Layers',                 vaccine: 'Newcastle (NDV) maintenance',          day_of_life: 0,   booster_days: 90,  notes: 'Quarterly NDV during laying' }
+  { stage: 'Chicks 1\u20137 days',   vaccine: 'Marek\u2019s',                   day_of_life: 1,   booster_days: 0,   notes: 'Hatchery — usually given at chick acquisition' },
+  { stage: 'Chicks 1\u20137 days',   vaccine: 'Newcastle + IB',                 day_of_life: 7,   booster_days: 14,  notes: 'Day 7 — first NDV + IB combo' },
+  { stage: 'Chicks 7\u201328 days',  vaccine: 'Gumboro',                        day_of_life: 14,  booster_days: 7,   notes: 'Day 14 — IBD primary' },
+  { stage: 'Chicks 7\u201328 days',  vaccine: 'Newcastle booster',              day_of_life: 21,  booster_days: 14,  notes: 'Day 21 — NDV booster' },
+  { stage: 'Growers',                vaccine: 'Fowl Pox',                       day_of_life: 35,  booster_days: 0,   notes: 'Day 35 — wing-stab' },
+  { stage: 'Growers',                vaccine: 'AE',                             day_of_life: 56,  booster_days: 0,   notes: 'Day 56 — Avian Encephalomyelitis, oral' },
+  { stage: 'Growers',                vaccine: 'Fowl Typhoid',                   day_of_life: 56,  booster_days: 0,   notes: 'Day 56 — killed vaccine, endemic in Kenyan layer flocks' },
+  { stage: 'Growers',                vaccine: 'ILT',                            day_of_life: 70,  booster_days: 0,   notes: 'Day 70 — regional risk' },
+  { stage: 'Growers',                vaccine: 'Newcastle booster',              day_of_life: 105, booster_days: 90,  notes: 'Day 105 — NDV pre-pre-lay booster' },
+  { stage: 'Growers',                vaccine: 'Pre-lay',                        day_of_life: 112, booster_days: 0,   notes: 'Day 112 — Pre-lay (NDV+IB+EDS combo)' },
+  { stage: 'Layers',                 vaccine: 'Newcastle maintenance',          day_of_life: 0,   booster_days: 90,  notes: 'Quarterly NDV during laying' }
 ];
 
 let INCUBATION_MODE = 'start'; // 'start' or 'hatch'
@@ -8511,6 +8577,105 @@ function getStageCohortAge(stage) {
   return Math.floor((today - origin) / (1000 * 60 * 60 * 24));
 }
 
+/* v6.1.0 — D2 Stage 2: Cohort lifecycle auto-aging engine.
+   
+   Walks through all cohorts with current_count > 0 and promotes them to
+   the stage corresponding to their age in days since date_origin.
+   
+   Aging chain (Cheison sealed 04 May 2026):
+     Day 0-7    → "Chicks 1-7 days"   (display: "Chicks 1-7d")
+     Day 8-28   → "Chicks 7-28 days"  (display: "Chicks 8-28d") 
+                  ↑ stage VALUE keeps "7-28" for backward-compat with sheets;
+                    only the DISPLAY label is "8-28d". Boundary fires at day 8.
+     Day 29-152 → "Growers"           (28d - 5mo)
+     Day 153+   → "Layers"            (5mo+)
+   
+   COCKERELS are NOT auto-aged. They're created by manual operator split
+   from a Growers cohort (UI deferred to v6.2). Auto-aging stops at Layers.
+   
+   Architecture: client-side only in v6.1.0. Runs on every renderHome().
+   Server-side reconciliation via daily Apps Script ScheduledTrigger is
+   deferred to the Thursday Apps Script v5.0.29 deploy + a v5.0.30 trigger
+   patch. Until then, cohorts age locally on render; gate-push of the
+   promotion is best-effort (no queue if the gate is unreachable — the
+   server will reconcile on its own daily trigger once that ships).
+   
+   Returns: number of cohorts promoted in this pass (for logging). */
+function ageAllCohorts() {
+  if (!Array.isArray(STATE.cohorts) || STATE.cohorts.length === 0) return 0;
+  const today = new Date();
+  let promotedCount = 0;
+  const promotions = []; // collect first, mutate after, push to gate after that
+
+  STATE.cohorts.forEach(c => {
+    if (!c.date_origin || !c.cohort_id) return;
+    if (Number(c.current_count) <= 0) return; // empty cohort, skip
+    
+    const origin = new Date(c.date_origin + 'T00:00:00Z');
+    if (isNaN(origin.getTime())) return;
+    const ageDays = Math.floor((today - origin) / (1000 * 60 * 60 * 24));
+    if (ageDays < 0) return; // future-dated origin, skip
+
+    let expectedStage;
+    if (ageDays <= 7)        expectedStage = 'Chicks 1\u20137 days';
+    else if (ageDays <= 28)  expectedStage = 'Chicks 7\u201328 days';
+    else if (ageDays <= 152) expectedStage = 'Growers';
+    else                     expectedStage = 'Layers';
+    
+    // Cohorts already in Cockerels stage are operator-managed — DO NOT auto-promote
+    if (c.stage === 'Cockerels') return;
+    
+    // Cohorts in Layers stay there until operator marks them retired (manual)
+    if (c.stage === 'Layers') return;
+
+    if (c.stage !== expectedStage) {
+      // Promote
+      const fromStage = c.stage;
+      c.stage = expectedStage;
+      promotions.push({ cohort_id: c.cohort_id, from: fromStage, to: expectedStage, ageDays: ageDays });
+      promotedCount++;
+    }
+  });
+
+  if (promotedCount > 0) {
+    // Persist STATE.cohorts (fire-and-forget; storage is async but fast)
+    storageSet(K_COHORTS, STATE.cohorts).catch(err => {
+      console.warn('[cohort-aging] storage write failed: ' + String(err && err.message || err));
+    });
+    
+    // Best-effort gate push for each promotion (no queue if it fails — server
+    // will reconcile via its daily trigger once that ships)
+    promotions.forEach(p => {
+      const cohort = STATE.cohorts.find(c => c.cohort_id === p.cohort_id);
+      if (!cohort) return;
+      if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL && (IS_ADMIN || STATE.writesEnabled)) {
+        try {
+          fetch(APPS_SCRIPT_GATE_URL, {
+            method: 'POST', mode: 'cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+              action: 'cohort',
+              payload: { mode: 'update', cohort_id: p.cohort_id, stage: p.to },
+              source: 'PWA ' + APP_VERSION + ' cohort-auto-age'
+            })
+          }).catch(err => {
+            // Non-fatal; server reconciles via daily trigger
+            console.warn('[cohort-aging] gate push failed for ' + p.cohort_id + ': ' +
+                         String(err && err.message || err));
+          });
+        } catch (e) {
+          // Synchronous error (e.g. URL malformed); ignore — local state is correct
+        }
+      }
+    });
+    
+    console.log('[v6.1.0] Auto-aged ' + promotedCount + ' cohort(s):',
+                promotions.map(p => p.cohort_id + ' ' + p.from + '→' + p.to).join(' · '));
+  }
+
+  return promotedCount;
+}
+
 // Compute the next-due vaccine for a given stage.
 // Returns { vaccine, days_until_due, days_overdue, completed, color, last_given_date }
 // Returns null if no schedule entries exist for this stage.
@@ -8600,6 +8765,8 @@ function renderVaccinationBars(latestLayersByHouse, latestCensusDate) {
           <div class="vacc-bar-fill done" style="width:100%"></div>
         </div>
       `;
+      barEl.style.cursor = 'default';
+      barEl.onclick = null;
       return;
     }
 
@@ -8614,15 +8781,15 @@ function renderVaccinationBars(latestLayersByHouse, latestCensusDate) {
     const colorClass = next.color;
     let pillText, pillClass = colorClass;
     if (next.days_overdue > 0) {
-      pillText = `⚠️ overdue ${next.days_overdue}d`;
+      pillText = `⚠️ ${next.days_overdue}d overdue · TAP to record`;
     } else if (next.days_until_due === 0) {
-      pillText = '🔴 due today';
+      pillText = '🔴 due today · TAP to record';
     } else if (next.days_until_due <= 2) {
-      pillText = `🔴 due in ${next.days_until_due}d`;
+      pillText = `🔴 due in ${next.days_until_due}d · TAP to record`;
     } else if (next.days_until_due <= 7) {
-      pillText = `🟡 due in ${next.days_until_due}d`;
+      pillText = `🟡 due in ${next.days_until_due}d · TAP to record`;
     } else {
-      pillText = `🟢 due in ${next.days_until_due}d`;
+      pillText = `🟢 next: in ${next.days_until_due}d`;
     }
 
     barEl.style.display = 'block';
@@ -8635,8 +8802,87 @@ function renderVaccinationBars(latestLayersByHouse, latestCensusDate) {
         <div class="vacc-bar-fill ${colorClass}" style="width:${Math.min(100, fillPct).toFixed(1)}%"></div>
       </div>
     `;
+
+    // v6.1.0 — Tap-to-record: clicking the vacc-bar opens Add Vaccination
+    // pre-filled with stage + vaccine + best-house guess. Removes friction
+    // between "I see overdue" and "I record the dose given." Field-friendly.
+    barEl.style.cursor = 'pointer';
+    barEl.onclick = function(ev) {
+      ev.stopPropagation();
+      // Pick the house with the most birds in this stage (or first non-zero)
+      let bestHouse = '';
+      let bestCount = 0;
+      Object.values(latestLayersByHouse || {}).forEach(c => {
+        if (c.stage === stage && Number(c.count) > bestCount) {
+          bestCount = Number(c.count);
+          bestHouse = c.house;
+        }
+      });
+      openVaccinationFormPrefilled({
+        stage: stage,
+        vaccine: next.vaccine,
+        house: bestHouse,
+        suggestedCount: bestCount
+      });
+    };
   });
 }
+
+/* v6.1.0 — Open Add → Poultry → Vaccination form, pre-filled with stage,
+   vaccine, and house (from the card the operator tapped). One-tap workflow:
+   operator sees "TAP to record" pill on a card → tap → form is ready to
+   submit, only count + notes need filling.
+   
+   Used by:
+     · vacc-bar tap on stage cards (renderVaccinationBars)
+     · phase-overdue tap on incubation cards (Marek's prep CTA)
+     · phase-ready / phase-overdue tap on incubation cards (Record Hatch CTA — different form) */
+function openVaccinationFormPrefilled(prefill) {
+  prefill = prefill || {};
+
+  // Switch to Add → Poultry → Vaccination kind
+  if (typeof switchView === 'function') {
+    switchView('add');
+  } else {
+    // Fallback: trigger the bottom-nav Add tab
+    const addTab = document.querySelector('[data-view="add"]');
+    if (addTab) addTab.click();
+  }
+  if (typeof switchBiz === 'function') switchBiz('poultry');
+  if (typeof switchKind === 'function') switchKind('vaccination');
+
+  // initVaccinationForm wired the cascade; let it run, then pre-fill
+  setTimeout(() => {
+    const stageEl = document.getElementById('vc-stage');
+    const houseEl = document.getElementById('vc-house');
+    const vaccEl = document.getElementById('vc-vaccine');
+    const countEl = document.getElementById('vc-count');
+
+    if (stageEl && prefill.stage) {
+      stageEl.value = prefill.stage;
+      stageEl.dispatchEvent(new Event('change')); // trigger cascade to populate vaccines
+    }
+    // Vaccine dropdown is now populated — set it on next tick
+    setTimeout(() => {
+      if (vaccEl && prefill.vaccine) {
+        vaccEl.value = prefill.vaccine;
+        vaccEl.dispatchEvent(new Event('change')); // trigger next-due computation
+      }
+      if (houseEl && prefill.house) {
+        houseEl.value = prefill.house;
+        houseEl.dispatchEvent(new Event('change'));
+      }
+      if (countEl && prefill.suggestedCount && prefill.suggestedCount > 0) {
+        countEl.value = prefill.suggestedCount;
+        countEl.dispatchEvent(new Event('input'));
+      }
+      // Focus the count field — it's the only thing operator might want to edit
+      if (countEl) countEl.focus();
+    }, 50);
+  }, 80);
+}
+
+
 
 /* v6.0.0 — D4: Vaccination form initialization.
    Defaults date to today, populates House dropdown from active houses,
@@ -8900,41 +9146,94 @@ function renderIncubationProgress() {
 
     const progressPct = Math.min(100, Math.max(0, (daysElapsed / daysTotal) * 100));
 
-    let phase, footText, footClass = '';
-    if (daysElapsed < 16) {
-      phase = 'phase-early';
-      footText = `Day ${daysElapsed} of ${daysTotal} — early incubation`;
-    } else if (daysElapsed < 20) {
-      phase = 'phase-approach';
-      const daysLeft = daysTotal - daysElapsed;
-      footText = `Day ${daysElapsed} — approaching hatch (~${daysLeft} day${daysLeft === 1 ? '' : 's'} left)`;
-    } else if (daysElapsed <= daysTotal + 1) {
-      phase = 'phase-ready';
-      footClass = 'ready';
-      footText = `🐣 Day ${daysElapsed} — READY to hatch`;
-    } else {
+    // v6.1.0 — Phase logic refined per Cheison directive (04 May 2026):
+    //   · Trigger PREPARE-Marek's window when ≤7 days remain to expected_hatch
+    //     (works correctly for non-21-day expected_hatch too — handles late
+    //      hatches, breed variations, operator-set custom expected dates)
+    //   · Day 22+ (i.e. past expected_hatch + 1) becomes RED tappable CTA
+    //     "🐣 RECORD HATCH NOW" — opens Hatch tab pre-filled with batch_id
+    const daysToHatch = daysTotal - daysElapsed;
+    let phase, barLabel, isOverdueCTA = false;
+    if (daysElapsed > daysTotal + 1) {
+      // OVERDUE — operator MUST record the hatch event (or investigate)
       phase = 'phase-overdue';
-      footClass = 'overdue';
       const daysOver = daysElapsed - daysTotal;
-      footText = `⚠️ ${daysOver} day${daysOver === 1 ? '' : 's'} overdue — check incubator`;
+      barLabel = `🐣 RECORD HATCH NOW · ${daysOver}d past expected`;
+      isOverdueCTA = true;
+    } else if (daysElapsed >= daysTotal - 1 && daysElapsed <= daysTotal + 1) {
+      // READY — hatch window. Day 20-22 typically.
+      phase = 'phase-ready';
+      barLabel = `🐣 Day ${daysElapsed} · READY to hatch · TAP to record`;
+      isOverdueCTA = true; // Also tappable to record hatch when ready
+    } else if (daysToHatch > 0 && daysToHatch < 7) {
+      // PREPARE Marek's — within 7 days of expected hatch
+      phase = 'phase-approach';
+      barLabel = `🟡 Day ${daysElapsed} · PREPARE Marek's + brooder · ~${daysToHatch}d to hatch`;
+    } else {
+      // EARLY incubation — calm, dark
+      phase = 'phase-early';
+      barLabel = `Day ${daysElapsed} of ${daysTotal} — early incubation`;
     }
 
+    // Cards are tappable only when phase === 'phase-ready' or 'phase-overdue'
+    // (operator action required). Hover cursor + onclick set via a data attribute
+    // that JS post-processes after innerHTML render.
+    const cardClass = isOverdueCTA ? 'ip-card ip-card-actionable' : 'ip-card';
+    const dataAttr  = isOverdueCTA ? `data-record-hatch="${b.batch_id}"` : '';
+
     return `
-      <div class="ip-card">
+      <div class="${cardClass}" ${dataAttr}>
         <div class="ip-head">
           <span class="ip-batch-id">${b.batch_id}</span>
           <span class="ip-meta">${(Number(b.eggs_in) || 0).toLocaleString('en-KE')} eggs · set ${b.date_set}</span>
         </div>
         <div class="ip-bar-track">
           <div class="ip-bar-fill ${phase}" style="width:${progressPct.toFixed(1)}%"></div>
+          <div class="ip-bar-label ${phase}">${barLabel}</div>
         </div>
-        <div class="ip-foot ${footClass}">${footText}</div>
       </div>
     `;
   }).join('');
 
   if (addList) addList.innerHTML = cardsHtml;
   if (homeList) homeList.innerHTML = cardsHtml;
+
+  // v6.1.0 — Wire tap-to-record-hatch on actionable cards (phase-ready + phase-overdue)
+  document.querySelectorAll('.ip-card.ip-card-actionable[data-record-hatch]').forEach(cardEl => {
+    cardEl.style.cursor = 'pointer';
+    cardEl.onclick = function() {
+      const batchId = cardEl.getAttribute('data-record-hatch');
+      openHatchFormPrefilled(batchId);
+    };
+  });
+}
+
+/* v6.1.0 — Open Add → Poultry → Incubation → Hatch tab, pre-filled with batch_id.
+   Used when operator taps a phase-ready or phase-overdue incubation card. */
+function openHatchFormPrefilled(batchId) {
+  if (typeof switchView === 'function') switchView('add');
+  if (typeof switchBiz === 'function') switchBiz('poultry');
+  if (typeof switchKind === 'function') switchKind('incubation');
+  // initIncubationForm wires the mode toggle; switch to 'hatch' mode + select batch
+  setTimeout(() => {
+    if (typeof setIncubationMode === 'function') {
+      setIncubationMode('hatch');
+    } else {
+      // Fallback: click the Hatch toggle button directly
+      const hatchBtn = document.querySelector('#incubation-mode-toggle button[data-mode="hatch"]');
+      if (hatchBtn) hatchBtn.click();
+    }
+    setTimeout(() => {
+      const sel = document.getElementById('ih-batch-id');
+      if (sel) {
+        sel.value = batchId;
+        sel.dispatchEvent(new Event('change'));
+      }
+      // Focus the hatched count input — that's the next thing operator types
+      const hcEl = document.getElementById('ih-hatched');
+      if (hcEl) hcEl.focus();
+    }, 50);
+  }, 80);
 }
 
 /* v5.8.6 — Batch history on Insights.
@@ -9101,6 +9400,13 @@ function renderHome() {
   document.getElementById('hero-greeting').textContent = greet;
   document.getElementById('hero-date').textContent =
     new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  // v6.1.0 — Auto-age cohorts before rendering. This runs every time Home
+  // is rendered (entry to app, after Resync, after submit). Idempotent —
+  // promotes only when stage doesn't match age bucket. No-op when nothing
+  // to do. Updates STATE.cohorts in-place; storage write is async; gate
+  // push is best-effort.
+  if (typeof ageAllCohorts === 'function') ageAllCohorts();
 
   // v5.8.0 — Empty-state hint (Labour Day / weekend / idle-day messaging)
   if (typeof renderEmptyStateHint === 'function') renderEmptyStateHint();
@@ -9344,16 +9650,26 @@ function renderHome() {
   renderStageCard('Chicks 1\u20137 days', 'poultry-stage-c1to7',    'poultry-stage-c1to7-sub');
   renderStageCard('Chicks 7\u201328 days','poultry-stage-c7to28',   'poultry-stage-c7to28-sub');
 
-  // v6.0.0-rev2 — Quarantine card (Option B: single stage, NOT a rollup).
-  // Counts ONLY the 'Quarantine' Stage entries from Bird_Census.
-  // Sub-line is a human explainer (Cheison's wording: avoiding "sick" or
-  // "treatment" as primary labels — operators record by intent, not diagnosis).
-  // Operators record Deformities + Retired birds as their OWN stage values
-  // (still in BIRD_CENSUS_STAGES); they don't roll up here.
+  // v6.1.1 — Quarantine GROUP card (Cheison sealed 04 May 2026):
+  //   · Card label: "Quarantine" — the GROUP NAME
+  //   · COUNT = sum of three Bird_Census stages: 
+  //       Deformities + Quarantine + Retired birds
+  //   · Sub-line: "deformities, sick and quarantine" when group is empty
+  //                (Cheison's wording — calm, non-medicalising)
+  //                When group has data: show per-bucket breakdown
+  //                ("1 Deformity · 2 Quarantine") for transparency.
+  //   · Bird_Census schema unchanged: operators STILL record each stage
+  //     individually. The card just AGGREGATES for display.
+  //   · No double-counting in totalBirds — each stage's birds are
+  //     counted once via stageTotals, and totalBirds is sum of all
+  //     stage totals (Layers + Cockerels + ... + Quarantine + Def + Ret).
   const qVal = document.getElementById('poultry-stage-quarantine');
   const qSub = document.getElementById('poultry-stage-quarantine-sub');
   if (qVal) {
-    const qCount = stageTotals['Quarantine'] || 0;
+    const qOnly  = stageTotals['Quarantine']    || 0;
+    const dOnly  = stageTotals['Deformities']   || 0;
+    const rOnly  = stageTotals['Retired birds'] || 0;
+    const qCount = qOnly + dOnly + rOnly;
     qVal.textContent = qCount > 0 ? qCount.toLocaleString('en-KE') : '—';
     if (qSub) {
       if (census.length === 0) {
@@ -9361,15 +9677,13 @@ function renderHome() {
       } else if (qCount === 0) {
         qSub.textContent = 'deformities, sick and quarantine';
       } else {
-        // Per-house breakdown when there's data
-        const perHouse = [];
-        Object.values(latestLayersByHouse).forEach(c => {
-          if (c.stage === 'Quarantine' && Number(c.count) > 0) {
-            perHouse.push(`${c.count} ${c.house}`);
-          }
-        });
-        qSub.textContent = perHouse.length > 0
-          ? perHouse.slice(0, 2).join(' · ')
+        // Show per-bucket breakdown (only non-zero buckets)
+        const parts = [];
+        if (dOnly > 0) parts.push(dOnly + (dOnly === 1 ? ' Deformity'  : ' Deformities'));
+        if (qOnly > 0) parts.push(qOnly + ' Quarantine');
+        if (rOnly > 0) parts.push(rOnly + ' Retired');
+        qSub.textContent = parts.length > 0
+          ? parts.join(' · ')
           : 'deformities, sick and quarantine';
       }
     }
@@ -11206,12 +11520,43 @@ function showUpdateBanner() {
   // v6.0.0 — D4: Vaccination records + schedule
   STATE.vaccinations = await storageGet(K_VACCINATIONS, []);
   STATE.vaccSchedule = await storageGet(K_VACC_SCHEDULE, []);
-  // Seed default schedule on first load (operator can edit later via Settings)
+  // v6.1.1 — Schedule re-seed on version bump.
+  // The default schedule is versioned via VACC_SCHEDULE_SEED_VERSION. When the
+  // stored seed version is older than the current code's seed version, we
+  // REPLACE the default-schedule entries with the new list, but PRESERVE any
+  // operator-added custom entries (matched by stage+vaccine+day_of_life NOT in
+  // the OLD default). This solves the "PWA upgrade ships new vaccine list but
+  // operator never sees it because storage already has v1 schedule" problem.
+  const storedSeedVer = await storageGet(K_VACC_SCHEDULE_SEED_VERSION, 0);
   if (!STATE.vaccSchedule || STATE.vaccSchedule.length === 0) {
+    // First load — fresh seed
     STATE.vaccSchedule = VACC_SCHEDULE_DEFAULT.slice();
     await storageSet(K_VACC_SCHEDULE, STATE.vaccSchedule);
-    console.log('[v6.0.0] Seeded default vaccination schedule (' + STATE.vaccSchedule.length + ' entries)');
+    await storageSet(K_VACC_SCHEDULE_SEED_VERSION, VACC_SCHEDULE_SEED_VERSION);
+    console.log('[v6.1.1] Seeded default vaccination schedule (' + STATE.vaccSchedule.length + ' entries, seed v' + VACC_SCHEDULE_SEED_VERSION + ')');
+  } else if (storedSeedVer < VACC_SCHEDULE_SEED_VERSION) {
+    // Stored version is older — replace defaults but preserve operator additions.
+    // Heuristic: an entry is an "operator addition" if its (stage, vaccine, day_of_life)
+    // tuple was NOT in any default schedule version. We can't perfectly know what
+    // was in the old default vs what operator added, so we use this rule:
+    //   Keep entries whose tuple is NOT in the NEW VACC_SCHEDULE_DEFAULT.
+    //   This means: any operator-added entry that doesn't conflict with new
+    //   defaults is kept; anything in the new default replaces what's there.
+    const tupleKey = (e) => (e.stage || '') + '|' + (e.vaccine || '') + '|' + (e.day_of_life || 0);
+    const newDefaultKeys = new Set(VACC_SCHEDULE_DEFAULT.map(tupleKey));
+    const operatorExtras = STATE.vaccSchedule.filter(e => !newDefaultKeys.has(tupleKey(e)));
+    // Also drop any entry whose vaccine name matches an old jargon label that
+    // was renamed (e.g. "Newcastle (NDV) + IB" → "Newcastle + IB"). Heuristic:
+    // if the stored entry's stage matches a new-default stage AND the day_of_life
+    // matches a new-default day_of_life, it's the SAME slot — drop it.
+    const newDefaultStageDayKeys = new Set(VACC_SCHEDULE_DEFAULT.map(e => (e.stage || '') + '|' + (e.day_of_life || 0)));
+    const cleanedExtras = operatorExtras.filter(e => !newDefaultStageDayKeys.has((e.stage || '') + '|' + (e.day_of_life || 0)));
+    STATE.vaccSchedule = VACC_SCHEDULE_DEFAULT.slice().concat(cleanedExtras);
+    await storageSet(K_VACC_SCHEDULE, STATE.vaccSchedule);
+    await storageSet(K_VACC_SCHEDULE_SEED_VERSION, VACC_SCHEDULE_SEED_VERSION);
+    console.log('[v6.1.1] Re-seeded vaccination schedule (' + VACC_SCHEDULE_DEFAULT.length + ' new defaults + ' + cleanedExtras.length + ' operator extras kept · seed v' + storedSeedVer + ' → v' + VACC_SCHEDULE_SEED_VERSION + ')');
   }
+  // else: stored seed version matches current — operator's edited schedule is kept as-is
 
   // v6.0.0 — D2: Cohort population
   STATE.cohorts = await storageGet(K_COHORTS, []);
