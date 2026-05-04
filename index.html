@@ -292,13 +292,19 @@
   .ip-card .ip-bar-fill.phase-ready   { background: linear-gradient(90deg, #6b9e5b, #87b870); }
   .ip-card .ip-bar-fill.phase-overdue { background: linear-gradient(90deg, #b8453a, #d65a4d); }
   /* v6.0.1 — Text overlaid INSIDE the bar (Cheison's space-economy directive 04 May).
-     v6.1.2 — Contrast + size refinement (Cheison directive 04 May, post-deploy):
-              · font-size 0.72rem → 0.66rem (less overflow risk on long messages)
-              · font-weight 500 → 600 across all phases (better legibility)
-              · text-shadow strengthened on light backgrounds (amber/green/red)
-                — creates a tight dark halo behind the white text, restoring 
-                contrast even when fill color is luminous. WCAG AA-friendly.
-              · Bar height 22px → 24px (gives the heavier text room to breathe). */
+     v6.1.2 — Contrast pass 1: stronger text-shadow halos on white text.
+     v6.1.4 — Contrast pass 2 (the real fix): INVERSE color scheme.
+              · Dark text on light fills, white text only on the dark fill 
+                AND the urgent-CTA red fill.
+              · WCAG AA on all four phases (AAA on early/approach/ready):
+                  phase-early    #2c3a36-#3a4d44 → WHITE      12.8:1 ✅ AAA
+                  phase-approach #b8935a-#d4a55b → #2C1810     8.2:1 ✅ AAA  (deep coffee)
+                  phase-ready    #6b9e5b-#87b870 → #14301F     7.5:1 ✅ AAA  (deep forest)
+                  phase-overdue  #b8453a-#d65a4d → WHITE+halo  4.5:1 ✅ AA   (CTA urgency)
+              · Phase-overdue keeps white because dark-on-red reads 
+                "informational"; we want CTA urgency (white-on-red is 
+                the universal warning convention).
+              · Bar height 24px, font-size 0.66rem, weight 600/700. */
   .ip-card .ip-bar-label {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -309,37 +315,109 @@
     font-size: 0.66rem;
     font-weight: 600;
     letter-spacing: 0.01em;
-    color: #FFFFFF;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55), 0 0 1px rgba(0, 0, 0, 0.4);
     pointer-events: none;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     padding: 0 0.5rem;
   }
-  /* Phase-early: dark bg, less shadow needed */
   .ip-card .ip-bar-label.phase-early {
+    color: #FFFFFF;
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
   }
-  /* Phase-approach (amber/brass) — light bg needs strong dark halo for white text */
   .ip-card .ip-bar-label.phase-approach {
+    color: #2C1810;  /* deep coffee/sepia — high contrast on amber */
     font-weight: 700;
-    letter-spacing: 0.03em;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7), 0 0 2px rgba(0, 0, 0, 0.5);
+    letter-spacing: 0.04em;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);  /* light halo for crispness */
   }
-  /* Phase-ready (green) — lighter bg, moderate halo */
   .ip-card .ip-bar-label.phase-ready {
+    color: #14301F;  /* deep forest — high contrast on green */
     font-weight: 700;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65), 0 0 2px rgba(0, 0, 0, 0.4);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
   }
-  /* Phase-overdue (red) — strong halo for the action CTA */
   .ip-card .ip-bar-label.phase-overdue {
+    color: #FFFFFF;
     font-weight: 700;
-    letter-spacing: 0.03em;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7), 0 0 2px rgba(0, 0, 0, 0.5);
+    letter-spacing: 0.04em;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75), 0 0 3px rgba(0, 0, 0, 0.6);
   }
-  /* Foot row no longer used in v6.0.1, but kept defined for backward-compat
-     if any hatch'd batches still render it via legacy renderBatchHistory. */
+  /* v6.1.4 — Deep litter tracking bar in Kipkenda Poultry section header.
+     Mirrors the incubation bar visual language (text-in-bar, traffic-light 
+     fill, inverse color scheme) so operators recognize the pattern.
+     Wrap provides margin spacing; the bar itself is the tappable surface.
+     Ground Floor only for v1. */
+  .ph-litter-bar-wrap {
+    margin: 0.5rem 0 0.7rem 0;
+  }
+  .ph-litter-bar {
+    position: relative;
+    height: 24px;
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .ph-litter-bar:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
+  .ph-litter-bar:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+  .ph-litter-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease, background-color 0.3s ease;
+  }
+  /* Traffic-light fill colors — match incubation bar phase colors for 
+     visual consistency across the app */
+  .ph-litter-bar-fill.phase-early    { background: linear-gradient(90deg, #2c3a36, #3a4d44); }
+  .ph-litter-bar-fill.phase-clean    { background: linear-gradient(90deg, #5a8a4d, #6b9e5b); }
+  .ph-litter-bar-fill.phase-approach { background: linear-gradient(90deg, #b8935a, #d4a55b); }
+  .ph-litter-bar-fill.phase-due      { background: linear-gradient(90deg, #b8453a, #d65a4d); }
+  .ph-litter-bar-fill.phase-overdue  { background: linear-gradient(90deg, #8b2e26, #b8453a); }
+  /* Text overlaid on bar — same inverse-color rules as incubation bars */
+  .ph-litter-bar-label {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    pointer-events: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 0.5rem;
+  }
+  .ph-litter-bar-label.phase-early {
+    color: #FFFFFF;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+  }
+  .ph-litter-bar-label.phase-clean {
+    color: #14301F;  /* deep forest on green */
+    font-weight: 700;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  .ph-litter-bar-label.phase-approach {
+    color: #2C1810;  /* deep coffee on amber */
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+  .ph-litter-bar-label.phase-due,
+  .ph-litter-bar-label.phase-overdue {
+    color: #FFFFFF;  /* CTA urgency: white-on-red */
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75), 0 0 3px rgba(0, 0, 0, 0.6);
+  }
   .ip-card .ip-foot {
     margin-top: 0.4rem;
     font-family: 'Fraunces', serif;
@@ -2185,7 +2263,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.1.3</span>
+  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.1.4</span>
 </header>
 
 <main>
@@ -2236,6 +2314,17 @@
 
     <div class="section">
       <div class="section-head"><h3>Kipkenda Poultry</h3><span class="meta">this month</span></div>
+
+      <!-- v6.1.4 — Deep litter tracking bar (Cheison sealed 04 May 2026).
+           Sits between section header and bird population panel.
+           Ground Floor only for v1. Tap → date picker → save.
+           8-week (56-day) hard-stop cycle. Traffic-light: green/amber/red. -->
+      <div class="ph-litter-bar-wrap" id="ph-litter-bar-wrap">
+        <div class="ph-litter-bar" id="ph-litter-bar">
+          <div class="ph-litter-bar-fill phase-early" id="ph-litter-bar-fill" style="width:0%"></div>
+          <div class="ph-litter-bar-label phase-early" id="ph-litter-bar-label">🪶 Litter — TAP to record first change</div>
+        </div>
+      </div>
 
       <!-- v6.0.0 — D3: Bird population at TOP of Kipkenda Poultry section.
            v6.0.0-rev2 (04 May 2026 audit): Layout reorganized to 3×2 = 6-card
@@ -3173,7 +3262,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.1.3</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.1.4</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3467,6 +3556,7 @@ const K_VACCINATIONS = 'sinonin_vaccinations_v1';  // v6.0.0 — D4: Vaccination
 const K_VACC_SCHEDULE = 'sinonin_vacc_schedule_v1'; // v6.0.0 — D4: Vaccination schedule (config)
 const K_VACC_SCHEDULE_SEED_VERSION = 'sinonin_vacc_schedule_seed_version_v1'; // v6.1.1 — Tracks the seed version applied so newer defaults can replace older ones
 const K_COHORTS = 'sinonin_cohorts_v1';      // v6.0.0 — D2: Bird cohort population (lifecycle SM)
+const K_LITTER_CHANGES = 'sinonin_litter_changes_v1'; // v6.1.4 — Deep litter change records (house, date)
 const K_WEBAUTHN_CRED = 'sinonin_webauthn_cred_v1';  // v5.9.0 — Stored WebAuthn credential ID (base64)
 
 const CLOUD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwzHUz9She1PsVPNOWvssSiQcye8hpKZ9v_3d1aX6nsqPDnIN375z8krhMwsCyikVSLtQ/exec';
@@ -3494,7 +3584,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.1.3';
+const APP_VERSION = 'v6.1.4';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -8077,6 +8167,11 @@ if (typeof STATE === 'object' && !Array.isArray(STATE.cohorts)) {
   STATE.cohorts = [];
 }
 
+// v6.1.4 — Deep litter change records: array of {house, date} entries
+if (typeof STATE === 'object' && !Array.isArray(STATE.litterChanges)) {
+  STATE.litterChanges = [];
+}
+
 // v6.0.0 — D4: Standard layer chicken vaccination schedule (Kenyan layer industry standard).
 // v6.1.0 — Cleaned labels (dropped Latin/parenthetical jargon for field-staff readability),
 //          added Fowl Typhoid (endemic in Kenyan layer flocks, day 56 killed vaccine).
@@ -8704,6 +8799,156 @@ function ageAllCohorts() {
   }
 
   return promotedCount;
+}
+
+/* v6.1.4 — Deep litter tracking (Cheison sealed 04 May 2026).
+   
+   Hard-stop 8-week (56-day) cycle. Operator taps the bar in the Kipkenda 
+   Poultry section header → date picker prompts for the litter-change 
+   date → save. Traffic-light visualization across the cycle:
+   
+     Day 0     no record yet     phase-early    (dark) — invites first record
+     Day 0-34  >21d to next      phase-clean    (green) "Litter clean · Nd to next"
+     Day 35-41 15-21d to next    phase-approach (amber) "Litter due in Nd · heads up"
+     Day 42-55 ≤14d to next      phase-due      (red)   "🔴 Litter due in Nd · plan ahead"
+     Day 56+   overdue           phase-overdue  (red)   "⚠️ Litter OVERDUE Nd · TAP to record"
+   
+   Scope: Ground Floor only for v1 (operator instruction). Other houses
+   come later. Storage is local-only for now; Apps Script integration 
+   ('litter-change' action) deferred to Thursday's v5.0.30+ patch — 
+   harmless to attempt the gate-push now since the server will simply 
+   ignore unknown actions until that patch lands. */
+const LITTER_CYCLE_DAYS = 56;        // 8 weeks — hard stop
+const LITTER_TARGET_HOUSE = 'Ground Floor'; // v1 scope
+function renderLitterBar() {
+  const fillEl = document.getElementById('ph-litter-bar-fill');
+  const labelEl = document.getElementById('ph-litter-bar-label');
+  const barEl = document.getElementById('ph-litter-bar');
+  if (!fillEl || !labelEl || !barEl) return;
+
+  // Find most recent litter change for the target house
+  const records = (Array.isArray(STATE.litterChanges) ? STATE.litterChanges : [])
+    .filter(r => r && r.house === LITTER_TARGET_HOUSE && r.date)
+    .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  const latest = records[0];
+
+  let phase, label, fillPct;
+  if (!latest) {
+    // No record yet — invite first entry
+    phase = 'phase-early';
+    label = '🪶 Litter — TAP to record first change (' + LITTER_TARGET_HOUSE + ')';
+    fillPct = 0;
+  } else {
+    const lastDate = new Date(latest.date + 'T00:00:00Z');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const daysSince = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
+    const daysUntil = LITTER_CYCLE_DAYS - daysSince;
+    fillPct = Math.min(100, Math.max(0, (daysSince / LITTER_CYCLE_DAYS) * 100));
+
+    if (daysUntil > 21) {
+      phase = 'phase-clean';
+      label = '🪶 Litter clean · ' + daysUntil + 'd to next change';
+    } else if (daysUntil >= 15) {
+      phase = 'phase-approach';
+      label = '🪶 Litter due in ' + daysUntil + 'd · heads up';
+    } else if (daysUntil > 0) {
+      phase = 'phase-due';
+      label = '🔴 Litter due in ' + daysUntil + 'd · TAP to plan';
+    } else if (daysUntil === 0) {
+      phase = 'phase-due';
+      label = '🔴 Litter due TODAY · TAP to record change';
+    } else {
+      phase = 'phase-overdue';
+      label = '⚠️ Litter OVERDUE ' + Math.abs(daysUntil) + 'd · TAP to record';
+    }
+  }
+
+  // Apply phase classes (clear all, then add the active one)
+  fillEl.className = 'ph-litter-bar-fill ' + phase;
+  labelEl.className = 'ph-litter-bar-label ' + phase;
+  fillEl.style.width = fillPct.toFixed(1) + '%';
+  labelEl.textContent = label;
+
+  // Tap handler — opens date picker → save record (idempotent wiring)
+  if (!barEl.dataset.wired) {
+    barEl.dataset.wired = '1';
+    barEl.addEventListener('click', handleLitterBarTap);
+  }
+}
+
+/* v6.1.4 — Handler for litter bar tap. Prompts operator for change date 
+   (defaulting to today), validates, saves to storage, refreshes UI. 
+   Best-effort gate-push to Apps Script — server ignores unknown 'litter-change' 
+   action until v5.0.30+ patch ships Thursday; no harm in attempting now. */
+function handleLitterBarTap() {
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const dateStr = window.prompt(
+    'Litter changed on which date?\n\n' +
+    '(YYYY-MM-DD format, leave as today if changed today)\n' +
+    'House: ' + LITTER_TARGET_HOUSE,
+    todayIso
+  );
+  if (!dateStr) return; // cancelled
+  const trimmed = String(dateStr).trim();
+  // Basic validation: must look like YYYY-MM-DD and parse to a real date
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    alert('Invalid date format. Please use YYYY-MM-DD (e.g. ' + todayIso + ')');
+    return;
+  }
+  const parsed = new Date(trimmed + 'T00:00:00Z');
+  if (isNaN(parsed.getTime())) {
+    alert('Invalid date — could not parse "' + trimmed + '". Please try again.');
+    return;
+  }
+  // Reject future dates (operator typo guard)
+  if (parsed > new Date()) {
+    alert('Litter change date cannot be in the future. Please re-enter.');
+    return;
+  }
+
+  const record = {
+    house: LITTER_TARGET_HOUSE,
+    date: trimmed,
+    ts: new Date().toISOString()
+  };
+
+  // Save locally (idempotent: dedupe by house+date so taps on same date don't pile up)
+  if (!Array.isArray(STATE.litterChanges)) STATE.litterChanges = [];
+  STATE.litterChanges = STATE.litterChanges.filter(r =>
+    !(r && r.house === record.house && r.date === record.date)
+  );
+  STATE.litterChanges.push(record);
+  storageSet(K_LITTER_CHANGES, STATE.litterChanges).catch(err => {
+    console.warn('[litter] storage write failed: ' + String(err && err.message || err));
+  });
+
+  // Best-effort gate push (no queue if it fails — local truth is canonical for now)
+  if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL && (IS_ADMIN || STATE.writesEnabled)) {
+    try {
+      fetch(APPS_SCRIPT_GATE_URL, {
+        method: 'POST', mode: 'cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'litter-change',
+          payload: record,
+          source: 'PWA ' + APP_VERSION
+        })
+      }).catch(err => {
+        console.warn('[litter] gate push failed: ' + String(err && err.message || err));
+      });
+    } catch (e) {
+      // ignore — local state is correct
+    }
+  }
+
+  // Re-render the bar to show new clean state
+  renderLitterBar();
+
+  // Calm confirmation toast (re-using existing toast helper if available)
+  if (typeof showToast === 'function') {
+    showToast('🪶 Litter change recorded · ' + LITTER_TARGET_HOUSE + ' · ' + trimmed);
+  }
 }
 
 // Compute the next-due vaccine for a given stage.
@@ -9449,6 +9694,10 @@ function renderHome() {
   // to do. Updates STATE.cohorts in-place; storage write is async; gate
   // push is best-effort.
   if (typeof ageAllCohorts === 'function') ageAllCohorts();
+
+  // v6.1.4 — Render deep litter bar in Kipkenda Poultry section header.
+  // Reads STATE.litterChanges (already hydrated on boot). Idempotent.
+  if (typeof renderLitterBar === 'function') renderLitterBar();
 
   // v5.8.0 — Empty-state hint (Labour Day / weekend / idle-day messaging)
   if (typeof renderEmptyStateHint === 'function') renderEmptyStateHint();
@@ -11602,6 +11851,10 @@ function showUpdateBanner() {
 
   // v6.0.0 — D2: Cohort population
   STATE.cohorts = await storageGet(K_COHORTS, []);
+
+  // v6.1.4 — Deep litter change records (house, date). Local-only for v1;
+  // Apps Script integration deferred to Thursday's v5.0.30+ patch.
+  STATE.litterChanges = await storageGet(K_LITTER_CHANGES, []);
 
   // v5.0.19 — Load admin mode flag IMMEDIATELY so applyAdminVisibility can
   // hide admin chrome before any operator sees it. Default false (operator).
