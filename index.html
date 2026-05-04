@@ -310,7 +310,7 @@
     top: 0; left: 0; right: 0; bottom: 0;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;  /* v6.1.8 — was center; left-align so leading-edge text is always visible (Elias screenshot showed truncation on both sides) */
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.66rem;
     font-weight: 600;
@@ -385,7 +385,7 @@
     top: 0; left: 0; right: 0; bottom: 0;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;  /* v6.1.8 — was center; same fix as incubation bars */
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.66rem;
     font-weight: 600;
@@ -417,6 +417,20 @@
     font-weight: 700;
     letter-spacing: 0.04em;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75), 0 0 3px rgba(0, 0, 0, 0.6);
+  }
+  /* v6.1.8 — Responsive font reduction on narrow phones (≤380px wide).
+     Both incubation bars and litter bar shrink to 0.6rem at this breakpoint, 
+     gaining ~15% more characters per line. Critical for messages like 
+     "PREPARE Marek's + brooder · 3d to go" that just barely fit on iPhone SE 
+     (320px) and standard Android phones in portrait. Letter-spacing tightens 
+     simultaneously so the heavier weight doesn't undo the size win. */
+  @media (max-width: 380px) {
+    .ip-card .ip-bar-label,
+    .ph-litter-bar-label {
+      font-size: 0.6rem;
+      letter-spacing: 0;
+      padding: 0 0.4rem;
+    }
   }
   .ip-card .ip-foot {
     margin-top: 0.4rem;
@@ -2263,7 +2277,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.1.7</span>
+  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.1.8</span>
 </header>
 
 <main>
@@ -2322,7 +2336,7 @@
       <div class="ph-litter-bar-wrap" id="ph-litter-bar-wrap">
         <div class="ph-litter-bar" id="ph-litter-bar">
           <div class="ph-litter-bar-fill phase-early" id="ph-litter-bar-fill" style="width:0%"></div>
-          <div class="ph-litter-bar-label phase-early" id="ph-litter-bar-label">🪶 Litter — TAP to record first change</div>
+          <div class="ph-litter-bar-label phase-early" id="ph-litter-bar-label">🪶 TAP to record first litter change</div>
         </div>
       </div>
 
@@ -3262,7 +3276,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.1.7</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.1.8</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3584,7 +3598,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.1.7';
+const APP_VERSION = 'v6.1.8';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -8840,8 +8854,11 @@ function renderLitterBar() {
   let phase, label, fillPct;
   if (!latest) {
     // No record yet — invite first entry. Empty (0%) bar with dark phase.
+    // v6.1.8 — Shortened copy for phone-screen fit (Elias screenshot showed
+    // both ends truncated). House name moved out of label since it's already 
+    // implied by section context (this bar is in Kipkenda Poultry).
     phase = 'phase-early';
-    label = '🪶 Litter — TAP to record first change (' + LITTER_TARGET_HOUSE + ')';
+    label = '🪶 TAP to record first litter change';
     fillPct = 0;
   } else {
     // v6.1.5 — Timezone-consistent math: both dates in LOCAL reference frame.
@@ -8860,18 +8877,19 @@ function renderLitterBar() {
     // "remaining runway" not "elapsed cycle."
     fillPct = Math.min(100, Math.max(0, (daysUntil / LITTER_CYCLE_DAYS) * 100));
 
+    // v6.1.8 — Shortened copy for phone fit
     if (daysUntil > 21) {
       phase = 'phase-clean';
-      label = '🟢 Litter clean · ' + daysUntil + 'd to next change';
+      label = '🟢 Litter clean · ' + daysUntil + 'd to change';
     } else if (daysUntil >= 15) {
       phase = 'phase-approach';
       label = '🟡 Litter due in ' + daysUntil + 'd · heads up';
     } else if (daysUntil > 0) {
       phase = 'phase-due';
-      label = '🔴 Litter due in ' + daysUntil + 'd · TAP to plan';
+      label = '🔴 Litter due ' + daysUntil + 'd · TAP to plan';
     } else if (daysUntil === 0) {
       phase = 'phase-due';
-      label = '🔴 CHANGE NOW · Day ' + LITTER_CYCLE_DAYS + ' of cycle';
+      label = '🔴 CHANGE LITTER NOW · TAP to record';
     } else {
       phase = 'phase-overdue';
       label = '⚠️ OVERDUE ' + Math.abs(daysUntil) + 'd · TAP to record';
@@ -9738,27 +9756,30 @@ function renderIncubationProgress() {
     //      hatches, breed variations, operator-set custom expected dates)
     //   · Day 22+ (i.e. past expected_hatch + 1) becomes RED tappable CTA
     //     "🐣 RECORD HATCH NOW" — opens Hatch tab pre-filled with batch_id
+    // v6.1.8 — Shortened copy for phone-screen fit (Elias screenshots showed
+    //   labels truncating with ellipsis on real devices). Each phase label 
+    //   now ~30 chars max instead of 50+.
     const daysToHatch = daysTotal - daysElapsed;
     let phase, barLabel, isOverdueCTA = false;
     if (daysElapsed > daysTotal + 1) {
       // OVERDUE — operator MUST record the hatch event (or investigate)
       phase = 'phase-overdue';
       const daysOver = daysElapsed - daysTotal;
-      barLabel = `🐣 RECORD HATCH NOW · ${daysOver}d past expected`;
+      barLabel = '🐣 RECORD HATCH · ' + daysOver + 'd late';
       isOverdueCTA = true;
     } else if (daysElapsed >= daysTotal - 1 && daysElapsed <= daysTotal + 1) {
       // READY — hatch window. Day 20-22 typically.
       phase = 'phase-ready';
-      barLabel = `🐣 Day ${daysElapsed} · READY to hatch · TAP to record`;
-      isOverdueCTA = true; // Also tappable to record hatch when ready
+      barLabel = '🐣 Day ' + daysElapsed + ' · READY · TAP to record';
+      isOverdueCTA = true;
     } else if (daysToHatch > 0 && daysToHatch < 7) {
       // PREPARE Marek's — within 7 days of expected hatch
       phase = 'phase-approach';
-      barLabel = `🟡 Day ${daysElapsed} · PREPARE Marek's + brooder · ~${daysToHatch}d to hatch`;
+      barLabel = '🟡 Day ' + daysElapsed + ' · PREP Marek · ' + daysToHatch + 'd to go';
     } else {
       // EARLY incubation — calm, dark
       phase = 'phase-early';
-      barLabel = `Day ${daysElapsed} of ${daysTotal} — early incubation`;
+      barLabel = 'Day ' + daysElapsed + ' of ' + daysTotal + ' — early';
     }
 
     // Cards are tappable only when phase === 'phase-ready' or 'phase-overdue'
