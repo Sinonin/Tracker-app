@@ -2263,7 +2263,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.1.5</span>
+  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.1.6</span>
 </header>
 
 <main>
@@ -3262,7 +3262,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.1.5</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.1.6</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3584,7 +3584,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.1.5';
+const APP_VERSION = 'v6.1.6';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -8915,24 +8915,123 @@ function handleLitterBarTap() {
     return;
   }
   
-  // Branch 1 + 3: open native date picker
+  // v6.1.6 — Admin path with existing record: offer 3 options up-front.
+  // EDIT date opens the picker; RESET deletes the record so an operator 
+  // can record fresh; CANCEL exits without change. This solves Cheison's 
+  // workflow: "I want to reset so Elias can input AND I need to amend 
+  // as Admin."
+  if (existing && IS_ADMIN) {
+    // Three-option choice via two confirm dialogs. Browser-native, no 
+    // custom modal needed (matches the rest of the lightweight admin UX).
+    const wantsEdit = window.confirm(
+      'Litter record exists for ' + LITTER_TARGET_HOUSE + ': ' + existing.date + '\n\n' +
+      'OK    = Edit date (open calendar)\n' +
+      'Cancel = Reset / delete record (or cancel)'
+    );
+    if (wantsEdit) {
+      // Edit path — open picker, will land in proceedAfterDatePicked → 
+      // confirm → save replace
+      promptLitterDateNative(existing);
+      return;
+    }
+    // Reset path — second confirm to avoid accidental delete
+    const wantsReset = window.confirm(
+      'RESET litter record?\n\n' +
+      'This deletes the current record (' + existing.date + ') so Elias or any\n' +
+      'operator can record a fresh entry. Use this to clear erroneous data.\n\n' +
+      'OK = Reset · Cancel = Do nothing'
+    );
+    if (wantsReset) {
+      resetLitterRecord();
+    }
+    return;
+  }
+  
+  // Branch 1: no existing record — anyone can record. Open picker directly.
   promptLitterDateNative(existing);
+}
+
+/* v6.1.6 — Delete the current litter record for the target house. After 
+   reset, the bar goes back to "TAP to record first change" empty state, 
+   and any operator can record fresh. Admin-only function, gated by the 
+   tap handler above. */
+function resetLitterRecord() {
+  if (!Array.isArray(STATE.litterChanges)) STATE.litterChanges = [];
+  STATE.litterChanges = STATE.litterChanges.filter(r =>
+    !(r && r.house === LITTER_TARGET_HOUSE)
+  );
+  storageSet(K_LITTER_CHANGES, STATE.litterChanges).catch(err => {
+    console.warn('[litter] storage write failed during reset: ' + String(err && err.message || err));
+  });
+  
+  // Best-effort gate push (action: 'litter-reset' — server will eventually 
+  // honor this when v5.0.30+ Apps Script ships)
+  if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL && IS_ADMIN) {
+    try {
+      fetch(APPS_SCRIPT_GATE_URL, {
+        method: 'POST', mode: 'cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'litter-reset',
+          payload: { house: LITTER_TARGET_HOUSE },
+          source: 'PWA ' + APP_VERSION
+        })
+      }).catch(err => {
+        console.warn('[litter] reset gate push failed: ' + String(err && err.message || err));
+      });
+    } catch (e) {
+      // ignore — local state is correct
+    }
+  }
+  
+  renderLitterBar();
+  if (typeof showToast === 'function') {
+    showToast('🪶 Litter record reset · ' + LITTER_TARGET_HOUSE + ' · operator can record fresh');
+  }
 }
 
 /* v6.1.5 — Spawns a hidden <input type="date">, focuses it (which on most
    browsers + mobile triggers the native calendar UI), and resolves with 
    the picked ISO date string. If existing record provided AND user is 
    admin, shows a confirmation modal before committing the overwrite. */
+/* v6.1.5 — Spawns an <input type="date"> POSITIONED OVER THE BAR (not 
+   offscreen), focuses + clicks it to summon the OS-native calendar UI.
+   v6.1.6 — Bug fix: previous offscreen + pointer-events:none + 
+            showPicker() approach failed on iOS Safari and some Android 
+            WebViews because:
+              (1) pointer-events:none blocks the click that summons the 
+                  picker on browsers that route via tap-event chain
+              (2) hidden/offscreen inputs lose the "user activation" 
+                  context needed for showPicker() on iOS Safari
+              (3) PWA Add-to-Home-Screen launches enforce stricter rules 
+                  than regular Safari
+            
+            FIX: spawn the input AT THE BAR's screen position with 
+            opacity:0.01 (effectively invisible, but tappable + 
+            user-activation-eligible). Click() it directly. Same UX 
+            (operator sees only the OS calendar). Reliable across 
+            all browsers + WebViews. */
 function promptLitterDateNative(existing) {
-  // Build hidden input
+  const barEl = document.getElementById('ph-litter-bar');
+  // Use bar's bounding rect for positioning (so input sits AT the tap site,
+  // satisfying user-activation rules on iOS)
+  const rect = barEl ? barEl.getBoundingClientRect() : { top: 100, left: 100, width: 100, height: 24 };
+  
   const input = document.createElement('input');
   input.type = 'date';
   input.style.position = 'fixed';
-  input.style.left = '-9999px';
-  input.style.opacity = '0';
-  input.style.pointerEvents = 'none';
+  input.style.top  = rect.top + 'px';
+  input.style.left = rect.left + 'px';
+  input.style.width  = rect.width + 'px';
+  input.style.height = rect.height + 'px';
+  input.style.opacity = '0.01';        // effectively invisible
+  input.style.zIndex = '9999';         // on top of everything
+  input.style.border = 'none';
+  input.style.padding = '0';
+  input.style.margin = '0';
+  // NOTE: NO pointer-events:none — input MUST be tappable for native picker
   
-  // Pre-fill with today (browser will accept yyyy-mm-dd in `value`)
+  // Pre-fill with today (browser accepts yyyy-mm-dd in value)
   const todayIso = new Date().toISOString().slice(0, 10);
   input.value = todayIso;
   // Constrain to past + today (no future dates)
@@ -8950,15 +9049,14 @@ function promptLitterDateNative(existing) {
       proceedAfterDatePicked(picked, existing);
     }
   };
-  // Some browsers fire 'blur' instead of 'change' if the user dismisses
-  // without picking; treat that as cancel
+  // Cancel paths: blur (operator dismissed without picking) + focusout fallback
   const onBlur = () => {
     setTimeout(() => {
       if (!resolved) {
         resolved = true;
         cleanup();
       }
-    }, 150);
+    }, 200);
   };
   function cleanup() {
     input.removeEventListener('change', onChange);
@@ -8968,12 +9066,18 @@ function promptLitterDateNative(existing) {
   input.addEventListener('change', onChange);
   input.addEventListener('blur', onBlur);
   
-  // Focus + click to summon native picker
-  input.focus();
-  // Modern browsers: showPicker() is the explicit API
+  // Summon native calendar. Try showPicker() first (modern API), fall back 
+  // to click() (works on older browsers + Safari)
   if (typeof input.showPicker === 'function') {
-    try { input.showPicker(); } catch (e) { /* ignore — focus alone may suffice */ }
+    try {
+      input.focus();
+      input.showPicker();
+    } catch (e) {
+      // showPicker can throw on user-activation failure; fall through to click
+      input.click();
+    }
   } else {
+    input.focus();
     input.click();
   }
 }

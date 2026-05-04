@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.1.6 — Litter date picker fix + admin reset/edit options (04 May 2026)
 // v6.1.5 — Litter bar inversion + native picker + admin overwrite gate (04 May 2026)
 // v6.1.4 — Bar contrast inverse-color + deep litter tracking (04 May 2026)
 // v6.1.3 — AbortSignal preview fix + empty-houses placeholder (04 May 2026)
@@ -27,7 +28,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v111';
+const CACHE = 'sinonin-greenleaf-v112';
 
 const SHELL_FILES = [
   './',
