@@ -487,8 +487,8 @@
     border: 1px solid var(--forest-dark);
   }
   #kind-toggle-tea { grid-template-columns: 1fr 1fr 1fr; }
-  #kind-toggle-poultry { grid-template-columns: 1fr 1fr 1fr 1fr; }
-  #kind-toggle-poultry button { font-size: 0.7rem; padding: 0.55rem 0.3rem; letter-spacing: 0.06em; }
+  #kind-toggle-poultry { grid-template-columns: 1fr 1fr 1fr 1fr 1fr; }
+  #kind-toggle-poultry button { font-size: 0.65rem; padding: 0.55rem 0.2rem; letter-spacing: 0.04em; }
   #kind-toggle-expenses { grid-template-columns: 1fr; }
   .kind-toggle button {
     background: transparent; border: none;
@@ -1117,6 +1117,114 @@
   }
   .biz-card.biz-card-aggregate .lbl { color: var(--brass); }
   .biz-card.biz-card-aggregate .val { color: var(--ink); }
+
+  /* v6.0.0 — D3: Hero card variant for Layers (the production engine).
+     Visually dominant — taller padding, larger value, forest left accent. */
+  .biz-card.biz-card-hero {
+    padding: 1.1rem 1.2rem 1.15rem;
+    border-left: 3px solid var(--forest);
+    background: linear-gradient(180deg, var(--ivory-card) 0%, rgba(30, 58, 47, 0.03) 100%);
+  }
+  .biz-card.biz-card-hero .lbl { font-size: 0.62rem; }
+  .biz-card.biz-card-hero .val.val-hero {
+    font-size: 1.85rem;
+    font-weight: 600;
+    color: var(--forest);
+    margin-top: 0.3rem;
+  }
+  .biz-card.biz-card-hero .sub { font-size: 0.85rem; }
+
+  /* v6.0.0-rev2 — Companion card variant for Cockerels (paired with Layers).
+     Subtler accent (brass) than Layers' forest, slightly compressed.
+     Visually pairs with Layers without competing for hero attention. */
+  .biz-card.biz-card-companion {
+    padding: 1.1rem 1rem 1.15rem;
+    border-left: 2px solid var(--brass);
+    background: linear-gradient(180deg, var(--ivory-card) 0%, rgba(184, 147, 90, 0.04) 100%);
+  }
+  .biz-card.biz-card-companion .lbl { color: var(--brass); }
+  .biz-card.biz-card-companion .val {
+    font-size: 1.45rem;
+    font-weight: 500;
+    color: var(--ink);
+    margin-top: 0.25rem;
+  }
+
+  /* v6.0.0-rev2 — Mid-pipeline variant for Growers (row 2 left).
+     Slate-dim left accent (transitional stage — not adult, not chick). */
+  .biz-card.biz-card-mid {
+    padding: 0.9rem 1rem 0.95rem;
+    border-left: 2px solid var(--slate-light);
+    background: var(--ivory-card);
+  }
+  .biz-card.biz-card-mid .val {
+    font-size: 1.25rem;
+    font-weight: 500;
+  }
+
+  /* v6.0.0-rev2 — Care/quarantine variant (row 2 right, paired with Growers).
+     Gentle danger-tinted accent — visually distinct from productive stages
+     but not alarming. Sub line explains the rollup (Q+Deformities+Retired). */
+  .biz-card.biz-card-care {
+    padding: 0.9rem 1rem 0.95rem;
+    border-left: 2px solid var(--danger);
+    background: linear-gradient(180deg, var(--ivory-card) 0%, rgba(139, 58, 58, 0.025) 100%);
+  }
+  .biz-card.biz-card-care .lbl { color: var(--danger); opacity: 0.85; }
+  .biz-card.biz-card-care .val {
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .biz-card.biz-card-care .sub { font-size: 0.7rem; opacity: 0.75; }
+
+  /* v6.0.0 — D4: Vaccination progress bar inside stage cards.
+     Compact horizontal bar with percent fill + color-coded urgency.
+     Hidden by default (display:none); JS shows it when data exists. */
+  .vacc-bar-row {
+    margin-top: 0.55rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed var(--rule);
+  }
+  .vacc-bar-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    color: var(--slate);
+    margin-bottom: 0.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .vacc-bar-track {
+    height: 5px;
+    background: var(--rule);
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+  }
+  .vacc-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+  .vacc-bar-fill.green  { background: var(--success); }
+  .vacc-bar-fill.yellow { background: #C8A042; }
+  .vacc-bar-fill.red    { background: var(--danger); }
+  .vacc-bar-fill.done   { background: var(--brass-dim); opacity: 0.5; }
+  .vacc-bar-pill {
+    display: inline-block;
+    font-size: 0.6rem;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 0.04em;
+    padding: 0.05rem 0.4rem;
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+  .vacc-bar-pill.green  { background: rgba(74, 107, 78, 0.15); color: var(--success); }
+  .vacc-bar-pill.yellow { background: rgba(200, 160, 66, 0.18); color: #8C6E3F; }
+  .vacc-bar-pill.red    { background: rgba(139, 58, 58, 0.15); color: var(--danger); }
+  .vacc-bar-pill.done   { background: rgba(140, 110, 63, 0.12); color: var(--brass-dim); }
 
   /* Year-over-year comparison */
   .yoy-grid {
@@ -2008,7 +2116,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v5.9.4</span>
+  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.0.0</span>
 </header>
 
 <main>
@@ -2059,7 +2167,84 @@
 
     <div class="section">
       <div class="section-head"><h3>Kipkenda Poultry</h3><span class="meta">this month</span></div>
-      <div class="biz-grid">
+
+      <!-- v6.0.0 — D3: Bird population at TOP of Kipkenda Poultry section.
+           v6.0.0-rev2 (04 May 2026 audit): Layout reorganized to 3×2 = 6-card
+           symmetrical grid after Cheison noted (1) Layers-alone-on-top looked
+           skewed, (2) the 7-28d boundary overlapped 1-7d, (3) Growers alone
+           full-width also broke symmetry.
+           
+           Final layout (biological progression, top → bottom):
+             Row 1:  🥚 Layers (hero, 60%) + 🐓 Cockerels (40%)   — adults (productive)
+             Row 2:  🐤 Growers           + 🏥 Quarantine          — transitional / care
+             Row 3:  🐣 Chicks 1-7d       + 🐥 Chicks 8-28d        — youngest
+           
+           Boundary fix: "Chicks 7-28d" displayed as "Chicks 8-28d" so day 7 = end
+           of bucket 1, day 8 = start of bucket 2. Underlying data still uses the
+           existing 'Chicks 7-28 days' stage value in Bird_Census (no migration —
+           only the LABEL changes; the boundary semantic was always "days 7 OR 8
+           are in this bucket if not already in Chicks 1-7d").
+           
+           Quarantine card (NEW v6.0.0-rev2, Option B):
+             · Shows count of just the 'Quarantine' Stage from Bird_Census
+             · Sub-line is a human explainer: "deformities, sick and quarantine"
+               (Cheison's wording — avoids medicalising labels like "sick" or
+               "treatment" on the primary card lbl. Operators record birds as
+               'Quarantine' stage when isolated for ANY of these reasons.)
+             · 'Quarantine' is also a NEW Stage value in BIRD_CENSUS_STAGES —
+               operators select it via Add → Poultry → Census dropdown
+             · Note: 'Deformities' and 'Retired birds' remain SEPARATE stages
+               (their counts go toward totalBirds but show on no card here —
+               Insights will surface them later). -->
+      <div class="biz-grid" style="grid-template-columns:1.55fr 1fr;gap:0.6rem">
+        <div class="biz-card biz-card-hero" id="poultry-stage-layers-card">
+          <div class="lbl">🥚 Layers</div>
+          <div class="val val-hero" id="poultry-stage-layers">—</div>
+          <div class="sub" id="poultry-stage-layers-sub">no census yet</div>
+          <div class="vacc-bar-row" id="vacc-bar-layers" style="display:none"></div>
+        </div>
+        <div class="biz-card biz-card-companion" id="poultry-stage-cockerels-card">
+          <div class="lbl">🐓 Cockerels</div>
+          <div class="val" id="poultry-stage-cockerels">—</div>
+          <div class="sub" id="poultry-stage-cockerels-sub">—</div>
+          <div class="vacc-bar-row" id="vacc-bar-cockerels" style="display:none"></div>
+        </div>
+      </div>
+      <div class="biz-grid" style="margin-top:0.6rem;grid-template-columns:1fr 1fr;gap:0.6rem">
+        <div class="biz-card biz-card-mid" id="poultry-stage-growers-card">
+          <div class="lbl">🐤 Growers</div>
+          <div class="val" id="poultry-stage-growers">—</div>
+          <div class="sub" id="poultry-stage-growers-sub">—</div>
+          <div class="vacc-bar-row" id="vacc-bar-growers" style="display:none"></div>
+        </div>
+        <div class="biz-card biz-card-care" id="poultry-stage-quarantine-card">
+          <div class="lbl">🏥 Quarantine</div>
+          <div class="val" id="poultry-stage-quarantine">—</div>
+          <div class="sub" id="poultry-stage-quarantine-sub">deformities, sick and quarantine</div>
+        </div>
+      </div>
+      <div class="biz-grid" style="margin-top:0.6rem;grid-template-columns:1fr 1fr">
+        <div class="biz-card" id="poultry-stage-c1to7-card">
+          <div class="lbl">🐣 Chicks 1–7d</div>
+          <div class="val" id="poultry-stage-c1to7">—</div>
+          <div class="sub" id="poultry-stage-c1to7-sub">—</div>
+          <div class="vacc-bar-row" id="vacc-bar-c1to7" style="display:none"></div>
+        </div>
+        <div class="biz-card" id="poultry-stage-c7to28-card">
+          <div class="lbl">🐥 Chicks 8–28d</div>
+          <div class="val" id="poultry-stage-c7to28">—</div>
+          <div class="sub" id="poultry-stage-c7to28-sub">—</div>
+          <div class="vacc-bar-row" id="vacc-bar-c7to28" style="display:none"></div>
+        </div>
+      </div>
+
+      <!-- Total live birds summary (small, after stage cards) -->
+      <div id="poultry-live-birds-summary" style="margin-top:0.6rem;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--slate);letter-spacing:0.04em">
+        <span id="poultry-live-birds-summary-text">no census yet</span>
+      </div>
+
+      <!-- Money cards — moved DOWN below bird population (v6.0.0) -->
+      <div class="biz-grid" style="margin-top:1rem">
         <div class="biz-card"><div class="lbl">Eggs income</div><div class="val" id="poultry-eggs-month">Ksh 0</div><div class="sub" id="poultry-eggs-sub">—</div></div>
         <div class="biz-card"><div class="lbl">Live birds income</div><div class="val" id="poultry-birds-month">Ksh 0</div><div class="sub" id="poultry-birds-sub">—</div></div>
         <div class="biz-card"><div class="lbl">Poultry income</div><div class="val" id="poultry-total-income">Ksh 0</div><div class="sub">eggs + birds</div></div>
@@ -2076,24 +2261,30 @@
         <div class="biz-card"><div class="lbl">📈 MTD LE</div><div class="val" id="poultry-le-mtd">—</div><div class="sub" id="poultry-le-mtd-sub">no data</div></div>
         <div class="biz-card"><div class="lbl">📈 Global LE</div><div class="val" id="poultry-le-global">—</div><div class="sub" id="poultry-le-global-sub">no data</div></div>
       </div>
-      <!-- v5.7 — Per-house Lay Efficiency MTD -->
-      <div class="biz-grid" style="margin-top:0.7rem">
-        <div class="biz-card"><div class="lbl">🏠 Ground Floor LE (MTD)</div><div class="val" id="poultry-le-gf">—</div><div class="sub" id="poultry-le-gf-sub">no data</div></div>
-        <div class="biz-card"><div class="lbl">⬆️ Upper Deck LE (MTD)</div><div class="val" id="poultry-le-ud">—</div><div class="sub" id="poultry-le-ud-sub">no data</div></div>
-      </div>
-      <!-- v6.0 SHIP 4 — live bird count.
-           v5.9.4 — Removed orphaned "Lay rate MTD" ghost card from this row.
-           That card's value/sub were both hidden=true (superseded by the LE
-           triplet above in v5.7) but the empty card frame stayed visible.
-           Live birds now takes full width with grid-template-columns:1fr. -->
-      <div class="biz-grid" style="margin-top:0.7rem;grid-template-columns:1fr">
-        <div class="biz-card"><div class="lbl">🏠 Live birds (census)</div><div class="val" id="poultry-live-birds">—</div><div class="sub" id="poultry-live-birds-sub">no census yet</div></div>
-      </div>
+      <!-- v6.0.0 — Per-house LE: dynamic across ALL active houses with Layers > 0.
+           v5.7 hard-coded GF + UD; now we render dynamically into this container. -->
+      <div class="biz-grid" id="poultry-le-perhouse" style="margin-top:0.7rem"></div>
+
+      <!-- Hidden orphan IDs from v5.7 — kept so stale code paths don't NPE.
+           Renderers now write to dynamic per-house container above instead. -->
+      <span id="poultry-le-gf" style="display:none">—</span>
+      <span id="poultry-le-gf-sub" style="display:none">no data</span>
+      <span id="poultry-le-ud" style="display:none">—</span>
+      <span id="poultry-le-ud-sub" style="display:none">no data</span>
+
+      <!-- v6.0 SHIP 4 / v6.0.0 — Live birds card REMOVED from here.
+           Bird population now shown at TOP via 5 stage cards (above). -->
+
       <!-- v6.0 SHIP 5 — Hatch rate + incubating batches (only shown when data exists) -->
       <div class="biz-grid" style="margin-top:0.7rem" id="poultry-incubation-row" hidden>
         <div class="biz-card"><div class="lbl">🐣 Hatch rate (latest)</div><div class="val" id="poultry-hatch-rate">—</div><div class="sub" id="poultry-hatch-rate-sub">no batches yet</div></div>
         <div class="biz-card"><div class="lbl">🥚 Incubating now</div><div class="val" id="poultry-incubating-count">—</div><div class="sub" id="poultry-incubating-sub">no active batches</div></div>
       </div>
+
+      <!-- Orphan compatibility: keep the old "live birds" IDs hidden — used by
+           legacy renderers. Their values now feed into the summary line above. -->
+      <span id="poultry-live-birds" style="display:none">—</span>
+      <span id="poultry-live-birds-sub" style="display:none">no census yet</span>
 
       <!-- v5.9.0 — Incubation progress bars on HOME, inside Kipkenda Poultry section.
            Cheison sealed Sunday 03 May 2026: visible at-a-glance, no navigation. -->
@@ -2169,6 +2360,7 @@
       <button data-kind="egg-collection">Eggs</button>
       <button data-kind="bird-census">Census</button>
       <button data-kind="incubation">Incubation</button>
+      <button data-kind="vaccination">💉 Vacc</button>
     </div>
 
     <!-- v5.9.1 — Expenses kind-toggle removed (only one child = redundant nav layer).
@@ -2533,6 +2725,45 @@
         </div>
       </div>
     </div>
+
+    <!-- ========= VACCINATION (v6.0.0 — D4) ========= -->
+    <div id="vaccination-kind" style="display:none">
+      <div class="pair">
+        <div class="field"><label>Date given</label><input type="date" id="vc-date"></div>
+        <div class="field"><label>Stage</label>
+          <select id="vc-stage">
+            <option value="">— Stage —</option>
+            <option value="Chicks 1\u20137 days">Chicks 1–7 days</option>
+            <option value="Chicks 7\u201328 days">Chicks 7–28 days</option>
+            <option value="Growers">Growers</option>
+            <option value="Cockerels">Cockerels</option>
+            <option value="Layers">Layers</option>
+          </select>
+        </div>
+      </div>
+      <div class="pair">
+        <div class="field"><label>House</label>
+          <select id="vc-house"><option value="">— House —</option></select>
+        </div>
+        <div class="field"><label>Vaccine</label>
+          <select id="vc-vaccine"><option value="">— Vaccine —</option></select>
+        </div>
+      </div>
+      <div class="pair">
+        <div class="field"><label>Birds vaccinated</label><input type="number" id="vc-count" min="0" placeholder="e.g. 250"></div>
+        <div class="field"><label>Next due (auto)</label><input type="date" id="vc-next-due" readonly style="background:var(--ivory-warm);opacity:0.85"></div>
+      </div>
+      <div class="field"><label>Notes</label><input type="text" id="vc-notes" placeholder="e.g. NDV oral · 30 ml in drinking water"></div>
+
+      <div id="vc-preview" class="entry-preview" style="display:none;margin-top:0.7rem">
+        <div class="ep-row"><span class="ep-k">Vaccine</span><span class="ep-v" id="vc-prev-vaccine">—</span></div>
+        <div class="ep-row"><span class="ep-k">Stage · House</span><span class="ep-v" id="vc-prev-where">—</span></div>
+        <div class="ep-row"><span class="ep-k">Count</span><span class="ep-v" id="vc-prev-count">—</span></div>
+        <div class="ep-row"><span class="ep-k">Next due</span><span class="ep-v" id="vc-prev-next">—</span></div>
+      </div>
+
+      <button id="vc-submit" class="primary">💉 Record vaccination</button>
+    </div>
   </section>
 
   <!-- INSIGHTS -->
@@ -2873,7 +3104,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v5.9.4</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.0.0</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3163,6 +3394,9 @@ const K_IS_ADMIN = 'sinonin_is_admin_v1';  // v5.0.19 — set true on first succ
 const K_HOUSES = 'sinonin_houses_v1';       // v6.0 SHIP 3 — Kipkenda houses config
 const K_BIRD_CENSUS = 'sinonin_bird_census_v1';  // v6.0 SHIP 4 — Bird population counts
 const K_INCUBATION = 'sinonin_incubation_v1';     // v6.0 SHIP 5 — Incubation batches
+const K_VACCINATIONS = 'sinonin_vaccinations_v1';  // v6.0.0 — D4: Vaccination records
+const K_VACC_SCHEDULE = 'sinonin_vacc_schedule_v1'; // v6.0.0 — D4: Vaccination schedule (config)
+const K_COHORTS = 'sinonin_cohorts_v1';      // v6.0.0 — D2: Bird cohort population (lifecycle SM)
 const K_WEBAUTHN_CRED = 'sinonin_webauthn_cred_v1';  // v5.9.0 — Stored WebAuthn credential ID (base64)
 
 const CLOUD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwzHUz9She1PsVPNOWvssSiQcye8hpKZ9v_3d1aX6nsqPDnIN375z8krhMwsCyikVSLtQ/exec';
@@ -3190,7 +3424,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v5.9.4';
+const APP_VERSION = 'v6.0.0';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -5714,6 +5948,7 @@ async function flushQueue(opts) {
       else if (kind === 'poultry') record = (STATE.poultry || []).find(p => p.id === recordId);
       else if (kind === 'egg-collection') record = (STATE.eggCollection || []).find(e => e.id === recordId);
       else if (kind === 'bird-census') record = (STATE.birdCensus || []).find(b => b.id === recordId);
+      else if (kind === 'vaccination') record = (STATE.vaccinations || []).find(v => v.id === recordId);
       else if (kind === 'roster')  record = item.payload || null; // roster items carry their own payload
       if (!record) continue; // record was deleted locally, drop from queue
       let ok;
@@ -5723,6 +5958,7 @@ async function flushQueue(opts) {
       else if (kind === 'poultry') ok = await pushPoultryToForm(record);
       else if (kind === 'egg-collection') ok = await syncEggCollection(record);
       else if (kind === 'bird-census') ok = await syncBirdCensus(record);
+      else if (kind === 'vaccination') ok = await syncVaccination(record);
       else if (kind === 'roster')  ok = await pushRosterToForm(record);
       else                         ok = await pushToForm(record);
       if (ok) {
@@ -5759,6 +5995,9 @@ async function flushQueue(opts) {
           } else if (kind === 'bird-census' && Array.isArray(STATE.birdCensus)) {
             STATE.birdCensus = STATE.birdCensus.filter(b => b.id !== recordId);
             await storageSet(K_BIRD_CENSUS, STATE.birdCensus);
+          } else if (kind === 'vaccination' && Array.isArray(STATE.vaccinations)) {
+            STATE.vaccinations = STATE.vaccinations.filter(v => v.id !== recordId);
+            await storageSet(K_VACCINATIONS, STATE.vaccinations);
           }
           // Surface a quiet toast once per flush, listing how many were dropped
           showToast(`⚠️ Queue trimmed: 1 duplicate dropped (${kind})`, 5000);
@@ -5824,7 +6063,7 @@ async function updateSyncIndicator() {
 async function cloudFetch(since) {
   if (!navigator.onLine) return null;
 
-  // v5.9.3 — Hardened cloud fetch:
+  // v5.9.3 / v6.0.0 — Hardened cloud fetch:
   //   · URL constructor + searchParams (cleaner than string concat)
   //   · Cache-buster `_ts` query param prevents iOS Safari/PWA from
   //     serving stale Apps Script JSON (documented quirk)
@@ -5832,7 +6071,10 @@ async function cloudFetch(since) {
   //     bad 4G hang indefinitely (critical for field operators)
   //   · cache:'no-store' double-ensures fresh data
   //   · credentials:'omit' = no cookie leak cross-origin
-  //   · Diagnostic logging on every failure path
+  //   · ALL console.warn args stringified (Vercel preview toolbar
+  //     intercepts console.warn via window.postMessage, which fails
+  //     to clone Error objects whose .stack references the fetch init
+  //     containing AbortSignal). v6.0.0 hardens lines 6018 + 6027 too.
   //   · Backwards/forwards compat: greenleaf → pluckers field shim
   const url = new URL(CLOUD_ENDPOINT);
   if (since) url.searchParams.set('since', since);
@@ -5850,16 +6092,18 @@ async function cloudFetch(since) {
       headers: { 'Accept': 'application/json' }
     });
     if (!res.ok) {
-      console.warn('[cloudFetch] HTTP error', res.status, res.statusText);
+      // v6.0.0 — Stringify status+statusText into a single string. Earlier
+      // version passed (status, statusText) as separate args; some console.warn
+      // forwarders try to clone each arg and choke on cross-realm objects.
+      console.warn('[cloudFetch] HTTP error: ' + String(res.status) + ' ' + String(res.statusText || ''));
       return null;
     }
     const data = await res.json();
     if (!data || data.ok !== true) {
       // v5.9.3 — Log a compact summary instead of the full payload.
-      // The full data is structured-cloneable but may be large; a short
-      // summary string is friendlier to console + preview-toolbar pipelines.
-      const summary = data ? `ok=${data.ok} keys=[${Object.keys(data).join(',')}]` : 'null';
-      console.warn('[cloudFetch] Endpoint returned non-ok payload:', summary);
+      // v6.0.0 — Concatenate into a single string arg for safer console fwd.
+      const summary = data ? ('ok=' + String(data.ok) + ' keys=[' + Object.keys(data).join(',') + ']') : 'null';
+      console.warn('[cloudFetch] Endpoint returned non-ok payload: ' + summary);
       return null;
     }
     // Backwards/forwards compatibility: early endpoint drafts used `greenleaf`;
@@ -5869,16 +6113,22 @@ async function cloudFetch(since) {
     }
     return data;
   } catch (e) {
-    // v5.9.3 — Stringify the error before logging. Passing the raw Error
-    // object to console.warn caused a DataCloneError under Vercel preview
+    // v5.9.3 / v6.0.0 — Stringify the error before logging. Passing the raw
+    // Error object to console.warn caused a DataCloneError under Vercel preview
     // toolbar (and similar dev environments), which intercepts console.warn
     // to forward it via window.postMessage(). The Error object transitively
     // references the fetch options (which contain AbortSignal — NOT
     // structured-cloneable), so postMessage choked. Strings clone trivially.
-    const reason = (e && e.name === 'AbortError') ? 'timeout'
-                 : (e && e.message) ? e.message
-                 : String(e);
-    console.warn('[cloudFetch] Failed:', reason);
+    let reason;
+    try {
+      if (e && e.name === 'AbortError') reason = 'timeout';
+      else if (e && typeof e.message === 'string') reason = e.message;
+      else reason = String(e);
+    } catch (stringifyErr) {
+      reason = 'unknown error (also failed to stringify)';
+    }
+    // Concatenate into a single string arg — safer for console forwarders.
+    console.warn('[cloudFetch] Failed: ' + reason);
     return null;
   } finally {
     clearTimeout(timeout);
@@ -6158,6 +6408,50 @@ async function applyCloudResponse(data) {
   if (Array.isArray(data.incubation)) {
     STATE.incubation = data.incubation.map(cloudToLocalIncubation);
     await storageSet(K_INCUBATION, STATE.incubation);
+  }
+  /* v6.0.0 — D4: Vaccination records sync */
+  if (Array.isArray(data.vaccinations)) {
+    STATE.vaccinations = data.vaccinations.map(r => ({
+      id: r.id || ('vc-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8)),
+      ts: r.ts || r.timestamp || '',
+      date_given: r.date_given || r.dateGiven || '',
+      cohort_id: r.cohort_id || r.cohortId || '',
+      house: r.house || '',
+      stage: r.stage || '',
+      vaccine: r.vaccine || '',
+      next_due_date: r.next_due_date || r.nextDueDate || '',
+      birds_count: Number(r.birds_count || r.birdsCount || 0),
+      notes: r.notes || ''
+    }));
+    await storageSet(K_VACCINATIONS, STATE.vaccinations);
+  }
+  /* v6.0.0 — D4: Vaccination schedule sync (cloud-replace-local) */
+  if (Array.isArray(data.vaccSchedule)) {
+    STATE.vaccSchedule = data.vaccSchedule.map(r => ({
+      stage: r.stage || '',
+      vaccine: r.vaccine || '',
+      day_of_life: Number(r.day_of_life || r.dayOfLife || 0),
+      booster_days: Number(r.booster_days || r.boosterDays || 0),
+      notes: r.notes || ''
+    }));
+    await storageSet(K_VACC_SCHEDULE, STATE.vaccSchedule);
+  }
+  /* v6.0.0 — D2: Cohort population sync (cloud-replace-local) */
+  if (Array.isArray(data.cohorts)) {
+    STATE.cohorts = data.cohorts.map(r => ({
+      cohort_id: r.cohort_id || r.cohortId || '',
+      ts: r.ts || r.timestamp || '',
+      date_origin: r.date_origin || r.dateOrigin || '',
+      origin_type: r.origin_type || r.originType || 'hatch', // 'hatch' | 'acquired' | 'manual'
+      house: r.house || '',
+      stage: r.stage || '',
+      initial_count: Number(r.initial_count || r.initialCount || 0),
+      current_count: Number(r.current_count || r.currentCount || 0),
+      sold_count: Number(r.sold_count || r.soldCount || 0),
+      mortality_count: Number(r.mortality_count || r.mortalityCount || 0),
+      notes: r.notes || ''
+    }));
+    await storageSet(K_COHORTS, STATE.cohorts);
   }
   if (Array.isArray(data.roster)) {
     // Roster merge — cloud is authoritative for IDs that appear in cloud,
@@ -6586,6 +6880,9 @@ function switchKind(k) {
   // v6.0 SHIP 5 — Incubation
   const incKindEl = document.getElementById('incubation-kind');
   if (incKindEl) incKindEl.style.display = k === 'incubation' ? '' : 'none';
+  // v6.0.0 — D4: Vaccination
+  const vcKindEl = document.getElementById('vaccination-kind');
+  if (vcKindEl) vcKindEl.style.display = k === 'vaccination' ? '' : 'none';
   if (k === 'expense') renderRecentExpenses();
   if (k === 'actual') renderRecentActuals();
   if (k === 'banked') renderRecentBanked();
@@ -6594,6 +6891,7 @@ function switchKind(k) {
   if (k === 'bird-census' && typeof initBirdCensusForm === 'function') initBirdCensusForm();
   if (k === 'incubation' && typeof initIncubationForm === 'function') initIncubationForm();
   if (k === 'incubation' && typeof renderIncubationProgress === 'function') renderIncubationProgress();
+  if (k === 'vaccination' && typeof initVaccinationForm === 'function') initVaccinationForm();
 }
 
 function renderRecentActuals() {
@@ -7116,7 +7414,8 @@ const POULTRY_STAGES = [
   'Layers',
   'Cockerels',
   'Retired birds',
-  'Deformities'
+  'Deformities',
+  'Quarantine'  // v6.0.0-rev2 — new stage; isolated birds (treatment, post-disease, biosecurity holding)
 ];
 const POULTRY_UNITS = ['No. of eggs', 'Trays', 'Birds', 'Bags', 'Kg', 'Other'];
 const POULTRY_PAYMENT_METHODS = ['TILL', 'MPESA', 'PayBill', 'Cash', 'Bank'];
@@ -7453,7 +7752,8 @@ const BIRD_CENSUS_STAGES = [
   'Layers',
   'Cockerels',
   'Retired birds',
-  'Deformities'
+  'Deformities',
+  'Quarantine'  // v6.0.0-rev2 — new stage; isolated birds (treatment, post-disease, biosecurity)
 ];
 
 if (typeof STATE === 'object' && !Array.isArray(STATE.birdCensus)) {
@@ -7675,6 +7975,35 @@ async function syncBirdCensus(row) {
 if (typeof STATE === 'object' && !Array.isArray(STATE.incubation)) {
   STATE.incubation = [];
 }
+
+// v6.0.0 — D4: Vaccination data
+if (typeof STATE === 'object' && !Array.isArray(STATE.vaccinations)) {
+  STATE.vaccinations = [];
+}
+if (typeof STATE === 'object' && !Array.isArray(STATE.vaccSchedule)) {
+  STATE.vaccSchedule = [];
+}
+
+// v6.0.0 — D2: Cohort population (lifecycle state machine)
+if (typeof STATE === 'object' && !Array.isArray(STATE.cohorts)) {
+  STATE.cohorts = [];
+}
+
+// v6.0.0 — D4: Standard layer chicken vaccination schedule (Kenyan layer industry standard).
+// This is the DEFAULT seed; operator can add/edit via Settings → Vaccination Schedule.
+// Day_Of_Life is days since hatch.
+const VACC_SCHEDULE_DEFAULT = [
+  { stage: 'Chicks 1\u20137 days',   vaccine: 'Marek\u2019s',                         day_of_life: 1,   booster_days: 0,   notes: 'Hatchery — usually given at chick acquisition' },
+  { stage: 'Chicks 1\u20137 days',   vaccine: 'Newcastle (NDV) + IB',                 day_of_life: 7,   booster_days: 14,  notes: 'Day 7 — first NDV + IB combo' },
+  { stage: 'Chicks 7\u201328 days',  vaccine: 'Gumboro (IBD)',                        day_of_life: 14,  booster_days: 7,   notes: 'Day 14 — IBD primary' },
+  { stage: 'Chicks 7\u201328 days',  vaccine: 'Newcastle (NDV) booster',              day_of_life: 21,  booster_days: 14,  notes: 'Day 21 — NDV booster' },
+  { stage: 'Growers',                vaccine: 'Fowl Pox',                             day_of_life: 35,  booster_days: 0,   notes: 'Day 35 — Fowl Pox wing-stab' },
+  { stage: 'Growers',                vaccine: 'AE (Avian Encephalomyelitis)',         day_of_life: 56,  booster_days: 0,   notes: 'Day 56 — AE oral' },
+  { stage: 'Growers',                vaccine: 'ILT (regional)',                       day_of_life: 70,  booster_days: 0,   notes: 'Day 70 — ILT (if regional risk)' },
+  { stage: 'Growers',                vaccine: 'Newcastle (NDV) booster',              day_of_life: 105, booster_days: 90,  notes: 'Day 105 — NDV pre-pre-lay booster' },
+  { stage: 'Growers',                vaccine: 'Pre-lay (NDV+IB+EDS)',                 day_of_life: 112, booster_days: 0,   notes: 'Day 112 — pre-lay vaccine' },
+  { stage: 'Layers',                 vaccine: 'Newcastle (NDV) maintenance',          day_of_life: 0,   booster_days: 90,  notes: 'Quarterly NDV during laying' }
+];
 
 let INCUBATION_MODE = 'start'; // 'start' or 'hatch'
 
@@ -8042,6 +8371,68 @@ async function submitIncubationHatch() {
       showToast('Network error — local update kept', 5000);
     }
 
+    // v6.0.0 — D2: Lifecycle State Machine — auto-create Brooder cohort on hatch.
+    // Hatched chicks become a new Cohort row with stage='Chicks 1-7 days'.
+    // The cohort_id is derived from the batch_id for traceability.
+    // Default house: first active brooder OR first active house OR 'Brooder One' literal.
+    try {
+      const houses = (Array.isArray(STATE.houses) ? STATE.houses : [])
+        .filter(h => h.active === true || h.active === 'TRUE' || h.active === undefined);
+      const brooderHouse = houses.find(h => (h.type || '').toLowerCase().includes('brooder'));
+      const targetHouse = (brooderHouse && brooderHouse.name) || (houses[0] && houses[0].name) || 'Brooder One';
+
+      const cohortId = 'COH-' + id; // batch_id → cohort_id, traceable
+      const newCohort = {
+        cohort_id: cohortId,
+        ts: new Date().toISOString(),
+        date_origin: dh,
+        origin_type: 'hatch',
+        house: targetHouse,
+        stage: 'Chicks 1\u20137 days',
+        initial_count: hc,
+        current_count: hc,
+        sold_count: 0,
+        mortality_count: 0,
+        notes: 'Auto-created from hatch of batch ' + id + (notes ? ' · ' + notes : '')
+      };
+
+      STATE.cohorts = STATE.cohorts || [];
+      // Don't double-create on retry — check if already exists locally
+      const existingIdx = STATE.cohorts.findIndex(c => c.cohort_id === cohortId);
+      if (existingIdx === -1) {
+        STATE.cohorts.push(newCohort);
+        await storageSet(K_COHORTS, STATE.cohorts);
+
+        // Push cohort to gate (best-effort, non-blocking).
+        // If Apps Script doesn't yet have the 'cohort' action handler,
+        // it will reject with phase1Limited. That's fine — local state is
+        // authoritative for cohorts; the gate is just for backup.
+        try {
+          await fetch(APPS_SCRIPT_GATE_URL, {
+            method: 'POST', mode: 'cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+              action: 'cohort',
+              payload: { mode: 'create', ...newCohort },
+              source: 'PWA ' + APP_VERSION + ' cohort-auto-hatch'
+            })
+          });
+        } catch (cohortPushErr) {
+          // Stringify the error AND concatenate into single string arg —
+          // avoids AbortSignal cloning crash in Vercel preview (postMessage
+          // forwarders sometimes try to clone each arg separately).
+          console.warn('[cohort] gate push failed (auto-create from hatch): ' +
+                       String(cohortPushErr && cohortPushErr.message || cohortPushErr));
+          // No queue — cohort is local-first; will sync on next cloudFetch.
+        }
+        showToast('🐣 Cohort ' + cohortId + ' created · ' + hc + ' chicks in ' + targetHouse, 4500);
+      }
+    } catch (cohortErr) {
+      // Stringify + single-arg to avoid AbortSignal cloning crash.
+      console.error('[cohort] auto-create failed: ' + String(cohortErr && cohortErr.message || cohortErr));
+      // Non-fatal — hatch already saved, cohort can be created manually
+    }
+
     // Clear hatch form
     document.getElementById('ih-batch-id').value = '';
     document.getElementById('ih-hatched').value = '';
@@ -8072,6 +8463,393 @@ async function submitIncubationHatch() {
    
    Sort: longest-running batches first (closest to hatch at top).
 */
+/* ═══════════════════════════════════════════════════════════════
+   v6.0.0 — D4: VACCINATION ENGINE
+   ═══════════════════════════════════════════════════════════════
+   For each stage that has live birds, look up the vaccination schedule.
+   Compute next-due vaccine based on:
+     1. The youngest bird in that stage (date_origin from latest cohort)
+     2. The schedule for that stage (day_of_life targets)
+     3. Vaccinations already given for that cohort (Vaccination_Records)
+   
+   Color codes:
+     🟢 green   >7 days until due
+     🟡 yellow  3-7 days until due  
+     🔴 red     0-2 days OR overdue
+     ✅ done    given on schedule, no upcoming due
+   
+   Progress bar:
+     Day 0 (last vaccination given OR cohort birth) ──── Day Next_Due
+     Bar fills as days pass; >85% = yellow, ≥100% = red.
+*/
+
+// Approximate days-of-life baseline for each stage (from cohort date_origin).
+// Used when no cohort exists yet: fallback to stage-typical age.
+const STAGE_AGE_BASELINE_DAYS = {
+  'Chicks 1\u20137 days':   3,    // mid-range
+  'Chicks 7\u201328 days':  17,   // mid-range
+  'Growers':                 90,   // 28-150 days range, take mid
+  'Layers':                  180,  // post-150 days
+  'Cockerels':               90,   // typically split out at growers age
+  'Retired birds':           500,
+  'Deformities':             0,
+  'Quarantine':              0    // unknown — quarantine birds may be any age
+};
+
+// For a given stage, find the most-recent cohort (latest date_origin) and
+// return the days since origin. Returns null if no cohort exists.
+function getStageCohortAge(stage) {
+  const cohorts = Array.isArray(STATE.cohorts) ? STATE.cohorts : [];
+  const candidates = cohorts.filter(c => c.stage === stage && c.current_count > 0);
+  if (candidates.length === 0) return null;
+  // Sort by date_origin descending (newest first)
+  candidates.sort((a, b) => (b.date_origin || '').localeCompare(a.date_origin || ''));
+  const newest = candidates[0];
+  if (!newest.date_origin) return null;
+  const origin = new Date(newest.date_origin + 'T00:00:00Z');
+  const today = new Date();
+  return Math.floor((today - origin) / (1000 * 60 * 60 * 24));
+}
+
+// Compute the next-due vaccine for a given stage.
+// Returns { vaccine, days_until_due, days_overdue, completed, color, last_given_date }
+// Returns null if no schedule entries exist for this stage.
+function computeNextVaccinationForStage(stage) {
+  const schedule = (Array.isArray(STATE.vaccSchedule) ? STATE.vaccSchedule : [])
+    .filter(s => s.stage === stage)
+    .sort((a, b) => Number(a.day_of_life) - Number(b.day_of_life));
+  if (schedule.length === 0) return null;
+
+  let cohortAge = getStageCohortAge(stage);
+  if (cohortAge === null) {
+    cohortAge = STAGE_AGE_BASELINE_DAYS[stage] || 0;
+  }
+
+  const records = Array.isArray(STATE.vaccinations) ? STATE.vaccinations : [];
+
+  // For each schedule entry, check if it's been given (any record matching stage+vaccine)
+  for (const entry of schedule) {
+    const targetDay = Number(entry.day_of_life);
+    const givenRecord = records.find(r => r.stage === stage && r.vaccine === entry.vaccine);
+    if (givenRecord) continue; // skip — already done
+    
+    const daysUntil = targetDay - cohortAge;
+    let color;
+    if (daysUntil < 0)      color = 'red';      // overdue
+    else if (daysUntil <= 2) color = 'red';     // urgent
+    else if (daysUntil <= 7) color = 'yellow';  // upcoming soon
+    else                     color = 'green';   // future
+
+    return {
+      vaccine: entry.vaccine,
+      target_day_of_life: targetDay,
+      cohort_age: cohortAge,
+      days_until_due: daysUntil,
+      days_overdue: daysUntil < 0 ? -daysUntil : 0,
+      color: color,
+      completed: false,
+      notes: entry.notes
+    };
+  }
+
+  // All schedule entries completed for this stage
+  return { completed: true, color: 'done', vaccine: null };
+}
+
+// Render vaccination progress bar inside a stage card.
+// Stage cards have a hidden ".vacc-bar-row" div. We populate + reveal it.
+function renderVaccinationBars(latestLayersByHouse, latestCensusDate) {
+  const stageMap = [
+    { stage: 'Layers',                   barId: 'vacc-bar-layers' },
+    { stage: 'Cockerels',                barId: 'vacc-bar-cockerels' },
+    { stage: 'Growers',                  barId: 'vacc-bar-growers' },
+    { stage: 'Chicks 1\u20137 days',      barId: 'vacc-bar-c1to7' },
+    { stage: 'Chicks 7\u201328 days',     barId: 'vacc-bar-c7to28' }
+  ];
+
+  stageMap.forEach(({ stage, barId }) => {
+    const barEl = document.getElementById(barId);
+    if (!barEl) return;
+
+    // Count birds in this stage from latestLayersByHouse map
+    let stageCount = 0;
+    Object.values(latestLayersByHouse || {}).forEach(c => {
+      if (c.stage === stage) stageCount += Number(c.count) || 0;
+    });
+
+    if (stageCount === 0) {
+      barEl.style.display = 'none';
+      barEl.innerHTML = '';
+      return;
+    }
+
+    const next = computeNextVaccinationForStage(stage);
+    if (!next) {
+      barEl.style.display = 'none';
+      return;
+    }
+
+    if (next.completed) {
+      barEl.style.display = 'block';
+      barEl.innerHTML = `
+        <div class="vacc-bar-label">
+          <span>💉 Vaccinations</span>
+          <span class="vacc-bar-pill done">✅ all done</span>
+        </div>
+        <div class="vacc-bar-track">
+          <div class="vacc-bar-fill done" style="width:100%"></div>
+        </div>
+      `;
+      return;
+    }
+
+    // Compute fill % for progress bar.
+    // 0% = far in future, 100% = due today, >100% = overdue
+    const fillPct = Math.min(120, Math.max(0,
+      next.days_until_due >= 0
+        ? ((next.target_day_of_life - next.days_until_due) / next.target_day_of_life) * 100
+        : 100 + Math.min(20, next.days_overdue * 2)
+    ));
+
+    const colorClass = next.color;
+    let pillText, pillClass = colorClass;
+    if (next.days_overdue > 0) {
+      pillText = `⚠️ overdue ${next.days_overdue}d`;
+    } else if (next.days_until_due === 0) {
+      pillText = '🔴 due today';
+    } else if (next.days_until_due <= 2) {
+      pillText = `🔴 due in ${next.days_until_due}d`;
+    } else if (next.days_until_due <= 7) {
+      pillText = `🟡 due in ${next.days_until_due}d`;
+    } else {
+      pillText = `🟢 due in ${next.days_until_due}d`;
+    }
+
+    barEl.style.display = 'block';
+    barEl.innerHTML = `
+      <div class="vacc-bar-label">
+        <span>💉 ${next.vaccine}</span>
+        <span class="vacc-bar-pill ${pillClass}">${pillText}</span>
+      </div>
+      <div class="vacc-bar-track">
+        <div class="vacc-bar-fill ${colorClass}" style="width:${Math.min(100, fillPct).toFixed(1)}%"></div>
+      </div>
+    `;
+  });
+}
+
+/* v6.0.0 — D4: Vaccination form initialization.
+   Defaults date to today, populates House dropdown from active houses,
+   wires Stage→Vaccine cascade (vaccines depend on stage), wires Submit. */
+function initVaccinationForm() {
+  // Defaults
+  const dEl = document.getElementById('vc-date');
+  if (dEl && !dEl.value) dEl.value = new Date().toISOString().slice(0, 10);
+
+  // Populate Houses dropdown
+  const houseEl = document.getElementById('vc-house');
+  if (houseEl) {
+    const houses = (Array.isArray(STATE.houses) ? STATE.houses : [])
+      .filter(h => h.active === true || h.active === 'TRUE' || h.active === undefined);
+    houseEl.innerHTML = '<option value="">— House —</option>' +
+      houses.map(h => `<option value="${h.name}">${h.name}</option>`).join('');
+  }
+
+  // Stage→Vaccine cascade
+  const stageEl = document.getElementById('vc-stage');
+  const vaccEl = document.getElementById('vc-vaccine');
+  if (stageEl && vaccEl) {
+    const populateVaccines = () => {
+      const stage = stageEl.value;
+      const schedule = (Array.isArray(STATE.vaccSchedule) ? STATE.vaccSchedule : [])
+        .filter(s => s.stage === stage)
+        .sort((a, b) => Number(a.day_of_life) - Number(b.day_of_life));
+      vaccEl.innerHTML = '<option value="">— Vaccine —</option>' +
+        schedule.map(s => `<option value="${s.vaccine}" data-booster="${s.booster_days || 0}" data-day="${s.day_of_life || 0}">${s.vaccine}${s.day_of_life ? ' (d' + s.day_of_life + ')' : ''}</option>`).join('');
+      updateNextDue();
+      updatePreview();
+    };
+    stageEl.addEventListener('change', populateVaccines);
+    populateVaccines();
+  }
+
+  function updateNextDue() {
+    const dateGiven = (document.getElementById('vc-date') || {}).value;
+    const vaccSel = document.getElementById('vc-vaccine');
+    const opt = vaccSel ? vaccSel.options[vaccSel.selectedIndex] : null;
+    const nextEl = document.getElementById('vc-next-due');
+    if (!nextEl) return;
+    if (!dateGiven || !opt || !opt.value) {
+      nextEl.value = '';
+      return;
+    }
+    const boosterDays = Number(opt.dataset.booster || 0);
+    if (boosterDays > 0) {
+      const d = new Date(dateGiven + 'T00:00:00Z');
+      d.setUTCDate(d.getUTCDate() + boosterDays);
+      nextEl.value = d.toISOString().slice(0, 10);
+    } else {
+      nextEl.value = '';
+    }
+  }
+
+  function updatePreview() {
+    const preview = document.getElementById('vc-preview');
+    const stage = (document.getElementById('vc-stage') || {}).value || '';
+    const house = (document.getElementById('vc-house') || {}).value || '';
+    const vaccine = (document.getElementById('vc-vaccine') || {}).value || '';
+    const count = (document.getElementById('vc-count') || {}).value || '';
+    const nextDue = (document.getElementById('vc-next-due') || {}).value || '';
+    if (!stage || !vaccine) {
+      if (preview) preview.style.display = 'none';
+      return;
+    }
+    if (preview) preview.style.display = '';
+    const setText = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+    setText('vc-prev-vaccine', vaccine);
+    setText('vc-prev-where', stage + (house ? ' · ' + house : ''));
+    setText('vc-prev-count', count ? (count + ' birds') : '—');
+    setText('vc-prev-next', nextDue || 'no booster');
+  }
+
+  ['vc-date', 'vc-vaccine', 'vc-stage', 'vc-house', 'vc-count'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('change', () => { updateNextDue(); updatePreview(); });
+      el.addEventListener('input',  updatePreview);
+    }
+  });
+
+  const submitBtn = document.getElementById('vc-submit');
+  if (submitBtn && !submitBtn._wired) {
+    submitBtn.addEventListener('click', submitVaccination);
+    submitBtn._wired = true;
+  }
+}
+
+async function submitVaccination() {
+  const date_given = (document.getElementById('vc-date') || {}).value || '';
+  const stage      = (document.getElementById('vc-stage') || {}).value || '';
+  const house      = (document.getElementById('vc-house') || {}).value || '';
+  const vaccine    = (document.getElementById('vc-vaccine') || {}).value || '';
+  const count      = (document.getElementById('vc-count') || {}).value;
+  const next_due_date = (document.getElementById('vc-next-due') || {}).value || '';
+  const notes      = ((document.getElementById('vc-notes') || {}).value || '').trim();
+
+  if (!date_given || !stage || !house || !vaccine || count === '' || count === undefined) {
+    showToast('Please fill date, stage, house, vaccine, and count', 3000);
+    return;
+  }
+
+  // v5.8.5 — Add tab gibberish protection
+  if (typeof isSessionConfirmed === 'function' && !isSessionConfirmed('vaccination')) {
+    const summaryHtml = '<div><strong>' + vaccine + '</strong></div>' +
+      '<div style="opacity:0.85;margin-top:0.3rem">' + count + ' birds · ' + stage + ' · ' + house + '</div>' +
+      '<div style="opacity:0.7;margin-top:0.2rem;font-size:0.78rem">' + date_given + (next_due_date ? ' · next due ' + next_due_date : '') + '</div>';
+    const ok = await confirmFirstSubmit('vaccination', summaryHtml);
+    if (!ok) { showToast('Cancelled', 1800); return; }
+    markSessionConfirmed('vaccination');
+  }
+
+  const row = {
+    id:    'vc-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+    ts:    new Date().toISOString(),
+    date_given: date_given,
+    stage: stage,
+    house: house,
+    vaccine: vaccine,
+    birds_count: Number(count),
+    next_due_date: next_due_date,
+    cohort_id: '',
+    notes: notes
+  };
+
+  STATE.vaccinations.push(row);
+  await storageSet(K_VACCINATIONS, STATE.vaccinations);
+
+  // Push to gate (best-effort) + queue on failure for later retry
+  const ok = await syncVaccination(row);
+  if (!ok) {
+    // Server unreachable, gate locked, or rejected — queue for retry
+    if (lastWriteResult && lastWriteResult.reason === 'duplicate') {
+      // Strict-rejected: roll back local optimistic insert
+      STATE.vaccinations = STATE.vaccinations.filter(v => v.id !== row.id);
+      await storageSet(K_VACCINATIONS, STATE.vaccinations);
+      showToast('⚠️ ' + (lastWriteResult.message || 'Already recorded'), 5000);
+      return;
+    }
+    await queueForSync(row, 'vaccination');
+    showToast('💉 ' + vaccine + ' saved locally · will sync when online', 3000);
+  } else {
+    showToast('💉 ' + vaccine + ' recorded · ' + count + ' birds', 2500);
+  }
+
+  ['vc-count', 'vc-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const preview = document.getElementById('vc-preview');
+  if (preview) preview.style.display = 'none';
+
+  if (typeof renderHome === 'function') renderHome();
+}
+
+async function pushVaccinationToGate(row) {
+  try {
+    const body = {
+      action: 'vaccination',
+      payload: {
+        ts:           row.ts || new Date().toISOString(),
+        date_given:   row.date_given || '',
+        cohort_id:    row.cohort_id || '',
+        house:        row.house || '',
+        stage:        row.stage || '',
+        vaccine:      row.vaccine || '',
+        birds_count:  Number(row.birds_count || 0),
+        next_due_date: row.next_due_date || '',
+        notes:        row.notes || ''
+      },
+      source: 'PWA ' + APP_VERSION + ' vaccination'
+    };
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:   JSON.stringify(body)
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    if (json && json.ok) {
+      return { ok: true, via: 'gate', possibleDuplicate: !!json.possibleDuplicate, summary: json.summary };
+    }
+    if (json && json.writesLocked) {
+      return { ok: false, reason: 'writes-locked', message: json.reason || 'Writes locked' };
+    }
+    if (json && json.duplicate) {
+      return {
+        ok: false,
+        reason: 'duplicate',
+        message: json.summary || 'Already recorded — check Sheet to confirm.',
+        existing: json.existing
+      };
+    }
+    if (json && json.phase1Limited) return null;
+    return { ok: false, reason: 'gate-rejected', message: (json && json.reason) || 'Rejected by gate' };
+  } catch (e) {
+    return null;
+  }
+}
+
+async function syncVaccination(row) {
+  if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL) {
+    const gateResult = await pushVaccinationToGate(row);
+    if (gateResult) {
+      lastWriteResult = gateResult;
+      return gateResult.ok;
+    }
+  }
+  lastWriteResult = { ok: false, reason: 'gate-unreachable' };
+  return false;
+}
+
+
 function renderIncubationProgress() {
   // v5.8.6 / v5.9.0 / v5.9.1 — Now paints into TWO containers:
   //   · Add → Poultry → Incubation: #incubation-progress-list (entry view)
@@ -8509,7 +9287,7 @@ function renderHome() {
   const udLayers = (latestLayersByHouse['Upper Deck|Layers']   && Number(latestLayersByHouse['Upper Deck|Layers'].count))   || 0;
   const totalLayers = gfLayers + udLayers;
 
-  // Live birds card
+  // Live birds card (kept for legacy compatibility — IDs hidden in HTML)
   if (liveBirdsEl) {
     liveBirdsEl.textContent = totalBirds > 0 ? totalBirds.toLocaleString('en-KE') : '—';
   }
@@ -8523,6 +9301,95 @@ function renderHome() {
         .slice(0, 3);
       liveBirdsSubEl.textContent = stagesShown.length ? stagesShown.join(' · ') + ` · as of ${latestCensusDate}` : `as of ${latestCensusDate}`;
     }
+  }
+
+  // v6.0.0 — D3: Render 5 stage cards at TOP of Kipkenda Poultry section.
+  // Layers as hero (full-width), then Cockerels/Growers/1-7d/7-28d in 2x2.
+  // Each card shows count for that stage across all houses (aggregated from
+  // latest-by-house+stage map). Sub line shows house breakdown when >1 house.
+  function renderStageCard(stageName, valId, subId) {
+    const valEl = document.getElementById(valId);
+    const subEl = document.getElementById(subId);
+    if (!valEl) return;
+    const total = stageTotals[stageName] || 0;
+    valEl.textContent = total > 0 ? total.toLocaleString('en-KE') : '—';
+    if (!subEl) return;
+    if (census.length === 0) {
+      subEl.textContent = 'no census yet';
+      return;
+    }
+    if (total === 0) {
+      subEl.textContent = 'none in census';
+      return;
+    }
+    // Per-house breakdown for this stage
+    const perHouse = [];
+    Object.values(latestLayersByHouse).forEach(c => {
+      if (c.stage === stageName && Number(c.count) > 0) {
+        perHouse.push(`${c.count} ${c.house}`);
+      }
+    });
+    if (perHouse.length === 0) {
+      subEl.textContent = `as of ${latestCensusDate}`;
+    } else if (perHouse.length === 1) {
+      subEl.textContent = `${perHouse[0]} · as of ${latestCensusDate}`;
+    } else {
+      // Multiple houses — show first 2, abbreviate
+      subEl.textContent = perHouse.slice(0, 2).join(' · ') + (perHouse.length > 2 ? ` +${perHouse.length - 2}` : '');
+    }
+  }
+  renderStageCard('Layers',              'poultry-stage-layers',    'poultry-stage-layers-sub');
+  renderStageCard('Cockerels',           'poultry-stage-cockerels', 'poultry-stage-cockerels-sub');
+  renderStageCard('Growers',             'poultry-stage-growers',   'poultry-stage-growers-sub');
+  renderStageCard('Chicks 1\u20137 days', 'poultry-stage-c1to7',    'poultry-stage-c1to7-sub');
+  renderStageCard('Chicks 7\u201328 days','poultry-stage-c7to28',   'poultry-stage-c7to28-sub');
+
+  // v6.0.0-rev2 — Quarantine card (Option B: single stage, NOT a rollup).
+  // Counts ONLY the 'Quarantine' Stage entries from Bird_Census.
+  // Sub-line is a human explainer (Cheison's wording: avoiding "sick" or
+  // "treatment" as primary labels — operators record by intent, not diagnosis).
+  // Operators record Deformities + Retired birds as their OWN stage values
+  // (still in BIRD_CENSUS_STAGES); they don't roll up here.
+  const qVal = document.getElementById('poultry-stage-quarantine');
+  const qSub = document.getElementById('poultry-stage-quarantine-sub');
+  if (qVal) {
+    const qCount = stageTotals['Quarantine'] || 0;
+    qVal.textContent = qCount > 0 ? qCount.toLocaleString('en-KE') : '—';
+    if (qSub) {
+      if (census.length === 0) {
+        qSub.textContent = 'no census yet';
+      } else if (qCount === 0) {
+        qSub.textContent = 'deformities, sick and quarantine';
+      } else {
+        // Per-house breakdown when there's data
+        const perHouse = [];
+        Object.values(latestLayersByHouse).forEach(c => {
+          if (c.stage === 'Quarantine' && Number(c.count) > 0) {
+            perHouse.push(`${c.count} ${c.house}`);
+          }
+        });
+        qSub.textContent = perHouse.length > 0
+          ? perHouse.slice(0, 2).join(' · ')
+          : 'deformities, sick and quarantine';
+      }
+    }
+  }
+
+  // Total live birds summary line below 6 stage cards (Layers, Cockerels,
+  // Growers, Quarantine, Chicks 1-7d, Chicks 8-28d). Note the Quarantine card
+  // counts toward totalBirds via its component stages — no double-counting.
+  const summaryEl = document.getElementById('poultry-live-birds-summary-text');
+  if (summaryEl) {
+    if (census.length === 0) {
+      summaryEl.textContent = 'no census yet';
+    } else {
+      summaryEl.textContent = `${totalBirds.toLocaleString('en-KE')} live birds total · as of ${latestCensusDate}`;
+    }
+  }
+
+  // v6.0.0 — D4: Vaccination progress bars per stage card (rendered if data exists).
+  if (typeof renderVaccinationBars === 'function') {
+    renderVaccinationBars(latestLayersByHouse, latestCensusDate);
   }
 
   // ---- Lay Efficiency math ----
@@ -8589,8 +9456,72 @@ function renderHome() {
     const le = (avgPerDay / houseLayers) * 100;
     setLE(elId, subId, le, `${Math.round(avgPerDay)} eggs/day ÷ ${houseLayers} layers`);
   }
+  // Legacy hidden IDs (for compatibility with any stale code paths)
   houseLE(gfLayers, 'gf_normal', 'poultry-le-gf', 'poultry-le-gf-sub', 'GF');
   houseLE(udLayers, 'ud_normal', 'poultry-le-ud', 'poultry-le-ud-sub', 'UD');
+
+  // v6.0.0 — D1: Dynamic per-house LE for ALL active houses with Layers > 0.
+  // Shows: today's LE + MTD LE side by side per house.
+  // Reads STATE.houses (config) intersected with latest census Layers count.
+  const perHouseContainer = document.getElementById('poultry-le-perhouse');
+  if (perHouseContainer) {
+    const houses = (Array.isArray(STATE.houses) ? STATE.houses : [])
+      .filter(h => (h.active === true || h.active === 'TRUE' || h.active === undefined));
+    // House → { layers_count, eggs_key (sanitized for wide-schema egg row lookup) }
+    const houseRows = [];
+    houses.forEach(h => {
+      const layersKey = `${h.name}|Layers`;
+      const layersCount = (latestLayersByHouse[layersKey] && Number(latestLayersByHouse[layersKey].count)) || 0;
+      if (layersCount > 0) {
+        // Wide-schema egg key: "Ground Floor" → "gf_normal", "Upper Deck" → "ud_normal"
+        // Generic sanitize: lowercase first letters joined + '_normal'
+        const initials = h.name.split(/\s+/).map(w => w[0] || '').join('').toLowerCase();
+        const eggsKey = `${initials}_normal`;
+        houseRows.push({ name: h.name, layers: layersCount, eggsKey });
+      }
+    });
+    if (houseRows.length === 0) {
+      perHouseContainer.innerHTML = '';
+      perHouseContainer.style.display = 'none';
+    } else {
+      perHouseContainer.style.display = 'grid';
+      perHouseContainer.style.gridTemplateColumns = houseRows.length === 1 ? '1fr' : '1fr 1fr';
+      perHouseContainer.innerHTML = houseRows.map(h => {
+        // Today's eggs from this house
+        let todayLE = null, todayHtml = '—';
+        if (todayRow) {
+          const todayHouseEggs = Number(todayRow[h.eggsKey] || 0);
+          if (todayHouseEggs > 0) {
+            todayLE = (todayHouseEggs / h.layers) * 100;
+            todayHtml = todayLE.toFixed(1) + '%';
+          } else {
+            todayHtml = '—';
+          }
+        }
+        // MTD LE
+        let mtdHtml = '—', mtdSub = `${h.layers} layers`;
+        if (monthRows.length > 0) {
+          const houseNormal = monthRows.reduce((s,e) => s + (Number(e[h.eggsKey])||0), 0);
+          if (houseNormal > 0) {
+            const avgPerDay = houseNormal / monthRows.length;
+            const mtdLE = (avgPerDay / h.layers) * 100;
+            mtdHtml = mtdLE.toFixed(1) + '%';
+            mtdSub = `${Math.round(avgPerDay)} eggs/day ÷ ${h.layers} layers`;
+          } else {
+            mtdSub = `${h.layers} layers · no eggs MTD`;
+          }
+        }
+        return `
+          <div class="biz-card">
+            <div class="lbl">🏠 ${h.name} LE</div>
+            <div class="val" style="font-size:1.05rem">${todayHtml} <span style="color:var(--slate-light);font-size:0.78rem;font-style:italic;font-weight:400">today</span></div>
+            <div class="sub" style="margin-top:0.15rem;font-style:normal;color:var(--ink);font-size:0.85rem">MTD: <strong style="color:var(--forest)">${mtdHtml}</strong></div>
+            <div class="sub">${mtdSub}</div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
 
   // v6.0 SHIP 5 — Hatch rate (latest hatched batch) + incubating count
   const incub = Array.isArray(STATE.incubation) ? STATE.incubation : [];
@@ -10271,6 +11202,19 @@ function showUpdateBanner() {
   STATE.birdCensus = await storageGet(K_BIRD_CENSUS, []);
   // v6.0 SHIP 5 — Incubation batches
   STATE.incubation = await storageGet(K_INCUBATION, []);
+
+  // v6.0.0 — D4: Vaccination records + schedule
+  STATE.vaccinations = await storageGet(K_VACCINATIONS, []);
+  STATE.vaccSchedule = await storageGet(K_VACC_SCHEDULE, []);
+  // Seed default schedule on first load (operator can edit later via Settings)
+  if (!STATE.vaccSchedule || STATE.vaccSchedule.length === 0) {
+    STATE.vaccSchedule = VACC_SCHEDULE_DEFAULT.slice();
+    await storageSet(K_VACC_SCHEDULE, STATE.vaccSchedule);
+    console.log('[v6.0.0] Seeded default vaccination schedule (' + STATE.vaccSchedule.length + ' entries)');
+  }
+
+  // v6.0.0 — D2: Cohort population
+  STATE.cohorts = await storageGet(K_COHORTS, []);
 
   // v5.0.19 — Load admin mode flag IMMEDIATELY so applyAdminVisibility can
   // hide admin chrome before any operator sees it. Default false (operator).

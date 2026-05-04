@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.0.0 — Lifecycle SM + Vaccinations bundle (04 May 2026)
 // v5.9.3 — safer update + dynamic API handling (03 May 2026)
 //
 // CHANGE LOG:
@@ -19,7 +20,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v103';
+const CACHE = 'sinonin-greenleaf-v104';
 
 const SHELL_FILES = [
   './',
