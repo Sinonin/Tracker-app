@@ -2263,7 +2263,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.1.6</span>
+  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.1.7</span>
 </header>
 
 <main>
@@ -3262,7 +3262,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.1.6</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.1.7</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3584,7 +3584,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.1.6';
+const APP_VERSION = 'v6.1.7';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -5748,7 +5748,14 @@ async function queueForSync(record, kind) {
   // mark this queue item as blocked from the start so it doesn't generate
   // 60-sec retry noise. It'll only flush on manual trigger or successful write.
   const blockedByGate = !!(lastWriteResult && lastWriteResult.reason === 'writes-locked');
-  if (kind === 'roster') {
+  // v6.1.7 — Payload-carrying kinds (no stable id in STATE for queue lookup):
+  //   roster        — pre-existing
+  //   cohort        — record carries cohort_id + mode (create/update) + stage
+  //   litter-change — record carries house + date + op (change/reset)
+  // These store the full payload in the queue item; the dispatcher reads
+  // item.payload directly instead of looking up by recordId.
+  const isPayloadKind = (kind === 'roster' || kind === 'cohort' || kind === 'litter-change');
+  if (isPayloadKind) {
     queue.push({ kind, payload: record, attempts: 0, queuedAt: new Date().toISOString(), blockedByGate });
   } else {
     queue.push({ kind, recordId: record.id, attempts: 0, queuedAt: new Date().toISOString(), blockedByGate });
@@ -6109,6 +6116,14 @@ async function flushQueue(opts) {
       else if (kind === 'egg-collection') record = (STATE.eggCollection || []).find(e => e.id === recordId);
       else if (kind === 'bird-census') record = (STATE.birdCensus || []).find(b => b.id === recordId);
       else if (kind === 'vaccination') record = (STATE.vaccinations || []).find(v => v.id === recordId);
+      // v6.1.7 — Cohort and litter records use queue payload (carry full record),
+      // not a STATE lookup. This is because cohorts can be CREATE or UPDATE 
+      // (different STATE shapes), and litter records aren't keyed by ID in 
+      // STATE.litterChanges (they're keyed by house — single-record-per-house).
+      // Rather than rebuild the record from STATE, we serialize the full payload 
+      // into the queue item itself, similar to roster.
+      else if (kind === 'cohort')      record = item.payload || null;
+      else if (kind === 'litter-change') record = item.payload || null;
       else if (kind === 'roster')  record = item.payload || null; // roster items carry their own payload
       if (!record) continue; // record was deleted locally, drop from queue
       let ok;
@@ -6119,6 +6134,8 @@ async function flushQueue(opts) {
       else if (kind === 'egg-collection') ok = await syncEggCollection(record);
       else if (kind === 'bird-census') ok = await syncBirdCensus(record);
       else if (kind === 'vaccination') ok = await syncVaccination(record);
+      else if (kind === 'cohort')      ok = await syncCohort(record);
+      else if (kind === 'litter-change') ok = await syncLitterChange(record);
       else if (kind === 'roster')  ok = await pushRosterToForm(record);
       else                         ok = await pushToForm(record);
       if (ok) {
@@ -8594,27 +8611,15 @@ async function submitIncubationHatch() {
         STATE.cohorts.push(newCohort);
         await storageSet(K_COHORTS, STATE.cohorts);
 
-        // Push cohort to gate (best-effort, non-blocking).
-        // If Apps Script doesn't yet have the 'cohort' action handler,
-        // it will reject with phase1Limited. That's fine — local state is
-        // authoritative for cohorts; the gate is just for backup.
-        try {
-          await fetch(APPS_SCRIPT_GATE_URL, {
-            method: 'POST', mode: 'cors',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({
-              action: 'cohort',
-              payload: { mode: 'create', ...newCohort },
-              source: 'PWA ' + APP_VERSION + ' cohort-auto-hatch'
-            })
-          });
-        } catch (cohortPushErr) {
-          // Stringify the error AND concatenate into single string arg —
-          // avoids AbortSignal cloning crash in Vercel preview (postMessage
-          // forwarders sometimes try to clone each arg separately).
-          console.warn('[cohort] gate push failed (auto-create from hatch): ' +
-                       String(cohortPushErr && cohortPushErr.message || cohortPushErr));
-          // No queue — cohort is local-first; will sync on next cloudFetch.
+        // v6.1.7 — Push cohort to gate via syncCohort + queueForSync on failure.
+        // PREVIOUSLY (v6.0.0): fire-and-forget — failures lost forever.
+        // NOW: durable retry. Apps Script v5.0.28 doesn't know 'cohort' yet, 
+        // so the gate returns null/unknown → record queues → flushes Thursday 
+        // after v5.0.29 deploys. Mode='create' tells server to insert new row.
+        const cohortPayload = { mode: 'create', ...newCohort };
+        const ok = await syncCohort(cohortPayload);
+        if (!ok) {
+          await queueForSync(cohortPayload, 'cohort');
         }
         showToast('🐣 Cohort ' + cohortId + ' created · ' + hc + ' chicks in ' + targetHouse, 4500);
       }
@@ -8768,33 +8773,31 @@ function ageAllCohorts() {
       console.warn('[cohort-aging] storage write failed: ' + String(err && err.message || err));
     });
     
-    // Best-effort gate push for each promotion (no queue if it fails — server
-    // will reconcile via its daily trigger once that ships)
-    promotions.forEach(p => {
-      const cohort = STATE.cohorts.find(c => c.cohort_id === p.cohort_id);
-      if (!cohort) return;
-      if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL && (IS_ADMIN || STATE.writesEnabled)) {
-        try {
-          fetch(APPS_SCRIPT_GATE_URL, {
-            method: 'POST', mode: 'cors',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({
-              action: 'cohort',
-              payload: { mode: 'update', cohort_id: p.cohort_id, stage: p.to },
-              source: 'PWA ' + APP_VERSION + ' cohort-auto-age'
-            })
-          }).catch(err => {
-            // Non-fatal; server reconciles via daily trigger
-            console.warn('[cohort-aging] gate push failed for ' + p.cohort_id + ': ' +
-                         String(err && err.message || err));
-          });
-        } catch (e) {
-          // Synchronous error (e.g. URL malformed); ignore — local state is correct
-        }
+    // v6.1.7 — Push each promotion via syncCohort + queue on failure.
+    // Same durability as cohort auto-create. Apps Script v5.0.28 doesn't 
+    // know 'cohort' yet — promotions queue, flush after Thursday.
+    // 
+    // Note: auto-aging IS idempotent (re-promotes from date_origin every 
+    // renderHome), so a missed promotion is recovered on next render. 
+    // Queue is belt+suspenders for cross-device durability.
+    if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL && (IS_ADMIN || STATE.writesEnabled)) {
+      for (const p of promotions) {
+        const cohort = STATE.cohorts.find(c => c.cohort_id === p.cohort_id);
+        if (!cohort) continue;
+        const promoPayload = { mode: 'update', cohort_id: p.cohort_id, stage: p.to };
+        // syncCohort returns Promise<boolean>; use .then to keep ageAllCohorts 
+        // non-blocking (callers expect synchronous-feeling render)
+        syncCohort(promoPayload).then(ok => {
+          if (!ok) queueForSync(promoPayload, 'cohort');
+        }).catch(err => {
+          console.warn('[cohort-aging] sync threw for ' + p.cohort_id + ': ' +
+                       String(err && err.message || err));
+          queueForSync(promoPayload, 'cohort');
+        });
       }
-    });
+    }
     
-    console.log('[v6.1.0] Auto-aged ' + promotedCount + ' cohort(s):',
+    console.log('[v6.1.7] Auto-aged ' + promotedCount + ' cohort(s):',
                 promotions.map(p => p.cohort_id + ' ' + p.from + '→' + p.to).join(' · '));
   }
 
@@ -8964,24 +8967,22 @@ function resetLitterRecord() {
     console.warn('[litter] storage write failed during reset: ' + String(err && err.message || err));
   });
   
-  // Best-effort gate push (action: 'litter-reset' — server will eventually 
-  // honor this when v5.0.30+ Apps Script ships)
+  // v6.1.7 — Reset push goes through syncLitterChange + queue. The op='reset' 
+  // marker tells pushLitterChangeToGate to use action='litter-reset' instead 
+  // of 'litter-change'. Same durability as save: queues if v5.0.28 doesn't 
+  // know the action, flushes on Thursday's v5.0.29 deploy.
   if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL && IS_ADMIN) {
-    try {
-      fetch(APPS_SCRIPT_GATE_URL, {
-        method: 'POST', mode: 'cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'litter-reset',
-          payload: { house: LITTER_TARGET_HOUSE },
-          source: 'PWA ' + APP_VERSION
-        })
-      }).catch(err => {
-        console.warn('[litter] reset gate push failed: ' + String(err && err.message || err));
-      });
-    } catch (e) {
-      // ignore — local state is correct
-    }
+    const resetRecord = {
+      house: LITTER_TARGET_HOUSE,
+      ts: new Date().toISOString(),
+      op: 'reset'
+    };
+    syncLitterChange(resetRecord).then(ok => {
+      if (!ok) queueForSync(resetRecord, 'litter-change');
+    }).catch(err => {
+      console.warn('[litter] reset sync threw: ' + String(err && err.message || err));
+      queueForSync(resetRecord, 'litter-change');
+    });
   }
   
   renderLitterBar();
@@ -9117,7 +9118,8 @@ function saveLitterRecord(pickedDate, existing) {
     house: LITTER_TARGET_HOUSE,
     date: pickedDate,
     ts: new Date().toISOString(),
-    recorded_by: IS_ADMIN ? 'admin' : 'operator'
+    recorded_by: IS_ADMIN ? 'admin' : 'operator',
+    op: 'change' // v6.1.7 — distinguishes from 'reset' for the queue dispatcher
   };
 
   if (!Array.isArray(STATE.litterChanges)) STATE.litterChanges = [];
@@ -9125,8 +9127,6 @@ function saveLitterRecord(pickedDate, existing) {
   // v6.1.5 — Admin overwrite REPLACES the previous record for this house
   // (instead of accumulating multiple records across taps). Single-record-
   // per-house keeps the model simple and avoids stale-record confusion.
-  // If we want a full audit trail, a future v6.2 can add a Litter_History 
-  // sheet that retains every entry; for v1, latest=truth.
   STATE.litterChanges = STATE.litterChanges.filter(r =>
     !(r && r.house === record.house)
   );
@@ -9136,23 +9136,16 @@ function saveLitterRecord(pickedDate, existing) {
     console.warn('[litter] storage write failed: ' + String(err && err.message || err));
   });
 
-  // Best-effort gate push
+  // v6.1.7 — Push via syncLitterChange + queue on failure. Same durability 
+  // pattern as vaccinations and cohorts. Apps Script v5.0.28 doesn't know 
+  // 'litter-change' yet — record queues, flushes after Thursday's v5.0.29.
   if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL && (IS_ADMIN || STATE.writesEnabled)) {
-    try {
-      fetch(APPS_SCRIPT_GATE_URL, {
-        method: 'POST', mode: 'cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'litter-change',
-          payload: record,
-          source: 'PWA ' + APP_VERSION
-        })
-      }).catch(err => {
-        console.warn('[litter] gate push failed: ' + String(err && err.message || err));
-      });
-    } catch (e) {
-      // ignore — local state is correct
-    }
+    syncLitterChange(record).then(ok => {
+      if (!ok) queueForSync(record, 'litter-change');
+    }).catch(err => {
+      console.warn('[litter] sync threw: ' + String(err && err.message || err));
+      queueForSync(record, 'litter-change');
+    });
   }
 
   renderLitterBar();
@@ -9585,6 +9578,100 @@ async function pushVaccinationToGate(row) {
 async function syncVaccination(row) {
   if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL) {
     const gateResult = await pushVaccinationToGate(row);
+    if (gateResult) {
+      lastWriteResult = gateResult;
+      return gateResult.ok;
+    }
+  }
+  lastWriteResult = { ok: false, reason: 'gate-unreachable' };
+  return false;
+}
+
+/* v6.1.7 — Push cohort record (create or update) to Apps Script gate.
+   Used by hatch-event auto-create AND auto-aging promotions.
+   Records carry a `mode` field ('create' or 'update') that the server's 
+   cohort handler will branch on (in v5.0.29+).
+   
+   Until v5.0.29 ships, the gate returns 'unknown action' and this helper 
+   returns null → caller queues for retry. Queue auto-flushes after 
+   v5.0.29 deploys Thursday. */
+async function pushCohortToGate(record) {
+  try {
+    const body = {
+      action: 'cohort',
+      payload: record, // record already includes mode + cohort_id + stage etc.
+      source: 'PWA ' + APP_VERSION + ' cohort'
+    };
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:   JSON.stringify(body)
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    if (json && json.ok) {
+      return { ok: true, via: 'gate', summary: json.summary };
+    }
+    if (json && json.writesLocked) {
+      return { ok: false, reason: 'writes-locked', message: json.reason || 'Writes locked' };
+    }
+    if (json && json.phase1Limited) return null;
+    return { ok: false, reason: 'gate-rejected', message: (json && json.reason) || 'Rejected by gate' };
+  } catch (e) {
+    console.warn('[cohort] gate push failed: ' + String(e && e.message || e));
+    return null;
+  }
+}
+
+async function syncCohort(record) {
+  if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL) {
+    const gateResult = await pushCohortToGate(record);
+    if (gateResult) {
+      lastWriteResult = gateResult;
+      return gateResult.ok;
+    }
+  }
+  lastWriteResult = { ok: false, reason: 'gate-unreachable' };
+  return false;
+}
+
+/* v6.1.7 — Push litter-change record to Apps Script gate.
+   Used by handleLitterBarTap save path AND admin reset path.
+   Records carry an `op` field ('change' or 'reset') for server branching. */
+async function pushLitterChangeToGate(record) {
+  try {
+    const action = record.op === 'reset' ? 'litter-reset' : 'litter-change';
+    const body = {
+      action: action,
+      payload: record,
+      source: 'PWA ' + APP_VERSION + ' ' + action
+    };
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:   JSON.stringify(body)
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    if (json && json.ok) {
+      return { ok: true, via: 'gate', summary: json.summary };
+    }
+    if (json && json.writesLocked) {
+      return { ok: false, reason: 'writes-locked', message: json.reason || 'Writes locked' };
+    }
+    if (json && json.phase1Limited) return null;
+    return { ok: false, reason: 'gate-rejected', message: (json && json.reason) || 'Rejected by gate' };
+  } catch (e) {
+    console.warn('[litter] gate push failed: ' + String(e && e.message || e));
+    return null;
+  }
+}
+
+async function syncLitterChange(record) {
+  if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL) {
+    const gateResult = await pushLitterChangeToGate(record);
     if (gateResult) {
       lastWriteResult = gateResult;
       return gateResult.ok;
