@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.2.1 — birdCensus cloud-replace-local + stale-cache migration (05 May 2026 Lübeck late evening)
 // v6.2.0 — Cloud-hydrate STATE.litterChanges for cross-device viewing (05 May 2026 Lübeck evening)
 // v6.1.9 — Remove spurious IS_ADMIN guard from litter + cohort sync (05 May 2026 Lübeck)
 // v6.1.8 — Bar text overflow fix for phone screens (04 May 2026)
@@ -32,7 +33,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v116';
+const CACHE = 'sinonin-greenleaf-v117';
 
 const SHELL_FILES = [
   './',

@@ -2277,7 +2277,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.2.0</span>
+  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.2.1</span>
 </header>
 
 <main>
@@ -3276,7 +3276,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.2.0</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.2.1</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3565,6 +3565,7 @@ const K_CLOUD_SYNC = 'sinonin_cloud_sync_v1';
 const K_IS_ADMIN = 'sinonin_is_admin_v1';  // v5.0.19 — set true on first successful passphrase grant/revoke
 const K_HOUSES = 'sinonin_houses_v1';       // v6.0 SHIP 3 — Kipkenda houses config
 const K_BIRD_CENSUS = 'sinonin_bird_census_v1';  // v6.0 SHIP 4 — Bird population counts
+const K_BIRD_CENSUS_SOURCE_VERSION = 'sinonin_bird_census_source_version_v1'; // v6.2.1 — Tracks the cloud-replace migration version
 const K_INCUBATION = 'sinonin_incubation_v1';     // v6.0 SHIP 5 — Incubation batches
 const K_VACCINATIONS = 'sinonin_vaccinations_v1';  // v6.0.0 — D4: Vaccination records
 const K_VACC_SCHEDULE = 'sinonin_vacc_schedule_v1'; // v6.0.0 — D4: Vaccination schedule (config)
@@ -3598,7 +3599,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.2.0';
+const APP_VERSION = 'v6.2.1';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -6608,9 +6609,21 @@ async function applyCloudResponse(data) {
     STATE.houses = data.houses.map(cloudToLocalHouse);
     await storageSet(K_HOUSES, STATE.houses);
   }
-  /* v6.0 SHIP 4 — Bird Census sync (merge by date+house+stage) */
+  /* v6.0 SHIP 4 — Bird Census sync.
+     v6.2.1 — Changed from mergeByKey → cloud-replace-local (Cheison 
+     stale-cache discovery, Lübeck 05 May 2026 evening). Census records are 
+     SNAPSHOTS curated by admin in the sheet; when admin deletes a row from 
+     the sheet, the PWA must respect that deletion. mergeByKey preserved 
+     local rows forever, allowing 153/12 (Ground Floor stale numbers) to 
+     survive long after sheet showed 182/46. Now cloud is authoritative.
+     
+     Same pattern as houses, incubation, vaccinations, cohorts (also 
+     snapshots/curated, not transactional logs). Transactional data 
+     (greenleaf, expenses, banked, poultry, egg-collection) keeps mergeByKey 
+     because deletion of those rows is rare and may indicate sheet error 
+     worth preserving locally. */
   if (Array.isArray(data.birdCensus)) {
-    STATE.birdCensus = mergeByKey(STATE.birdCensus || [], data.birdCensus, birdCensusKey, cloudToLocalBirdCensus);
+    STATE.birdCensus = data.birdCensus.map(cloudToLocalBirdCensus);
     await storageSet(K_BIRD_CENSUS, STATE.birdCensus);
   }
   /* v6.0 SHIP 5 — Incubation sync (cloud-replace-local; small set, mutable) */
@@ -12164,6 +12177,23 @@ function showUpdateBanner() {
   STATE.houses = await storageGet(K_HOUSES, []);
   // v6.0 SHIP 4 — Bird Census
   STATE.birdCensus = await storageGet(K_BIRD_CENSUS, []);
+  // v6.2.1 — One-time migration: pre-v6.2.1 mergeByKey preserved deleted-from-cloud
+  // rows in localStorage forever. Any phone that ever saw a now-deleted census
+  // record kept it locally and used it to compute stage totals — explaining
+  // Cheison's 309 Layers display when sheet only had 338. Wipe cache once on
+  // first v6.2.1 boot; cloud fetch then repopulates with authoritative data.
+  // Pattern mirrors VACC_SCHEDULE_SEED_VERSION from v6.1.1.
+  const BIRD_CENSUS_SOURCE_VERSION = 1;
+  const storedBcVer = await storageGet(K_BIRD_CENSUS_SOURCE_VERSION, 0);
+  if (storedBcVer < BIRD_CENSUS_SOURCE_VERSION) {
+    const beforeCount = (STATE.birdCensus || []).length;
+    STATE.birdCensus = [];
+    await storageSet(K_BIRD_CENSUS, STATE.birdCensus);
+    await storageSet(K_BIRD_CENSUS_SOURCE_VERSION, BIRD_CENSUS_SOURCE_VERSION);
+    console.log('[v6.2.1] Wiped stale local birdCensus cache (' + beforeCount +
+                ' rows). Cloud fetch will repopulate. Migration v0 → v' +
+                BIRD_CENSUS_SOURCE_VERSION + '.');
+  }
   // v6.0 SHIP 5 — Incubation batches
   STATE.incubation = await storageGet(K_INCUBATION, []);
 
