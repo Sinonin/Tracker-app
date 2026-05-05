@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.1.9 — Remove spurious IS_ADMIN guard from litter + cohort sync (05 May 2026 Lübeck)
 // v6.1.8 — Bar text overflow fix for phone screens (04 May 2026)
 // v6.1.7 — Queue durability for cohort + litter (04 May 2026)
 // v6.1.6 — Litter date picker fix + admin reset/edit options (04 May 2026)
@@ -30,7 +31,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v114';
+const CACHE = 'sinonin-greenleaf-v115';
 
 const SHELL_FILES = [
   './',

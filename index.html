@@ -2277,7 +2277,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.1.8</span>
+  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.1.9</span>
 </header>
 
 <main>
@@ -3276,7 +3276,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.1.8</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.1.9</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3598,7 +3598,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.1.8';
+const APP_VERSION = 'v6.1.9';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -8788,27 +8788,24 @@ function ageAllCohorts() {
     });
     
     // v6.1.7 — Push each promotion via syncCohort + queue on failure.
-    // Same durability as cohort auto-create. Apps Script v5.0.28 doesn't 
-    // know 'cohort' yet — promotions queue, flush after Thursday.
-    // 
-    // Note: auto-aging IS idempotent (re-promotes from date_origin every 
-    // renderHome), so a missed promotion is recovered on next render. 
-    // Queue is belt+suspenders for cross-device durability.
-    if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL && (IS_ADMIN || STATE.writesEnabled)) {
-      for (const p of promotions) {
-        const cohort = STATE.cohorts.find(c => c.cohort_id === p.cohort_id);
-        if (!cohort) continue;
-        const promoPayload = { mode: 'update', cohort_id: p.cohort_id, stage: p.to };
-        // syncCohort returns Promise<boolean>; use .then to keep ageAllCohorts 
-        // non-blocking (callers expect synchronous-feeling render)
-        syncCohort(promoPayload).then(ok => {
-          if (!ok) queueForSync(promoPayload, 'cohort');
-        }).catch(err => {
-          console.warn('[cohort-aging] sync threw for ' + p.cohort_id + ': ' +
-                       String(err && err.message || err));
-          queueForSync(promoPayload, 'cohort');
-        });
-      }
+    // v6.1.9 — Removed spurious IS_ADMIN || STATE.writesEnabled guard 
+    // (same fix as saveLitterRecord — silent-drop bug). Cohort promotions 
+    // must always sync; server gates appropriately. Auto-aging IS idempotent 
+    // (re-promotes from date_origin every renderHome), so missed promotions 
+    // are recovered on next render — but missed gate-sync is silent data loss.
+    for (const p of promotions) {
+      const cohort = STATE.cohorts.find(c => c.cohort_id === p.cohort_id);
+      if (!cohort) continue;
+      const promoPayload = { mode: 'update', cohort_id: p.cohort_id, stage: p.to };
+      // syncCohort returns Promise<boolean>; use .then to keep ageAllCohorts 
+      // non-blocking (callers expect synchronous-feeling render)
+      syncCohort(promoPayload).then(ok => {
+        if (!ok) queueForSync(promoPayload, 'cohort');
+      }).catch(err => {
+        console.warn('[cohort-aging] sync threw for ' + p.cohort_id + ': ' +
+                     String(err && err.message || err));
+        queueForSync(promoPayload, 'cohort');
+      });
     }
     
     console.log('[v6.1.7] Auto-aged ' + promotedCount + ' cohort(s):',
@@ -8987,8 +8984,12 @@ function resetLitterRecord() {
   
   // v6.1.7 — Reset push goes through syncLitterChange + queue. The op='reset' 
   // marker tells pushLitterChangeToGate to use action='litter-reset' instead 
-  // of 'litter-change'. Same durability as save: queues if v5.0.28 doesn't 
-  // know the action, flushes on Thursday's v5.0.29 deploy.
+  // of 'litter-change'.
+  // v6.1.9 — IS_ADMIN guard kept here BY DESIGN: reset is an admin-only 
+  // operation (handleLitterBarTap blocks operators before this code runs). 
+  // The guard is defensive belt-and-suspenders, NOT the bug we just fixed 
+  // in saveLitterRecord. Different concern: reset must never run without 
+  // admin context.
   if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL && IS_ADMIN) {
     const resetRecord = {
       house: LITTER_TARGET_HOUSE,
@@ -9155,16 +9156,23 @@ function saveLitterRecord(pickedDate, existing) {
   });
 
   // v6.1.7 — Push via syncLitterChange + queue on failure. Same durability 
-  // pattern as vaccinations and cohorts. Apps Script v5.0.28 doesn't know 
-  // 'litter-change' yet — record queues, flushes after Thursday's v5.0.29.
-  if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL && (IS_ADMIN || STATE.writesEnabled)) {
-    syncLitterChange(record).then(ok => {
-      if (!ok) queueForSync(record, 'litter-change');
-    }).catch(err => {
-      console.warn('[litter] sync threw: ' + String(err && err.message || err));
-      queueForSync(record, 'litter-change');
-    });
-  }
+  // pattern as vaccinations and cohorts.
+  // v6.1.9 — Removed spurious IS_ADMIN || STATE.writesEnabled guard 
+  // (Cheison audit-log discovery, Lübeck 05 May 2026 evening). Audit log 
+  // showed ZERO litter-change rows ever, despite v5.0.29 server-side 
+  // accepting other actions. Root cause: this guard was filtering out 
+  // legitimate operator submissions (operator → IS_ADMIN=false → 
+  // STATE.writesEnabled may not be cached → guard fails → no gate-push).
+  // Greenleaf/expense/banked/actual handlers DON'T have this guard — they 
+  // always sync and let the server gate appropriately. Same model now 
+  // applied to litter. Server's flag-gate is the only legitimate write-
+  // authority; the client-side guard was a bug.
+  syncLitterChange(record).then(ok => {
+    if (!ok) queueForSync(record, 'litter-change');
+  }).catch(err => {
+    console.warn('[litter] sync threw: ' + String(err && err.message || err));
+    queueForSync(record, 'litter-change');
+  });
 
   renderLitterBar();
 
