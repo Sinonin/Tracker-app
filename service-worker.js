@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.2.3 — Vaccination submit button visible + preview layout (05 May 2026 Lübeck dinner-time)
 // v6.2.2 — Comprehensive cloud-replace-local for all 6 transactional types (05 May 2026 Lübeck late evening)
 // v6.2.1 — birdCensus cloud-replace-local + stale-cache migration (05 May 2026 Lübeck late evening)
 // v6.2.0 — Cloud-hydrate STATE.litterChanges for cross-device viewing (05 May 2026 Lübeck evening)
@@ -34,7 +35,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v118';
+const CACHE = 'sinonin-greenleaf-v119';
 
 const SHELL_FILES = [
   './',
