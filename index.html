@@ -2277,7 +2277,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.2.3</span>
+  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.2.4</span>
 </header>
 
 <main>
@@ -2927,22 +2927,14 @@
       </div>
       <div class="field"><label>Notes</label><input type="text" id="vc-notes" placeholder="e.g. NDV oral · 30 ml in drinking water"></div>
 
-      <div id="vc-preview" style="display:none;margin-top:0.7rem;padding:0.7rem 0.85rem;background:var(--ivory-warm);border-left:2px solid var(--brass);border-radius:2px;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;line-height:1.6">
-        <div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="opacity:0.65;letter-spacing:0.06em;text-transform:uppercase">Vaccine</span><span id="vc-prev-vaccine" style="text-align:right">—</span></div>
-        <div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="opacity:0.65;letter-spacing:0.06em;text-transform:uppercase">Stage · House</span><span id="vc-prev-where" style="text-align:right">—</span></div>
-        <div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="opacity:0.65;letter-spacing:0.06em;text-transform:uppercase">Count</span><span id="vc-prev-count" style="text-align:right">—</span></div>
-        <div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="opacity:0.65;letter-spacing:0.06em;text-transform:uppercase">Next due</span><span id="vc-prev-next" style="text-align:right">—</span></div>
-      </div>
-
-      <!-- v6.2.3 — Fix from "Cheison's submit button is INVISIBLE" emergency.
-           ROOT CAUSE: was class="primary" — class undefined anywhere in CSS.
-           Button rendered with default browser styling (tiny, no width, plain),
-           easy to miss visually especially above the 100px-tall bottom nav.
-           FIX: class="submit" (the proven full-width brass button used by 
-           ec-submit + bc-submit forms in this same panel).
-           Also fixed: preview rows used undefined .ep-row/.ep-k/.ep-v classes,
-           causing labels and values to run together ("VaccineNewcastle"). 
-           Inlined as flex layout with explicit spacing. -->
+      <!-- v6.2.4 — Cheison observation (Lübeck post-dinner): the preview card 
+           that lived here duplicated info already visible in the form fields 
+           above (Vaccine dropdown shows the vaccine, Stage shows the stage, 
+           Count input shows the count). Tautological repetition that pushed 
+           the submit button below the visible fold. Deleted.
+           
+           v6.2.3 had: preview block with 4 rows + submit button.
+           v6.2.4 has: just the submit button. Form fits viewport. -->
       <button id="vc-submit" class="submit">💉 Record vaccination</button>
     </div>
   </section>
@@ -3285,7 +3277,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.2.3</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.2.4</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3618,7 +3610,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.2.3';
+const APP_VERSION = 'v6.2.4';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
