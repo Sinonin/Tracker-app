@@ -2277,7 +2277,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.2.1</span>
+  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.2.2</span>
 </header>
 
 <main>
@@ -3276,7 +3276,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.2.1</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.2.2</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3566,6 +3566,16 @@ const K_IS_ADMIN = 'sinonin_is_admin_v1';  // v5.0.19 — set true on first succ
 const K_HOUSES = 'sinonin_houses_v1';       // v6.0 SHIP 3 — Kipkenda houses config
 const K_BIRD_CENSUS = 'sinonin_bird_census_v1';  // v6.0 SHIP 4 — Bird population counts
 const K_BIRD_CENSUS_SOURCE_VERSION = 'sinonin_bird_census_source_version_v1'; // v6.2.1 — Tracks the cloud-replace migration version
+// v6.2.2 — Mars-grade comprehensive stale-cache fix (Cheison "test entry stuck on PWA" 
+// discovery, Lübeck 05 May 2026 late evening). All 6 data types that previously used 
+// mergeByKey now go cloud-replace-local with a one-time migration wipe. Each gets its 
+// own SOURCE_VERSION so future schema changes can re-trigger migration cleanly.
+const K_ENTRIES_SOURCE_VERSION       = 'sinonin_entries_source_version_v1';
+const K_ACTUALS_SOURCE_VERSION       = 'sinonin_actuals_source_version_v1';
+const K_EXPENSES_SOURCE_VERSION      = 'sinonin_expenses_source_version_v1';
+const K_BANKED_SOURCE_VERSION        = 'sinonin_banked_source_version_v1';
+const K_POULTRY_SOURCE_VERSION       = 'sinonin_poultry_source_version_v1';
+const K_EGG_COLLECTION_SOURCE_VERSION = 'sinonin_egg_collection_source_version_v1';
 const K_INCUBATION = 'sinonin_incubation_v1';     // v6.0 SHIP 5 — Incubation batches
 const K_VACCINATIONS = 'sinonin_vaccinations_v1';  // v6.0.0 — D4: Vaccination records
 const K_VACC_SCHEDULE = 'sinonin_vacc_schedule_v1'; // v6.0.0 — D4: Vaccination schedule (config)
@@ -3599,7 +3609,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.2.1';
+const APP_VERSION = 'v6.2.2';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -6579,29 +6589,41 @@ function cloudToLocalIncubation(r) {
 
 async function applyCloudResponse(data) {
   if (!data) return;
+  /* v6.2.2 — Cloud-replace-local for all transactional data types (was mergeByKey).
+     Cheison's discovery: he added a test actual for Kipkenda, deleted it from sheet, 
+     it stuck on PWA forever despite Ctrl+F5 and resync. Same architectural mismatch 
+     as v6.2.1 birdCensus: mergeByKey preserved local rows even after cloud deletion. 
+     Now: cloud is authoritative for ALL six transactional types (pluckers, actuals, 
+     expenses, banked, poultry, eggCollection). Sheet edits/deletions propagate. 
+     One-time migration wipe at boot via *_SOURCE_VERSION keys (parallel to v6.2.1).
+     
+     Note: K_SYNC_QUEUE is unaffected. Operator-pending writes still flush properly; 
+     they reach cloud, then the next cloud-fetch repopulates STATE from cloud. Brief 
+     UX window (entry visible locally → cloud-fetch wipes → cloud-fetch refills) is 
+     acceptable since operators are typically online when recording. */
   if (Array.isArray(data.pluckers)) {
-    STATE.entries = mergeByKey(STATE.entries, data.pluckers, pluckerKey, cloudToLocalPlucker);
+    STATE.entries = data.pluckers.map(cloudToLocalPlucker);
     await storageSet(K_ENTRIES, STATE.entries);
   }
   if (Array.isArray(data.actuals)) {
-    STATE.actuals = mergeByKey(STATE.actuals, data.actuals, actualKey, cloudToLocalActual);
+    STATE.actuals = data.actuals.map(cloudToLocalActual);
     await storageSet(K_ACTUALS, STATE.actuals);
   }
   if (Array.isArray(data.expenses)) {
-    STATE.expenses = mergeByKey(STATE.expenses, data.expenses, expenseKey, cloudToLocalExpense);
+    STATE.expenses = data.expenses.map(cloudToLocalExpense);
     await storageSet(K_EXPENSES, STATE.expenses);
   }
   if (Array.isArray(data.banked)) {
-    STATE.banked = mergeByKey(STATE.banked || [], data.banked, bankedKey, cloudToLocalBanked);
+    STATE.banked = data.banked.map(cloudToLocalBanked);
     await storageSet(K_BANKED, STATE.banked);
   }
   if (Array.isArray(data.poultry)) {
-    STATE.poultry = mergeByKey(STATE.poultry || [], data.poultry, poultryKey, cloudToLocalPoultry);
+    STATE.poultry = data.poultry.map(cloudToLocalPoultry);
     await storageSet(K_POULTRY, STATE.poultry);
   }
-  /* v6.0 SHIP 2 — Egg Collection sync */
+  /* v6.0 SHIP 2 / v6.2.2 — Egg Collection sync (cloud-replace-local) */
   if (Array.isArray(data.eggCollection)) {
-    STATE.eggCollection = mergeByKey(STATE.eggCollection || [], data.eggCollection, eggCollectionKey, cloudToLocalEggCollection);
+    STATE.eggCollection = data.eggCollection.map(cloudToLocalEggCollection);
     await storageSet(K_EGG_COLLECTION, STATE.eggCollection);
   }
   /* v6.0 SHIP 3 — Houses sync (cloud-replace-local; config, not transactions) */
@@ -12173,6 +12195,37 @@ function showUpdateBanner() {
   STATE.poultry = await storageGet(K_POULTRY, []);
   // v6.0 SHIP 1 — Egg Collection state
   STATE.eggCollection = await storageGet(K_EGG_COLLECTION, []);
+  
+  // v6.2.2 — Comprehensive stale-cache migration (Cheison "test entry stuck" 
+  // discovery, Lübeck 05 May late evening). All 6 transactional types previously 
+  // used mergeByKey, which preserved deleted-from-cloud rows forever. Wipe each 
+  // type's local cache once on first v6.2.2 boot. Cloud fetch repopulates with 
+  // authoritative data. Pattern mirrors v6.2.1 birdCensus migration.
+  // 
+  // Note: K_SYNC_QUEUE is intentionally PRESERVED. Operator-pending writes that 
+  // haven't yet flushed to server stay in the queue and will retry independently. 
+  // The brief window between "wipe" and "cloud-fetch repopulates" is acceptable; 
+  // if the operator made a write while offline, queue still has it.
+  const migrations = [
+    { key: K_ENTRIES_SOURCE_VERSION,        cur: 1, stateField: 'entries',        storage: K_ENTRIES,        label: 'pluckers/greenleaf' },
+    { key: K_ACTUALS_SOURCE_VERSION,        cur: 1, stateField: 'actuals',        storage: K_ACTUALS,        label: 'actuals'           },
+    { key: K_EXPENSES_SOURCE_VERSION,       cur: 1, stateField: 'expenses',       storage: K_EXPENSES,       label: 'expenses'          },
+    { key: K_BANKED_SOURCE_VERSION,         cur: 1, stateField: 'banked',         storage: K_BANKED,         label: 'banked'            },
+    { key: K_POULTRY_SOURCE_VERSION,        cur: 1, stateField: 'poultry',        storage: K_POULTRY,        label: 'poultry'           },
+    { key: K_EGG_COLLECTION_SOURCE_VERSION, cur: 1, stateField: 'eggCollection',  storage: K_EGG_COLLECTION, label: 'egg-collection'    }
+  ];
+  for (const m of migrations) {
+    const stored = await storageGet(m.key, 0);
+    if (stored < m.cur) {
+      const beforeCount = (STATE[m.stateField] || []).length;
+      STATE[m.stateField] = [];
+      await storageSet(m.storage, STATE[m.stateField]);
+      await storageSet(m.key, m.cur);
+      console.log('[v6.2.2] Wiped stale local ' + m.label + ' cache (' + beforeCount +
+                  ' rows). Cloud fetch will repopulate. Migration v0 → v' + m.cur + '.');
+    }
+  }
+  
   // v6.0 SHIP 3 — Houses config
   STATE.houses = await storageGet(K_HOUSES, []);
   // v6.0 SHIP 4 — Bird Census
