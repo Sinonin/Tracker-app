@@ -2277,7 +2277,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.1.9</span>
+  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.2.0</span>
 </header>
 
 <main>
@@ -3276,7 +3276,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.1.9</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.2.0</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3598,7 +3598,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.1.9';
+const APP_VERSION = 'v6.2.0';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -6661,6 +6661,37 @@ async function applyCloudResponse(data) {
       notes: r.notes || ''
     }));
     await storageSet(K_COHORTS, STATE.cohorts);
+  }
+  /* v6.2.0 — Litter changes sync (Cheison hydration bug, Lübeck 05 May 2026 evening).
+     The litter feature shipped in v6.1.4. v6.1.7 added queueForSync. v6.1.9 fixed 
+     the silent-drop bug. But applyCloudResponse never had a litterChanges branch — 
+     so cross-device hydration never worked. Elias's record reaches the cloud sheet 
+     (audit log proves it) but Cheison's phone fetches it and silently discards it.
+     
+     Single-record-per-house contract: PWA UI surfaces the LATEST 'change' entry per 
+     house. Cloud-replace-local because litter records are immutable events from the 
+     server's perspective; local-only entries that haven't synced yet are still in 
+     the queue with kind='litter-change' and will flush separately.
+     
+     We DROP 'reset' rows from STATE here — reset is an operator clearing a previous 
+     entry. The reset row should not BE the displayed record. The next 'change' after 
+     a reset is what matters. (If only resets exist, STATE.litterChanges is empty; bar 
+     shows "TAP to record".) */
+  if (Array.isArray(data.litterChanges)) {
+    STATE.litterChanges = data.litterChanges
+      .filter(r => r && (r.op || 'change') === 'change')  // drop resets
+      .map(r => ({
+        house:       r.house || '',
+        date:        r.date || '',
+        ts:          r.ts || r.timestamp || '',
+        recorded_by: r.recorded_by || r.recordedBy || 'operator',
+        op:          r.op || 'change',
+        notes:       r.notes || ''
+      }))
+      .filter(r => r.house && r.date);  // drop malformed
+    // Single-record-per-house: keep only the LATEST change per house
+    // (renderLitterBar takes care of selection; we keep the data minimal)
+    await storageSet(K_LITTER_CHANGES, STATE.litterChanges);
   }
   if (Array.isArray(data.roster)) {
     // Roster merge — cloud is authoritative for IDs that appear in cloud,
