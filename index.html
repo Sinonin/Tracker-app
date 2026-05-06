@@ -2277,7 +2277,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Hold to authenticate as admin">v6.2.4</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.2.5</span>
 </header>
 
 <main>
@@ -3277,7 +3277,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.2.4</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.2.5</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3610,7 +3610,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.2.4';
+const APP_VERSION = 'v6.2.5';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -10158,7 +10158,25 @@ function renderHome() {
   const chickenRows = poultryMonth.filter(p => p.product === 'Chicken');
   const eggsIncome = eggsRows.reduce((s, p) => s + (p.amount || 0), 0);
   const birdsIncome = birdRows.reduce((s, p) => s + (p.amount || 0), 0);
-  const eggsQty = eggsRows.reduce((s, p) => s + (Number(p.quantity) || 0), 0);
+  // v6.2.5 — Unit-aware egg aggregation (Cheison "294 KES avg" mismatch 
+  // discovery, Verden 06 May 2026 evening). Sales come in two units: 
+  // "Trays" (Kenyan standard = 30 eggs) and "No. of eggs" (individual). 
+  // Old logic summed quantity field unit-blind: 26 trays + 24 + 15 + 5 = 70, 
+  // then computed avg = 20,575 / 70 = 294 KES — a meaningless mixed-unit 
+  // number. Real per-egg average across May was ~25 KES. 
+  // Fix: group by unit, sum per group, normalize for the average.
+  const EGGS_PER_TRAY = 30;
+  const eggsByUnit = {};
+  eggsRows.forEach(p => {
+    const unit = String(p.unit || 'unspecified').trim();
+    eggsByUnit[unit] = (eggsByUnit[unit] || 0) + (Number(p.quantity) || 0);
+  });
+  const traysQty   = eggsByUnit['Trays'] || 0;
+  const indivQty   = eggsByUnit['No. of eggs'] || 0;
+  const otherUnits = Object.keys(eggsByUnit).filter(u => u !== 'Trays' && u !== 'No. of eggs');
+  const normalizedEggs = (traysQty * EGGS_PER_TRAY) + indivQty +
+                         otherUnits.reduce((s, u) => s + eggsByUnit[u], 0);
+  const eggsQty = normalizedEggs;  // legacy variable kept for downstream uses
   const chicksQty = chickRows.reduce((s, p) => s + (Number(p.quantity) || 0), 0);
   const chickenQty = chickenRows.reduce((s, p) => s + (Number(p.quantity) || 0), 0);
   const poultryTotalIncome = eggsIncome + birdsIncome;
@@ -10181,12 +10199,34 @@ function renderHome() {
     `expenses <span class="stealth-money">Ksh ${moneyRound(poultryExpensesMonth)}</span>`;
 
   // Operational subtitles — volume + quality benchmark for eggs, mix breakdown for birds
+  // v6.2.5 — Show "26 trays + 44 eggs" instead of fake "70 eggs". Avg per egg uses 
+  // the normalized count (trays × 30 + individual eggs), giving a meaningful 
+  // KES/egg figure operators can sanity-check against typical pricing (~25 KES).
   const eggsSub = document.getElementById('poultry-eggs-sub');
   if (eggsRows.length === 0) {
     eggsSub.textContent = 'no sales this month';
   } else {
-    const avgPrice = eggsQty > 0 ? eggsIncome / eggsQty : 0;
-    eggsSub.textContent = `${moneyRound(eggsQty)} eggs · ${avgPrice.toFixed(0)} KES avg`;
+    // Build "26 trays + 44 eggs" display string, ordered: trays, eggs, anything else
+    const parts = [];
+    if (traysQty > 0) parts.push(`${moneyRound(traysQty)} ${traysQty === 1 ? 'tray' : 'trays'}`);
+    if (indivQty > 0) parts.push(`${moneyRound(indivQty)} ${indivQty === 1 ? 'egg' : 'eggs'}`);
+    otherUnits.forEach(u => {
+      if (eggsByUnit[u] > 0) parts.push(`${moneyRound(eggsByUnit[u])} ${u}`);
+    });
+    const primary = parts.join(' + ');
+    // True per-egg average (only meaningful when at least one normal-unit sale)
+    if (normalizedEggs > 0) {
+      const avgPerEgg = eggsIncome / normalizedEggs;
+      // Compact form when single unit: "44 eggs · 25 KES/egg"
+      // Mixed form: "26 trays + 44 eggs · ≈824 eggs · 25 KES/egg"
+      if (parts.length === 1) {
+        eggsSub.textContent = `${primary} · ${avgPerEgg.toFixed(0)} KES/egg`;
+      } else {
+        eggsSub.textContent = `${primary} · ≈${moneyRound(normalizedEggs)} eggs · ${avgPerEgg.toFixed(0)} KES/egg`;
+      }
+    } else {
+      eggsSub.textContent = primary;
+    }
   }
   const birdsSub = document.getElementById('poultry-birds-sub');
   if (birdRows.length === 0) {

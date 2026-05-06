@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.2.5 — Eggs Income unit-aware aggregation + remove admin hint tooltip (06 May 2026 Verden)
 // v6.2.4 — Delete tautological vaccination preview card (Cheison post-dinner observation, 05 May 2026)
 // v6.2.3 — Vaccination submit button visible + preview layout (05 May 2026 Lübeck dinner-time)
 // v6.2.2 — Comprehensive cloud-replace-local for all 6 transactional types (05 May 2026 Lübeck late evening)
@@ -36,7 +37,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v120';
+const CACHE = 'sinonin-greenleaf-v121';
 
 const SHELL_FILES = [
   './',
