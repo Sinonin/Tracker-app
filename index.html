@@ -1717,19 +1717,23 @@
     align-self: center;
     line-height: 1;
   }
-  /* v6.3.16 — Action card urgency tiers now use the LITTER/VACC BAR 
-     gradient palette so the visual language is consistent across the 
-     app (Cheison: "just copy the bar colour style").
+  /* v6.3.17 — Urgency tier colors aligned to the BAR semantics 
+     (Cheison: "Green on due date and RED after"). Same event must 
+     read the same color across Home and the Tea/Poultry bars.
      
-       phase-due       → red gradient (#b8453a → #d65a4d) for due TODAY
-       phase-overdue   → deep red    (#8b2e26 → #b8453a) for overdue
+       phase-clean    → green gradient (#5a8a4d → #6b9e5b) for due TODAY
+                        ↑ matches incubation bar at day 21 (ready)
+       phase-overdue  → deep red       (#8b2e26 → #b8453a) for OVERDUE
+                        ↑ matches the "you missed it" state on bars
      
-     Approaching items no longer surface on Home — Home only shows what 
-     deserves action TODAY. */
+     Semantic principle: GREEN = the action is RIGHT NOW (expected, 
+     on schedule, ready to act). RED = the action's window has 
+     passed. There is no "red for due today" — that conflicts with 
+     the incubation bar where day 21 is green = ready. */
   .ac-card.ac-urgent {
-    background: linear-gradient(135deg, #b8453a, #d65a4d);
+    background: linear-gradient(135deg, #5a8a4d, #6b9e5b);
     border: 1px solid rgba(255, 255, 255, 0.18);
-    border-left: 4px solid rgba(255, 255, 255, 0.30);
+    border-left: 4px solid rgba(255, 255, 255, 0.32);
     color: var(--ivory);
   }
   .ac-card.ac-overdue {
@@ -2809,7 +2813,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.16</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.17</span>
 </header>
 
 <main>
@@ -4071,7 +4075,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.3.16</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.3.17</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -4428,7 +4432,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.3.16';
+const APP_VERSION = 'v6.3.17';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
