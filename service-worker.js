@@ -1,5 +1,8 @@
 // Sinonin Group Management App — Service Worker
-// v6.3.7 — Vaccination pill: drop "TAP to record" suffix (color signals urgency) (07 May 2026 Verden)
+// v6.3.10 — Tea "Plucker Kg" label · Poultry=gold(eggshell) Sireet=deeper-green theming (07 May 2026 Verden)
+// v6.3.9 — Tea quick-add: Pluckers→Greenleaf (07 May 2026 Verden)
+// v6.3.8 — Hero cards as distinct chips (07 May 2026 Verden)
+// v6.3.7 — Vaccination pill: drop "TAP to record" suffix (07 May 2026 Verden)
 // v6.3.6 — census ReferenceError fix · Quick Add cards in one row (07 May 2026 Verden)
 // v6.3.5 — Quick Add: +Income(Tea) +Litter(Poultry) · Hatch→Incubation · Farm=ivory · Notifications always-on (07 May 2026 Verden)
 // v6.3.4 — Quick Add cards · Home alert spacing · Per-card theming (07 May 2026 Verden)
@@ -51,7 +54,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v135';
+const CACHE = 'sinonin-greenleaf-v139';
 
 const SHELL_FILES = [
   './',

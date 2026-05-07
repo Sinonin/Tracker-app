@@ -539,7 +539,7 @@
   nav.bottom-nav button svg { width: 21px; height: 21px; stroke: currentColor; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
   nav.bottom-nav button.active { color: var(--ivory); }
   nav.bottom-nav button.active svg { stroke: var(--brass-light); }
-  /* v6.3.7 — .central styling retained for backwards compat but no longer 
+  /* v6.3.11 — .central styling retained for backwards compat but no longer 
      used (Add tab removed from bottom nav; FAB pattern abandoned). */
   nav.bottom-nav button.central { position: relative; }
   nav.bottom-nav button.central svg {
@@ -1154,7 +1154,7 @@
     background: radial-gradient(circle, var(--brass) 0%, transparent 65%);
     opacity: 0.12; pointer-events: none;
   }
-  /* v6.3.7 — Greeting and date share one row, left-aligned, baseline-aligned. */
+  /* v6.3.11 — Greeting and date share one row, left-aligned, baseline-aligned. */
   .hero-greeting-row {
     display: flex;
     align-items: baseline;
@@ -1281,17 +1281,24 @@
   }
   .hero-margin-row .margin-val.negative { color: #d99c70; }
 
-  /* v6.3.7 — Hero metric cards (Group Income · Group Margin) with 
+  /* v6.3.11 — Hero metric cards (Group Income · Group Margin) with 
      Today/MTD/YTD/All-Time horizon strips. Theme: brass-on-forest, 
      Fraunces for the headline number, Plex Mono for labels. */
+  /* v6.3.11 — Hero metric cards now render as DISTINCT CHIPS, each with 
+     its own background tint, border, and colored numerals. The four 
+     business units feel like four different family members rather than 
+     four siblings in matching uniforms. Brand stays Sinonin (forest + 
+     brass) but each card carries its own hue. */
   .hero-metric-card {
-    margin-top: 1.15rem;
-    padding-top: 1.05rem;
-    border-top: 1px solid rgba(212, 175, 100, 0.22);
+    margin-top: 0.85rem;
+    padding: 1rem 0.95rem 0.95rem 0.85rem;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(212, 175, 100, 0.18);
+    border-radius: 8px;
     position: relative;
   }
   .hero-metric-card:first-of-type {
-    margin-top: 1.25rem;
+    margin-top: 1.1rem;
   }
   .hmc-head {
     display: flex;
@@ -1361,7 +1368,7 @@
   }
   .hmc-h-val.negative { color: #d99c70; }
   
-  /* v6.3.7 — Hero pulse line. One sentence, no card, no horizons. 
+  /* v6.3.11 — Hero pulse line. One sentence, no card, no horizons. 
      Lives where Group Income/Margin used to. */
   .hero-pulse {
     margin-top: 1rem;
@@ -1376,7 +1383,7 @@
   }
   .hero-pulse.quiet { opacity: 0.55; }
   
-  /* v6.3.7 — Poultry headline pulse subtext (today's eggs + lay rate) */
+  /* v6.3.11 — Poultry headline pulse subtext (today's eggs + lay rate) */
   .hmc-poultry-pulse {
     font-family: 'Fraunces', serif;
     font-style: italic;
@@ -1388,7 +1395,7 @@
     border-top: 0.5px solid rgba(212, 175, 100, 0.12);
   }
   
-  /* v6.3.7 — Domain Add CTA buttons (Tea / Poultry tabs).
+  /* v6.3.11 — Domain Add CTA buttons (Tea / Poultry tabs).
      "Add" is a button at the bottom, not a default landing. */
   .domain-cta-row {
     margin-top: 1.5rem;
@@ -1429,7 +1436,7 @@
     opacity: 0.8;
   }
   
-  /* v6.3.7 — Quick Add cards: small action cards at TOP of Tea/Poultry 
+  /* v6.3.11 — Quick Add cards: small action cards at TOP of Tea/Poultry 
      panels. Operator picks the specific add action they need (not a 
      generic "Add"). 3-column grid wraps on mobile. */
   .quick-add-section {
@@ -1486,7 +1493,7 @@
     color: var(--forest);
   }
   
-  /* v6.3.7 — Tight variant: forces ALL cards onto one row.
+  /* v6.3.11 — Tight variant: forces ALL cards onto one row.
      Tea uses 4-col, Poultry uses 6-col. Cells get narrower → padding 
      and font sizes shrink so labels still fit on a 380px phone. */
   .quick-add-grid.quick-add-tight {
@@ -1511,46 +1518,68 @@
     text-align: center;
   }
   
-  /* v6.3.7 — Home: extra space below Action Cards (Notifications) so they 
+  /* v6.3.11 — Home: extra space below Action Cards (Notifications) so they 
      don't sit flush against the bottom navigation. */
   #panel-home .action-cards {
     margin-bottom: 1.5rem;
   }
   
-  /* v6.3.7 — Per-card theming on Home. Distinct accent colors so the four 
-     business units are visually separable. Farm now uses IVORY (the parent/
-     umbrella signal) — cool cream, distinct from the warm gold/copper/sage 
-     of the three child cards. The eye picks Farm out as "the aggregate".
-       1st = Farm     → ivory cream      (parent/group, distinct from gold)
-       2nd = Tea      → sage green       (the leaf)
-       3rd = Poultry  → copper amber     (egg warmth)
-       4th = Sireet   → brass-light      (cumulative stake) */
+  /* v6.3.11 — Card backgrounds bumped to MEANINGFUL saturation (Cheison: 
+     "I mean card background"). Was 4-12% gradient — read as "all green". 
+     Now 13-16% solid so each card's hue is genuinely visible on the 
+     forest backdrop. Border-left bumped 4px → 5px for stronger anchor. */
+  /* ── 1. FARM ── ivory cream (unchanged) */
   .hero .hero-metric-card:nth-of-type(1) {
-    border-left: 3px solid #f0e8d0;
-    padding-left: 0.7rem;
+    background: rgba(240, 232, 208, 0.13);
+    border: 1px solid rgba(240, 232, 208, 0.32);
+    border-left: 5px solid #f0e8d0;
   }
-  .hero .hero-metric-card:nth-of-type(1) .hmc-lbl { color: #f0e8d0; letter-spacing: 0.24em; }
-  .hero .hero-metric-card:nth-of-type(1) .hmc-val { color: #f5edd5; }
-  
+  .hero .hero-metric-card:nth-of-type(1) .hmc-lbl     { color: #f0e8d0; letter-spacing: 0.24em; }
+  .hero .hero-metric-card:nth-of-type(1) .hmc-period  { color: #f0e8d0; }
+  .hero .hero-metric-card:nth-of-type(1) .hmc-val     { color: #f5edd5; }
+  .hero .hero-metric-card:nth-of-type(1) .hmc-horizon { background: rgba(240, 232, 208, 0.10); border-color: rgba(240, 232, 208, 0.28); }
+  .hero .hero-metric-card:nth-of-type(1) .hmc-h-lbl   { color: #f0e8d0; }
+
+  /* ── 2. TEA PERFORMANCE ── sage green (operational flow, lighter) */
   .hero .hero-metric-card:nth-of-type(2) {
-    border-left: 3px solid #7ba87d;
-    padding-left: 0.7rem;
+    background: rgba(123, 168, 125, 0.16);
+    border: 1px solid rgba(123, 168, 125, 0.40);
+    border-left: 5px solid #7ba87d;
   }
-  .hero .hero-metric-card:nth-of-type(2) .hmc-lbl { color: #9bc69d; }
-  
+  .hero .hero-metric-card:nth-of-type(2) .hmc-lbl     { color: #b6dcb8; }
+  .hero .hero-metric-card:nth-of-type(2) .hmc-period  { color: #b6dcb8; }
+  .hero .hero-metric-card:nth-of-type(2) .hmc-val     { color: #c9e6cb; }
+  .hero .hero-metric-card:nth-of-type(2) .hmc-horizon { background: rgba(123, 168, 125, 0.12); border-color: rgba(123, 168, 125, 0.32); }
+  .hero .hero-metric-card:nth-of-type(2) .hmc-h-lbl   { color: #b6dcb8; }
+
+  /* ── 3. POULTRY ── warm gold / eggshell */
   .hero .hero-metric-card:nth-of-type(3) {
-    border-left: 3px solid #c8923b;
-    padding-left: 0.7rem;
+    background: rgba(212, 176, 106, 0.16);
+    border: 1px solid rgba(212, 176, 106, 0.42);
+    border-left: 5px solid #d4b06a;
   }
-  .hero .hero-metric-card:nth-of-type(3) .hmc-lbl { color: #e6b16a; }
-  
+  .hero .hero-metric-card:nth-of-type(3) .hmc-lbl     { color: #f0d894; }
+  .hero .hero-metric-card:nth-of-type(3) .hmc-period  { color: #f0d894; }
+  .hero .hero-metric-card:nth-of-type(3) .hmc-val     { color: #f5e2a8; }
+  .hero .hero-metric-card:nth-of-type(3) .hmc-horizon { background: rgba(212, 176, 106, 0.13); border-color: rgba(212, 176, 106, 0.34); }
+  .hero .hero-metric-card:nth-of-type(3) .hmc-h-lbl   { color: #f0d894; }
+
+  /* ── 4. SIREET ── deeper tea-green (darker than Sage, distinguishable
+     from Sinonin Tea Performance card while staying in the tea family) */
   .hero .hero-metric-card:nth-of-type(4) {
-    border-left: 3px solid var(--brass-light);
-    padding-left: 0.7rem;
+    background: rgba(93, 138, 108, 0.16);
+    border: 1px solid rgba(93, 138, 108, 0.42);
+    border-left: 5px solid #5d8a6c;
   }
-  .hero .hero-metric-card:nth-of-type(4) .hmc-lbl { color: var(--brass-light); }
+  .hero .hero-metric-card:nth-of-type(4) .hmc-lbl     { color: #a8cdb8; }
+  .hero .hero-metric-card:nth-of-type(4) .hmc-period  { color: #a8cdb8; }
+  .hero .hero-metric-card:nth-of-type(4) .hmc-val     { color: #c2dec8; }
+  .hero .hero-metric-card:nth-of-type(4) .hmc-horizon { background: rgba(93, 138, 108, 0.13); border-color: rgba(93, 138, 108, 0.34); }
+  .hero .hero-metric-card:nth-of-type(4) .hmc-h-lbl   { color: #a8cdb8; }
+  .hero .hero-metric-card:nth-of-type(4) .hmc-sub-head { color: #a8cdb8; }
+  .hero .hero-metric-card:nth-of-type(4) .hmc-h-sub   { color: #a8cdb8; }
   
-  /* v6.3.7 — Sireet equity card variant: sub-head row (kg lifetime) below 
+  /* v6.3.11 — Sireet equity card variant: sub-head row (kg lifetime) below 
      headline KES, and small kg subtext under each horizon cell. */
   .hero-metric-card-equity .hmc-val {
     /* Slightly smaller than Income/Margin headline since equity has 
@@ -1580,7 +1609,7 @@
     white-space: nowrap;
   }
 
-  /* v6.3.7 — Action Cards alert banner.
+  /* v6.3.11 — Action Cards alert banner.
      Calm decision-oriented styling: brass-on-forest, no red/yellow alarm.
      Each action card is tappable; entire card responds to touch. */
   .action-cards {
@@ -1686,7 +1715,7 @@
     content: '';
   }
   
-  /* v6.3.7 — Urgent vs Approaching urgency tiers */
+  /* v6.3.11 — Urgent vs Approaching urgency tiers */
   .ac-card.ac-urgent {
     border-left: 2px solid var(--brass);
   }
@@ -1698,7 +1727,7 @@
     opacity: 0.85;
   }
   
-  /* v6.3.7 — Empty state inside Action Cards: calm sentence, no card */
+  /* v6.3.11 — Empty state inside Action Cards: calm sentence, no card */
   .ac-empty {
     font-family: 'Fraunces', serif;
     font-style: italic;
@@ -1711,7 +1740,7 @@
 
   /* Per-business stat cards */
   .biz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
-  /* v6.3.7 — 3-column variant for bird population grid. Cards are ~33% 
+  /* v6.3.11 — 3-column variant for bird population grid. Cards are ~33% 
      narrower than the 2-col default, so labels and values shrink slightly 
      for legibility. Sub-text wraps if needed. */
   .biz-grid-3col .biz-card {
@@ -2749,14 +2778,14 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.7</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.11</span>
 </header>
 
 <main>
   <!-- HOME -->
   <section class="panel active" id="panel-home">
     <div class="hero">
-      <!-- v6.3.7 — Greeting + date on a single left-aligned row, Nandi 
+      <!-- v6.3.11 — Greeting + date on a single left-aligned row, Nandi 
            greeting "Chamgei chemogeet". -->
       <div class="hero-greeting-row">
         <div class="greeting" id="hero-greeting">Chamgei chemogeet</div>
@@ -2770,7 +2799,7 @@
       </div>
       <div class="motto">Sinonin Tea · The Tea of Champions</div>
 
-      <!-- v6.3.7 — FOUR horizon cards, Cheison's CEO cockpit:
+      <!-- v6.3.11 — FOUR horizon cards, Cheison's CEO cockpit:
              1. Farm performance     (Group revenue: tea + poultry + others)
              2. Tea performance      (Banked from tea factories)
              3. Poultry performance  (Poultry sales)
@@ -2859,7 +2888,7 @@
         </div>
       </div>
 
-      <!-- ── 4. SIREET EQUITY (kept from v6.3.7, headline=lifetime) ── -->
+      <!-- ── 4. SIREET EQUITY (kept from v6.3.11, headline=lifetime) ── -->
       <div class="hero-metric-card hero-metric-card-equity">
         <div class="hmc-head">
           <span class="hmc-lbl">Sireet equity</span>
@@ -2897,7 +2926,7 @@
       <span id="hero-margin" style="display:none">0</span>
     </div>
 
-    <!-- v6.3.7 — Action Cards alert banner now BELOW the four headline 
+    <!-- v6.3.11 — Action Cards alert banner now BELOW the four headline 
          cards (was above hero). Cheison: "alerts come below the cards". 
          Renders only when there are real, decision-pending alerts. 
          Currently fires on hatch decisions; will extend to litter, 
@@ -2912,12 +2941,12 @@
 
   </section>
 
-    <!-- TEA — v6.3.7 (07 May 2026): proper Tea panel with overview cards 
+    <!-- TEA — v6.3.11 (07 May 2026): proper Tea panel with overview cards 
        and Add CTA. Cards relocated from Home per "Home is for decisions, 
        not data" + "App, not Chrome browser" principles. Tea tab now opens 
        to a status view; Add Tea is a CTA at the bottom. -->
   <section class="panel" id="panel-tea">
-    <!-- v6.3.7 — Quick Add cards at TOP of panel (Cheison 07 May 2026: 
+    <!-- v6.3.11 — Quick Add cards at TOP of panel (Cheison 07 May 2026: 
          "move the Add button to the top"). Each card routes to panel-add 
          with biz AND kind pre-set, so operator goes straight to the form 
          they need without scrolling. -->
@@ -2930,7 +2959,7 @@
         </button>
         <button class="quick-add-card" type="button" onclick="openAddPanel('tea','greenleaf')">
           <span class="qa-icon">🌿</span>
-          <span class="qa-label">Pluckers</span>
+          <span class="qa-label">Plucker Kg</span>
         </button>
         <button class="quick-add-card" type="button" onclick="openAddPanel('tea','expense')">
           <span class="qa-icon">💸</span>
@@ -2971,11 +3000,11 @@
     </div>
   </section>
 
-  <!-- POULTRY — v6.3.7 (07 May 2026): proper Poultry panel with 
+  <!-- POULTRY — v6.3.11 (07 May 2026): proper Poultry panel with 
        overview cards (bird population, litter bar, incubation progress) 
        and Add CTA. Cards relocated from Home. -->
   <section class="panel" id="panel-poultry">
-    <!-- v6.3.7 — Quick Add cards at TOP of panel. Each card routes to 
+    <!-- v6.3.11 — Quick Add cards at TOP of panel. Each card routes to 
          panel-add with biz=poultry AND kind pre-set, straight to the 
          specific form. 5 cards: Eggs, Income, Vaccination, Census, Hatch. -->
     <div class="quick-add-section">
@@ -3050,7 +3079,7 @@
              · Note: 'Deformities' and 'Retired birds' remain SEPARATE stages
                (their counts go toward totalBirds but show on no card here —
                Insights will surface them later). -->
-      <!-- v6.3.7 — Bird population grid reorganized to 2 rows × 3 columns 
+      <!-- v6.3.11 — Bird population grid reorganized to 2 rows × 3 columns 
            per Cheison (07 May 2026): 
              Row 1: Layers · Cockerels · Growers
              Row 2: Chicks 1-7d · Chicks 8-28d · Quarantine
@@ -3153,7 +3182,7 @@
       </div>
     </div>
 
-    <!-- v6.3.7 — Add CTA at bottom REMOVED. Quick-add cards live at top now. -->
+    <!-- v6.3.11 — Add CTA at bottom REMOVED. Quick-add cards live at top now. -->
   </section>
 
   <!-- RECORDS -->
@@ -3727,7 +3756,7 @@
     </div>
   </section>
 
-  <!-- OTHER · v6.3.7 placeholder — Sheep, Maize, Coffee (Lite scope, deferred to Phase 4) -->
+  <!-- OTHER · v6.3.11 placeholder — Sheep, Maize, Coffee (Lite scope, deferred to Phase 4) -->
   <section class="panel" id="panel-other">
     <div class="section">
       <div class="section-head">
@@ -3787,7 +3816,7 @@
     </div>
   </section>
 
-  <!-- SETTINGS · v6.3.7 surfaces as "Admin" tab -->
+  <!-- SETTINGS · v6.3.11 surfaces as "Admin" tab -->
   <section class="panel" id="panel-settings">
     <!-- v5.8.1 — Sync section moved to TOP per Cheison request:
          "frequently used, place near top". -->
@@ -4011,7 +4040,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.3.7</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.3.11</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -4062,7 +4091,7 @@
            "locked"   → red/amber padlock body, shackle UP (operator default)
            "admin"    → gear icon (Cheison authenticated, view-only)
            "open"     → green padlock body, shackle UP-RIGHT (writes ON)
-           v6.3.7 — Tab now labeled "Admin" (was "Settings"); data-view="admin". -->
+           v6.3.11 — Tab now labeled "Admin" (was "Settings"); data-view="admin". -->
       <svg class="nav-lock-svg" viewBox="0 0 24 24" aria-hidden="true">
         <!-- Locked state: closed shackle + body -->
         <g class="nav-lock-icon-locked">
@@ -4292,7 +4321,7 @@ const DEFAULT_EXPENSE_CATEGORIES = [
 ];
 let EXPENSE_CATEGORIES = JSON.parse(JSON.stringify(DEFAULT_EXPENSE_CATEGORIES));
 
-// v6.3.7 — Domain-organized navigation: Home / Tea / Poultry / Other / Insights / Admin.
+// v6.3.11 — Domain-organized navigation: Home / Tea / Poultry / Other / Insights / Admin.
 // Settings has been renamed to "Admin" in UI but the underlying panel-settings 
 // element ID is unchanged for backwards compatibility (no migration of bindings).
 // 'records' and 'add' remain in the map so old deep-links don't crash, but no 
@@ -4368,7 +4397,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.3.7';
+const APP_VERSION = 'v6.3.11';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -7667,7 +7696,7 @@ function repopulateFactoryDropdowns() {
 function switchView(v) {
   STATE.view = v;
   
-  // v6.3.7 — Tea and Poultry now have their OWN status panels (panel-tea, 
+  // v6.3.11 — Tea and Poultry now have their OWN status panels (panel-tea, 
   // panel-poultry) with overview cards relocated from Home and an Add CTA 
   // at the bottom. They no longer route to panel-add directly. Per principle: 
   // tabs are mostly VIEW; Add is a button inside, not the default landing.
@@ -7690,13 +7719,13 @@ function switchView(v) {
   
   window.scrollTo({ top: 0, behavior: 'smooth' });
   
-  // v6.3.7 — biz-toggle is shown in panel-add only; hidden in domain panels
+  // v6.3.11 — biz-toggle is shown in panel-add only; hidden in domain panels
   const bizToggle = document.querySelector('.biz-toggle');
   if (v === 'add') {
     if (bizToggle) bizToggle.style.display = '';
   }
   
-  // v6.3.7 — Render hooks per panel
+  // v6.3.11 — Render hooks per panel
   if (v === 'home') renderHome();
   if (v === 'tea' && typeof renderTeaPanel === 'function') renderTeaPanel();
   if (v === 'poultry' && typeof renderPoultryPanel === 'function') renderPoultryPanel();
@@ -7706,7 +7735,7 @@ function switchView(v) {
   if (v === 'other') renderOther();
 }
 
-// v6.3.7 — openAddPanel: invoked from Quick Add cards in Tea/Poultry panels. 
+// v6.3.11 — openAddPanel: invoked from Quick Add cards in Tea/Poultry panels. 
 // Routes to panel-add with biz pre-set and biz-toggle hidden. Optionally 
 // accepts a kind so the operator lands on the EXACT form they need (not the 
 // biz default). Examples:
@@ -10168,7 +10197,7 @@ function renderVaccinationBars(latestLayersByHouse, latestCensusDate) {
 
     const colorClass = next.color;
     let pillText, pillClass = colorClass;
-    // v6.3.7 — "· TAP to record" suffix removed (Cheison: too long, distorts 
+    // v6.3.11 — "· TAP to record" suffix removed (Cheison: too long, distorts 
     // card layout on Layers; the red/yellow color already signals urgency 
     // and the bar is tappable regardless).
     if (next.days_overdue > 0) {
@@ -10231,7 +10260,7 @@ function renderVaccinationBars(latestLayersByHouse, latestCensusDate) {
 function openVaccinationFormPrefilled(prefill) {
   prefill = prefill || {};
 
-  // v6.3.7 — Switch to Poultry tab (which routes to panel-add with biz=poultry)
+  // v6.3.11 — Switch to Poultry tab (which routes to panel-add with biz=poultry)
   if (typeof switchView === 'function') {
     switchView('poultry');
   } else {
@@ -10711,11 +10740,11 @@ function renderIncubationProgress() {
 /* v6.1.0 — Open Add → Poultry → Incubation → Hatch tab, pre-filled with batch_id.
    Used when operator taps a phase-ready or phase-overdue incubation card. */
 function openHatchFormPrefilled(batchId) {
-  // v6.3.7 — Switch to Poultry tab (routes to panel-add with biz=poultry pre-set)
+  // v6.3.11 — Switch to Poultry tab (routes to panel-add with biz=poultry pre-set)
   if (typeof switchView === 'function') switchView('poultry');
   if (typeof switchKind === 'function') switchKind('incubation');
 
-  // v6.3.7 — Two bugs fixed (Cheison field report 07 May 2026):
+  // v6.3.11 — Two bugs fixed (Cheison field report 07 May 2026):
   //   1. The data attribute is `data-incmode`, NOT `data-mode` — old fallback 
   //      selector was a typo, so the click never fired and the hatch mode 
   //      stayed inactive.
@@ -10746,7 +10775,7 @@ function openHatchFormPrefilled(batchId) {
       if (sel) {
         sel.value = batchId;
         sel.dispatchEvent(new Event('change'));
-        // v6.3.7 — Also pre-fill date_hatched to today (operator usually 
+        // v6.3.11 — Also pre-fill date_hatched to today (operator usually 
         // records the same day as hatch). Saves a tap.
         const dhEl = document.getElementById('ih-date-hatched');
         if (dhEl && !dhEl.value) {
@@ -10921,7 +10950,7 @@ function renderEmptyStateHint() {
   hint.style.display = '';
 }
 
-/* v6.3.7 — renderActionCards (always-visible forward-looking notifications)
+/* v6.3.11 — renderActionCards (always-visible forward-looking notifications)
    
    Cheison's principle (07 May 2026 evening): "I lost the Notifications! 
    I'd rather replace 'No activity today' with 'Action due or approaching' 
@@ -11143,7 +11172,7 @@ function renderActionCards() {
 }
 
 function renderHome() {
-  // v6.3.7 — Greeting changed from Swahili time-based to Nandi.
+  // v6.3.11 — Greeting changed from Swahili time-based to Nandi.
   // "Chamgei chemogeet" — universal Nandi greeting. If you want morning/evening 
   // variants later, swap this logic back to time-aware (using Nandi forms).
   document.getElementById('hero-greeting').textContent = 'Chamgei chemogeet';
@@ -11175,7 +11204,7 @@ function renderHome() {
   const poultryMonth = (STATE.poultry || []).filter(p => (p.date || '').startsWith(ym));
 
   // ─────────────────────────────────────────────────────────────────────
-  // v6.3.7 — Group Income & Group Margin with Today/MTD/YTD/All horizons
+  // v6.3.11 — Group Income & Group Margin with Today/MTD/YTD/All horizons
   // 
   // Income sources: STATE.banked (factory payouts) + STATE.poultry (sales).
   // Spend source:   STATE.expenses (everything tagged as spend).
@@ -11287,7 +11316,7 @@ function renderHome() {
   setMargin('hero-margin-all',   marginAllPct);
 
   // ─────────────────────────────────────────────────────────────────────
-  // v6.3.7 — Sireet Equity horizons (Today/MTD/YTD/All)
+  // v6.3.11 — Sireet Equity horizons (Today/MTD/YTD/All)
   // 
   // Per sealed design contract (28 Apr 2026): equity is ALWAYS computed 
   // from Actuals (factory-confirmed via SMS or weighing-shed receipt). 
@@ -11335,7 +11364,7 @@ function renderHome() {
   setSireet('hero-sireet-all',   'hero-sireet-all-kg',   sireetKgAll);
 
   // ─────────────────────────────────────────────────────────────────────
-  // v6.3.7 — FARM / TEA / POULTRY performance cards with full horizons.
+  // v6.3.11 — FARM / TEA / POULTRY performance cards with full horizons.
   // 
   // Cheison's CEO cockpit: four cards on Home, each Today / MTD / YTD / Life.
   //   Farm    = total revenue across all businesses (banked + poultry sales)
@@ -11404,11 +11433,11 @@ function renderHome() {
     if (el) el.textContent = `${monthNameLong} to date`;
   });
   
-  // v6.3.7 — Action Cards alert banner (now BELOW the 4 cards, renders 
+  // v6.3.11 — Action Cards alert banner (now BELOW the 4 cards, renders 
   // only if alerts qualify — hatch decisions today, etc.)
   if (typeof renderActionCards === 'function') renderActionCards();
   
-  // v6.3.7 — Section meta updates for relocated Tea and Poultry sections.
+  // v6.3.11 — Section meta updates for relocated Tea and Poultry sections.
   // The sections now live in panel-tea and panel-poultry but the meta 
   // labels still benefit from the today's-pulse subtitle when operators 
   // open those tabs.
@@ -11457,7 +11486,7 @@ function renderHome() {
   // v5.8.4 — MTD / YTD all-factory totals (per Cheison: "Call from Actuals")
   // MTD already computed above (teaKgMonth, teaExpectedMonth) — just display it
   // YTD = current calendar year, ALL factories
-  // v6.3.7 — yyyy already declared at top of renderHome (used by horizon strips)
+  // v6.3.11 — yyyy already declared at top of renderHome (used by horizon strips)
   const actualsYear = STATE.actuals.filter(a => (a.date || '').startsWith(yyyy));
   const ytdKg = actualsYear.reduce((s, a) => s + (Number(a.kg) || 0), 0);
   const ytdExpected = actualsYear.reduce((s, a) => s + (Number(a.kg) || 0) * netPerKg(a.factory, a.date), 0);
@@ -11607,7 +11636,7 @@ function renderHome() {
   //
   // Key concept: layers count uses LATEST census per house (Layers stage).
   // Per-house LE: house_normal_eggs ÷ days ÷ house_layers × 100%
-  // v6.3.7 — renamed to censusBirds (was 'census') to avoid clash with the 
+  // v6.3.11 — renamed to censusBirds (was 'census') to avoid clash with the 
   // earlier const census declared for the Poultry headline card.
   const censusBirds = Array.isArray(STATE.birdCensus) ? STATE.birdCensus : [];
   const liveBirdsEl = document.getElementById('poultry-live-birds');
@@ -11756,7 +11785,7 @@ function renderHome() {
 
   // ---- Lay Efficiency math ----
   const allEggs = Array.isArray(STATE.eggCollection) ? STATE.eggCollection : [];
-  // v6.3.7 — todayStr already declared at top of renderHome (used by horizon strips)
+  // v6.3.11 — todayStr already declared at top of renderHome (used by horizon strips)
   const todayRow = allEggs.find(e => e.date === todayStr);
   const monthRows = allEggs.filter(e => (e.date || '').startsWith(ym));
 
@@ -12483,14 +12512,14 @@ function renderSireetShares() {
     </tbody>`;
 }
 
-/* v6.3.7 — renderTeaPanel and renderPoultryPanel
+/* v6.3.11 — renderTeaPanel and renderPoultryPanel
    The Tea and Poultry panels host the cards that used to live on Home — 
    same IDs, same rendering logic. The cleanest way to populate them is to 
    call renderHome() which populates ALL legacy IDs (because the section 
    relocation kept IDs intact). The hero metric cards live on Home (not on 
    Tea/Poultry panels) so their population is harmless when called here.
    
-   Future v6.3.7: split out per-domain render functions so we don't render 
+   Future v6.3.11: split out per-domain render functions so we don't render 
    the entire Home pipeline when the operator is just looking at Tea. For 
    now, the work is cheap (12 horizon sums + filters) and correctness wins. */
 function renderTeaPanel() {
@@ -12868,11 +12897,11 @@ function renderMiniTable(id, firstCol, obj, _legacyLimit) {
   }
 }
 
-/* v6.3.7 — Other tab placeholder. Static HTML for now (Sheep/Maize/Coffee 
+/* v6.3.11 — Other tab placeholder. Static HTML for now (Sheep/Maize/Coffee 
    stubs). renderOther is a no-op hook for when those modules ship in 
    Phase 4 — at that point this function will populate per-domain cards. */
 function renderOther() {
-  // No-op for v6.3.7 — Other tab content is static HTML.
+  // No-op for v6.3.11 — Other tab content is static HTML.
   // Phase 4 will add: sheep census + lambing, maize cycle progress, 
   // coffee tree status, with domain-aware data feeds.
 }
