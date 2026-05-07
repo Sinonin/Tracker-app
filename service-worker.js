@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.3.3 — Poultry bird grid: 2 rows × 3 cols (Layers·Cockerels·Growers / Chicks-1-7·Chicks-8-28·Quarantine) (07 May 2026 Verden)
 // v6.3.2 — CEO cockpit: Farm/Tea/Poultry/Sireet horizon cards · alerts below (07 May 2026 Verden)
 // v6.3.1 — Decision-Home: Tea/Poultry panels with Add CTAs · Pulse line · Poultry headline (07 May 2026 Verden)
 // v6.3.0 — IUX overhaul: 6-tab nav · executive dashboard · Action Cards (07 May 2026 Verden)
@@ -46,7 +47,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v130';
+const CACHE = 'sinonin-greenleaf-v131';
 
 const SHELL_FILES = [
   './',
