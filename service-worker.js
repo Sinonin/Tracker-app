@@ -1,5 +1,7 @@
 // Sinonin Group Management App — Service Worker
-// v6.3.0 — IUX overhaul FINAL: 6-tab nav · hero cards with horizons · Sireet equity · Action Cards · today pulse (07 May 2026 Verden)
+// v6.3.2 — CEO cockpit: Farm/Tea/Poultry/Sireet horizon cards · alerts below (07 May 2026 Verden)
+// v6.3.1 — Decision-Home: Tea/Poultry panels with Add CTAs · Pulse line · Poultry headline (07 May 2026 Verden)
+// v6.3.0 — IUX overhaul: 6-tab nav · executive dashboard · Action Cards (07 May 2026 Verden)
 // v6.3.0-rc6 — Action Cards alert banner: hatch decisions today (07 May 2026 Verden)
 // v6.3.0-rc5 — Sireet equity headline card with Today/MTD/YTD/All horizons (07 May 2026 Verden)
 // v6.3.0-rc4 — Group Income + Group Margin with Today/MTD/YTD/All horizons (07 May 2026 Verden)
@@ -44,7 +46,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v128';
+const CACHE = 'sinonin-greenleaf-v130';
 
 const SHELL_FILES = [
   './',

@@ -539,7 +539,7 @@
   nav.bottom-nav button svg { width: 21px; height: 21px; stroke: currentColor; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
   nav.bottom-nav button.active { color: var(--ivory); }
   nav.bottom-nav button.active svg { stroke: var(--brass-light); }
-  /* v6.3.0 — .central styling retained for backwards compat but no longer 
+  /* v6.3.2 — .central styling retained for backwards compat but no longer 
      used (Add tab removed from bottom nav; FAB pattern abandoned). */
   nav.bottom-nav button.central { position: relative; }
   nav.bottom-nav button.central svg {
@@ -1154,7 +1154,7 @@
     background: radial-gradient(circle, var(--brass) 0%, transparent 65%);
     opacity: 0.12; pointer-events: none;
   }
-  /* v6.3.0 — Greeting and date share one row, left-aligned, baseline-aligned. */
+  /* v6.3.2 — Greeting and date share one row, left-aligned, baseline-aligned. */
   .hero-greeting-row {
     display: flex;
     align-items: baseline;
@@ -1281,7 +1281,7 @@
   }
   .hero-margin-row .margin-val.negative { color: #d99c70; }
 
-  /* v6.3.0 — Hero metric cards (Group Income · Group Margin) with 
+  /* v6.3.2 — Hero metric cards (Group Income · Group Margin) with 
      Today/MTD/YTD/All-Time horizon strips. Theme: brass-on-forest, 
      Fraunces for the headline number, Plex Mono for labels. */
   .hero-metric-card {
@@ -1361,7 +1361,75 @@
   }
   .hmc-h-val.negative { color: #d99c70; }
   
-  /* v6.3.0 — Sireet equity card variant: sub-head row (kg lifetime) below 
+  /* v6.3.2 — Hero pulse line. One sentence, no card, no horizons. 
+     Lives where Group Income/Margin used to. */
+  .hero-pulse {
+    margin-top: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid rgba(212, 175, 100, 0.18);
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 0.95rem;
+    color: var(--ivory);
+    opacity: 0.9;
+    line-height: 1.4;
+  }
+  .hero-pulse.quiet { opacity: 0.55; }
+  
+  /* v6.3.2 — Poultry headline pulse subtext (today's eggs + lay rate) */
+  .hmc-poultry-pulse {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 0.85rem;
+    color: var(--ivory);
+    opacity: 0.85;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 0.5px solid rgba(212, 175, 100, 0.12);
+  }
+  
+  /* v6.3.2 — Domain Add CTA buttons (Tea / Poultry tabs).
+     "Add" is a button at the bottom, not a default landing. */
+  .domain-cta-row {
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    padding: 0 0.4rem;
+  }
+  .domain-cta-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.95rem 1.2rem;
+    background: linear-gradient(135deg, var(--brass), #b89a5e);
+    border: none;
+    border-radius: 8px;
+    color: var(--forest);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .domain-cta-btn:hover, .domain-cta-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  }
+  .domain-cta-btn .dca-icon {
+    font-size: 1rem;
+  }
+  .domain-cta-btn .dca-arrow {
+    margin-left: 0.3rem;
+    font-size: 1rem;
+    opacity: 0.8;
+  }
+  
+  /* v6.3.2 — Sireet equity card variant: sub-head row (kg lifetime) below 
      headline KES, and small kg subtext under each horizon cell. */
   .hero-metric-card-equity .hmc-val {
     /* Slightly smaller than Income/Margin headline since equity has 
@@ -1391,7 +1459,7 @@
     white-space: nowrap;
   }
 
-  /* v6.3.0 — Action Cards alert banner.
+  /* v6.3.2 — Action Cards alert banner.
      Calm decision-oriented styling: brass-on-forest, no red/yellow alarm.
      Each action card is tappable; entire card responds to touch. */
   .action-cards {
@@ -2516,116 +2584,117 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.0</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.2</span>
 </header>
 
 <main>
   <!-- HOME -->
   <section class="panel active" id="panel-home">
-    <!-- v6.3.0 — Action Cards alert banner. Renders only when there are 
-         real, decision-pending alerts. Calm brass-on-forest styling 
-         (no red/yellow alarm colors). Each card is tappable and routes 
-         to the relevant prefilled form. Hidden by default; shown by 
-         renderActionCards() if any alerts qualify. -->
-    <div class="action-cards" id="action-cards" style="display:none">
-      <div class="ac-header">
-        <span class="ac-header-lbl">Attention today</span>
-        <span class="ac-header-count" id="ac-header-count"></span>
-      </div>
-      <div class="ac-list" id="ac-list"></div>
-    </div>
-
     <div class="hero">
-      <!-- v6.3.0 — Greeting + date on a single left-aligned row (Cheison 
-           field feedback 07 May 2026). Greeting changed from Swahili "Habari ya..." 
-           to Nandi "Chamgei chemogeet" — the Sinonin Group is Nandi, the language 
-           on the dashboard should reflect that. -->
+      <!-- v6.3.2 — Greeting + date on a single left-aligned row, Nandi 
+           greeting "Chamgei chemogeet". -->
       <div class="hero-greeting-row">
         <div class="greeting" id="hero-greeting">Chamgei chemogeet</div>
         <div class="hero-greeting-sep" aria-hidden="true">·</div>
         <div class="date" id="hero-date"></div>
       </div>
-      <!-- v5.8.0 — Empty-state hint: shown when no activity today (holidays / weekends).
-           Hidden by default; shown by renderEmptyStateHint() in renderHome. -->
+      <!-- Empty-state hint shown when nothing recorded today -->
       <div class="empty-state-hint" id="empty-state-hint" style="display:none">
         <span class="esh-icon">🌿</span>
         <span class="esh-text" id="esh-text">No activity yet today</span>
       </div>
       <div class="motto">Sinonin Tea · The Tea of Champions</div>
 
-      <!-- v6.3.0 — Group Income card with Today/MTD/YTD/All-Time horizons.
-           Headline shows MTD (the current-month performance number a CEO 
-           wants by default). The 4-cell horizon strip below provides 
-           context: today's contribution, period perspective, lifetime.
-           IDs preserved (#hero-income for MTD) for backwards compat with 
-           any code paths that read the value. -->
+      <!-- v6.3.2 — FOUR horizon cards, Cheison's CEO cockpit:
+             1. Farm performance     (Group revenue: tea + poultry + others)
+             2. Tea performance      (Banked from tea factories)
+             3. Poultry performance  (Poultry sales)
+             4. Sireet equity        (Cumulative stake at Sireet, kg × 5 Ksh)
+           Each card carries Today / MTD / YTD / Lifetime horizons. 
+           Same data we already track — just layered properly. -->
+
+      <!-- ── 1. FARM PERFORMANCE ── -->
       <div class="hero-metric-card">
         <div class="hmc-head">
-          <span class="hmc-lbl">Group income</span>
-          <span class="hmc-period" id="hero-income-period">May to date</span>
+          <span class="hmc-lbl">Farm performance</span>
+          <span class="hmc-period" id="hero-farm-period">May to date</span>
         </div>
-        <div class="hmc-val" id="hero-income">Ksh 0</div>
+        <div class="hmc-val" id="hero-farm-val">Ksh 0</div>
         <div class="hmc-horizons">
           <div class="hmc-horizon">
             <div class="hmc-h-lbl">Today</div>
-            <div class="hmc-h-val" id="hero-income-today">0</div>
+            <div class="hmc-h-val" id="hero-farm-today">0</div>
           </div>
           <div class="hmc-horizon">
             <div class="hmc-h-lbl">MTD</div>
-            <div class="hmc-h-val" id="hero-income-mtd">0</div>
+            <div class="hmc-h-val" id="hero-farm-mtd">0</div>
           </div>
           <div class="hmc-horizon">
             <div class="hmc-h-lbl">YTD</div>
-            <div class="hmc-h-val" id="hero-income-ytd">0</div>
+            <div class="hmc-h-val" id="hero-farm-ytd">0</div>
           </div>
           <div class="hmc-horizon">
-            <div class="hmc-h-lbl">All</div>
-            <div class="hmc-h-val" id="hero-income-all">0</div>
+            <div class="hmc-h-lbl">Life</div>
+            <div class="hmc-h-val" id="hero-farm-life">0</div>
           </div>
         </div>
       </div>
 
-      <!-- v6.3.0 — Group Margin card with horizons.
-           Margin = (Income − Spend) / Income × 100. Ratio not absolute.
-           Negative margin shows in burnt-orange (existing .negative class).
-           IDs preserved (#hero-margin shows MTD margin). -->
+      <!-- ── 2. TEA PERFORMANCE ── -->
       <div class="hero-metric-card">
         <div class="hmc-head">
-          <span class="hmc-lbl">Group margin</span>
-          <span class="hmc-period" id="hero-margin-period">May to date · day 7 of 31</span>
+          <span class="hmc-lbl">Tea performance</span>
+          <span class="hmc-period" id="hero-tea-period">May to date</span>
         </div>
-        <div class="hmc-val" id="hero-margin">0%</div>
+        <div class="hmc-val" id="hero-tea-val">Ksh 0</div>
         <div class="hmc-horizons">
           <div class="hmc-horizon">
             <div class="hmc-h-lbl">Today</div>
-            <div class="hmc-h-val" id="hero-margin-today">—</div>
+            <div class="hmc-h-val" id="hero-tea-today">0</div>
           </div>
           <div class="hmc-horizon">
             <div class="hmc-h-lbl">MTD</div>
-            <div class="hmc-h-val" id="hero-margin-mtd">—</div>
+            <div class="hmc-h-val" id="hero-tea-mtd">0</div>
           </div>
           <div class="hmc-horizon">
             <div class="hmc-h-lbl">YTD</div>
-            <div class="hmc-h-val" id="hero-margin-ytd">—</div>
+            <div class="hmc-h-val" id="hero-tea-ytd">0</div>
           </div>
           <div class="hmc-horizon">
-            <div class="hmc-h-lbl">All</div>
-            <div class="hmc-h-val" id="hero-margin-all">—</div>
+            <div class="hmc-h-lbl">Life</div>
+            <div class="hmc-h-val" id="hero-tea-life">0</div>
           </div>
         </div>
       </div>
 
-      <!-- v6.3.0 — Group Expenses moved out of hero headline; available 
-           in domain tab feeds (Tea Expenses, Poultry Expenses) for drill. 
-           Hidden span keeps #hero-expenses ID alive for any legacy reader. -->
-      <span id="hero-expenses" style="display:none">0</span>
+      <!-- ── 3. POULTRY PERFORMANCE ── -->
+      <div class="hero-metric-card">
+        <div class="hmc-head">
+          <span class="hmc-lbl">Poultry performance</span>
+          <span class="hmc-period" id="hero-poultry-period">May to date</span>
+        </div>
+        <div class="hmc-val" id="hero-poultry-val">Ksh 0</div>
+        <div class="hmc-horizons">
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">Today</div>
+            <div class="hmc-h-val" id="hero-poultry-today">0</div>
+          </div>
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">MTD</div>
+            <div class="hmc-h-val" id="hero-poultry-mtd">0</div>
+          </div>
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">YTD</div>
+            <div class="hmc-h-val" id="hero-poultry-ytd">0</div>
+          </div>
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">Life</div>
+            <div class="hmc-h-val" id="hero-poultry-life">0</div>
+          </div>
+        </div>
+      </div>
 
-      <!-- v6.3.0 — Sireet equity headline card with Today/MTD/YTD/All horizons.
-           Equity is a STOCK not a flow — headline = lifetime accumulated value 
-           (contrast with Income headline which is MTD = current flow). 
-           Per design contract: equity is ALWAYS computed from Actuals 
-           (factory-confirmed via SMS or weighing-shed receipt) at 5 KES/kg.
-           Plucker entries do NOT contribute to equity until reconciled. -->
+      <!-- ── 4. SIREET EQUITY (kept from v6.3.2, headline=lifetime) ── -->
       <div class="hero-metric-card hero-metric-card-equity">
         <div class="hmc-head">
           <span class="hmc-lbl">Sireet equity</span>
@@ -2656,8 +2725,33 @@
           </div>
         </div>
       </div>
+
+      <!-- Hidden legacy IDs preserved for any code path that still reads them. -->
+      <span id="hero-income" style="display:none">0</span>
+      <span id="hero-expenses" style="display:none">0</span>
+      <span id="hero-margin" style="display:none">0</span>
     </div>
 
+    <!-- v6.3.2 — Action Cards alert banner now BELOW the four headline 
+         cards (was above hero). Cheison: "alerts come below the cards". 
+         Renders only when there are real, decision-pending alerts. 
+         Currently fires on hatch decisions; will extend to litter, 
+         vaccination, lambing as those alerts get wired in. -->
+    <div class="action-cards" id="action-cards" style="display:none">
+      <div class="ac-header">
+        <span class="ac-header-lbl">Attention today</span>
+        <span class="ac-header-count" id="ac-header-count"></span>
+      </div>
+      <div class="ac-list" id="ac-list"></div>
+    </div>
+
+  </section>
+
+    <!-- TEA — v6.3.2 (07 May 2026): proper Tea panel with overview cards 
+       and Add CTA. Cards relocated from Home per "Home is for decisions, 
+       not data" + "App, not Chrome browser" principles. Tea tab now opens 
+       to a status view; Add Tea is a CTA at the bottom. -->
+  <section class="panel" id="panel-tea">
     <div class="section">
       <div class="section-head"><h3>Sinonin Tea</h3><span class="meta" id="tea-section-meta">this month</span></div>
       <div class="biz-grid">
@@ -2675,6 +2769,32 @@
       </div>
     </div>
 
+    <div class="section">
+      <div class="section-head"><h3>Tea — block performance</h3><span class="meta">this month</span></div>
+      <div id="block-bars"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>Top pluckers</h3><span class="meta">this month · by kg</span></div>
+      <div id="top-pluckers"></div>
+    </div>
+
+    <!-- v6.3.2 — Add Tea CTA. Routes to existing panel-add with 
+         biz=tea pre-set. Operator's primary action lives at the 
+         bottom of the view, not as a default landing. -->
+    <div class="domain-cta-row">
+      <button class="domain-cta-btn" id="tea-add-cta" type="button" onclick="openAddPanel('tea')">
+        <span class="dca-icon">✏</span>
+        <span class="dca-label">Add Tea entry</span>
+        <span class="dca-arrow">→</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- POULTRY — v6.3.2 (07 May 2026): proper Poultry panel with 
+       overview cards (bird population, litter bar, incubation progress) 
+       and Add CTA. Cards relocated from Home. -->
+  <section class="panel" id="panel-poultry">
     <div class="section">
       <div class="section-head"><h3>Kipkenda Poultry</h3><span class="meta" id="poultry-section-meta">this month</span></div>
 
@@ -2817,17 +2937,13 @@
       </div>
     </div>
 
-    <div class="section">
-      <div class="section-head"><h3>Tea — block performance</h3><span class="meta">this month</span></div>
-      <div id="block-bars"></div>
-    </div>
-
-    <!-- v5.9.0 — Year-over-year section MOVED to Insights tab.
-         Per Cheison: Home stays at-a-glance, Insights is the deep-dive view. -->
-
-    <div class="section">
-      <div class="section-head"><h3>Top pluckers</h3><span class="meta">this month · by kg</span></div>
-      <div id="top-pluckers"></div>
+    <!-- v6.3.2 — Add Poultry CTA -->
+    <div class="domain-cta-row">
+      <button class="domain-cta-btn" id="poultry-add-cta" type="button" onclick="openAddPanel('poultry')">
+        <span class="dca-icon">✏</span>
+        <span class="dca-label">Add Poultry entry</span>
+        <span class="dca-arrow">→</span>
+      </button>
     </div>
   </section>
 
@@ -3402,7 +3518,7 @@
     </div>
   </section>
 
-  <!-- OTHER · v6.3.0 placeholder — Sheep, Maize, Coffee (Lite scope, deferred to Phase 4) -->
+  <!-- OTHER · v6.3.2 placeholder — Sheep, Maize, Coffee (Lite scope, deferred to Phase 4) -->
   <section class="panel" id="panel-other">
     <div class="section">
       <div class="section-head">
@@ -3462,7 +3578,7 @@
     </div>
   </section>
 
-  <!-- SETTINGS · v6.3.0 surfaces as "Admin" tab -->
+  <!-- SETTINGS · v6.3.2 surfaces as "Admin" tab -->
   <section class="panel" id="panel-settings">
     <!-- v5.8.1 — Sync section moved to TOP per Cheison request:
          "frequently used, place near top". -->
@@ -3686,7 +3802,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.3.0</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.3.2</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3737,7 +3853,7 @@
            "locked"   → red/amber padlock body, shackle UP (operator default)
            "admin"    → gear icon (Cheison authenticated, view-only)
            "open"     → green padlock body, shackle UP-RIGHT (writes ON)
-           v6.3.0 — Tab now labeled "Admin" (was "Settings"); data-view="admin". -->
+           v6.3.2 — Tab now labeled "Admin" (was "Settings"); data-view="admin". -->
       <svg class="nav-lock-svg" viewBox="0 0 24 24" aria-hidden="true">
         <!-- Locked state: closed shackle + body -->
         <g class="nav-lock-icon-locked">
@@ -3967,7 +4083,7 @@ const DEFAULT_EXPENSE_CATEGORIES = [
 ];
 let EXPENSE_CATEGORIES = JSON.parse(JSON.stringify(DEFAULT_EXPENSE_CATEGORIES));
 
-// v6.3.0 — Domain-organized navigation: Home / Tea / Poultry / Other / Insights / Admin.
+// v6.3.2 — Domain-organized navigation: Home / Tea / Poultry / Other / Insights / Admin.
 // Settings has been renamed to "Admin" in UI but the underlying panel-settings 
 // element ID is unchanged for backwards compatibility (no migration of bindings).
 // 'records' and 'add' remain in the map so old deep-links don't crash, but no 
@@ -4043,7 +4159,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.3.0';
+const APP_VERSION = 'v6.3.2';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -7342,15 +7458,13 @@ function repopulateFactoryDropdowns() {
 function switchView(v) {
   STATE.view = v;
   
-  // v6.3.0 — Domain-organized routing
-  // Tea/Poultry buttons share the existing panel-add HTML (same forms relocated, 
-  // not rebuilt) but pre-select the biz and hide the now-redundant biz-toggle.
+  // v6.3.2 — Tea and Poultry now have their OWN status panels (panel-tea, 
+  // panel-poultry) with overview cards relocated from Home and an Add CTA 
+  // at the bottom. They no longer route to panel-add directly. Per principle: 
+  // tabs are mostly VIEW; Add is a button inside, not the default landing.
   // 'admin' is the renamed 'settings' view — same panel-settings element.
-  // 'other' is a new placeholder panel for sheep/maize/coffee.
   let panelId;
-  if (v === 'tea' || v === 'poultry') {
-    panelId = 'panel-add';
-  } else if (v === 'admin') {
+  if (v === 'admin') {
     panelId = 'panel-settings';
   } else {
     panelId = 'panel-' + v;
@@ -7367,27 +7481,45 @@ function switchView(v) {
   
   window.scrollTo({ top: 0, behavior: 'smooth' });
   
-  // v6.3.0 — Tea/Poultry domain routing: hide biz-toggle (since the bottom 
-  // nav now serves that role) and pre-select the appropriate biz.
+  // v6.3.2 — biz-toggle is shown in panel-add only; hidden in domain panels
   const bizToggle = document.querySelector('.biz-toggle');
-  if (v === 'tea') {
-    if (bizToggle) bizToggle.style.display = 'none';
-    if (typeof switchBiz === 'function') switchBiz('tea');
-  } else if (v === 'poultry') {
-    if (bizToggle) bizToggle.style.display = 'none';
-    if (typeof switchBiz === 'function') switchBiz('poultry');
-  } else if (v === 'add') {
-    // Legacy: if anything still tries to switch to 'add', show the biz-toggle 
-    // so the user can pick (preserves backwards compat with old code paths).
+  if (v === 'add') {
     if (bizToggle) bizToggle.style.display = '';
   }
   
-  // v6.3.0 — Render hooks (admin maps to settings panel)
+  // v6.3.2 — Render hooks per panel
   if (v === 'home') renderHome();
+  if (v === 'tea' && typeof renderTeaPanel === 'function') renderTeaPanel();
+  if (v === 'poultry' && typeof renderPoultryPanel === 'function') renderPoultryPanel();
   if (v === 'records') renderRecords();
   if (v === 'insights') renderInsights();
   if (v === 'admin' || v === 'settings') renderSettings();
   if (v === 'other') renderOther();
+}
+
+// v6.3.2 — openAddPanel: invoked from the Add CTA button inside Tea/Poultry 
+// panels. Routes to panel-add with the right biz pre-set and biz-toggle hidden.
+// (The biz-toggle is only relevant when entering panel-add via legacy paths 
+// where biz wasn't pre-determined.)
+function openAddPanel(biz) {
+  STATE.view = 'add';
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const targetPanel = document.getElementById('panel-add');
+  if (targetPanel) targetPanel.classList.add('active');
+  
+  // Highlight the originating tab in nav (Tea or Poultry stays selected)
+  // We don't switch the active nav button — operator still feels they're 
+  // in the same "domain" while filling the form.
+  
+  const titleEl = document.getElementById('screen-title');
+  if (titleEl) titleEl.textContent = (biz === 'tea' ? 'Add Tea' : (biz === 'poultry' ? 'Add Poultry' : 'Add'));
+  
+  const bizToggle = document.querySelector('.biz-toggle');
+  if (bizToggle) bizToggle.style.display = 'none';
+  
+  if (biz && typeof switchBiz === 'function') switchBiz(biz);
+  
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function qValues() {
@@ -9884,7 +10016,7 @@ function renderVaccinationBars(latestLayersByHouse, latestCensusDate) {
 function openVaccinationFormPrefilled(prefill) {
   prefill = prefill || {};
 
-  // v6.3.0 — Switch to Poultry tab (which routes to panel-add with biz=poultry)
+  // v6.3.2 — Switch to Poultry tab (which routes to panel-add with biz=poultry)
   if (typeof switchView === 'function') {
     switchView('poultry');
   } else {
@@ -10364,11 +10496,11 @@ function renderIncubationProgress() {
 /* v6.1.0 — Open Add → Poultry → Incubation → Hatch tab, pre-filled with batch_id.
    Used when operator taps a phase-ready or phase-overdue incubation card. */
 function openHatchFormPrefilled(batchId) {
-  // v6.3.0 — Switch to Poultry tab (routes to panel-add with biz=poultry pre-set)
+  // v6.3.2 — Switch to Poultry tab (routes to panel-add with biz=poultry pre-set)
   if (typeof switchView === 'function') switchView('poultry');
   if (typeof switchKind === 'function') switchKind('incubation');
 
-  // v6.3.0 — Two bugs fixed (Cheison field report 07 May 2026):
+  // v6.3.2 — Two bugs fixed (Cheison field report 07 May 2026):
   //   1. The data attribute is `data-incmode`, NOT `data-mode` — old fallback 
   //      selector was a typo, so the click never fired and the hatch mode 
   //      stayed inactive.
@@ -10399,7 +10531,7 @@ function openHatchFormPrefilled(batchId) {
       if (sel) {
         sel.value = batchId;
         sel.dispatchEvent(new Event('change'));
-        // v6.3.0 — Also pre-fill date_hatched to today (operator usually 
+        // v6.3.2 — Also pre-fill date_hatched to today (operator usually 
         // records the same day as hatch). Saves a tap.
         const dhEl = document.getElementById('ih-date-hatched');
         if (dhEl && !dhEl.value) {
@@ -10574,7 +10706,7 @@ function renderEmptyStateHint() {
   hint.style.display = '';
 }
 
-/* v6.3.0 — renderActionCards
+/* v6.3.2 — renderActionCards
    Decision-oriented alert banner at the very top of Home.
    Renders ONLY when there are real, actionable alerts.
    Calm brass-on-forest styling — no red/yellow alarm.
@@ -10587,7 +10719,7 @@ function renderEmptyStateHint() {
        earlier test runs); real overdue stays visible up to a 
        week so it can't be missed but doesn't pollute forever.
    
-   Future alert types (v6.3.1+):
+   Future alert types (v6.3.2+):
      · Vaccination due (next_due <= today)
      · Bird census stale (>14 days since last entry)
      · Weighbridge mismatch (greenleaf vs actual variance >X%)
@@ -10674,7 +10806,7 @@ function renderActionCards() {
 }
 
 function renderHome() {
-  // v6.3.0 — Greeting changed from Swahili time-based to Nandi.
+  // v6.3.2 — Greeting changed from Swahili time-based to Nandi.
   // "Chamgei chemogeet" — universal Nandi greeting. If you want morning/evening 
   // variants later, swap this logic back to time-aware (using Nandi forms).
   document.getElementById('hero-greeting').textContent = 'Chamgei chemogeet';
@@ -10706,7 +10838,7 @@ function renderHome() {
   const poultryMonth = (STATE.poultry || []).filter(p => (p.date || '').startsWith(ym));
 
   // ─────────────────────────────────────────────────────────────────────
-  // v6.3.0 — Group Income & Group Margin with Today/MTD/YTD/All horizons
+  // v6.3.2 — Group Income & Group Margin with Today/MTD/YTD/All horizons
   // 
   // Income sources: STATE.banked (factory payouts) + STATE.poultry (sales).
   // Spend source:   STATE.expenses (everything tagged as spend).
@@ -10818,7 +10950,7 @@ function renderHome() {
   setMargin('hero-margin-all',   marginAllPct);
 
   // ─────────────────────────────────────────────────────────────────────
-  // v6.3.0 — Sireet Equity horizons (Today/MTD/YTD/All)
+  // v6.3.2 — Sireet Equity horizons (Today/MTD/YTD/All)
   // 
   // Per sealed design contract (28 Apr 2026): equity is ALWAYS computed 
   // from Actuals (factory-confirmed via SMS or weighing-shed receipt). 
@@ -10864,37 +10996,106 @@ function renderHome() {
   setSireet('hero-sireet-mtd',   'hero-sireet-mtd-kg',   sireetKgMTD);
   setSireet('hero-sireet-ytd',   'hero-sireet-ytd-kg',   sireetKgYTD);
   setSireet('hero-sireet-all',   'hero-sireet-all-kg',   sireetKgAll);
+
+  // ─────────────────────────────────────────────────────────────────────
+  // v6.3.2 — FARM / TEA / POULTRY performance cards with full horizons.
+  // 
+  // Cheison's CEO cockpit: four cards on Home, each Today / MTD / YTD / Life.
+  //   Farm    = total revenue across all businesses (banked + poultry sales)
+  //   Tea     = banked income (factory deposits from tea factories)
+  //   Poultry = poultry sales
+  //   Sireet  = (already computed above) cumulative equity at Sireet
+  // 
+  // All four cards use the same horizon framework (ftToday / ftMTD / ftYTD / 
+  // ftAll filters defined earlier in this function). Reuses moneyRound for 
+  // the headline, fmtKes (compact k/M) for horizon cells.
+  // ─────────────────────────────────────────────────────────────────────
   
-  // v6.3.0 — Action Cards alert banner (renders only if alerts qualify)
+  // Tea revenue (banked only — factory deposits)
+  const sumBanked = (filter) => (STATE.banked || [])
+    .filter(filter)
+    .reduce((s, b) => s + (Number(b.amount) || 0), 0);
+  const teaToday = sumBanked(ftToday);
+  const teaMTD   = sumBanked(ftMTD);
+  const teaYTD   = sumBanked(ftYTD);
+  const teaLife  = sumBanked(ftAll);
+  
+  // Poultry revenue (poultry sales)
+  const sumPoultrySales = (filter) => (STATE.poultry || [])
+    .filter(filter)
+    .reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  const poultryToday = sumPoultrySales(ftToday);
+  const poultryMTD   = sumPoultrySales(ftMTD);
+  const poultryYTD   = sumPoultrySales(ftYTD);
+  const poultryLife  = sumPoultrySales(ftAll);
+  
+  // Farm = total income (already computed above as incomeToday/MTD/YTD/All).
+  // Reuse those values directly — same definition.
+  const farmToday = incomeToday;
+  const farmMTD   = incomeMTD;
+  const farmYTD   = incomeYTD;
+  const farmLife  = incomeAll;
+  
+  // Populate FARM card
+  const farmValEl = document.getElementById('hero-farm-val');
+  if (farmValEl) farmValEl.textContent = 'Ksh ' + moneyRound(farmMTD);
+  setText('hero-farm-today', fmtKes(farmToday));
+  setText('hero-farm-mtd',   fmtKes(farmMTD));
+  setText('hero-farm-ytd',   fmtKes(farmYTD));
+  setText('hero-farm-life',  fmtKes(farmLife));
+  
+  // Populate TEA card
+  const teaValEl = document.getElementById('hero-tea-val');
+  if (teaValEl) teaValEl.textContent = 'Ksh ' + moneyRound(teaMTD);
+  setText('hero-tea-today', fmtKes(teaToday));
+  setText('hero-tea-mtd',   fmtKes(teaMTD));
+  setText('hero-tea-ytd',   fmtKes(teaYTD));
+  setText('hero-tea-life',  fmtKes(teaLife));
+  
+  // Populate POULTRY card
+  const poultryValEl = document.getElementById('hero-poultry-val');
+  if (poultryValEl) poultryValEl.textContent = 'Ksh ' + moneyRound(poultryMTD);
+  setText('hero-poultry-today', fmtKes(poultryToday));
+  setText('hero-poultry-mtd',   fmtKes(poultryMTD));
+  setText('hero-poultry-ytd',   fmtKes(poultryYTD));
+  setText('hero-poultry-life',  fmtKes(poultryLife));
+  
+  // Period labels — Farm / Tea / Poultry all show "Month to date"
+  const monthNameLong = new Date().toLocaleDateString('en-GB', { month: 'long' });
+  ['hero-farm-period', 'hero-tea-period', 'hero-poultry-period'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = `${monthNameLong} to date`;
+  });
+  
+  // v6.3.2 — Action Cards alert banner (now BELOW the 4 cards, renders 
+  // only if alerts qualify — hatch decisions today, etc.)
   if (typeof renderActionCards === 'function') renderActionCards();
   
-  // v6.3.0 — Domain mini-cards (rich) — Today's pulse in section header metas.
-  // Sinonin Tea: today's factory-confirmed kg from Actuals.
-  // Kipkenda Poultry: today's eggs collected from EggCollection.
-  // Other: handled in panel-other (placeholder).
-  const teaTodayKg = (STATE.actuals || [])
+  // v6.3.2 — Section meta updates for relocated Tea and Poultry sections.
+  // The sections now live in panel-tea and panel-poultry but the meta 
+  // labels still benefit from the today's-pulse subtitle when operators 
+  // open those tabs.
+  const teaTodayKgForMeta = (STATE.actuals || [])
     .filter(a => (a.date || '') === todayStr)
     .reduce((s, a) => s + (Number(a.kg) || 0), 0);
   const teaMetaEl = document.getElementById('tea-section-meta');
   if (teaMetaEl) {
-    teaMetaEl.textContent = teaTodayKg > 0
-      ? `this month · ${teaTodayKg.toLocaleString('en-KE')} kg today`
+    teaMetaEl.textContent = teaTodayKgForMeta > 0
+      ? `this month · ${teaTodayKgForMeta.toLocaleString('en-KE')} kg today`
       : 'this month';
   }
   
-  const poultryTodayEggs = (STATE.eggCollection || [])
+  const poultryTodayEggsForMeta = (STATE.eggCollection || [])
     .filter(e => (e.date || '') === todayStr)
     .reduce((s, e) => {
-      // unit-aware (Trays vs No.of-eggs) — keep operator's recording unit
       const n = Number(e.quantity) || 0;
       const unit = (e.unit || '').toLowerCase();
-      // Convert trays to eggs for display (1 tray = 30 eggs)
       return s + (unit === 'trays' ? n * 30 : n);
     }, 0);
   const poultryMetaEl = document.getElementById('poultry-section-meta');
   if (poultryMetaEl) {
-    poultryMetaEl.textContent = poultryTodayEggs > 0
-      ? `this month · ${poultryTodayEggs.toLocaleString('en-KE')} eggs today`
+    poultryMetaEl.textContent = poultryTodayEggsForMeta > 0
+      ? `this month · ${poultryTodayEggsForMeta.toLocaleString('en-KE')} eggs today`
       : 'this month';
   }
 
@@ -10919,7 +11120,7 @@ function renderHome() {
   // v5.8.4 — MTD / YTD all-factory totals (per Cheison: "Call from Actuals")
   // MTD already computed above (teaKgMonth, teaExpectedMonth) — just display it
   // YTD = current calendar year, ALL factories
-  // v6.3.0 — yyyy already declared at top of renderHome (used by horizon strips)
+  // v6.3.2 — yyyy already declared at top of renderHome (used by horizon strips)
   const actualsYear = STATE.actuals.filter(a => (a.date || '').startsWith(yyyy));
   const ytdKg = actualsYear.reduce((s, a) => s + (Number(a.kg) || 0), 0);
   const ytdExpected = actualsYear.reduce((s, a) => s + (Number(a.kg) || 0) * netPerKg(a.factory, a.date), 0);
@@ -11069,7 +11270,9 @@ function renderHome() {
   //
   // Key concept: layers count uses LATEST census per house (Layers stage).
   // Per-house LE: house_normal_eggs ÷ days ÷ house_layers × 100%
-  const census = Array.isArray(STATE.birdCensus) ? STATE.birdCensus : [];
+  // v6.3.2 — renamed to censusBirds (was 'census') to avoid clash with the 
+  // earlier const census declared for the Poultry headline card.
+  const censusBirds = Array.isArray(STATE.birdCensus) ? STATE.birdCensus : [];
   const liveBirdsEl = document.getElementById('poultry-live-birds');
   const liveBirdsSubEl = document.getElementById('poultry-live-birds-sub');
 
@@ -11078,7 +11281,7 @@ function renderHome() {
   let latestCensusDate = '';
   let totalBirds = 0;
   const stageTotals = {};
-  census.forEach(c => {
+  censusBirds.forEach(c => {
     const cnt = Number(c.count) || 0;
     const stg = c.stage || '';
     if ((c.date || '') > latestCensusDate) latestCensusDate = c.date;
@@ -11216,7 +11419,7 @@ function renderHome() {
 
   // ---- Lay Efficiency math ----
   const allEggs = Array.isArray(STATE.eggCollection) ? STATE.eggCollection : [];
-  // v6.3.0 — todayStr already declared at top of renderHome (used by horizon strips)
+  // v6.3.2 — todayStr already declared at top of renderHome (used by horizon strips)
   const todayRow = allEggs.find(e => e.date === todayStr);
   const monthRows = allEggs.filter(e => (e.date || '').startsWith(ym));
 
@@ -11943,6 +12146,29 @@ function renderSireetShares() {
     </tbody>`;
 }
 
+/* v6.3.2 — renderTeaPanel and renderPoultryPanel
+   The Tea and Poultry panels host the cards that used to live on Home — 
+   same IDs, same rendering logic. The cleanest way to populate them is to 
+   call renderHome() which populates ALL legacy IDs (because the section 
+   relocation kept IDs intact). The hero metric cards live on Home (not on 
+   Tea/Poultry panels) so their population is harmless when called here.
+   
+   Future v6.3.2: split out per-domain render functions so we don't render 
+   the entire Home pipeline when the operator is just looking at Tea. For 
+   now, the work is cheap (12 horizon sums + filters) and correctness wins. */
+function renderTeaPanel() {
+  // Same data, same IDs. Tea section cards (tea-kg-month, tea-expected-month, 
+  // tea-shares-month, etc.) all live in panel-tea now and are populated by 
+  // the same renderHome() math.
+  if (typeof renderHome === 'function') renderHome();
+}
+
+function renderPoultryPanel() {
+  // Same logic for Poultry. Bird population, litter bar, incubation progress, 
+  // and Kipkenda biz-grid all live in panel-poultry now and use the same IDs.
+  if (typeof renderHome === 'function') renderHome();
+}
+
 function renderInsights() {
   // v5.8.7 — Defensive admin gate: if non-admin somehow lands on All-Time
   // (e.g. persisted state from previous admin session), redirect to Week.
@@ -12305,11 +12531,11 @@ function renderMiniTable(id, firstCol, obj, _legacyLimit) {
   }
 }
 
-/* v6.3.0 — Other tab placeholder. Static HTML for now (Sheep/Maize/Coffee 
+/* v6.3.2 — Other tab placeholder. Static HTML for now (Sheep/Maize/Coffee 
    stubs). renderOther is a no-op hook for when those modules ship in 
    Phase 4 — at that point this function will populate per-domain cards. */
 function renderOther() {
-  // No-op for v6.3.0 — Other tab content is static HTML.
+  // No-op for v6.3.2 — Other tab content is static HTML.
   // Phase 4 will add: sheep census + lambing, maize cycle progress, 
   // coffee tree status, with domain-aware data feeds.
 }
