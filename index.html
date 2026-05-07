@@ -1154,6 +1154,21 @@
     background: radial-gradient(circle, var(--brass) 0%, transparent 65%);
     opacity: 0.12; pointer-events: none;
   }
+  /* v6.3.0-rc3 — Greeting and date share one row, left-aligned, baseline-aligned. */
+  .hero-greeting-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+    row-gap: 0.15rem;
+  }
+  .hero-greeting-sep {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--brass-light);
+    opacity: 0.45;
+    line-height: 1;
+  }
   .hero .greeting {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.62rem;
@@ -1165,8 +1180,7 @@
   .hero .date {
     font-family: 'Fraunces', serif;
     font-style: italic;
-    font-size: 1rem;
-    margin-top: 0.25rem;
+    font-size: 0.95rem;
     color: var(--ivory);
     opacity: 0.88;
   }
@@ -2286,15 +2300,22 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.0-rc1</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.0-rc3</span>
 </header>
 
 <main>
   <!-- HOME -->
   <section class="panel active" id="panel-home">
     <div class="hero">
-      <div class="greeting" id="hero-greeting">Habari ya asubuhi</div>
-      <div class="date" id="hero-date"></div>
+      <!-- v6.3.0-rc3 — Greeting + date on a single left-aligned row (Cheison 
+           field feedback 07 May 2026). Greeting changed from Swahili "Habari ya..." 
+           to Nandi "Chamgei chemogeet" — the Sinonin Group is Nandi, the language 
+           on the dashboard should reflect that. -->
+      <div class="hero-greeting-row">
+        <div class="greeting" id="hero-greeting">Chamgei chemogeet</div>
+        <div class="hero-greeting-sep" aria-hidden="true">·</div>
+        <div class="date" id="hero-date"></div>
+      </div>
       <!-- v5.8.0 — Empty-state hint: shown when no activity today (holidays / weekends).
            Hidden by default; shown by renderEmptyStateHint() in renderHome. -->
       <div class="empty-state-hint" id="empty-state-hint" style="display:none">
@@ -3346,7 +3367,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.3.0-rc1</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.3.0-rc3</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3703,7 +3724,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.3.0-rc1';
+const APP_VERSION = 'v6.3.0-rc3';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -10027,20 +10048,47 @@ function openHatchFormPrefilled(batchId) {
   // v6.3.0 — Switch to Poultry tab (routes to panel-add with biz=poultry pre-set)
   if (typeof switchView === 'function') switchView('poultry');
   if (typeof switchKind === 'function') switchKind('incubation');
-  // initIncubationForm wires the mode toggle; switch to 'hatch' mode + select batch
+
+  // v6.3.0-rc3 — Two bugs fixed (Cheison field report 07 May 2026):
+  //   1. The data attribute is `data-incmode`, NOT `data-mode` — old fallback 
+  //      selector was a typo, so the click never fired and the hatch mode 
+  //      stayed inactive.
+  //   2. Even after switching mode, populateHatchBatchDropdown is only wired 
+  //      to fire on USER click — not on programmatic mode switch. We call it 
+  //      directly here so the dropdown options exist before we try to select.
   setTimeout(() => {
-    if (typeof setIncubationMode === 'function') {
-      setIncubationMode('hatch');
-    } else {
-      // Fallback: click the Hatch toggle button directly
-      const hatchBtn = document.querySelector('#incubation-mode-toggle button[data-mode="hatch"]');
-      if (hatchBtn) hatchBtn.click();
+    // Switch to Hatch mode
+    INCUBATION_MODE = 'hatch';
+    const hatchBtn = document.querySelector('#incubation-mode-toggle button[data-incmode="hatch"]');
+    const startBtn = document.querySelector('#incubation-mode-toggle button[data-incmode="start"]');
+    if (hatchBtn) hatchBtn.classList.add('active');
+    if (startBtn) startBtn.classList.remove('active');
+
+    const startForm = document.getElementById('incubation-start-form');
+    const hatchForm = document.getElementById('incubation-hatch-form');
+    if (startForm) startForm.style.display = 'none';
+    if (hatchForm) hatchForm.style.display = '';
+
+    // CRITICAL: populate the hatch batch dropdown BEFORE we try to set its value
+    if (typeof populateHatchBatchDropdown === 'function') {
+      populateHatchBatchDropdown();
     }
+
+    // Now select the batch_id we want to prefill
     setTimeout(() => {
       const sel = document.getElementById('ih-batch-id');
       if (sel) {
         sel.value = batchId;
         sel.dispatchEvent(new Event('change'));
+        // v6.3.0-rc3 — Also pre-fill date_hatched to today (operator usually 
+        // records the same day as hatch). Saves a tap.
+        const dhEl = document.getElementById('ih-date-hatched');
+        if (dhEl && !dhEl.value) {
+          dhEl.value = new Date().toISOString().slice(0, 10);
+          dhEl.dispatchEvent(new Event('change'));
+        }
+        // Re-run validation so submit button enables if everything's set
+        if (typeof validateIncubationHatch === 'function') validateIncubationHatch();
       }
       // Focus the hatched count input — that's the next thing operator types
       const hcEl = document.getElementById('ih-hatched');
@@ -10208,9 +10256,10 @@ function renderEmptyStateHint() {
 }
 
 function renderHome() {
-  const h = new Date().getHours();
-  const greet = h < 12 ? 'Habari ya asubuhi' : h < 17 ? 'Habari ya mchana' : 'Habari ya jioni';
-  document.getElementById('hero-greeting').textContent = greet;
+  // v6.3.0-rc3 — Greeting changed from Swahili time-based to Nandi.
+  // "Chamgei chemogeet" — universal Nandi greeting. If you want morning/evening 
+  // variants later, swap this logic back to time-aware (using Nandi forms).
+  document.getElementById('hero-greeting').textContent = 'Chamgei chemogeet';
   document.getElementById('hero-date').textContent =
     new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
