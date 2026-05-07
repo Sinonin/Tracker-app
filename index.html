@@ -1154,7 +1154,7 @@
     background: radial-gradient(circle, var(--brass) 0%, transparent 65%);
     opacity: 0.12; pointer-events: none;
   }
-  /* v6.3.0-rc6 — Greeting and date share one row, left-aligned, baseline-aligned. */
+  /* v6.3.0 — Greeting and date share one row, left-aligned, baseline-aligned. */
   .hero-greeting-row {
     display: flex;
     align-items: baseline;
@@ -2516,7 +2516,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.0-rc6</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.0</span>
 </header>
 
 <main>
@@ -2536,7 +2536,7 @@
     </div>
 
     <div class="hero">
-      <!-- v6.3.0-rc6 — Greeting + date on a single left-aligned row (Cheison 
+      <!-- v6.3.0 — Greeting + date on a single left-aligned row (Cheison 
            field feedback 07 May 2026). Greeting changed from Swahili "Habari ya..." 
            to Nandi "Chamgei chemogeet" — the Sinonin Group is Nandi, the language 
            on the dashboard should reflect that. -->
@@ -2659,7 +2659,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>Sinonin Tea</h3><span class="meta">this month</span></div>
+      <div class="section-head"><h3>Sinonin Tea</h3><span class="meta" id="tea-section-meta">this month</span></div>
       <div class="biz-grid">
         <div class="biz-card"><div class="lbl">Factory-confirmed kg</div><div class="val" id="tea-kg-month">0</div><div class="sub">all factories</div></div>
         <div class="biz-card"><div class="lbl">Expected income</div><div class="val" id="tea-expected-month">Ksh 0</div><div class="sub">net after transport &amp; equity</div></div>
@@ -2676,7 +2676,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>Kipkenda Poultry</h3><span class="meta">this month</span></div>
+      <div class="section-head"><h3>Kipkenda Poultry</h3><span class="meta" id="poultry-section-meta">this month</span></div>
 
       <!-- v6.1.4 — Deep litter tracking bar (Cheison sealed 04 May 2026).
            Sits between section header and bird population panel.
@@ -3686,7 +3686,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.3.0-rc6</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.3.0</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -4043,7 +4043,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.3.0-rc6';
+const APP_VERSION = 'v6.3.0';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -10368,7 +10368,7 @@ function openHatchFormPrefilled(batchId) {
   if (typeof switchView === 'function') switchView('poultry');
   if (typeof switchKind === 'function') switchKind('incubation');
 
-  // v6.3.0-rc6 — Two bugs fixed (Cheison field report 07 May 2026):
+  // v6.3.0 — Two bugs fixed (Cheison field report 07 May 2026):
   //   1. The data attribute is `data-incmode`, NOT `data-mode` — old fallback 
   //      selector was a typo, so the click never fired and the hatch mode 
   //      stayed inactive.
@@ -10399,7 +10399,7 @@ function openHatchFormPrefilled(batchId) {
       if (sel) {
         sel.value = batchId;
         sel.dispatchEvent(new Event('change'));
-        // v6.3.0-rc6 — Also pre-fill date_hatched to today (operator usually 
+        // v6.3.0 — Also pre-fill date_hatched to today (operator usually 
         // records the same day as hatch). Saves a tap.
         const dhEl = document.getElementById('ih-date-hatched');
         if (dhEl && !dhEl.value) {
@@ -10674,7 +10674,7 @@ function renderActionCards() {
 }
 
 function renderHome() {
-  // v6.3.0-rc6 — Greeting changed from Swahili time-based to Nandi.
+  // v6.3.0 — Greeting changed from Swahili time-based to Nandi.
   // "Chamgei chemogeet" — universal Nandi greeting. If you want morning/evening 
   // variants later, swap this logic back to time-aware (using Nandi forms).
   document.getElementById('hero-greeting').textContent = 'Chamgei chemogeet';
@@ -10867,6 +10867,36 @@ function renderHome() {
   
   // v6.3.0 — Action Cards alert banner (renders only if alerts qualify)
   if (typeof renderActionCards === 'function') renderActionCards();
+  
+  // v6.3.0 — Domain mini-cards (rich) — Today's pulse in section header metas.
+  // Sinonin Tea: today's factory-confirmed kg from Actuals.
+  // Kipkenda Poultry: today's eggs collected from EggCollection.
+  // Other: handled in panel-other (placeholder).
+  const teaTodayKg = (STATE.actuals || [])
+    .filter(a => (a.date || '') === todayStr)
+    .reduce((s, a) => s + (Number(a.kg) || 0), 0);
+  const teaMetaEl = document.getElementById('tea-section-meta');
+  if (teaMetaEl) {
+    teaMetaEl.textContent = teaTodayKg > 0
+      ? `this month · ${teaTodayKg.toLocaleString('en-KE')} kg today`
+      : 'this month';
+  }
+  
+  const poultryTodayEggs = (STATE.eggCollection || [])
+    .filter(e => (e.date || '') === todayStr)
+    .reduce((s, e) => {
+      // unit-aware (Trays vs No.of-eggs) — keep operator's recording unit
+      const n = Number(e.quantity) || 0;
+      const unit = (e.unit || '').toLowerCase();
+      // Convert trays to eggs for display (1 tray = 30 eggs)
+      return s + (unit === 'trays' ? n * 30 : n);
+    }, 0);
+  const poultryMetaEl = document.getElementById('poultry-section-meta');
+  if (poultryMetaEl) {
+    poultryMetaEl.textContent = poultryTodayEggs > 0
+      ? `this month · ${poultryTodayEggs.toLocaleString('en-KE')} eggs today`
+      : 'this month';
+  }
 
   // Zone 2a — Sinonin Tea this month
   const teaKgMonth = actualsMonth.reduce((s, a) => s + (Number(a.kg) || 0), 0);
