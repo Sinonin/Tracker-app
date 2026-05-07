@@ -511,36 +511,45 @@
   nav.bottom-nav {
     background: var(--forest-dark);
     border-top: 2px solid var(--brass);
-    padding: 0.4rem 0.25rem 0.55rem;
+    padding: 0.4rem 0.2rem 0.55rem;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 0.15rem;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.1rem;
   }
   nav.bottom-nav button {
     background: transparent; border: none;
     color: var(--brass-light);
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.58rem;
-    letter-spacing: 0.12em;
+    font-size: 0.54rem;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
-    padding: 0.45rem 0.2rem;
+    display: flex; flex-direction: column; align-items: center; gap: 0.22rem;
+    padding: 0.45rem 0.1rem;
     cursor: pointer;
     border-radius: 4px;
     transition: color .15s;
+    min-width: 0;
   }
-  nav.bottom-nav button svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  nav.bottom-nav button span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+  nav.bottom-nav button svg { width: 21px; height: 21px; stroke: currentColor; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
   nav.bottom-nav button.active { color: var(--ivory); }
   nav.bottom-nav button.active svg { stroke: var(--brass-light); }
+  /* v6.3.0 — .central styling retained for backwards compat but no longer 
+     used (Add tab removed from bottom nav; FAB pattern abandoned). */
   nav.bottom-nav button.central { position: relative; }
   nav.bottom-nav button.central svg {
-    width: 44px; height: 44px;
+    width: 40px; height: 40px;
     stroke-width: 1.8;
     background: var(--brass);
     border-radius: 50%;
-    padding: 10px;
+    padding: 9px;
     stroke: var(--forest-dark);
-    margin-top: -14px;
+    margin-top: -12px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   }
   nav.bottom-nav button.central.active svg { background: var(--brass-light); }
@@ -2277,7 +2286,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.2.5</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.0-rc1</span>
 </header>
 
 <main>
@@ -3053,7 +3062,67 @@
     </div>
   </section>
 
-  <!-- SETTINGS -->
+  <!-- OTHER · v6.3.0 placeholder — Sheep, Maize, Coffee (Lite scope, deferred to Phase 4) -->
+  <section class="panel" id="panel-other">
+    <div class="section">
+      <div class="section-head">
+        <h3>Other businesses</h3>
+        <span class="meta">Lite · coming soon</span>
+      </div>
+      <p style="color:var(--brass-light); opacity:0.85; line-height:1.6; margin:0.5rem 0 1.2rem; font-size:0.92rem">
+        Coffee, maize, sheep, and Dorper sit alongside Tea and Poultry as Sinonin Group businesses. Lite tracking arrives in a later release — record your first events here once those modules ship.
+      </p>
+
+      <div class="other-card-list" style="display:flex; flex-direction:column; gap:0.6rem">
+
+        <div class="other-stub" style="background:rgba(180,140,80,0.08); border:0.5px solid rgba(180,140,80,0.3); border-radius:8px; padding:0.9rem 1rem;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:0.7rem">
+            <div style="display:flex; align-items:center; gap:0.7rem; min-width:0; flex:1">
+              <span style="font-size:1.4rem">🐑</span>
+              <div style="min-width:0">
+                <div style="color:var(--ivory); font-weight:500; font-size:0.95rem">Sheep · Dorper</div>
+                <div style="color:var(--brass-light); opacity:0.8; font-size:0.78rem; margin-top:2px">Census · lambing · vaccinations · insemination · numbers</div>
+              </div>
+            </div>
+            <div style="font-size:0.7rem; color:var(--brass-light); opacity:0.6; letter-spacing:0.08em; text-transform:uppercase; flex-shrink:0">Soon</div>
+          </div>
+        </div>
+
+        <div class="other-stub" style="background:rgba(180,140,80,0.08); border:0.5px solid rgba(180,140,80,0.3); border-radius:8px; padding:0.9rem 1rem;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:0.7rem">
+            <div style="display:flex; align-items:center; gap:0.7rem; min-width:0; flex:1">
+              <span style="font-size:1.4rem">🌽</span>
+              <div style="min-width:0">
+                <div style="color:var(--ivory); font-weight:500; font-size:0.95rem">Maize · Chelabaal</div>
+                <div style="color:var(--brass-light); opacity:0.8; font-size:0.78rem; margin-top:2px">Planted · weeding · spraying · projected harvest</div>
+              </div>
+            </div>
+            <div style="font-size:0.7rem; color:var(--brass-light); opacity:0.6; letter-spacing:0.08em; text-transform:uppercase; flex-shrink:0">Soon</div>
+          </div>
+        </div>
+
+        <div class="other-stub" style="background:rgba(180,140,80,0.08); border:0.5px solid rgba(180,140,80,0.3); border-radius:8px; padding:0.9rem 1rem;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:0.7rem">
+            <div style="display:flex; align-items:center; gap:0.7rem; min-width:0; flex:1">
+              <span style="font-size:1.4rem">☕</span>
+              <div style="min-width:0">
+                <div style="color:var(--ivory); font-weight:500; font-size:0.95rem">Coffee</div>
+                <div style="color:var(--brass-light); opacity:0.8; font-size:0.78rem; margin-top:2px">Planted · prune · weeding · harvest</div>
+              </div>
+            </div>
+            <div style="font-size:0.7rem; color:var(--brass-light); opacity:0.6; letter-spacing:0.08em; text-transform:uppercase; flex-shrink:0">Soon</div>
+          </div>
+        </div>
+
+      </div>
+
+      <p style="color:var(--brass-light); opacity:0.55; font-size:0.78rem; line-height:1.5; margin:1.2rem 0 0; font-style:italic">
+        Tea and Poultry remain the operational core. Other businesses will join the dashboard once their data flows mature.
+      </p>
+    </div>
+  </section>
+
+  <!-- SETTINGS · v6.3.0 surfaces as "Admin" tab -->
   <section class="panel" id="panel-settings">
     <!-- v5.8.1 — Sync section moved to TOP per Cheison request:
          "frequently used, place near top". -->
@@ -3277,7 +3346,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.2.5</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.3.0-rc1</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3300,27 +3369,35 @@
 
 <div class="footer-stack">
   <nav class="bottom-nav">
-    <button class="active" data-view="home">
+    <button class="active" data-view="home" aria-label="Home">
       <svg viewBox="0 0 24 24"><path d="M3 12L12 4l9 8"/><path d="M5 10v10h14V10"/></svg>
       <span>Home</span>
     </button>
-    <button data-view="records">
-      <svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
-      <span>Records</span>
+    <button data-view="tea" aria-label="Tea">
+      <!-- Leaf icon -->
+      <svg viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19.5 2c.5 5 .26 7.55-.5 10.5C18.34 18 14 22 11 20Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/></svg>
+      <span>Tea</span>
     </button>
-    <button class="central" data-view="add">
-      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-      <span>Add</span>
+    <button data-view="poultry" aria-label="Poultry">
+      <!-- Feather icon -->
+      <svg viewBox="0 0 24 24"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><path d="M16 8L2 22"/><path d="M17.5 15H9"/></svg>
+      <span>Poultry</span>
     </button>
-    <button data-view="insights">
+    <button data-view="other" aria-label="Other businesses">
+      <!-- Circle dot icon -->
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>
+      <span>Other</span>
+    </button>
+    <button data-view="insights" aria-label="Insights">
       <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg>
       <span>Insights</span>
     </button>
-    <button data-view="settings" id="nav-settings" data-lock-state="locked" aria-label="Settings (locked)">
+    <button data-view="admin" id="nav-settings" data-lock-state="locked" aria-label="Admin (locked)">
       <!-- v5.1.0 — three-state padlock SVG. State controlled by data-lock-state attribute:
            "locked"   → red/amber padlock body, shackle UP (operator default)
            "admin"    → gear icon (Cheison authenticated, view-only)
-           "open"     → green padlock body, shackle UP-RIGHT (writes ON) -->
+           "open"     → green padlock body, shackle UP-RIGHT (writes ON)
+           v6.3.0 — Tab now labeled "Admin" (was "Settings"); data-view="admin". -->
       <svg class="nav-lock-svg" viewBox="0 0 24 24" aria-hidden="true">
         <!-- Locked state: closed shackle + body -->
         <g class="nav-lock-icon-locked">
@@ -3340,7 +3417,7 @@
           <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
         </g>
       </svg>
-      <span class="nav-lock-label">Settings</span>
+      <span class="nav-lock-label">Admin</span>
     </button>
   </nav>
 </div>
@@ -3550,7 +3627,23 @@ const DEFAULT_EXPENSE_CATEGORIES = [
 ];
 let EXPENSE_CATEGORIES = JSON.parse(JSON.stringify(DEFAULT_EXPENSE_CATEGORIES));
 
-const SCREEN_TITLES = { home: 'Overview', records: 'Records', add: 'New Entry', insights: 'Insights', settings: 'Settings' };
+// v6.3.0 — Domain-organized navigation: Home / Tea / Poultry / Other / Insights / Admin.
+// Settings has been renamed to "Admin" in UI but the underlying panel-settings 
+// element ID is unchanged for backwards compatibility (no migration of bindings).
+// 'records' and 'add' remain in the map so old deep-links don't crash, but no 
+// nav button targets them — they are reachable from within domain tabs.
+const SCREEN_TITLES = {
+  home: 'Overview',
+  tea: 'Tea',
+  poultry: 'Poultry',
+  other: 'Other',
+  insights: 'Insights',
+  admin: 'Admin',
+  // Legacy view names — kept reachable for backwards compat
+  records: 'Records',
+  add: 'New Entry',
+  settings: 'Admin'
+};
 
 const K_ENTRIES = 'sinonin_entries_v1';
 const K_FACTORIES = 'sinonin_factories_v1';
@@ -3610,7 +3703,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.2.5';
+const APP_VERSION = 'v6.3.0-rc1';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -4042,7 +4135,7 @@ function applyAdminVisibility() {
     if (houseForm) houseForm.style.display = 'none';
     // v5.3.2 — gate banner deleted; nothing to hide here.
     // If operator was on Settings tab when downgraded, send them home
-    if (STATE.view === 'settings') {
+    if ((STATE.view === 'settings' || STATE.view === 'admin')) {
       const homeBtn = document.querySelector('[data-view="home"]');
       if (homeBtn) homeBtn.click();
     }
@@ -4652,7 +4745,7 @@ async function authModalSubmitView() {
       renderGateBanner();
       renderAdminSection();
       // Navigate to Settings
-      const settingsBtn = document.querySelector('[data-view="settings"]');
+      const settingsBtn = document.getElementById("nav-settings");
       if (settingsBtn) settingsBtn.click();
       showToast('✓ Authenticated · view-only mode', 3500);
     } else {
@@ -4726,7 +4819,7 @@ async function authModalSubmitGrant() {
       applyAdminVisibility();
       renderGateBanner();
       renderAdminSection();
-      const settingsBtn = document.querySelector('[data-view="settings"]');
+      const settingsBtn = document.getElementById("nav-settings");
       if (settingsBtn) settingsBtn.click();
       showToast('✓ Writes opened · gate is GREEN', 4000);
     } else {
@@ -6908,15 +7001,53 @@ function repopulateFactoryDropdowns() {
 
 function switchView(v) {
   STATE.view = v;
+  
+  // v6.3.0 — Domain-organized routing
+  // Tea/Poultry buttons share the existing panel-add HTML (same forms relocated, 
+  // not rebuilt) but pre-select the biz and hide the now-redundant biz-toggle.
+  // 'admin' is the renamed 'settings' view — same panel-settings element.
+  // 'other' is a new placeholder panel for sheep/maize/coffee.
+  let panelId;
+  if (v === 'tea' || v === 'poultry') {
+    panelId = 'panel-add';
+  } else if (v === 'admin') {
+    panelId = 'panel-settings';
+  } else {
+    panelId = 'panel-' + v;
+  }
+  
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('panel-' + v).classList.add('active');
+  const targetPanel = document.getElementById(panelId);
+  if (targetPanel) targetPanel.classList.add('active');
+  
   document.querySelectorAll('nav.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
-  document.getElementById('screen-title').textContent = SCREEN_TITLES[v];
+  
+  const titleEl = document.getElementById('screen-title');
+  if (titleEl) titleEl.textContent = SCREEN_TITLES[v] || v;
+  
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  
+  // v6.3.0 — Tea/Poultry domain routing: hide biz-toggle (since the bottom 
+  // nav now serves that role) and pre-select the appropriate biz.
+  const bizToggle = document.querySelector('.biz-toggle');
+  if (v === 'tea') {
+    if (bizToggle) bizToggle.style.display = 'none';
+    if (typeof switchBiz === 'function') switchBiz('tea');
+  } else if (v === 'poultry') {
+    if (bizToggle) bizToggle.style.display = 'none';
+    if (typeof switchBiz === 'function') switchBiz('poultry');
+  } else if (v === 'add') {
+    // Legacy: if anything still tries to switch to 'add', show the biz-toggle 
+    // so the user can pick (preserves backwards compat with old code paths).
+    if (bizToggle) bizToggle.style.display = '';
+  }
+  
+  // v6.3.0 — Render hooks (admin maps to settings panel)
   if (v === 'home') renderHome();
   if (v === 'records') renderRecords();
   if (v === 'insights') renderInsights();
-  if (v === 'settings') renderSettings();
+  if (v === 'admin' || v === 'settings') renderSettings();
+  if (v === 'other') renderOther();
 }
 
 function qValues() {
@@ -9413,15 +9544,15 @@ function renderVaccinationBars(latestLayersByHouse, latestCensusDate) {
 function openVaccinationFormPrefilled(prefill) {
   prefill = prefill || {};
 
-  // Switch to Add → Poultry → Vaccination kind
+  // v6.3.0 — Switch to Poultry tab (which routes to panel-add with biz=poultry)
   if (typeof switchView === 'function') {
-    switchView('add');
+    switchView('poultry');
   } else {
-    // Fallback: trigger the bottom-nav Add tab
-    const addTab = document.querySelector('[data-view="add"]');
-    if (addTab) addTab.click();
+    // Fallback: trigger the new bottom-nav Poultry tab
+    const poultryTab = document.querySelector('[data-view="poultry"]');
+    if (poultryTab) poultryTab.click();
   }
-  if (typeof switchBiz === 'function') switchBiz('poultry');
+  // switchView('poultry') already calls switchBiz('poultry') — no need to repeat
   if (typeof switchKind === 'function') switchKind('vaccination');
 
   // initVaccinationForm wired the cascade; let it run, then pre-fill
@@ -9893,8 +10024,8 @@ function renderIncubationProgress() {
 /* v6.1.0 — Open Add → Poultry → Incubation → Hatch tab, pre-filled with batch_id.
    Used when operator taps a phase-ready or phase-overdue incubation card. */
 function openHatchFormPrefilled(batchId) {
-  if (typeof switchView === 'function') switchView('add');
-  if (typeof switchBiz === 'function') switchBiz('poultry');
+  // v6.3.0 — Switch to Poultry tab (routes to panel-add with biz=poultry pre-set)
+  if (typeof switchView === 'function') switchView('poultry');
   if (typeof switchKind === 'function') switchKind('incubation');
   // initIncubationForm wires the mode toggle; switch to 'hatch' mode + select batch
   setTimeout(() => {
@@ -11523,6 +11654,15 @@ function renderMiniTable(id, firstCol, obj, _legacyLimit) {
   }
 }
 
+/* v6.3.0 — Other tab placeholder. Static HTML for now (Sheep/Maize/Coffee 
+   stubs). renderOther is a no-op hook for when those modules ship in 
+   Phase 4 — at that point this function will populate per-domain cards. */
+function renderOther() {
+  // No-op for v6.3.0 — Other tab content is static HTML.
+  // Phase 4 will add: sheep census + lambing, maize cycle progress, 
+  // coffee tree status, with domain-aware data feeds.
+}
+
 function renderSettings() {
   // Phase 3 Ship 1 — Admin section. Render from cache immediately, then fetch
   // fresh status in the background. Cache-first keeps the UI snappy; the fresh
@@ -12826,7 +12966,7 @@ function showUpdateBanner() {
     wireAdminUI();
     fetchAdminStatus().then(() => {
       renderGateBanner();
-      if (STATE.view === 'settings') renderAdminSection();
+      if ((STATE.view === 'settings' || STATE.view === 'admin')) renderAdminSection();
     });
   }
 
