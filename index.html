@@ -1154,7 +1154,7 @@
     background: radial-gradient(circle, var(--brass) 0%, transparent 65%);
     opacity: 0.12; pointer-events: none;
   }
-  /* v6.3.0-rc4 — Greeting and date share one row, left-aligned, baseline-aligned. */
+  /* v6.3.0-rc5 — Greeting and date share one row, left-aligned, baseline-aligned. */
   .hero-greeting-row {
     display: flex;
     align-items: baseline;
@@ -1360,6 +1360,36 @@
     white-space: nowrap;
   }
   .hmc-h-val.negative { color: #d99c70; }
+  
+  /* v6.3.0 — Sireet equity card variant: sub-head row (kg lifetime) below 
+     headline KES, and small kg subtext under each horizon cell. */
+  .hero-metric-card-equity .hmc-val {
+    /* Slightly smaller than Income/Margin headline since equity has 
+       a kg subtext line directly below it. */
+    font-size: 1.65rem;
+  }
+  .hmc-sub-head {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--brass-light);
+    opacity: 0.75;
+    margin-top: 0.15rem;
+  }
+  .hmc-h-sub {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.5rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--brass-light);
+    opacity: 0.65;
+    margin-top: 0.15rem;
+    line-height: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   /* Per-business stat cards */
   .biz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
@@ -2380,14 +2410,14 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.0-rc4</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.0-rc5</span>
 </header>
 
 <main>
   <!-- HOME -->
   <section class="panel active" id="panel-home">
     <div class="hero">
-      <!-- v6.3.0-rc4 — Greeting + date on a single left-aligned row (Cheison 
+      <!-- v6.3.0-rc5 — Greeting + date on a single left-aligned row (Cheison 
            field feedback 07 May 2026). Greeting changed from Swahili "Habari ya..." 
            to Nandi "Chamgei chemogeet" — the Sinonin Group is Nandi, the language 
            on the dashboard should reflect that. -->
@@ -2470,6 +2500,43 @@
            in domain tab feeds (Tea Expenses, Poultry Expenses) for drill. 
            Hidden span keeps #hero-expenses ID alive for any legacy reader. -->
       <span id="hero-expenses" style="display:none">0</span>
+
+      <!-- v6.3.0 — Sireet equity headline card with Today/MTD/YTD/All horizons.
+           Equity is a STOCK not a flow — headline = lifetime accumulated value 
+           (contrast with Income headline which is MTD = current flow). 
+           Per design contract: equity is ALWAYS computed from Actuals 
+           (factory-confirmed via SMS or weighing-shed receipt) at 5 KES/kg.
+           Plucker entries do NOT contribute to equity until reconciled. -->
+      <div class="hero-metric-card hero-metric-card-equity">
+        <div class="hmc-head">
+          <span class="hmc-lbl">Sireet equity</span>
+          <span class="hmc-period">5 Ksh/kg · cumulative</span>
+        </div>
+        <div class="hmc-val" id="hero-sireet-life">Ksh 0</div>
+        <div class="hmc-sub-head" id="hero-sireet-life-kg">0 kg lifetime</div>
+        <div class="hmc-horizons">
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">Today</div>
+            <div class="hmc-h-val" id="hero-sireet-today">0</div>
+            <div class="hmc-h-sub" id="hero-sireet-today-kg">0 kg</div>
+          </div>
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">MTD</div>
+            <div class="hmc-h-val" id="hero-sireet-mtd">0</div>
+            <div class="hmc-h-sub" id="hero-sireet-mtd-kg">0 kg</div>
+          </div>
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">YTD</div>
+            <div class="hmc-h-val" id="hero-sireet-ytd">0</div>
+            <div class="hmc-h-sub" id="hero-sireet-ytd-kg">0 kg</div>
+          </div>
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">All</div>
+            <div class="hmc-h-val" id="hero-sireet-all">0</div>
+            <div class="hmc-h-sub" id="hero-sireet-all-kg">0 kg</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="section">
@@ -3500,7 +3567,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.3.0-rc4</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.3.0-rc5</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3857,7 +3924,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.3.0-rc4';
+const APP_VERSION = 'v6.3.0-rc5';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -10182,7 +10249,7 @@ function openHatchFormPrefilled(batchId) {
   if (typeof switchView === 'function') switchView('poultry');
   if (typeof switchKind === 'function') switchKind('incubation');
 
-  // v6.3.0-rc4 — Two bugs fixed (Cheison field report 07 May 2026):
+  // v6.3.0-rc5 — Two bugs fixed (Cheison field report 07 May 2026):
   //   1. The data attribute is `data-incmode`, NOT `data-mode` — old fallback 
   //      selector was a typo, so the click never fired and the hatch mode 
   //      stayed inactive.
@@ -10213,7 +10280,7 @@ function openHatchFormPrefilled(batchId) {
       if (sel) {
         sel.value = batchId;
         sel.dispatchEvent(new Event('change'));
-        // v6.3.0-rc4 — Also pre-fill date_hatched to today (operator usually 
+        // v6.3.0-rc5 — Also pre-fill date_hatched to today (operator usually 
         // records the same day as hatch). Saves a tap.
         const dhEl = document.getElementById('ih-date-hatched');
         if (dhEl && !dhEl.value) {
@@ -10389,7 +10456,7 @@ function renderEmptyStateHint() {
 }
 
 function renderHome() {
-  // v6.3.0-rc4 — Greeting changed from Swahili time-based to Nandi.
+  // v6.3.0-rc5 — Greeting changed from Swahili time-based to Nandi.
   // "Chamgei chemogeet" — universal Nandi greeting. If you want morning/evening 
   // variants later, swap this logic back to time-aware (using Nandi forms).
   document.getElementById('hero-greeting').textContent = 'Chamgei chemogeet';
@@ -10531,6 +10598,54 @@ function renderHome() {
   setMargin('hero-margin-mtd',   marginMTDpct);
   setMargin('hero-margin-ytd',   marginYTDpct);
   setMargin('hero-margin-all',   marginAllPct);
+
+  // ─────────────────────────────────────────────────────────────────────
+  // v6.3.0 — Sireet Equity horizons (Today/MTD/YTD/All)
+  // 
+  // Per sealed design contract (28 Apr 2026): equity is ALWAYS computed 
+  // from Actuals (factory-confirmed via SMS or weighing-shed receipt). 
+  // Plucker entries (greenleaf) do NOT contribute. Sireet equity rate is 
+  // 5 KES/kg.
+  // 
+  // We compute kg first (the underlying physical stock), then multiply 
+  // by SIREET_RATE to get KES.
+  // ─────────────────────────────────────────────────────────────────────
+  
+  const SIREET_RATE = 5;
+  function sireetKgFor(filter) {
+    return (STATE.actuals || [])
+      .filter(a => a.factory === 'Sireet')
+      .filter(filter)
+      .reduce((s, a) => s + (Number(a.kg) || 0), 0);
+  }
+  
+  const sireetKgToday = sireetKgFor(ftToday);
+  const sireetKgMTD   = sireetKgFor(ftMTD);
+  const sireetKgYTD   = sireetKgFor(ftYTD);
+  const sireetKgAll   = sireetKgFor(ftAll);
+  
+  const sireetKesToday = sireetKgToday * SIREET_RATE;
+  const sireetKesMTD   = sireetKgMTD   * SIREET_RATE;
+  const sireetKesYTD   = sireetKgYTD   * SIREET_RATE;
+  const sireetKesAll   = sireetKgAll   * SIREET_RATE;
+  
+  // Headline = lifetime (the running equity stock)
+  const sireetLifeEl = document.getElementById('hero-sireet-life');
+  if (sireetLifeEl) sireetLifeEl.textContent = 'Ksh ' + moneyRound(sireetKesAll);
+  const sireetLifeKgEl = document.getElementById('hero-sireet-life-kg');
+  if (sireetLifeKgEl) sireetLifeKgEl.textContent = sireetKgAll.toLocaleString('en-KE') + ' kg lifetime';
+  
+  // Horizon cells — KES headline + kg context
+  const setSireet = (id, kgId, kg) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = fmtKes(kg * SIREET_RATE);
+    const kgEl = document.getElementById(kgId);
+    if (kgEl) kgEl.textContent = kg > 0 ? fmtKes(kg) + ' kg' : '0 kg';
+  };
+  setSireet('hero-sireet-today', 'hero-sireet-today-kg', sireetKgToday);
+  setSireet('hero-sireet-mtd',   'hero-sireet-mtd-kg',   sireetKgMTD);
+  setSireet('hero-sireet-ytd',   'hero-sireet-ytd-kg',   sireetKgYTD);
+  setSireet('hero-sireet-all',   'hero-sireet-all-kg',   sireetKgAll);
 
   // Zone 2a — Sinonin Tea this month
   const teaKgMonth = actualsMonth.reduce((s, a) => s + (Number(a.kg) || 0), 0);
