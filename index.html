@@ -1154,7 +1154,7 @@
     background: radial-gradient(circle, var(--brass) 0%, transparent 65%);
     opacity: 0.12; pointer-events: none;
   }
-  /* v6.3.0-rc3 — Greeting and date share one row, left-aligned, baseline-aligned. */
+  /* v6.3.0-rc4 — Greeting and date share one row, left-aligned, baseline-aligned. */
   .hero-greeting-row {
     display: flex;
     align-items: baseline;
@@ -1280,6 +1280,86 @@
     letter-spacing: -0.01em;
   }
   .hero-margin-row .margin-val.negative { color: #d99c70; }
+
+  /* v6.3.0 — Hero metric cards (Group Income · Group Margin) with 
+     Today/MTD/YTD/All-Time horizon strips. Theme: brass-on-forest, 
+     Fraunces for the headline number, Plex Mono for labels. */
+  .hero-metric-card {
+    margin-top: 1.15rem;
+    padding-top: 1.05rem;
+    border-top: 1px solid rgba(212, 175, 100, 0.22);
+    position: relative;
+  }
+  .hero-metric-card:first-of-type {
+    margin-top: 1.25rem;
+  }
+  .hmc-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    row-gap: 0.15rem;
+  }
+  .hmc-lbl {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--brass-light);
+  }
+  .hmc-period {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 0.78rem;
+    color: var(--brass-light);
+    opacity: 0.7;
+  }
+  .hmc-val {
+    font-family: 'Fraunces', serif;
+    font-variation-settings: 'opsz' 144;
+    font-weight: 500;
+    font-size: 1.85rem;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-top: 0.2rem;
+    color: var(--ivory);
+  }
+  .hmc-val.negative { color: #d99c70; }
+  .hmc-horizons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.4rem;
+    margin-top: 0.85rem;
+  }
+  .hmc-horizon {
+    background: rgba(212, 175, 100, 0.08);
+    border: 0.5px solid rgba(212, 175, 100, 0.18);
+    border-radius: 4px;
+    padding: 0.45rem 0.35rem;
+    text-align: center;
+    min-width: 0;
+  }
+  .hmc-h-lbl {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.52rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--brass-light);
+    opacity: 0.85;
+  }
+  .hmc-h-val {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 0.95rem;
+    color: var(--ivory);
+    margin-top: 0.15rem;
+    line-height: 1.15;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .hmc-h-val.negative { color: #d99c70; }
 
   /* Per-business stat cards */
   .biz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
@@ -2300,14 +2380,14 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.0-rc3</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.0-rc4</span>
 </header>
 
 <main>
   <!-- HOME -->
   <section class="panel active" id="panel-home">
     <div class="hero">
-      <!-- v6.3.0-rc3 — Greeting + date on a single left-aligned row (Cheison 
+      <!-- v6.3.0-rc4 — Greeting + date on a single left-aligned row (Cheison 
            field feedback 07 May 2026). Greeting changed from Swahili "Habari ya..." 
            to Nandi "Chamgei chemogeet" — the Sinonin Group is Nandi, the language 
            on the dashboard should reflect that. -->
@@ -2323,20 +2403,73 @@
         <span class="esh-text" id="esh-text">No activity yet today</span>
       </div>
       <div class="motto">Sinonin Tea · The Tea of Champions</div>
-      <div class="stats hero-cashflow">
-        <div>
-          <div class="stat-lbl">Group income · this month</div>
-          <div class="stat-val" id="hero-income">0</div>
+
+      <!-- v6.3.0 — Group Income card with Today/MTD/YTD/All-Time horizons.
+           Headline shows MTD (the current-month performance number a CEO 
+           wants by default). The 4-cell horizon strip below provides 
+           context: today's contribution, period perspective, lifetime.
+           IDs preserved (#hero-income for MTD) for backwards compat with 
+           any code paths that read the value. -->
+      <div class="hero-metric-card">
+        <div class="hmc-head">
+          <span class="hmc-lbl">Group income</span>
+          <span class="hmc-period" id="hero-income-period">May to date</span>
         </div>
-        <div>
-          <div class="stat-lbl">Group expenses · this month</div>
-          <div class="stat-val" id="hero-expenses">0</div>
+        <div class="hmc-val" id="hero-income">Ksh 0</div>
+        <div class="hmc-horizons">
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">Today</div>
+            <div class="hmc-h-val" id="hero-income-today">0</div>
+          </div>
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">MTD</div>
+            <div class="hmc-h-val" id="hero-income-mtd">0</div>
+          </div>
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">YTD</div>
+            <div class="hmc-h-val" id="hero-income-ytd">0</div>
+          </div>
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">All</div>
+            <div class="hmc-h-val" id="hero-income-all">0</div>
+          </div>
         </div>
       </div>
-      <div class="hero-margin-row">
-        <div class="margin-lbl">Group margin</div>
-        <div class="margin-val" id="hero-margin">Ksh 0</div>
+
+      <!-- v6.3.0 — Group Margin card with horizons.
+           Margin = (Income − Spend) / Income × 100. Ratio not absolute.
+           Negative margin shows in burnt-orange (existing .negative class).
+           IDs preserved (#hero-margin shows MTD margin). -->
+      <div class="hero-metric-card">
+        <div class="hmc-head">
+          <span class="hmc-lbl">Group margin</span>
+          <span class="hmc-period" id="hero-margin-period">May to date · day 7 of 31</span>
+        </div>
+        <div class="hmc-val" id="hero-margin">0%</div>
+        <div class="hmc-horizons">
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">Today</div>
+            <div class="hmc-h-val" id="hero-margin-today">—</div>
+          </div>
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">MTD</div>
+            <div class="hmc-h-val" id="hero-margin-mtd">—</div>
+          </div>
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">YTD</div>
+            <div class="hmc-h-val" id="hero-margin-ytd">—</div>
+          </div>
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">All</div>
+            <div class="hmc-h-val" id="hero-margin-all">—</div>
+          </div>
+        </div>
       </div>
+
+      <!-- v6.3.0 — Group Expenses moved out of hero headline; available 
+           in domain tab feeds (Tea Expenses, Poultry Expenses) for drill. 
+           Hidden span keeps #hero-expenses ID alive for any legacy reader. -->
+      <span id="hero-expenses" style="display:none">0</span>
     </div>
 
     <div class="section">
@@ -3367,7 +3500,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.3.0-rc3</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.3.0-rc4</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3724,7 +3857,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.3.0-rc3';
+const APP_VERSION = 'v6.3.0-rc4';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -10049,7 +10182,7 @@ function openHatchFormPrefilled(batchId) {
   if (typeof switchView === 'function') switchView('poultry');
   if (typeof switchKind === 'function') switchKind('incubation');
 
-  // v6.3.0-rc3 — Two bugs fixed (Cheison field report 07 May 2026):
+  // v6.3.0-rc4 — Two bugs fixed (Cheison field report 07 May 2026):
   //   1. The data attribute is `data-incmode`, NOT `data-mode` — old fallback 
   //      selector was a typo, so the click never fired and the hatch mode 
   //      stayed inactive.
@@ -10080,7 +10213,7 @@ function openHatchFormPrefilled(batchId) {
       if (sel) {
         sel.value = batchId;
         sel.dispatchEvent(new Event('change'));
-        // v6.3.0-rc3 — Also pre-fill date_hatched to today (operator usually 
+        // v6.3.0-rc4 — Also pre-fill date_hatched to today (operator usually 
         // records the same day as hatch). Saves a tap.
         const dhEl = document.getElementById('ih-date-hatched');
         if (dhEl && !dhEl.value) {
@@ -10256,7 +10389,7 @@ function renderEmptyStateHint() {
 }
 
 function renderHome() {
-  // v6.3.0-rc3 — Greeting changed from Swahili time-based to Nandi.
+  // v6.3.0-rc4 — Greeting changed from Swahili time-based to Nandi.
   // "Chamgei chemogeet" — universal Nandi greeting. If you want morning/evening 
   // variants later, swap this logic back to time-aware (using Nandi forms).
   document.getElementById('hero-greeting').textContent = 'Chamgei chemogeet';
@@ -10279,22 +10412,125 @@ function renderHome() {
 
   const entries = monthEntries();
   const ym = new Date().toISOString().slice(0,7);
+  const yyyy = new Date().toISOString().slice(0,4);
+  const todayStr = new Date().toISOString().slice(0,10);
+  
   const expensesMonth = STATE.expenses.filter(x => (x.date || '').startsWith(ym));
   const actualsMonth = STATE.actuals.filter(a => (a.date || '').startsWith(ym));
   const bankedMonth = (STATE.banked || []).filter(b => (b.date || '').startsWith(ym));
   const poultryMonth = (STATE.poultry || []).filter(p => (p.date || '').startsWith(ym));
 
-  // Zone 1 — whole-farm cashflow this month
-  const allIncome = bankedMonth.reduce((s, b) => s + (b.amount || 0), 0)
-                  + poultryMonth.reduce((s, p) => s + (p.amount || 0), 0);
-  const allExpenses = expensesMonth.reduce((s, x) => s + (x.amount || 0), 0);
+  // ─────────────────────────────────────────────────────────────────────
+  // v6.3.0 — Group Income & Group Margin with Today/MTD/YTD/All horizons
+  // 
+  // Income sources: STATE.banked (factory payouts) + STATE.poultry (sales).
+  // Spend source:   STATE.expenses (everything tagged as spend).
+  // Margin = (Income − Spend) / Income × 100. Ratio.
+  // 
+  // Each horizon uses the same formula with a date-based filter:
+  //   Today: date === today
+  //   MTD:   date.startsWith(yyyy-mm)
+  //   YTD:   date.startsWith(yyyy)
+  //   All:   no filter
+  // 
+  // Computation is purely local — same data the audit log carries. No new 
+  // backend infrastructure required (Mars-grade variance/forecasts come 
+  // in v6.4.0).
+  // ─────────────────────────────────────────────────────────────────────
+  
+  function sumIncome(filter) {
+    const banked = (STATE.banked || []).filter(filter).reduce((s, b) => s + (Number(b.amount) || 0), 0);
+    const poultry = (STATE.poultry || []).filter(filter).reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    return banked + poultry;
+  }
+  function sumSpend(filter) {
+    return (STATE.expenses || []).filter(filter).reduce((s, x) => s + (Number(x.amount) || 0), 0);
+  }
+  function marginPct(income, spend) {
+    if (income <= 0) return null; // avoid divide-by-zero; shows as "—"
+    return ((income - spend) / income) * 100;
+  }
+  function fmtMargin(pct) {
+    if (pct === null || isNaN(pct)) return '—';
+    const rounded = Math.round(pct);
+    return (rounded > 0 ? '+' : '') + rounded + '%';
+  }
+  function fmtKes(n) {
+    // Compact KES formatting for horizon cells.
+    // < 1k: "850"   1k-999k: "12.4k"   1M+: "9.6M"
+    if (n === 0) return '0';
+    const abs = Math.abs(n);
+    if (abs < 1000) return String(Math.round(n));
+    if (abs < 1e6) return (n / 1000).toFixed(n < 10000 ? 1 : 0).replace(/\.0$/,'') + 'k';
+    return (n / 1e6).toFixed(2).replace(/\.?0+$/,'') + 'M';
+  }
+  
+  const ftToday = e => (e.date || '') === todayStr;
+  const ftMTD   = e => (e.date || '').startsWith(ym);
+  const ftYTD   = e => (e.date || '').startsWith(yyyy);
+  const ftAll   = () => true;
+  
+  const incomeToday = sumIncome(ftToday);
+  const incomeMTD   = sumIncome(ftMTD);
+  const incomeYTD   = sumIncome(ftYTD);
+  const incomeAll   = sumIncome(ftAll);
+  
+  const spendToday = sumSpend(ftToday);
+  const spendMTD   = sumSpend(ftMTD);
+  const spendYTD   = sumSpend(ftYTD);
+  const spendAll   = sumSpend(ftAll);
+  
+  const marginToday = marginPct(incomeToday, spendToday);
+  const marginMTDpct = marginPct(incomeMTD, spendMTD);
+  const marginYTDpct = marginPct(incomeYTD, spendYTD);
+  const marginAllPct = marginPct(incomeAll, spendAll);
+  
+  // For backwards compatibility with downstream code that uses these
+  const allIncome = incomeMTD;
+  const allExpenses = spendMTD;
   const margin = allIncome - allExpenses;
 
-  document.getElementById('hero-income').textContent = 'Ksh ' + moneyRound(allIncome);
-  document.getElementById('hero-expenses').textContent = 'Ksh ' + moneyRound(allExpenses);
+  // Headline = MTD (the "current month performance" number a CEO defaults to)
+  document.getElementById('hero-income').textContent = 'Ksh ' + moneyRound(incomeMTD);
+  document.getElementById('hero-expenses').textContent = 'Ksh ' + moneyRound(spendMTD); // hidden span; legacy reader compat
+  
+  // Horizon strip — Group Income
+  const setText = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  setText('hero-income-today', fmtKes(incomeToday));
+  setText('hero-income-mtd',   fmtKes(incomeMTD));
+  setText('hero-income-ytd',   fmtKes(incomeYTD));
+  setText('hero-income-all',   fmtKes(incomeAll));
+  
+  // Group Margin headline (MTD)
   const marginEl = document.getElementById('hero-margin');
-  marginEl.textContent = 'Ksh ' + moneyRound(margin);
-  marginEl.classList.toggle('negative', margin < 0);
+  marginEl.textContent = fmtMargin(marginMTDpct);
+  marginEl.classList.toggle('negative', marginMTDpct !== null && marginMTDpct < 0);
+  
+  // Margin period label — show day-of-month context
+  const dayOfMonth = new Date().getDate();
+  const lastDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+  const periodLabelEl = document.getElementById('hero-margin-period');
+  if (periodLabelEl) {
+    const monthName = new Date().toLocaleDateString('en-GB', { month: 'long' });
+    periodLabelEl.textContent = `${monthName} to date · day ${dayOfMonth} of ${lastDayOfMonth}`;
+  }
+  const incomePeriodEl = document.getElementById('hero-income-period');
+  if (incomePeriodEl) {
+    const monthName = new Date().toLocaleDateString('en-GB', { month: 'long' });
+    incomePeriodEl.textContent = `${monthName} to date`;
+  }
+  
+  // Horizon strip — Group Margin (with negative-color highlighting)
+  const setMargin = (id, pct) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = fmtMargin(pct);
+    el.classList.toggle('negative', pct !== null && pct < 0);
+  };
+  setMargin('hero-margin-today', marginToday);
+  setMargin('hero-margin-mtd',   marginMTDpct);
+  setMargin('hero-margin-ytd',   marginYTDpct);
+  setMargin('hero-margin-all',   marginAllPct);
 
   // Zone 2a — Sinonin Tea this month
   const teaKgMonth = actualsMonth.reduce((s, a) => s + (Number(a.kg) || 0), 0);
@@ -10317,7 +10553,7 @@ function renderHome() {
   // v5.8.4 — MTD / YTD all-factory totals (per Cheison: "Call from Actuals")
   // MTD already computed above (teaKgMonth, teaExpectedMonth) — just display it
   // YTD = current calendar year, ALL factories
-  const yyyy = new Date().toISOString().slice(0, 4);
+  // v6.3.0 — yyyy already declared at top of renderHome (used by horizon strips)
   const actualsYear = STATE.actuals.filter(a => (a.date || '').startsWith(yyyy));
   const ytdKg = actualsYear.reduce((s, a) => s + (Number(a.kg) || 0), 0);
   const ytdExpected = actualsYear.reduce((s, a) => s + (Number(a.kg) || 0) * netPerKg(a.factory, a.date), 0);
@@ -10614,7 +10850,7 @@ function renderHome() {
 
   // ---- Lay Efficiency math ----
   const allEggs = Array.isArray(STATE.eggCollection) ? STATE.eggCollection : [];
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // v6.3.0 — todayStr already declared at top of renderHome (used by horizon strips)
   const todayRow = allEggs.find(e => e.date === todayStr);
   const monthRows = allEggs.filter(e => (e.date || '').startsWith(ym));
 
