@@ -2823,7 +2823,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.18</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.19</span>
 </header>
 
 <main>
@@ -4085,7 +4085,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.3.18</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.3.19</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -4442,7 +4442,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.3.18';
+const APP_VERSION = 'v6.3.19';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -5109,35 +5109,55 @@ async function refreshHeaderUnlockVisibility() {
 }
 
 /* ============================================================
-   v5.9.2 — Idle Auto-Relock (10 min)
+   v6.3.19 — Idle Auto-Relock (2 min)  ← was 10 min in v5.9.2
    ============================================================
-   When IS_ADMIN is true, watch for user activity. After 10 minutes
-   of no interaction, automatically revoke admin (which also engages
-   stealth via setAdminMode's directional coupling).
+   Cheison Path B sealed Day 10 night (07 May 2026 Verden):
+   "Default stealth, toggle to reveal — keep operator toggle
+   free, but cut idle-relock so the window of exposure shrinks."
    
-   Activity = any of: pointerdown, keydown, scroll, touchstart.
-   These are debounced — we only RESTART the timer, not run logic
-   on every event. Cheap.
+   TWO TRIGGERS now (was one):
+     1. IS_ADMIN = true
+        After 2 min idle → revoke admin (which auto-engages 
+        stealth via setAdminMode coupling).
+     
+     2. IS_ADMIN = false BUT stealth is OFF (operator lifted it)
+        After 2 min idle → re-engage stealth ONLY (don't touch
+        admin state — operator stays operator). Toast confirms.
    
-   When IS_ADMIN is false, the timer is cleared (operators don't
-   need to be locked further — they're already operator-tier).
+   Either way: 2 minutes is the maximum exposure window. The 
+   v5.9.2 operator-toggle convenience is preserved; the v5.9.2 
+   threat model is tightened.
+   
+   Activity = pointerdown, keydown, scroll, touchstart (debounced).
    ============================================================ */
 
-const IDLE_MS = 10 * 60 * 1000; // 10 minutes
+const IDLE_MS = 2 * 60 * 1000; // 2 minutes (was 10 in v5.9.2)
 let _idleTimer = null;
 let _idleListenersAttached = false;
 
+function _stealthLifted() {
+  return !!(STATE.settings && STATE.settings.stealthMode === false);
+}
+
 function _resetIdleTimer() {
   if (_idleTimer) clearTimeout(_idleTimer);
-  if (!IS_ADMIN) return;
+  // Run the timer when EITHER admin is active OR stealth is operator-lifted.
+  // Both states represent a "revealed money" window that should auto-relock.
+  if (!IS_ADMIN && !_stealthLifted()) return;
   _idleTimer = setTimeout(async () => {
-    if (!IS_ADMIN) return;
-    console.log('[idle-relock] 10 min idle, revoking admin');
-    await setAdminMode(false);
-    showToast('🔒 Locked due to inactivity', 4000);
-    // Send back to Home — Settings is no longer accessible
-    const homeBtn = document.querySelector('[data-view="home"]');
-    if (homeBtn) homeBtn.click();
+    if (IS_ADMIN) {
+      console.log('[idle-relock] 2 min idle, revoking admin');
+      await setAdminMode(false);  // setAdminMode also engages stealth
+      showToast('🔒 Locked due to inactivity', 4000);
+      const homeBtn = document.querySelector('[data-view="home"]');
+      if (homeBtn) homeBtn.click();
+    } else if (_stealthLifted()) {
+      console.log('[idle-relock] 2 min idle, re-engaging stealth (operator)');
+      STATE.settings.stealthMode = true;
+      if (typeof applyStealthMode === 'function') applyStealthMode(true);
+      await storageSet(K_SETTINGS, STATE.settings);
+      showToast('🔒 Stealth re-engaged after inactivity', 4000);
+    }
   }, IDLE_MS);
 }
 
@@ -5150,11 +5170,12 @@ function _attachIdleListeners() {
 }
 
 function manageIdleTimer() {
-  // Called by setAdminMode after admin state changes.
-  // When admin true: ensure listeners attached + timer started.
-  // When admin false: clear timer (listeners stay attached; cheap).
-  if (IS_ADMIN) {
-    _attachIdleListeners();
+  // v6.3.19 — Listeners attach unconditionally (they just reset a timer
+  // on each event; cost is trivial). The timer itself only RUNS when 
+  // admin is active OR stealth is operator-lifted (see _resetIdleTimer).
+  // Called by setAdminMode AND toggleStealth after state changes.
+  _attachIdleListeners();
+  if (IS_ADMIN || _stealthLifted()) {
     _resetIdleTimer();
   } else {
     if (_idleTimer) {
@@ -13294,23 +13315,29 @@ function applyStealthMode(on) {
 async function toggleStealth() {
   // v5.9.2 — Toggle is FREE for anyone. The previous v5.9.0 admin-gate
   // was too tight: Elias and Victor (trusted operators) need to see
-  // money values to do their work. Restricting toggle to admin meant
-  // they had no path to lift stealth without prompting for Settings.
+  // money values to do their work.
   //
-  // New model:
+  // v6.3.19 — After flipping, hand control to manageIdleTimer so 
+  // OPERATOR-lifted stealth also auto-relocks at 2 min idle 
+  // (Cheison Path B: keep toggle free, tighten the window).
+  //
+  // Model:
   //   · Stealth toggle = anyone can flip (operator-friendly)
   //   · Settings access = admin-only (passphrase / biometric)
-  //   · These are TWO DIFFERENT permission tiers
+  //   · Idle window = 2 min (was 10 in v5.9.2)
+  //   · Both admin-active AND operator-lifted-stealth start the 
+  //     same timer; on idle, the appropriate state re-locks.
   //
   // Saturday's "boys after church" protection is preserved by:
   //   · Stealth defaults ON when admin is revoked (lockdown)
-  //   · Stealth defaults ON on 10-min idle relock
+  //   · Stealth defaults ON on 2-min idle relock (admin OR operator)
   //   · Stealth defaults ON on fresh install
   // The threat model treats Elias/Victor as TRUSTED, casual visitors as UNTRUSTED.
   STATE.settings.stealthMode = !STATE.settings.stealthMode;
   applyStealthMode(STATE.settings.stealthMode);
   await storageSet(K_SETTINGS, STATE.settings);
-  showToast('Stealth ' + (STATE.settings.stealthMode ? 'on — money values blurred' : 'off'));
+  if (typeof manageIdleTimer === 'function') manageIdleTimer();
+  showToast('Stealth ' + (STATE.settings.stealthMode ? 'on — money values blurred' : 'off · auto-relocks in 2 min idle'));
 }
 
 /* ========= JSON BACKUP / RESTORE =========
