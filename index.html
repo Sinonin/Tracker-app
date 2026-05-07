@@ -2106,12 +2106,17 @@
   /* Stealth Mode — blur monetary values for screen-sharing without changing layout
      Targets the existing money-bearing classes directly so we don't need to retag every
      textContent assignment. kg/quantity/plucker counts intentionally NOT blurred.
-     Audited and expanded in v4.1.6 to cover Records-tab tables and exports. */
+     Audited and expanded in v4.1.6 to cover Records-tab tables and exports.
+     v6.3.18 — CRITICAL: added .hmc-val and .hmc-h-val for the four Home horizon 
+     cards (Farm/Tea/Poultry/Sireet). These were leaking KES across all four cards 
+     and 16 horizon cells when stealth was on — every value Cheison cares to hide. */
   body.stealth-mode .stealth-money,
   body.stealth-mode .stat-val,
   body.stealth-mode .margin-val,
   body.stealth-mode .biz-card .val,
   body.stealth-mode .sireet-ksh,
+  body.stealth-mode .hmc-val,
+  body.stealth-mode .hmc-h-val,
   body.stealth-mode .yoy-col .rv,
   body.stealth-mode .yoy-summary .delta-up,
   body.stealth-mode .yoy-summary .delta-down,
@@ -2129,10 +2134,15 @@
     transition: filter 0.2s ease;
   }
   /* But — kg/qty values inside the same containers should remain visible.
-     We re-sharpen them by class. */
+     We re-sharpen them by class.
+     v6.3.18 — added .hmc-sub-head, .hmc-h-sub (kg subtext on Sireet card horizons) 
+     and .hmc-poultry-pulse (egg counts, not KES). These should NEVER blur. */
   body.stealth-mode .stealth-keep,
   body.stealth-mode .biz-card .sub,
   body.stealth-mode .sireet-kg,
+  body.stealth-mode .hmc-sub-head,
+  body.stealth-mode .hmc-h-sub,
+  body.stealth-mode .hmc-poultry-pulse,
   body.stealth-mode #tea-kg-month,
   body.stealth-mode #poultry-eggs-sub,
   body.stealth-mode #poultry-birds-sub,
@@ -2813,7 +2823,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.17</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.18</span>
 </header>
 
 <main>
@@ -4075,7 +4085,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.3.17</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.3.18</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -4432,7 +4442,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.3.17';
+const APP_VERSION = 'v6.3.18';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
