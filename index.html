@@ -1489,6 +1489,19 @@
     font-size: 1.45rem;
     line-height: 1;
   }
+  /* v6.3.20 — SVG icons inside .qa-icon (Tea greenleaf two-leaves-and-a-bud).
+     Inherits forest color from .quick-add-card. Sized to match emoji weight 
+     in both regular and tight grids. */
+  .quick-add-card .qa-icon svg {
+    display: block;
+    color: var(--forest);
+  }
+  .quick-add-grid:not(.quick-add-tight) .qa-icon svg {
+    width: 22px; height: 22px;
+  }
+  .quick-add-grid.quick-add-tight .qa-icon svg {
+    width: 18px; height: 18px;
+  }
   .quick-add-card .qa-label {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.62rem;
@@ -2823,7 +2836,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.19</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.20</span>
 </header>
 
 <main>
@@ -3003,7 +3016,7 @@
           <span class="qa-label">Actuals</span>
         </button>
         <button class="quick-add-card" type="button" onclick="openAddPanel('tea','greenleaf')">
-          <span class="qa-icon">🌿</span>
+          <span class="qa-icon" aria-label="two leaves and a bud"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="currentColor" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22 V13" stroke-width="1.3" fill="none"/><path d="M12 13 C7 12.5 4 9.5 5 4 C10 5 13 8 12 13 Z"/><path d="M12 13 C17 12.5 20 9.5 19 4 C14 5 11 8 12 13 Z"/><circle cx="12" cy="3.6" r="1.7"/></svg></span>
           <span class="qa-label">Plucker Kg</span>
         </button>
         <button class="quick-add-card" type="button" onclick="openAddPanel('tea','expense')">
@@ -4085,7 +4098,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.3.19</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.3.20</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -4442,7 +4455,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.3.19';
+const APP_VERSION = 'v6.3.20';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -12014,21 +12027,47 @@ function renderHome() {
   // v5.9.0 — Year-over-year + rolling 4-month trend MOVED to Insights.
   // Was: renderYoYAndTrend();
 
-  // Top pluckers (unchanged)
+  // Top pluckers (v6.3.20 — defensive renderer)
+  // Was failing silently when entries lacked pluckerName (cloud-synced rows 
+  // sometimes arrive without it). Now: name fallback to PLUCKERS lookup OR 
+  // "Plucker #ID", and a diagnostic empty-state that distinguishes "no 
+  // entries" from "entries exist but no kg".
   const byP = {};
+  let totalEntriesCount = 0;
+  let totalGreenleafKg  = 0;
   entries.forEach(e => {
-    byP[e.pluckerId] = byP[e.pluckerId] || { kg: 0, earnings: 0, name: e.pluckerName };
-    byP[e.pluckerId].kg += e.qty;
+    if (e.pluckerId == null) return;  // skip malformed
+    totalEntriesCount++;
+    const qty = Number(e.qty) || 0;
+    totalGreenleafKg += qty;
+    byP[e.pluckerId] = byP[e.pluckerId] || { kg: 0, earnings: 0, name: e.pluckerName || '' };
+    byP[e.pluckerId].kg += qty;
     const c = computeEntry(e);
     if (c) byP[e.pluckerId].earnings += c.labour + c.bonus + c.greenleaf;
   });
   const rank = Object.entries(byP).map(([id, v]) => {
-    const current = PLUCKERS.find(p => p.id === parseInt(id, 10));
-    return { ...v, name: current ? current.name : v.name };
-  }).sort((a,b) => b.kg - a.kg).slice(0, 3);
+    const idNum = parseInt(id, 10);
+    const current = (typeof PLUCKERS !== 'undefined' && PLUCKERS) ? PLUCKERS.find(p => p.id === idNum) : null;
+    const name = (current && current.name) || v.name || `Plucker #${id}`;
+    return { ...v, name };
+  }).filter(v => v.kg > 0)
+    .sort((a, b) => b.kg - a.kg)
+    .slice(0, 3);
   const rBox = document.getElementById('top-pluckers');
-  if (rank.length === 0) {
-    rBox.innerHTML = `<div class="empty" style="padding:1rem 0"><div class="sub">No entries</div></div>`;
+  if (!rBox) {
+    // Container missing — log once. (Container lives in panel-tea.)
+    console.warn('[top-pluckers] container #top-pluckers not in DOM');
+  } else if (rank.length === 0) {
+    // Diagnostic empty state: tells the operator WHY it's empty.
+    let msg;
+    if (totalEntriesCount === 0) {
+      msg = 'No greenleaf entries this month';
+    } else if (totalGreenleafKg === 0) {
+      msg = `${totalEntriesCount} entries this month · 0 kg recorded`;
+    } else {
+      msg = `${totalEntriesCount} entries · ${kg(totalGreenleafKg)} kg total · plucker info missing`;
+    }
+    rBox.innerHTML = `<div class="empty" style="padding:1rem 0"><div class="sub">${msg}</div></div>`;
   } else {
     rBox.innerHTML = rank.map((v, i) => `
       <div class="rank-row">
