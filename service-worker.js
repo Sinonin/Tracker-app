@@ -1,5 +1,6 @@
 // Sinonin Group Management App — Service Worker
-// v6.3.5 — Quick Add: +Income(Tea) +Litter(Poultry) · Hatch→Incubation · Farm=ivory · Notifications always-on with forward-looking items (07 May 2026 Verden)
+// v6.3.6 — census ReferenceError fix · Quick Add cards in one row (4-col Tea, 6-col Poultry) (07 May 2026 Verden)
+// v6.3.5 — Quick Add: +Income(Tea) +Litter(Poultry) · Hatch→Incubation · Farm=ivory · Notifications always-on (07 May 2026 Verden)
 // v6.3.4 — Quick Add cards · Home alert spacing · Per-card theming (07 May 2026 Verden)
 // v6.3.3 — Poultry bird grid: 2 rows × 3 cols (07 May 2026 Verden)
 // v6.3.2 — CEO cockpit: Farm/Tea/Poultry/Sireet horizon cards · alerts below (07 May 2026 Verden)
@@ -49,7 +50,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v133';
+const CACHE = 'sinonin-greenleaf-v134';
 
 const SHELL_FILES = [
   './',
