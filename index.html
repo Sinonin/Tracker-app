@@ -1154,7 +1154,7 @@
     background: radial-gradient(circle, var(--brass) 0%, transparent 65%);
     opacity: 0.12; pointer-events: none;
   }
-  /* v6.3.0-rc5 — Greeting and date share one row, left-aligned, baseline-aligned. */
+  /* v6.3.0-rc6 — Greeting and date share one row, left-aligned, baseline-aligned. */
   .hero-greeting-row {
     display: flex;
     align-items: baseline;
@@ -1389,6 +1389,112 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /* v6.3.0 — Action Cards alert banner.
+     Calm decision-oriented styling: brass-on-forest, no red/yellow alarm.
+     Each action card is tappable; entire card responds to touch. */
+  .action-cards {
+    margin-bottom: 1.1rem;
+    padding: 0.9rem 1rem 0.85rem;
+    background: linear-gradient(135deg, rgba(212, 175, 100, 0.06), rgba(212, 175, 100, 0.02));
+    border: 1px solid rgba(212, 175, 100, 0.3);
+    border-left: 3px solid var(--brass);
+    border-radius: 6px;
+  }
+  .ac-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.7rem;
+    gap: 0.5rem;
+  }
+  .ac-header-lbl {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--brass-light);
+  }
+  .ac-header-count {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 0.78rem;
+    color: var(--brass-light);
+    opacity: 0.75;
+  }
+  .ac-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .ac-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    padding: 0.75rem 0.85rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 0.5px solid rgba(212, 175, 100, 0.22);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ac-card:hover, .ac-card:active {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(212, 175, 100, 0.4);
+  }
+  .ac-icon {
+    flex-shrink: 0;
+    width: 1.4rem;
+    height: 1.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--brass);
+    margin-top: 0.05rem;
+  }
+  .ac-icon svg {
+    width: 100%;
+    height: 100%;
+    stroke-width: 1.5;
+  }
+  .ac-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .ac-action {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ivory);
+    line-height: 1.2;
+  }
+  .ac-context {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 0.82rem;
+    color: var(--brass-light);
+    opacity: 0.85;
+    margin-top: 0.2rem;
+    line-height: 1.3;
+  }
+  .ac-arrow {
+    flex-shrink: 0;
+    color: var(--brass);
+    opacity: 0.6;
+    font-family: 'Fraunces', serif;
+    font-size: 1.1rem;
+    align-self: center;
+    line-height: 1;
+  }
+  /* Subtle accent for overdue (still calm — no red, just dimmer brass) */
+  .ac-card.overdue {
+    border-left: 2px solid var(--brass);
+  }
+  .ac-card.overdue .ac-context::after {
+    content: '';
   }
 
   /* Per-business stat cards */
@@ -2410,14 +2516,27 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.0-rc5</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.0-rc6</span>
 </header>
 
 <main>
   <!-- HOME -->
   <section class="panel active" id="panel-home">
+    <!-- v6.3.0 — Action Cards alert banner. Renders only when there are 
+         real, decision-pending alerts. Calm brass-on-forest styling 
+         (no red/yellow alarm colors). Each card is tappable and routes 
+         to the relevant prefilled form. Hidden by default; shown by 
+         renderActionCards() if any alerts qualify. -->
+    <div class="action-cards" id="action-cards" style="display:none">
+      <div class="ac-header">
+        <span class="ac-header-lbl">Attention today</span>
+        <span class="ac-header-count" id="ac-header-count"></span>
+      </div>
+      <div class="ac-list" id="ac-list"></div>
+    </div>
+
     <div class="hero">
-      <!-- v6.3.0-rc5 — Greeting + date on a single left-aligned row (Cheison 
+      <!-- v6.3.0-rc6 — Greeting + date on a single left-aligned row (Cheison 
            field feedback 07 May 2026). Greeting changed from Swahili "Habari ya..." 
            to Nandi "Chamgei chemogeet" — the Sinonin Group is Nandi, the language 
            on the dashboard should reflect that. -->
@@ -3567,7 +3686,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.3.0-rc5</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.3.0-rc6</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -3924,7 +4043,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.3.0-rc5';
+const APP_VERSION = 'v6.3.0-rc6';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -10249,7 +10368,7 @@ function openHatchFormPrefilled(batchId) {
   if (typeof switchView === 'function') switchView('poultry');
   if (typeof switchKind === 'function') switchKind('incubation');
 
-  // v6.3.0-rc5 — Two bugs fixed (Cheison field report 07 May 2026):
+  // v6.3.0-rc6 — Two bugs fixed (Cheison field report 07 May 2026):
   //   1. The data attribute is `data-incmode`, NOT `data-mode` — old fallback 
   //      selector was a typo, so the click never fired and the hatch mode 
   //      stayed inactive.
@@ -10280,7 +10399,7 @@ function openHatchFormPrefilled(batchId) {
       if (sel) {
         sel.value = batchId;
         sel.dispatchEvent(new Event('change'));
-        // v6.3.0-rc5 — Also pre-fill date_hatched to today (operator usually 
+        // v6.3.0-rc6 — Also pre-fill date_hatched to today (operator usually 
         // records the same day as hatch). Saves a tap.
         const dhEl = document.getElementById('ih-date-hatched');
         if (dhEl && !dhEl.value) {
@@ -10455,8 +10574,107 @@ function renderEmptyStateHint() {
   hint.style.display = '';
 }
 
+/* v6.3.0 — renderActionCards
+   Decision-oriented alert banner at the very top of Home.
+   Renders ONLY when there are real, actionable alerts.
+   Calm brass-on-forest styling — no red/yellow alarm.
+   
+   Current alert types:
+     · Hatch due / overdue: incubation batches where 
+       expected_hatch <= today AND status === 'incubating' AND 
+       expected_hatch >= (today − 7 days). The 7-day window cuts 
+       out abandoned/test entries (e.g. Nandi30APR1000 from 
+       earlier test runs); real overdue stays visible up to a 
+       week so it can't be missed but doesn't pollute forever.
+   
+   Future alert types (v6.3.1+):
+     · Vaccination due (next_due <= today)
+     · Bird census stale (>14 days since last entry)
+     · Weighbridge mismatch (greenleaf vs actual variance >X%)
+*/
+function renderActionCards() {
+  const banner = document.getElementById('action-cards');
+  const list = document.getElementById('ac-list');
+  const countEl = document.getElementById('ac-header-count');
+  if (!banner || !list) return;
+
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const sevenDaysAgo = new Date(today);
+  sevenDaysAgo.setDate(today.getDate() - 7);
+  const sevenDaysAgoStr = sevenDaysAgo.toISOString().slice(0, 10);
+
+  const alerts = [];
+
+  // ─── Hatch alerts ───
+  const incubation = STATE.incubation || [];
+  incubation
+    .filter(b => b.status === 'incubating')
+    .filter(b => {
+      const exp = b.expected_hatch || '';
+      // expected today OR overdue within 7 days
+      return exp && exp <= todayStr && exp >= sevenDaysAgoStr;
+    })
+    .sort((a, b) => (a.expected_hatch || '').localeCompare(b.expected_hatch || ''))
+    .forEach(b => {
+      const exp = b.expected_hatch;
+      const isOverdue = exp < todayStr;
+      const daysOver = isOverdue
+        ? Math.round((new Date(todayStr) - new Date(exp)) / 86400000)
+        : 0;
+      const contextWhen = isOverdue
+        ? (daysOver === 1 ? 'expected yesterday' : `expected ${daysOver} days ago`)
+        : 'expected today';
+      alerts.push({
+        type: 'hatch',
+        action: 'Record hatch',
+        context: `${b.batch_id} · ${(Number(b.eggs_in) || 0).toLocaleString('en-KE')} eggs · ${contextWhen}`,
+        overdue: isOverdue,
+        onTap: () => {
+          if (typeof openHatchFormPrefilled === 'function') {
+            openHatchFormPrefilled(b.batch_id);
+          }
+        },
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a8 8 0 0 0 8-8c0-5-4-12-8-12S4 9 4 14a8 8 0 0 0 8 8z"/></svg>`,
+      });
+    });
+
+  // ─── Render ───
+  if (alerts.length === 0) {
+    banner.style.display = 'none';
+    list.innerHTML = '';
+    return;
+  }
+
+  banner.style.display = '';
+  if (countEl) {
+    countEl.textContent = alerts.length === 1 ? '1 item' : `${alerts.length} items`;
+  }
+
+  list.innerHTML = '';
+  alerts.forEach((a, idx) => {
+    const card = document.createElement('div');
+    card.className = 'ac-card' + (a.overdue ? ' overdue' : '');
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.innerHTML = `
+      <div class="ac-icon">${a.icon}</div>
+      <div class="ac-body">
+        <div class="ac-action">${a.action}</div>
+        <div class="ac-context">${a.context}</div>
+      </div>
+      <div class="ac-arrow">→</div>
+    `;
+    card.addEventListener('click', a.onTap);
+    card.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); a.onTap(); }
+    });
+    list.appendChild(card);
+  });
+}
+
 function renderHome() {
-  // v6.3.0-rc5 — Greeting changed from Swahili time-based to Nandi.
+  // v6.3.0-rc6 — Greeting changed from Swahili time-based to Nandi.
   // "Chamgei chemogeet" — universal Nandi greeting. If you want morning/evening 
   // variants later, swap this logic back to time-aware (using Nandi forms).
   document.getElementById('hero-greeting').textContent = 'Chamgei chemogeet';
@@ -10646,6 +10864,9 @@ function renderHome() {
   setSireet('hero-sireet-mtd',   'hero-sireet-mtd-kg',   sireetKgMTD);
   setSireet('hero-sireet-ytd',   'hero-sireet-ytd-kg',   sireetKgYTD);
   setSireet('hero-sireet-all',   'hero-sireet-all-kg',   sireetKgAll);
+  
+  // v6.3.0 — Action Cards alert banner (renders only if alerts qualify)
+  if (typeof renderActionCards === 'function') renderActionCards();
 
   // Zone 2a — Sinonin Tea this month
   const teaKgMonth = actualsMonth.reduce((s, a) => s + (Number(a.kg) || 0), 0);

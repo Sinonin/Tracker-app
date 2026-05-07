@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.3.0-rc6 — Action Cards alert banner: hatch decisions today (07 May 2026 Verden)
 // v6.3.0-rc5 — Sireet equity headline card with Today/MTD/YTD/All horizons (07 May 2026 Verden)
 // v6.3.0-rc4 — Group Income + Group Margin with Today/MTD/YTD/All horizons (07 May 2026 Verden)
 // v6.3.0-rc3 — Hero greeting + date single-row left-aligned · Nandi "Chamgei chemogeet" (07 May 2026 Verden)
@@ -42,7 +43,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v126';
+const CACHE = 'sinonin-greenleaf-v127';
 
 const SHELL_FILES = [
   './',
