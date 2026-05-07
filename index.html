@@ -1717,27 +1717,48 @@
     align-self: center;
     line-height: 1;
   }
-  /* Subtle accent for overdue (still calm — no red, just dimmer brass) */
-  .ac-card.overdue {
-    border-left: 2px solid var(--brass);
-  }
-  .ac-card.overdue .ac-context::after {
-    content: '';
-  }
-  
-  /* v6.3.12 — Urgent vs Approaching urgency tiers */
+  /* v6.3.16 — Action card urgency tiers now use the LITTER/VACC BAR 
+     gradient palette so the visual language is consistent across the 
+     app (Cheison: "just copy the bar colour style").
+     
+       phase-due       → red gradient (#b8453a → #d65a4d) for due TODAY
+       phase-overdue   → deep red    (#8b2e26 → #b8453a) for overdue
+     
+     Approaching items no longer surface on Home — Home only shows what 
+     deserves action TODAY. */
   .ac-card.ac-urgent {
-    border-left: 2px solid var(--brass);
+    background: linear-gradient(135deg, #b8453a, #d65a4d);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-left: 4px solid rgba(255, 255, 255, 0.30);
+    color: var(--ivory);
   }
-  .ac-card.ac-approaching {
-    border-left: 2px solid rgba(212, 175, 100, 0.4);
-    background: rgba(255, 255, 255, 0.02);
+  .ac-card.ac-overdue {
+    background: linear-gradient(135deg, #8b2e26, #b8453a);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-left: 4px solid rgba(255, 255, 255, 0.35);
+    color: var(--ivory);
   }
-  .ac-card.ac-approaching .ac-action {
+  .ac-card.ac-urgent .ac-action,
+  .ac-card.ac-overdue .ac-action {
+    color: var(--ivory);
+    font-weight: 600;
+  }
+  .ac-card.ac-urgent .ac-context,
+  .ac-card.ac-overdue .ac-context {
+    color: rgba(240, 232, 208, 0.92);
+  }
+  .ac-card.ac-urgent .ac-icon,
+  .ac-card.ac-overdue .ac-icon {
+    color: var(--ivory);
+    opacity: 0.95;
+  }
+  .ac-card.ac-urgent .ac-arrow,
+  .ac-card.ac-overdue .ac-arrow {
+    color: var(--ivory);
     opacity: 0.85;
   }
   
-  /* v6.3.12 — Empty state inside Action Cards: calm sentence, no card */
+  /* Empty state inside Action Cards: calm sentence, no card */
   .ac-empty {
     font-family: 'Fraunces', serif;
     font-style: italic;
@@ -2788,7 +2809,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.15</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.16</span>
 </header>
 
 <main>
@@ -4050,7 +4071,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.3.15</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.3.16</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -4407,7 +4428,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.3.15';
+const APP_VERSION = 'v6.3.16';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -11003,33 +11024,29 @@ function renderActionCards() {
 
   const items = [];
 
-  // ─── HATCH alerts: due today, overdue within 7 days, OR approaching in next 14 days ───
+  // ─── HATCH alerts: TODAY OR OVERDUE only (Cheison v6.3.16: 
+  //     "I don't want what doesn't deserve action TODAY to clutter Home")
+  //     Removed the +14d approaching window. ───
   (STATE.incubation || [])
     .filter(b => b.status === 'incubating')
     .filter(b => {
       const exp = b.expected_hatch || '';
-      return exp && exp >= sevenDaysAgoStr && exp <= fourteenDaysOutStr;
+      return exp && exp >= sevenDaysAgoStr && exp <= todayStr;
     })
     .sort((a, b) => (a.expected_hatch || '').localeCompare(b.expected_hatch || ''))
     .forEach(b => {
       const exp = b.expected_hatch;
-      const isUrgent = exp <= todayStr;
       const isOverdue = exp < todayStr;
       const daysOver = isOverdue
         ? Math.round((new Date(todayStr) - new Date(exp)) / 86400000)
         : 0;
-      const daysAhead = !isUrgent
-        ? Math.round((new Date(exp) - new Date(todayStr)) / 86400000)
-        : 0;
       const contextWhen = isOverdue
         ? (daysOver === 1 ? 'expected yesterday' : `expected ${daysOver} days ago`)
-        : exp === todayStr
-          ? 'expected today'
-          : `expected in ${daysAhead} ${daysAhead === 1 ? 'day' : 'days'}`;
+        : 'expected today';
       items.push({
         type: 'hatch',
-        urgency: isUrgent ? 'urgent' : 'approaching',
-        action: isUrgent ? 'Record hatch' : 'Hatch approaching',
+        urgency: isOverdue ? 'overdue' : 'urgent',
+        action: 'Record hatch',
         context: `${b.batch_id} · ${(Number(b.eggs_in) || 0).toLocaleString('en-KE')} eggs · ${contextWhen}`,
         onTap: () => {
           if (typeof openHatchFormPrefilled === 'function') {
@@ -11040,28 +11057,24 @@ function renderActionCards() {
       });
     });
 
-  // ─── VACCINATION alerts: next_due in [today−7, today+30] ───
+  // ─── VACCINATION alerts: TODAY OR OVERDUE only (Cheison v6.3.16) ───
   (STATE.vaccinations || [])
     .filter(v => v && v.next_due)
-    .filter(v => v.next_due >= sevenDaysAgoStr && v.next_due <= thirtyDaysOutStr)
+    .filter(v => v.next_due >= sevenDaysAgoStr && v.next_due <= todayStr)
     .sort((a, b) => (a.next_due || '').localeCompare(b.next_due || ''))
     .forEach(v => {
       const due = v.next_due;
-      const isUrgent = due <= todayStr;
       const isOverdue = due < todayStr;
       const daysOver  = isOverdue ? Math.round((new Date(todayStr) - new Date(due)) / 86400000) : 0;
-      const daysAhead = !isUrgent  ? Math.round((new Date(due) - new Date(todayStr)) / 86400000) : 0;
       const contextWhen = isOverdue
         ? (daysOver === 1 ? 'overdue by 1 day' : `overdue by ${daysOver} days`)
-        : due === todayStr
-          ? 'due today'
-          : `due in ${daysAhead} ${daysAhead === 1 ? 'day' : 'days'}`;
+        : 'due today';
       const vaccineName = v.vaccine || v.vaccine_name || 'Vaccine';
       const stage = v.stage || v.house || '';
       items.push({
         type: 'vaccination',
-        urgency: isUrgent ? 'urgent' : 'approaching',
-        action: isUrgent ? 'Vaccination due' : 'Vaccination approaching',
+        urgency: isOverdue ? 'overdue' : 'urgent',
+        action: 'Vaccination due',
         context: `${vaccineName}${stage ? ' · ' + stage : ''} · ${contextWhen}`,
         onTap: () => {
           if (typeof openVaccinationFormPrefilled === 'function') {
@@ -11074,40 +11087,26 @@ function renderActionCards() {
       });
     });
 
-  // ─── LITTER alerts: 56-day cycle, alert when ≤14 days remaining or overdue ───
-  // Latest litter change date determines current cycle position.
+  // ─── LITTER alerts: TODAY OR OVERDUE only (Cheison v6.3.16: Home is 
+  //     for things that need action TODAY). Earlier "uninitiated nudge" 
+  //     and 14-day approach window are dropped — they belong on the 
+  //     Poultry tab, not the Home alert banner. ───
   (() => {
     const changes = STATE.litterChanges || [];
-    if (changes.length === 0) {
-      // No litter ever recorded — gentle nudge
-      items.push({
-        type: 'litter',
-        urgency: 'approaching',
-        action: 'Litter cycle uninitiated',
-        context: 'Tap to record first litter change',
-        onTap: () => {
-          if (typeof handleLitterBarTap === 'function') handleLitterBarTap();
-        },
-        icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M3 12c4-4 8-4 12 0s8 4 6-2c-1.5-4-5-7-9-7-3 0-7 2-9 5-1 1.5-1 3 0 4z"/></svg>`,
-      });
-      return;
-    }
+    if (changes.length === 0) return;
     const latestChange = [...changes].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
     if (!latestChange || !latestChange.date) return;
     const daysSince = Math.round((new Date(todayStr) - new Date(latestChange.date)) / 86400000);
     const daysRemaining = 56 - daysSince;
-    if (daysRemaining > 14) return; // not in alert window yet
+    if (daysRemaining > 0) return; // only fire when due today or overdue
     
-    const isUrgent = daysRemaining <= 0;
     const contextWhen = daysRemaining < 0
       ? `overdue by ${-daysRemaining} ${daysRemaining === -1 ? 'day' : 'days'}`
-      : daysRemaining === 0
-        ? 'due today'
-        : `due in ${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'}`;
+      : 'due today';
     items.push({
       type: 'litter',
-      urgency: isUrgent ? 'urgent' : 'approaching',
-      action: isUrgent ? 'Litter change due' : 'Litter change approaching',
+      urgency: 'urgent',
+      action: 'Litter change due',
       context: `56-day cycle · ${contextWhen}`,
       onTap: () => {
         if (typeof handleLitterBarTap === 'function') handleLitterBarTap();
@@ -11119,27 +11118,19 @@ function renderActionCards() {
   // Lambing / harvest alert types: deferred until Sheep module + tea-season 
   // tracking are wired (v6.4.x). No items emitted for now.
 
-  // ─── Sort: urgent first (within urgency group keep original order) ───
+  // ─── Sort: overdue first, then today's urgent ───
   items.sort((a, b) => {
-    if (a.urgency === b.urgency) return 0;
-    return a.urgency === 'urgent' ? -1 : 1;
+    const order = { overdue: 0, urgent: 1 };
+    return (order[a.urgency] ?? 9) - (order[b.urgency] ?? 9);
   });
-
-  const urgentCount = items.filter(i => i.urgency === 'urgent').length;
-  const approachingCount = items.length - urgentCount;
 
   // ─── Render: ALWAYS visible (Cheison: "I lost the Notifications") ───
   banner.style.display = '';
   
-  // Header text adapts to content
+  // Header: always "Attention today" when items exist; "All caught up" otherwise.
+  // (Approaching items no longer surface on Home per v6.3.16.)
   if (headerLblEl) {
-    if (urgentCount > 0) {
-      headerLblEl.textContent = 'Attention today';
-    } else if (approachingCount > 0) {
-      headerLblEl.textContent = 'Action approaching';
-    } else {
-      headerLblEl.textContent = 'All caught up';
-    }
+    headerLblEl.textContent = items.length > 0 ? 'Attention today' : 'All caught up';
   }
   
   if (countEl) {
