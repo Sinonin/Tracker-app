@@ -2930,7 +2930,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.5.0</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.5.1</span>
 </header>
 
 <main>
@@ -3988,7 +3988,10 @@
         <h3 style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.4rem; color:var(--forest); margin:0.4rem 0 0.2rem; letter-spacing:-0.01em;">Dorper Farm</h3>
         <p style="color:var(--slate-light); font-size:0.85rem; line-height:1.5; margin:0.2rem 0 1rem;">Sheep registry · multi-owner · breed-aware</p>
 
-        <button type="button" onclick="openSheepForm('add', null)" style="display:block; width:100%; padding:0.75rem; background:var(--forest-dark); color:var(--ivory); border:none; border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:0.78rem; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer; margin-bottom:1rem;">+ Add sheep</button>
+        <button type="button" onclick="openSheepForm('add', null)" style="display:flex; align-items:center; justify-content:center; gap:0.5rem; width:100%; padding:1rem 0.75rem; background:var(--forest-dark); color:var(--ivory); border:1px solid var(--brass); border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:0.85rem; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; cursor:pointer; margin-bottom:1rem; box-shadow:0 1px 3px rgba(30,58,47,0.18);">
+          <span style="font-size:1.1rem; line-height:1">+</span>
+          <span>Register new sheep</span>
+        </button>
 
         <!-- v6.5.0 Step 3+4 — Quick Add events row. Six event types most 
              common in daily/weekly Dorper Farm operations. Each opens the 
@@ -4529,7 +4532,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.5.0</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.5.1</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -4944,7 +4947,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.5.0';
+const APP_VERSION = 'v6.5.1';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -14458,36 +14461,54 @@ async function pushSheepEventToForm(record) {
 }
 
 /* Push a Dorper record (sheep registry or event) to Apps Script gate.
-   Uses the same gate URL and gate-aware fetch as the existing six write 
-   paths. No Form fallback — Dorper writes are gate-only by design 
-   (cleaner v5 routing). If gate is unreachable, returns false and the 
-   queue retains the item for retry on next flush. */
+   v6.5.1 — Hardened to match the proven pushExpenseToGate fetch pattern 
+   exactly (mode:cors, text/plain;charset=utf-8, source field). v6.5.0 
+   had subtly different fetch options that may have caused silent CORS 
+   rejection. Console-logs every attempt so we can see what's failing 
+   from the browser DevTools network tab. */
 async function pushDorperToGate(record, action) {
   if (!USE_APPS_SCRIPT_GATE || !APPS_SCRIPT_GATE_URL) {
+    console.warn('[dorper-push] gate not configured');
     lastWriteResult = { ok: false, reason: 'gate-not-configured' };
     return false;
   }
+  const body = {
+    action,
+    payload: record,
+    source: `PWA ${APP_VERSION} ${action}`
+  };
+  console.log(`[dorper-push] →`, action, record.tag_id || record.id, body);
   try {
-    const body = {
-      action,
-      payload: record,
-      ts: new Date().toISOString()
-    };
-    const res = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(body)
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:   JSON.stringify(body)
     });
-    if (!res.ok) { lastWriteResult = { ok: false, reason: 'http-' + res.status }; return false; }
-    const json = await res.json();
-    if (json && json.ok === true) {
-      lastWriteResult = { ok: true, via: 'gate', reason: 'ok' };
+    if (!response.ok) {
+      console.error(`[dorper-push] HTTP ${response.status}`, action);
+      lastWriteResult = { ok: false, reason: 'http-' + response.status };
+      return false;
+    }
+    const json = await response.json();
+    console.log(`[dorper-push] ←`, action, json);
+    if (json && json.ok) {
+      lastWriteResult = { ok: true, via: 'gate' };
       return true;
     }
-    lastWriteResult = { ok: false, reason: (json && json.reason) || 'gate-rejected', message: (json && json.message) || '' };
+    if (json && json.writesLocked) {
+      lastWriteResult = { ok: false, reason: 'writes-locked', message: json.reason };
+      return false;
+    }
+    lastWriteResult = { 
+      ok: false, 
+      reason: (json && json.reason) || 'gate-rejected', 
+      message: (json && json.message) || JSON.stringify(json) 
+    };
     return false;
   } catch (e) {
-    lastWriteResult = { ok: false, reason: 'network-error' };
+    console.error('[dorper-push] network error:', e);
+    lastWriteResult = { ok: false, reason: 'network-error', message: e.message };
     return false;
   }
 }
