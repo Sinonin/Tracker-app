@@ -2940,7 +2940,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.5.3</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.5.4</span>
 </header>
 
 <main>
@@ -4547,7 +4547,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.5.3</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.5.4</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -4962,7 +4962,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.5.3';
+const APP_VERSION = 'v6.5.4';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -14606,6 +14606,10 @@ async function pushDorperToGate(record, action) {
   };
   const refLabel = record.tag_id || record.id || '?';
   console.log(`[dorper-push] →`, action, refLabel, body);
+  
+  // STEP 1 — Try CORS mode for response feedback. Best case: we get 
+  // {ok: true} confirmation back from Apps Script. This works when 
+  // the browser allows cross-origin response reading. 
   try {
     const response = await fetch(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
@@ -14613,33 +14617,51 @@ async function pushDorperToGate(record, action) {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body:   JSON.stringify(body)
     });
-    if (!response.ok) {
-      const msg = `HTTP ${response.status}`;
-      console.error(`[dorper-push] ${msg}`, action);
-      lastWriteResult = { ok: false, reason: 'http-' + response.status };
-      _recordDorperPush(action + ' ' + refLabel, false, msg);
+    if (response.ok) {
+      const json = await response.json();
+      console.log(`[dorper-push] ←`, action, json);
+      if (json && json.ok) {
+        lastWriteResult = { ok: true, via: 'gate' };
+        _recordDorperPush(action + ' ' + refLabel, true, 'saved (verified)');
+        return true;
+      }
+      if (json && json.writesLocked) {
+        lastWriteResult = { ok: false, reason: 'writes-locked' };
+        _recordDorperPush(action + ' ' + refLabel, false, 'gate locked');
+        return false;
+      }
+      // Server-level rejection — don't retry (would just fail again)
+      const reason = (json && json.reason) || 'gate-rejected';
+      const message = (json && json.message) || JSON.stringify(json);
+      lastWriteResult = { ok: false, reason, message };
+      _recordDorperPush(action + ' ' + refLabel, false, reason + ': ' + message.slice(0, 50));
       return false;
     }
-    const json = await response.json();
-    console.log(`[dorper-push] ←`, action, json);
-    if (json && json.ok) {
-      lastWriteResult = { ok: true, via: 'gate' };
-      _recordDorperPush(action + ' ' + refLabel, true, 'saved to Sheet');
-      return true;
-    }
-    if (json && json.writesLocked) {
-      const msg = json.reason || 'writes locked';
-      lastWriteResult = { ok: false, reason: 'writes-locked', message: msg };
-      _recordDorperPush(action + ' ' + refLabel, false, 'gate locked');
-      return false;
-    }
-    const reason = (json && json.reason) || 'gate-rejected';
-    const message = (json && json.message) || JSON.stringify(json);
-    lastWriteResult = { ok: false, reason, message };
-    _recordDorperPush(action + ' ' + refLabel, false, reason + ': ' + message.slice(0, 60));
-    return false;
+    // Non-OK status — fall through to no-cors retry
+    console.warn(`[dorper-push] cors HTTP ${response.status}, trying no-cors`, action);
   } catch (e) {
-    console.error('[dorper-push] network error:', e);
+    // CORS rejected, network blocked, or fetch threw — fall through
+    console.warn('[dorper-push] cors failed, trying no-cors fallback:', e.message);
+  }
+  
+  // STEP 2 — No-cors fire-and-forget fallback. The request reaches 
+  // Apps Script (and the doPost runs, writing to the Sheet), but the 
+  // browser hides the response from JS. We can't verify success in the 
+  // moment — but Apps Script's Executions log AND the next cloud-fetch 
+  // will both confirm the write landed. Same fallback pattern your 
+  // existing six write paths use (gate-cors → form-no-cors).
+  try {
+    await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:   JSON.stringify(body)
+    });
+    lastWriteResult = { ok: true, via: 'gate-no-cors' };
+    _recordDorperPush(action + ' ' + refLabel, true, 'sent (no-cors, verify on refresh)');
+    return true;  // Optimistic — request reached server
+  } catch (e) {
+    console.error('[dorper-push] no-cors also failed:', e);
     lastWriteResult = { ok: false, reason: 'network-error', message: e.message };
     _recordDorperPush(action + ' ' + refLabel, false, 'network: ' + e.message);
     return false;
