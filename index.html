@@ -2494,16 +2494,6 @@
   .sheep-row .sr-status.culled   { background: rgba(184,113,77,0.15); color: #b8714d; }
   .sheep-row .sr-status.external { background: rgba(180,140,80,0.12); color: var(--brass); font-style: italic; }
 
-  /* v6.5.2 — Bottom padding on Sheep sub-views so the Cancel/Save 
-     buttons in the form (and event form, profile actions) sit clearly 
-     above the bottom navigation. body's 100px padding-bottom alone 
-     wasn't enough on long forms. */
-  #sheep-form-section,
-  #sheep-event-section,
-  #sheep-profile-section {
-    padding-bottom: 3rem !important;
-  }
-  
   .recon-row {
     padding: 0.7rem 0;
     border-bottom: 1px solid var(--rule);
@@ -2940,7 +2930,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.5.5</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.5.1</span>
 </header>
 
 <main>
@@ -3998,11 +3988,6 @@
         <h3 style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.4rem; color:var(--forest); margin:0.4rem 0 0.2rem; letter-spacing:-0.01em;">Dorper Farm</h3>
         <p style="color:var(--slate-light); font-size:0.85rem; line-height:1.5; margin:0.2rem 0 1rem;">Sheep registry · multi-owner · breed-aware</p>
 
-        <!-- v6.5.2 — In-app sync diagnostic. Shows last 5 push attempts 
-             so we can verify cloud-sheet writes without browser DevTools. 
-             Renders only when there's something to show. -->
-        <div id="sheep-sync-diagnostic" style="display:none; margin-bottom:1rem; padding:0.6rem 0.7rem; border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:0.7rem; line-height:1.5;"></div>
-
         <button type="button" onclick="openSheepForm('add', null)" style="display:flex; align-items:center; justify-content:center; gap:0.5rem; width:100%; padding:1rem 0.75rem; background:var(--forest-dark); color:var(--ivory); border:1px solid var(--brass); border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:0.85rem; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; cursor:pointer; margin-bottom:1rem; box-shadow:0 1px 3px rgba(30,58,47,0.18);">
           <span style="font-size:1.1rem; line-height:1">+</span>
           <span>Register new sheep</span>
@@ -4547,7 +4532,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.5.5</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.5.1</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -4955,14 +4940,14 @@ const CLOUD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwzHUz9She1PsVPN
    PHASE 1 SCOPE: Greenleaf entries only. The other five write paths
    (Actuals, Expenses, Banked, Poultry, Roster) still use Forms in Phase 1.
    They migrate in Phase 2. */
-const APPS_SCRIPT_GATE_URL = 'https://script.google.com/macros/s/AKfycbxSjUhsyCXKPNfMCIxvKfCGqkP3KMPTgM_opxXDbx9696SFaIcNvJmywTpasgI4ZYu7QQ/exec';
+const APPS_SCRIPT_GATE_URL = 'https://script.google.com/macros/s/AKfycbwzHUz9She1PsVPNOWvssSiQcye8hpKZ9v_3d1aX6nsqPDnIN375z8krhMwsCyikVSLtQ/exec';
 const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass gate entirely
 
 /* v5.0.12 — Single source-of-truth for app version. Used by every pushXxxToGate
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.5.5';
+const APP_VERSION = 'v6.5.1';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -13654,97 +13639,7 @@ function sheepAge(dob) {
   return rem === 0 ? `${years}y` : `${years}y ${rem}m`;
 }
 
-/* v6.5.2 — In-app sync diagnostic for Dorper writes. Reads the in-memory 
-   _dorperPushLog and renders the last 5 attempts with green ✓ / red ✗ 
-   plus a friendly reason. Shows only when there's something to show. 
-   Lives at the top of the Sheep view so cloud-sheet write status is 
-   self-evident — no browser DevTools required.
-   v6.5.3 — Always visible on Sheep view. Reads the sync queue too so 
-   we can see whether items are stuck waiting (queueDepth > 0 AND no 
-   recent push log = flushQueue not running). Includes a manual "Push 
-   now" button that calls flushQueue({manual:true}) and re-renders. */
-async function renderSheepSyncDiagnostic() {
-  const el = document.getElementById('sheep-sync-diagnostic');
-  if (!el) return;
-  
-  // Read queue and count Dorper items
-  let queueDepth = { sheep: 0, event: 0, total: 0 };
-  try {
-    const queue = await storageGet(K_SYNC_QUEUE, []);
-    queueDepth.total = queue.length;
-    queueDepth.sheep = queue.filter(q => q.kind === 'sheep').length;
-    queueDepth.event = queue.filter(q => q.kind === 'sheep-event').length;
-  } catch {}
-  
-  el.style.display = '';
-  
-  const last = _dorperPushLog[0];
-  const lastOk = last && last.ok;
-  const hasFails = !!_dorperPushLog.find(p => !p.ok);
-  
-  // Banner colour
-  let bg, border;
-  if (queueDepth.sheep + queueDepth.event > 0 || hasFails) {
-    bg = 'rgba(184,113,77,0.10)';   // amber for waiting / failures
-    border = '0.5px solid rgba(184,113,77,0.35)';
-  } else if (lastOk) {
-    bg = 'rgba(30,58,47,0.08)';      // green for last success
-    border = '0.5px solid rgba(30,58,47,0.25)';
-  } else {
-    bg = 'rgba(180,140,80,0.08)';    // brass for idle/no attempts yet
-    border = '0.5px solid rgba(180,140,80,0.25)';
-  }
-  el.style.background = bg;
-  el.style.border = border;
-  
-  const fmt = (iso) => {
-    try {
-      const d = new Date(iso);
-      return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    } catch { return iso; }
-  };
-  
-  // Header line: queue + last attempt time
-  let headerHtml = `<div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.4rem">
-    <span style="font-size:0.6rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--brass)">Sheet sync</span>
-    <button type="button" onclick="forceFlushDorper()" style="background:transparent; border:0.5px solid var(--brass); color:var(--brass); font-family:'IBM Plex Mono',monospace; font-size:0.58rem; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; padding:0.2rem 0.5rem; border-radius:3px;">Push now</button>
-  </div>`;
-  
-  // Queue summary
-  const queueStr = queueDepth.sheep + queueDepth.event > 0
-    ? `Pending: <strong>${queueDepth.sheep}</strong> sheep, <strong>${queueDepth.event}</strong> events`
-    : `<span style="color:var(--forest)">Queue empty</span>`;
-  headerHtml += `<div style="color:var(--ink); margin-bottom:0.3rem">${queueStr}</div>`;
-  
-  // Recent attempt log
-  if (_dorperPushLog.length === 0) {
-    headerHtml += `<div style="color:var(--slate-light); font-style:italic; font-size:0.65rem">No push attempts yet this session.</div>`;
-  } else {
-    headerHtml += _dorperPushLog.map(p => {
-      const icon = p.ok ? '<span style="color:var(--forest)">✓</span>' : '<span style="color:#b8714d">✗</span>';
-      const time = fmt(p.at);
-      return `<div style="display:flex; gap:0.5rem; align-items:baseline; padding:0.1rem 0; font-size:0.65rem">
-        ${icon}
-        <span style="color:var(--slate-light)">${time}</span>
-        <span style="color:var(--ink); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${p.message || ''}">${p.action}${p.message ? ' — ' + p.message : ''}</span>
-      </div>`;
-    }).join('');
-  }
-  
-  el.innerHTML = headerHtml;
-}
-
-/* Manual flush trigger from the Sheep view diagnostic. Forces a queue 
-   flush even if blockedByGate items are present (manual:true bypasses 
-   the gate-rejection skip). */
-async function forceFlushDorper() {
-  showToast('Flushing sync queue...', 1500);
-  if (typeof flushQueue === 'function') {
-    await flushQueue({ manual: true });
-  }
-  await renderSheepSyncDiagnostic();
-}
-
+/* Populate filter dropdowns once (called when sheep view first opens). */
 function ensureSheepFiltersPopulated() {
   const ownerSel = document.getElementById('sheep-filter-owner');
   if (ownerSel && ownerSel.options.length <= 1) {
@@ -13773,7 +13668,6 @@ function ensureSheepFiltersPopulated() {
 /* Main render: list view with filters applied. */
 function renderSheepRegistry() {
   ensureSheepFiltersPopulated();
-  renderSheepSyncDiagnostic();
   
   // Update flock count meta
   const meta = document.getElementById('sheep-flock-meta');
@@ -14566,37 +14460,16 @@ async function pushSheepEventToForm(record) {
   return await pushDorperToGate(record, 'add_sheep_event');
 }
 
-/* v6.5.2 — Recent dorper push results (in-memory ring buffer of 5).
-   Surfaced by renderSheepSyncDiagnostic() at the top of the Sheep view 
-   so Cheison can see push outcomes without browser DevTools. */
-const _dorperPushLog = [];
-function _recordDorperPush(action, ok, message) {
-  _dorperPushLog.unshift({ 
-    at: new Date().toISOString(), 
-    action, ok, message: message || ''
-  });
-  if (_dorperPushLog.length > 5) _dorperPushLog.length = 5;
-  // Re-render the diagnostic banner so the result is visible immediately, 
-  // regardless of whether the page was just reloaded or the push happened 
-  // async after a form close.
-  if (typeof renderSheepSyncDiagnostic === 'function') {
-    renderSheepSyncDiagnostic();
-  }
-}
-
 /* Push a Dorper record (sheep registry or event) to Apps Script gate.
    v6.5.1 — Hardened to match the proven pushExpenseToGate fetch pattern 
    exactly (mode:cors, text/plain;charset=utf-8, source field). v6.5.0 
    had subtly different fetch options that may have caused silent CORS 
    rejection. Console-logs every attempt so we can see what's failing 
-   from the browser DevTools network tab.
-   v6.5.2 — Also records every attempt to _dorperPushLog so the in-app 
-   diagnostic panel reflects current sync state. */
+   from the browser DevTools network tab. */
 async function pushDorperToGate(record, action) {
   if (!USE_APPS_SCRIPT_GATE || !APPS_SCRIPT_GATE_URL) {
     console.warn('[dorper-push] gate not configured');
     lastWriteResult = { ok: false, reason: 'gate-not-configured' };
-    _recordDorperPush(action, false, 'gate not configured');
     return false;
   }
   const body = {
@@ -14604,12 +14477,7 @@ async function pushDorperToGate(record, action) {
     payload: record,
     source: `PWA ${APP_VERSION} ${action}`
   };
-  const refLabel = record.tag_id || record.id || '?';
-  console.log(`[dorper-push] →`, action, refLabel, body);
-  
-  // STEP 1 — Try CORS mode for response feedback. Best case: we get 
-  // {ok: true} confirmation back from Apps Script. This works when 
-  // the browser allows cross-origin response reading. 
+  console.log(`[dorper-push] →`, action, record.tag_id || record.id, body);
   try {
     const response = await fetch(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
@@ -14617,53 +14485,30 @@ async function pushDorperToGate(record, action) {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body:   JSON.stringify(body)
     });
-    if (response.ok) {
-      const json = await response.json();
-      console.log(`[dorper-push] ←`, action, json);
-      if (json && json.ok) {
-        lastWriteResult = { ok: true, via: 'gate' };
-        _recordDorperPush(action + ' ' + refLabel, true, 'saved (verified)');
-        return true;
-      }
-      if (json && json.writesLocked) {
-        lastWriteResult = { ok: false, reason: 'writes-locked' };
-        _recordDorperPush(action + ' ' + refLabel, false, 'gate locked');
-        return false;
-      }
-      // Server-level rejection — don't retry (would just fail again)
-      const reason = (json && json.reason) || 'gate-rejected';
-      const message = (json && json.message) || JSON.stringify(json);
-      lastWriteResult = { ok: false, reason, message };
-      _recordDorperPush(action + ' ' + refLabel, false, reason + ': ' + message.slice(0, 50));
+    if (!response.ok) {
+      console.error(`[dorper-push] HTTP ${response.status}`, action);
+      lastWriteResult = { ok: false, reason: 'http-' + response.status };
       return false;
     }
-    // Non-OK status — fall through to no-cors retry
-    console.warn(`[dorper-push] cors HTTP ${response.status}, trying no-cors`, action);
+    const json = await response.json();
+    console.log(`[dorper-push] ←`, action, json);
+    if (json && json.ok) {
+      lastWriteResult = { ok: true, via: 'gate' };
+      return true;
+    }
+    if (json && json.writesLocked) {
+      lastWriteResult = { ok: false, reason: 'writes-locked', message: json.reason };
+      return false;
+    }
+    lastWriteResult = { 
+      ok: false, 
+      reason: (json && json.reason) || 'gate-rejected', 
+      message: (json && json.message) || JSON.stringify(json) 
+    };
+    return false;
   } catch (e) {
-    // CORS rejected, network blocked, or fetch threw — fall through
-    console.warn('[dorper-push] cors failed, trying no-cors fallback:', e.message);
-  }
-  
-  // STEP 2 — No-cors fire-and-forget fallback. The request reaches 
-  // Apps Script (and the doPost runs, writing to the Sheet), but the 
-  // browser hides the response from JS. We can't verify success in the 
-  // moment — but Apps Script's Executions log AND the next cloud-fetch 
-  // will both confirm the write landed. Same fallback pattern your 
-  // existing six write paths use (gate-cors → form-no-cors).
-  try {
-    await fetch(APPS_SCRIPT_GATE_URL, {
-      method: 'POST',
-      mode:   'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body:   JSON.stringify(body)
-    });
-    lastWriteResult = { ok: true, via: 'gate-no-cors' };
-    _recordDorperPush(action + ' ' + refLabel, true, 'sent (no-cors, verify on refresh)');
-    return true;  // Optimistic — request reached server
-  } catch (e) {
-    console.error('[dorper-push] no-cors also failed:', e);
+    console.error('[dorper-push] network error:', e);
     lastWriteResult = { ok: false, reason: 'network-error', message: e.message };
-    _recordDorperPush(action + ' ' + refLabel, false, 'network: ' + e.message);
     return false;
   }
 }
