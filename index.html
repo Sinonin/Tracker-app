@@ -2880,7 +2880,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.23</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.24</span>
 </header>
 
 <main>
@@ -4142,7 +4142,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.3.23</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.3.24</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -4499,7 +4499,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.3.23';
+const APP_VERSION = 'v6.3.24';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -12062,27 +12062,55 @@ function renderHome() {
   // v5.9.0 — Year-over-year + rolling 4-month trend MOVED to Insights.
   // Was: renderYoYAndTrend();
 
-  // Top pluckers (v6.3.22 — diagnostic counting bug fix)
-  // v6.3.20 only counted entries that had pluckerId, so entries with null 
-  // pluckerId showed as "No greenleaf entries" — wrong, they exist. Now we 
-  // count ALL entries up front and distinguish three failure modes precisely.
+  // Top pluckers (v6.3.24 — heal missing pluckerIds at render time)
+  // v6.3.22 diagnostic confirmed cloud-sync is delivering 38 entries 
+  // with valid kg but pluckerId=null (the regex in cloudToLocalPlucker 
+  // didn't match the Sheet's plucker field format). Rather than block 
+  // the rank list on a fix-the-parser change, we heal here:
+  //   1. If pluckerId is null but pluckerName exists, try to resolve 
+  //      the id from PLUCKERS roster by name (case-insensitive).
+  //   2. If that fails too, use the lowercased name as a stable bucket 
+  //      key prefixed with __name: so the rank still works, just 
+  //      without an id.
+  // Result: 38 kg-bearing entries now rank by name, even when sync 
+  // delivers no IDs.
   const byP = {};
   const totalRawEntries = entries.length;
   let totalGreenleafKg = 0;
-  let entriesWithPluckerId = 0;
+  let healedFromName = 0;
   entries.forEach(e => {
     const qty = Number(e.qty) || 0;
-    totalGreenleafKg += qty;  // count ALL kg regardless of pluckerId
-    if (e.pluckerId == null) return;  // skip for ranking only
-    entriesWithPluckerId++;
-    byP[e.pluckerId] = byP[e.pluckerId] || { kg: 0, earnings: 0, name: e.pluckerName || '' };
-    byP[e.pluckerId].kg += qty;
+    totalGreenleafKg += qty;
+    
+    let bucketKey  = e.pluckerId;
+    let bucketName = e.pluckerName || '';
+    
+    if (bucketKey == null) {
+      if (!bucketName) return;  // truly malformed
+      const roster = (typeof PLUCKERS !== 'undefined' && PLUCKERS) ? PLUCKERS : [];
+      const found = roster.find(p => 
+        p.name && p.name.toLowerCase() === bucketName.toLowerCase()
+      );
+      if (found) {
+        bucketKey = found.id;
+        bucketName = found.name;  // canonical casing
+      } else {
+        bucketKey = '__name:' + bucketName.toLowerCase();
+      }
+      healedFromName++;
+    }
+    
+    byP[bucketKey] = byP[bucketKey] || { kg: 0, earnings: 0, name: bucketName || `Plucker #${bucketKey}` };
+    byP[bucketKey].kg += qty;
     const c = computeEntry(e);
-    if (c) byP[e.pluckerId].earnings += c.labour + c.bonus + c.greenleaf;
+    if (c) byP[bucketKey].earnings += c.labour + c.bonus + c.greenleaf;
   });
   const rank = Object.entries(byP).map(([id, v]) => {
+    // Resolve display name: PLUCKERS lookup by id (if numeric) → existing 
+    // bucket name → fallback "Plucker #ID".
     const idNum = parseInt(id, 10);
-    const current = (typeof PLUCKERS !== 'undefined' && PLUCKERS) ? PLUCKERS.find(p => p.id === idNum) : null;
+    const current = (!Number.isNaN(idNum) && typeof PLUCKERS !== 'undefined' && PLUCKERS)
+      ? PLUCKERS.find(p => p.id === idNum) : null;
     const name = (current && current.name) || v.name || `Plucker #${id}`;
     return { ...v, name };
   }).filter(v => v.kg > 0)
@@ -12092,16 +12120,13 @@ function renderHome() {
   if (!rBox) {
     console.warn('[top-pluckers] container #top-pluckers not in DOM');
   } else if (rank.length === 0) {
-    // Three-tier diagnostic so Cheison sees WHY the list is empty.
     let msg;
     if (totalRawEntries === 0) {
       msg = 'No greenleaf entries this month';
-    } else if (entriesWithPluckerId === 0) {
-      msg = `${totalRawEntries} entries · ${kg(totalGreenleafKg)} kg this month · plucker IDs missing in sync`;
     } else if (totalGreenleafKg === 0) {
       msg = `${totalRawEntries} entries · 0 kg recorded`;
     } else {
-      msg = `${totalRawEntries} entries · ${kg(totalGreenleafKg)} kg total · ranking failed`;
+      msg = `${totalRawEntries} entries · ${kg(totalGreenleafKg)} kg total · all unparseable`;
     }
     rBox.innerHTML = `<div class="empty" style="padding:1rem 0"><div class="sub">${msg}</div></div>`;
   } else {
@@ -12111,6 +12136,9 @@ function renderHome() {
         <div class="name">${v.name}<span class="meta">Ksh ${moneyRound(v.earnings)} earned</span></div>
         <span class="kg">${kg(v.kg)} kg</span>
       </div>`).join('');
+    if (healedFromName > 0) {
+      console.log(`[top-pluckers] healed ${healedFromName} entries via name lookup (cloud sync didn't deliver pluckerId)`);
+    }
   }
 
   // v5.9.0 — Paint home incubation progress in Kipkenda Poultry section
