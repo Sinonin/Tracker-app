@@ -493,7 +493,15 @@
     color: var(--brass-light);
     opacity: 0.85;
   }
-  main { flex: 1; padding: 1.25rem 1.1rem; }
+  main { flex: 1; padding: 1.25rem 0; }
+  /* v6.3.23 — Removed main's horizontal padding (was 1.1rem). The 
+     compensating negative margins on .hero and .panel:not(#panel-home) > * 
+     never produced the expected visual result on Cheison's device — even 
+     though the math was right and the selectors had higher specificity 
+     than the base .section rule. Killing the source of the problem 
+     instead of fighting it: main now has zero horizontal padding, panels 
+     and their children sit at body edges natively, individual cards/
+     sections rely on their own internal padding for content breathing. */
   .panel { display: none; }
   .panel.active { display: block; animation: fadein .22s ease-out; }
   @keyframes fadein { from { opacity:0; transform: translateY(4px);} to { opacity:1; transform:none; } }
@@ -1142,33 +1150,28 @@
     background: linear-gradient(135deg, var(--forest-dark), var(--forest) 55%, var(--forest-mid));
     color: var(--ivory);
     padding: 1.35rem 1.35rem 1.5rem;
-    /* v6.3.12 — Bleed .hero to body edges to match header/nav width.
-       Negative horizontal margin cancels main's 1.1rem padding so the 
-       forest panel sits flush with the brand bar above and the bottom 
-       nav below. Other panels still respect main's padding. */
-    margin-left: -1.1rem;
-    margin-right: -1.1rem;
+    /* v6.3.23 — Negative margins removed; main no longer has horizontal 
+       padding, so .hero sits at body edges natively. Internal 1.35rem 
+       padding gives content the breathing room. */
     border-radius: 0;
     margin-bottom: 1.1rem;
     border-left: none;
     position: relative; overflow: hidden;
   }
   
-  /* v6.3.21 — Edge alignment for non-Home panels (Cheison Day 11):
-     Tea / Poultry / Other / Insights / Admin / Records / Add panel content 
-     now bleeds to body edges the same way Home's hero does. The negative 
-     margin cancels main's 1.1rem horizontal padding for first-level 
-     children — sections, quick-add rows, filter bars, biz-toggles. 
-     Border-radius and side borders dropped on the bled elements so they 
-     don't clip awkwardly at the body edges. */
+  /* v6.3.23 — Border/radius reset for boxed-card-style direct children of 
+     non-Home panels. With main padding now 0, sections sit at body edges 
+     natively — but the .section's default border-radius and side borders 
+     would clip awkwardly at body edges. Drop them on direct children of 
+     non-Home panels so the boxed look becomes a full-width strip. */
   .panel:not(#panel-home) > .section,
   .panel:not(#panel-home) > .quick-add-section,
   .panel:not(#panel-home) > .filter-bar,
   .panel:not(#panel-home) > .biz-toggle,
+  .panel:not(#panel-home) > .kind-toggle,
+  .panel:not(#panel-home) > [id$="-kind"],
   .panel:not(#panel-home) > .records-totals,
-  .panel:not(#panel-home) > .insights-period {
-    margin-left: -1.1rem;
-    margin-right: -1.1rem;
+  .panel:not(#panel-home) > .period-toggle {
     border-left: none;
     border-right: none;
     border-radius: 0;
@@ -2877,7 +2880,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.21</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.23</span>
 </header>
 
 <main>
@@ -4139,7 +4142,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.3.21</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.3.23</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -4496,7 +4499,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.3.21';
+const APP_VERSION = 'v6.3.23';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -12059,19 +12062,19 @@ function renderHome() {
   // v5.9.0 — Year-over-year + rolling 4-month trend MOVED to Insights.
   // Was: renderYoYAndTrend();
 
-  // Top pluckers (v6.3.20 — defensive renderer)
-  // Was failing silently when entries lacked pluckerName (cloud-synced rows 
-  // sometimes arrive without it). Now: name fallback to PLUCKERS lookup OR 
-  // "Plucker #ID", and a diagnostic empty-state that distinguishes "no 
-  // entries" from "entries exist but no kg".
+  // Top pluckers (v6.3.22 — diagnostic counting bug fix)
+  // v6.3.20 only counted entries that had pluckerId, so entries with null 
+  // pluckerId showed as "No greenleaf entries" — wrong, they exist. Now we 
+  // count ALL entries up front and distinguish three failure modes precisely.
   const byP = {};
-  let totalEntriesCount = 0;
-  let totalGreenleafKg  = 0;
+  const totalRawEntries = entries.length;
+  let totalGreenleafKg = 0;
+  let entriesWithPluckerId = 0;
   entries.forEach(e => {
-    if (e.pluckerId == null) return;  // skip malformed
-    totalEntriesCount++;
     const qty = Number(e.qty) || 0;
-    totalGreenleafKg += qty;
+    totalGreenleafKg += qty;  // count ALL kg regardless of pluckerId
+    if (e.pluckerId == null) return;  // skip for ranking only
+    entriesWithPluckerId++;
     byP[e.pluckerId] = byP[e.pluckerId] || { kg: 0, earnings: 0, name: e.pluckerName || '' };
     byP[e.pluckerId].kg += qty;
     const c = computeEntry(e);
@@ -12087,17 +12090,18 @@ function renderHome() {
     .slice(0, 3);
   const rBox = document.getElementById('top-pluckers');
   if (!rBox) {
-    // Container missing — log once. (Container lives in panel-tea.)
     console.warn('[top-pluckers] container #top-pluckers not in DOM');
   } else if (rank.length === 0) {
-    // Diagnostic empty state: tells the operator WHY it's empty.
+    // Three-tier diagnostic so Cheison sees WHY the list is empty.
     let msg;
-    if (totalEntriesCount === 0) {
+    if (totalRawEntries === 0) {
       msg = 'No greenleaf entries this month';
+    } else if (entriesWithPluckerId === 0) {
+      msg = `${totalRawEntries} entries · ${kg(totalGreenleafKg)} kg this month · plucker IDs missing in sync`;
     } else if (totalGreenleafKg === 0) {
-      msg = `${totalEntriesCount} entries this month · 0 kg recorded`;
+      msg = `${totalRawEntries} entries · 0 kg recorded`;
     } else {
-      msg = `${totalEntriesCount} entries · ${kg(totalGreenleafKg)} kg total · plucker info missing`;
+      msg = `${totalRawEntries} entries · ${kg(totalGreenleafKg)} kg total · ranking failed`;
     }
     rBox.innerHTML = `<div class="empty" style="padding:1rem 0"><div class="sub">${msg}</div></div>`;
   } else {
