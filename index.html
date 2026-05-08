@@ -1153,6 +1153,26 @@
     border-left: none;
     position: relative; overflow: hidden;
   }
+  
+  /* v6.3.21 — Edge alignment for non-Home panels (Cheison Day 11):
+     Tea / Poultry / Other / Insights / Admin / Records / Add panel content 
+     now bleeds to body edges the same way Home's hero does. The negative 
+     margin cancels main's 1.1rem horizontal padding for first-level 
+     children — sections, quick-add rows, filter bars, biz-toggles. 
+     Border-radius and side borders dropped on the bled elements so they 
+     don't clip awkwardly at the body edges. */
+  .panel:not(#panel-home) > .section,
+  .panel:not(#panel-home) > .quick-add-section,
+  .panel:not(#panel-home) > .filter-bar,
+  .panel:not(#panel-home) > .biz-toggle,
+  .panel:not(#panel-home) > .records-totals,
+  .panel:not(#panel-home) > .insights-period {
+    margin-left: -1.1rem;
+    margin-right: -1.1rem;
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
+  }
   .hero::before {
     content: ''; position: absolute;
     top: -40px; right: -40px;
@@ -2163,6 +2183,27 @@
     filter: none !important;
     user-select: auto;
   }
+  /* v6.3.21 — Close 4 pre-existing stealth leaks discovered in v6.3.18 
+     audit. These KES surfaces sat in containers that were either KEEP-CLEAR 
+     or untagged. Now blurred explicitly by ID:
+       · #tea-mtd-all-sub / #tea-ytd-all-sub — "Ksh X expected" subtext on
+         Tea aggregate cards. Container .biz-card .sub is in KEEP-CLEAR 
+         (intended for kg subtitles) so we need !important to override.
+       · #q-cash / #q-accrued — Cash now / Accrued amounts in expense 
+         form. Class .sub-val never tagged.
+       · #a-preview-gapval — Gap value in actuals preview. Class .v 
+         outside .econ-item parent. */
+  body.stealth-mode #tea-mtd-all-sub,
+  body.stealth-mode #tea-ytd-all-sub {
+    filter: blur(7px) !important;
+    user-select: none;
+  }
+  body.stealth-mode #q-cash,
+  body.stealth-mode #q-accrued,
+  body.stealth-mode #a-preview-gapval {
+    filter: blur(7px);
+    user-select: none;
+  }
   /* But-but — financial values nested inside an otherwise-visible container must still blur.
      .stealth-money always wins, regardless of where it lives.
      NO hover-to-peek — the cursor IS the act of looking, and on touch devices the touch IS
@@ -2836,7 +2877,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.20</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.21</span>
 </header>
 
 <main>
@@ -3016,7 +3057,7 @@
           <span class="qa-label">Actuals</span>
         </button>
         <button class="quick-add-card" type="button" onclick="openAddPanel('tea','greenleaf')">
-          <span class="qa-icon" aria-label="two leaves and a bud"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="currentColor" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22 V13" stroke-width="1.3" fill="none"/><path d="M12 13 C7 12.5 4 9.5 5 4 C10 5 13 8 12 13 Z"/><path d="M12 13 C17 12.5 20 9.5 19 4 C14 5 11 8 12 13 Z"/><circle cx="12" cy="3.6" r="1.7"/></svg></span>
+          <span class="qa-icon" aria-label="two leaves and a bud"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="currentColor" stroke-width="0.5" stroke-linejoin="round" stroke-linecap="round"><line x1="12" y1="13" x2="12" y2="22" stroke-width="1.4"/><path d="M12 13 C10.6 9 11 4 12 2 C13 4 13.4 9 12 13 Z"/><path d="M12 13 C7 11 3 8 3 3.5 C8 5 11.5 8.5 12 13 Z"/><path d="M12 13 C17 11 21 8 21 3.5 C16 5 12.5 8.5 12 13 Z"/></svg></span>
           <span class="qa-label">Plucker Kg</span>
         </button>
         <button class="quick-add-card" type="button" onclick="openAddPanel('tea','expense')">
@@ -4098,7 +4139,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.3.20</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.3.21</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -4455,7 +4496,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.3.20';
+const APP_VERSION = 'v6.3.21';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -11338,19 +11379,10 @@ function renderHome() {
   marginEl.textContent = fmtMargin(marginMTDpct);
   marginEl.classList.toggle('negative', marginMTDpct !== null && marginMTDpct < 0);
   
-  // Margin period label — show day-of-month context
-  const dayOfMonth = new Date().getDate();
-  const lastDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
-  const periodLabelEl = document.getElementById('hero-margin-period');
-  if (periodLabelEl) {
-    const monthName = new Date().toLocaleDateString('en-GB', { month: 'long' });
-    periodLabelEl.textContent = `${monthName} to date · day ${dayOfMonth} of ${lastDayOfMonth}`;
-  }
-  const incomePeriodEl = document.getElementById('hero-income-period');
-  if (incomePeriodEl) {
-    const monthName = new Date().toLocaleDateString('en-GB', { month: 'long' });
-    incomePeriodEl.textContent = `${monthName} to date`;
-  }
+  // v6.3.21 — Removed two dead getElementById refs (#hero-margin-period and 
+  // #hero-income-period) — orphaned when the Group Margin / Group Income 
+  // cards were replaced with the four horizon cards in v6.3.2. The period 
+  // label is now carried inside each card's own .hmc-period element.
   
   // Horizon strip — Group Margin (with negative-color highlighting)
   const setMargin = (id, pct) => {
