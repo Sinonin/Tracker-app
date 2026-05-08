@@ -2940,7 +2940,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.5.2</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.5.3</span>
 </header>
 
 <main>
@@ -4547,7 +4547,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.5.2</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.5.3</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -4962,7 +4962,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.5.2';
+const APP_VERSION = 'v6.5.3';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -13658,19 +13658,42 @@ function sheepAge(dob) {
    _dorperPushLog and renders the last 5 attempts with green ✓ / red ✗ 
    plus a friendly reason. Shows only when there's something to show. 
    Lives at the top of the Sheep view so cloud-sheet write status is 
-   self-evident — no browser DevTools required. */
-function renderSheepSyncDiagnostic() {
+   self-evident — no browser DevTools required.
+   v6.5.3 — Always visible on Sheep view. Reads the sync queue too so 
+   we can see whether items are stuck waiting (queueDepth > 0 AND no 
+   recent push log = flushQueue not running). Includes a manual "Push 
+   now" button that calls flushQueue({manual:true}) and re-renders. */
+async function renderSheepSyncDiagnostic() {
   const el = document.getElementById('sheep-sync-diagnostic');
   if (!el) return;
-  if (!_dorperPushLog || _dorperPushLog.length === 0) {
-    el.style.display = 'none';
-    return;
-  }
+  
+  // Read queue and count Dorper items
+  let queueDepth = { sheep: 0, event: 0, total: 0 };
+  try {
+    const queue = await storageGet(K_SYNC_QUEUE, []);
+    queueDepth.total = queue.length;
+    queueDepth.sheep = queue.filter(q => q.kind === 'sheep').length;
+    queueDepth.event = queue.filter(q => q.kind === 'sheep-event').length;
+  } catch {}
+  
   el.style.display = '';
-  // Banner colour: success if last attempt succeeded, warning if last failed
+  
   const last = _dorperPushLog[0];
-  const bg = last.ok ? 'rgba(30,58,47,0.08)' : 'rgba(184,113,77,0.10)';
-  const border = last.ok ? '0.5px solid rgba(30,58,47,0.25)' : '0.5px solid rgba(184,113,77,0.35)';
+  const lastOk = last && last.ok;
+  const hasFails = !!_dorperPushLog.find(p => !p.ok);
+  
+  // Banner colour
+  let bg, border;
+  if (queueDepth.sheep + queueDepth.event > 0 || hasFails) {
+    bg = 'rgba(184,113,77,0.10)';   // amber for waiting / failures
+    border = '0.5px solid rgba(184,113,77,0.35)';
+  } else if (lastOk) {
+    bg = 'rgba(30,58,47,0.08)';      // green for last success
+    border = '0.5px solid rgba(30,58,47,0.25)';
+  } else {
+    bg = 'rgba(180,140,80,0.08)';    // brass for idle/no attempts yet
+    border = '0.5px solid rgba(180,140,80,0.25)';
+  }
   el.style.background = bg;
   el.style.border = border;
   
@@ -13681,17 +13704,45 @@ function renderSheepSyncDiagnostic() {
     } catch { return iso; }
   };
   
-  let html = `<div style="font-size:0.6rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--brass); margin-bottom:0.4rem">Recent Sheet sync</div>`;
-  html += _dorperPushLog.map(p => {
-    const icon = p.ok ? '<span style="color:var(--forest)">✓</span>' : '<span style="color:#b8714d">✗</span>';
-    const time = fmt(p.at);
-    return `<div style="display:flex; gap:0.5rem; align-items:baseline; padding:0.15rem 0">
-      ${icon}
-      <span style="color:var(--slate-light); font-size:0.65rem">${time}</span>
-      <span style="color:var(--ink); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${p.message || ''}">${p.action}${p.message ? ' — ' + p.message : ''}</span>
-    </div>`;
-  }).join('');
-  el.innerHTML = html;
+  // Header line: queue + last attempt time
+  let headerHtml = `<div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.4rem">
+    <span style="font-size:0.6rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--brass)">Sheet sync</span>
+    <button type="button" onclick="forceFlushDorper()" style="background:transparent; border:0.5px solid var(--brass); color:var(--brass); font-family:'IBM Plex Mono',monospace; font-size:0.58rem; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; padding:0.2rem 0.5rem; border-radius:3px;">Push now</button>
+  </div>`;
+  
+  // Queue summary
+  const queueStr = queueDepth.sheep + queueDepth.event > 0
+    ? `Pending: <strong>${queueDepth.sheep}</strong> sheep, <strong>${queueDepth.event}</strong> events`
+    : `<span style="color:var(--forest)">Queue empty</span>`;
+  headerHtml += `<div style="color:var(--ink); margin-bottom:0.3rem">${queueStr}</div>`;
+  
+  // Recent attempt log
+  if (_dorperPushLog.length === 0) {
+    headerHtml += `<div style="color:var(--slate-light); font-style:italic; font-size:0.65rem">No push attempts yet this session.</div>`;
+  } else {
+    headerHtml += _dorperPushLog.map(p => {
+      const icon = p.ok ? '<span style="color:var(--forest)">✓</span>' : '<span style="color:#b8714d">✗</span>';
+      const time = fmt(p.at);
+      return `<div style="display:flex; gap:0.5rem; align-items:baseline; padding:0.1rem 0; font-size:0.65rem">
+        ${icon}
+        <span style="color:var(--slate-light)">${time}</span>
+        <span style="color:var(--ink); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${p.message || ''}">${p.action}${p.message ? ' — ' + p.message : ''}</span>
+      </div>`;
+    }).join('');
+  }
+  
+  el.innerHTML = headerHtml;
+}
+
+/* Manual flush trigger from the Sheep view diagnostic. Forces a queue 
+   flush even if blockedByGate items are present (manual:true bypasses 
+   the gate-rejection skip). */
+async function forceFlushDorper() {
+  showToast('Flushing sync queue...', 1500);
+  if (typeof flushQueue === 'function') {
+    await flushQueue({ manual: true });
+  }
+  await renderSheepSyncDiagnostic();
 }
 
 function ensureSheepFiltersPopulated() {
@@ -14525,6 +14576,12 @@ function _recordDorperPush(action, ok, message) {
     action, ok, message: message || ''
   });
   if (_dorperPushLog.length > 5) _dorperPushLog.length = 5;
+  // Re-render the diagnostic banner so the result is visible immediately, 
+  // regardless of whether the page was just reloaded or the push happened 
+  // async after a form close.
+  if (typeof renderSheepSyncDiagnostic === 'function') {
+    renderSheepSyncDiagnostic();
+  }
 }
 
 /* Push a Dorper record (sheep registry or event) to Apps Script gate.
