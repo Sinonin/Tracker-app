@@ -2880,7 +2880,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.25</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.4.0-step1</span>
 </header>
 
 <main>
@@ -3860,50 +3860,54 @@
 
   <!-- OTHER · v6.3.12 placeholder — Sheep, Maize, Coffee (Lite scope, deferred to Phase 4) -->
   <section class="panel" id="panel-other">
-    <div class="section">
+
+    <!-- v6.4.0 Step 1 — HUB VIEW: three businesses as tappable cards. 
+         Tapping a card calls setOtherView(name) to drill into the 
+         per-business detail view below. -->
+    <div id="other-hub-view" class="section">
       <div class="section-head">
         <h3>Other businesses</h3>
-        <span class="meta">Lite · coming soon</span>
+        <span class="meta">tap to open</span>
       </div>
       <p style="color:var(--brass-light); opacity:0.85; line-height:1.6; margin:0.5rem 0 1.2rem; font-size:0.92rem">
-        Coffee, maize, sheep, and Dorper sit alongside Tea and Poultry as Sinonin Group businesses. Lite tracking arrives in a later release — record your first events here once those modules ship.
+        Coffee, maize, and sheep sit alongside Tea and Poultry as Sinonin Group businesses. The Sheep registry is live; Coffee and Maize Lite trackers ship in a later release.
       </p>
 
       <div class="other-card-list" style="display:flex; flex-direction:column; gap:0.6rem">
 
-        <div class="other-stub" style="background:rgba(180,140,80,0.08); border:0.5px solid rgba(180,140,80,0.3); border-radius:8px; padding:0.9rem 1rem;">
+        <button type="button" class="other-stub other-stub-active" onclick="setOtherView('sheep')" style="display:block; width:100%; text-align:left; cursor:pointer; background:rgba(180,140,80,0.08); border:0.5px solid rgba(180,140,80,0.3); border-radius:8px; padding:0.9rem 1rem; font-family:inherit;">
           <div style="display:flex; align-items:center; justify-content:space-between; gap:0.7rem">
             <div style="display:flex; align-items:center; gap:0.7rem; min-width:0; flex:1">
               <span style="font-size:1.4rem">🐑</span>
               <div style="min-width:0">
-                <div style="color:var(--ivory); font-weight:500; font-size:0.95rem">Sheep · Dorper</div>
-                <div style="color:var(--brass-light); opacity:0.8; font-size:0.78rem; margin-top:2px">Census · lambing · vaccinations · insemination · numbers</div>
+                <div style="color:var(--ivory); font-weight:500; font-size:0.95rem">Sheep · Dorper Farm</div>
+                <div style="color:var(--brass-light); opacity:0.8; font-size:0.78rem; margin-top:2px">Registry · lambing · sales · husbandry</div>
+              </div>
+            </div>
+            <div style="font-size:0.7rem; color:var(--forest-mid); opacity:0.85; letter-spacing:0.08em; text-transform:uppercase; flex-shrink:0; font-weight:600">Open →</div>
+          </div>
+        </button>
+
+        <div class="other-stub" style="background:rgba(180,140,80,0.06); border:0.5px solid rgba(180,140,80,0.2); border-radius:8px; padding:0.9rem 1rem;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:0.7rem">
+            <div style="display:flex; align-items:center; gap:0.7rem; min-width:0; flex:1">
+              <span style="font-size:1.4rem; opacity:0.7">🌽</span>
+              <div style="min-width:0">
+                <div style="color:var(--ivory); font-weight:500; font-size:0.95rem; opacity:0.8">Maize · Chelabaal</div>
+                <div style="color:var(--brass-light); opacity:0.7; font-size:0.78rem; margin-top:2px">Planted · weeding · spraying · projected harvest</div>
               </div>
             </div>
             <div style="font-size:0.7rem; color:var(--brass-light); opacity:0.6; letter-spacing:0.08em; text-transform:uppercase; flex-shrink:0">Soon</div>
           </div>
         </div>
 
-        <div class="other-stub" style="background:rgba(180,140,80,0.08); border:0.5px solid rgba(180,140,80,0.3); border-radius:8px; padding:0.9rem 1rem;">
+        <div class="other-stub" style="background:rgba(180,140,80,0.06); border:0.5px solid rgba(180,140,80,0.2); border-radius:8px; padding:0.9rem 1rem;">
           <div style="display:flex; align-items:center; justify-content:space-between; gap:0.7rem">
             <div style="display:flex; align-items:center; gap:0.7rem; min-width:0; flex:1">
-              <span style="font-size:1.4rem">🌽</span>
+              <span style="font-size:1.4rem; opacity:0.7">☕</span>
               <div style="min-width:0">
-                <div style="color:var(--ivory); font-weight:500; font-size:0.95rem">Maize · Chelabaal</div>
-                <div style="color:var(--brass-light); opacity:0.8; font-size:0.78rem; margin-top:2px">Planted · weeding · spraying · projected harvest</div>
-              </div>
-            </div>
-            <div style="font-size:0.7rem; color:var(--brass-light); opacity:0.6; letter-spacing:0.08em; text-transform:uppercase; flex-shrink:0">Soon</div>
-          </div>
-        </div>
-
-        <div class="other-stub" style="background:rgba(180,140,80,0.08); border:0.5px solid rgba(180,140,80,0.3); border-radius:8px; padding:0.9rem 1rem;">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:0.7rem">
-            <div style="display:flex; align-items:center; gap:0.7rem; min-width:0; flex:1">
-              <span style="font-size:1.4rem">☕</span>
-              <div style="min-width:0">
-                <div style="color:var(--ivory); font-weight:500; font-size:0.95rem">Coffee</div>
-                <div style="color:var(--brass-light); opacity:0.8; font-size:0.78rem; margin-top:2px">Planted · prune · weeding · harvest</div>
+                <div style="color:var(--ivory); font-weight:500; font-size:0.95rem; opacity:0.8">Coffee</div>
+                <div style="color:var(--brass-light); opacity:0.7; font-size:0.78rem; margin-top:2px">Planted · prune · weeding · harvest</div>
               </div>
             </div>
             <div style="font-size:0.7rem; color:var(--brass-light); opacity:0.6; letter-spacing:0.08em; text-transform:uppercase; flex-shrink:0">Soon</div>
@@ -3913,9 +3917,34 @@
       </div>
 
       <p style="color:var(--brass-light); opacity:0.55; font-size:0.78rem; line-height:1.5; margin:1.2rem 0 0; font-style:italic">
-        Tea and Poultry remain the operational core. Other businesses will join the dashboard once their data flows mature.
+        Tea and Poultry remain the operational core; Sheep joins as the third active enterprise.
       </p>
     </div>
+
+    <!-- v6.4.0 Step 1 — SHEEP DETAIL VIEW. Empty state for now (Step 2 
+         adds the registry list, add-sheep form, and profile drill-in). 
+         The back-button returns to the hub. -->
+    <div id="other-sheep-view" style="display:none">
+      <div class="section">
+        <div class="section-head">
+          <button type="button" onclick="setOtherView('hub')" style="background:transparent; border:none; color:var(--brass); font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; padding:0;">← Other</button>
+          <span class="meta" id="sheep-flock-meta">0 sheep</span>
+        </div>
+        <h3 style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.4rem; color:var(--forest); margin:0.4rem 0 0.2rem; letter-spacing:-0.01em;">Dorper Farm</h3>
+        <p style="color:var(--slate-light); font-size:0.85rem; line-height:1.5; margin:0.2rem 0 1rem;">Sheep registry · multi-owner · breed-aware</p>
+
+        <div id="sheep-registry-empty" style="text-align:center; padding:2rem 1rem; color:var(--slate-light)">
+          <div style="font-size:2.5rem; opacity:0.3; margin-bottom:0.6rem">🐑</div>
+          <div style="font-family:'Fraunces',serif; font-style:italic; font-size:1rem; color:var(--ink); margin-bottom:0.3rem">Empty registry</div>
+          <div style="font-size:0.85rem; line-height:1.5; max-width:280px; margin:0 auto">
+            Step 2 brings the Add Sheep form, list view, and profile pages.
+            <br><br>
+            <span style="font-size:0.78rem; opacity:0.7">Tag prefix scheme: <strong>S-</strong> Sinonin · <strong>H-</strong> Heinz · <strong>E-</strong> Elias · <strong>M-</strong> Mother</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </section>
 
   <!-- SETTINGS · v6.3.12 surfaces as "Admin" tab -->
@@ -4142,7 +4171,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.3.25</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.4.0-step1</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -4391,6 +4420,60 @@ const DEFAULT_PLUCKERS = [
 
 let PLUCKERS = JSON.parse(JSON.stringify(DEFAULT_PLUCKERS));
 
+/* ============================================================
+   v6.4.0 Step 1 — DORPER FARM CONSTANTS
+   ============================================================
+   Dorper Farm is the cost-centre name (parallel to "Kipkenda Poultry").
+   The flock includes Dorper plus mixed breeds — mother's gifts from 
+   relatives may be Red Maasai, Persian, fat-tail, or unidentified.
+   Costs are all borne by Cheison under "Dorper Farm" allocation; 
+   ownership only attributes for SALES revenue.
+   
+   OWNERS — fixed roster of four. Tag prefix is the source of truth 
+   for ownership (S-001 belongs to Sinonin, M-007 to Mother). Adding 
+   a new owner later means a new prefix + a new entry here.
+   
+   BREEDS — six recognised values; "Other" prompts free-text breed name 
+   stored on the sheep record's notes field for now (Step 5 will surface 
+   that more cleanly).
+   
+   STATUSES — five lifecycle states. Once a sheep is sold/died/culled 
+   it stays in the registry for historical reporting; the 'external_ram' 
+   status (Cheison Day 11 sealed): a placeholder record for borrowed 
+   rams or AI semen lots, so every lineage edge in the graph stays 
+   tag-to-tag — no free-text sire descriptions.
+   ============================================================ */
+const DORPER_OWNERS = [
+  { prefix: 'S', name: 'Sinonin' },  // Cheison's group flock
+  { prefix: 'H', name: 'Heinz'   },  // son in Bremen
+  { prefix: 'E', name: 'Elias'   },  // farm manager
+  { prefix: 'M', name: 'Mother'  }   // Cheison's mother
+];
+
+const DORPER_BREEDS = [
+  'Dorper',
+  'Red Maasai',
+  'Persian (Black-Head)',
+  'East African Fat-Tail',
+  'Mixed',
+  'Other'
+];
+
+const SHEEP_STATUSES = ['alive', 'sold', 'died', 'culled', 'external_ram'];
+
+const SHEEP_EVENT_TYPES = [
+  'served',     // ewe served by ram (start of gestation, ~150 days to lambing)
+  'lambed',     // delivery event; details: lamb_tag_ids[], born_alive, born_dead
+  'dewormed',   // husbandry; details: drug_name
+  'sheared',    // rare for Dorpers; details: fleece_kg, value_if_sold
+  'hooftrim',   // husbandry; semi-annual
+  'vaccinated', // husbandry; details: vaccine_name, dose
+  'weighed',    // performance; details: kg
+  'sold',       // status-change event; details: price_kes, buyer, weight_kg
+  'died',       // status-change event; details: cause
+  'treated'     // sickness; details: condition, drug, outcome
+];
+
 const DEFAULT_SETTINGS = { teaCessPerKg: 0.22, transportActive: false, currency: 'Ksh', stealthMode: false };
 
 const DEFAULT_EXPENSE_CATEGORIES = [
@@ -4451,6 +4534,10 @@ const K_EXPENSE_CATS = 'sinonin_expense_cats_v1';
 const K_SIREET_LEDGER = 'sinonin_sireet_ledger_v1';
 const K_BANKED = 'sinonin_banked_v1';
 const K_POULTRY = 'sinonin_poultry_v1';
+// v6.4.0 Step 1 — Dorper Farm storage keys. K_SHEEP holds the registry 
+// (one record per ear tag); K_SHEEP_EVENTS holds the append-only event log.
+const K_SHEEP = 'sinonin_sheep_v1';
+const K_SHEEP_EVENTS = 'sinonin_sheep_events_v1';
 const K_CLOUD_SYNC = 'sinonin_cloud_sync_v1';
 const K_IS_ADMIN = 'sinonin_is_admin_v1';  // v5.0.19 — set true on first successful passphrase grant/revoke
 const K_HOUSES = 'sinonin_houses_v1';       // v6.0 SHIP 3 — Kipkenda houses config
@@ -4499,7 +4586,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.3.25';
+const APP_VERSION = 'v6.4.0-step1';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -4540,6 +4627,17 @@ let STATE = {
   actuals: [],
   banked: [],
   poultry: [],
+  // v6.4.0 Step 1 — Dorper Farm sheep module foundation.
+  // sheep[]: registry of individual animals, keyed by tag_id.
+  // sheepEvents[]: append-only event log (served, lambed, dewormed, sheared,
+  //   hooftrim, vaccinated, weighed, sold, died, treated). References sheep
+  //   by tag_id.
+  // otherView: navigation state inside panel-other. 'hub' shows the three 
+  //   business cards; 'sheep' / 'coffee' / 'maize' drill into per-business
+  //   detail. Persisted so back-button-to-app reopens last view.
+  sheep: [],
+  sheepEvents: [],
+  otherView: 'hub',
   factories: JSON.parse(JSON.stringify(DEFAULT_FACTORIES)),
   settings: { ...DEFAULT_SETTINGS },
   view: 'home',
@@ -13078,13 +13176,54 @@ function renderMiniTable(id, firstCol, obj, _legacyLimit) {
   }
 }
 
-/* v6.3.12 — Other tab placeholder. Static HTML for now (Sheep/Maize/Coffee 
-   stubs). renderOther is a no-op hook for when those modules ship in 
-   Phase 4 — at that point this function will populate per-domain cards. */
+/* v6.4.0 Step 1 — Other tab navigation. The Other tab is a hub for the 
+   secondary businesses (Sheep · Dorper Farm, Maize, Coffee). One panel, 
+   multiple sub-views: 'hub' shows the three business cards, drilling into 
+   one swaps to the per-business detail view (sheep registry, etc).
+   
+   Why one panel instead of separate top-level panels: the bottom nav has 
+   six slots (Home, Tea, Poultry, Records, Add, Other). Adding Sheep as a 
+   seventh would crowd the nav. Hub-and-detail keeps the secondaries 
+   accessible without sacrificing primary navigation.
+   
+   STATE.otherView is persisted via savePersistedState (rendered after 
+   each setOtherView), so reopening the app at the Other tab restores the 
+   last sub-view. */
+function setOtherView(view) {
+  if (!['hub', 'sheep', 'coffee', 'maize'].includes(view)) view = 'hub';
+  STATE.otherView = view;
+  // Toggle visibility — show only the active sub-view's container.
+  const hub = document.getElementById('other-hub-view');
+  const sheep = document.getElementById('other-sheep-view');
+  if (hub)   hub.style.display   = (view === 'hub')   ? '' : 'none';
+  if (sheep) sheep.style.display = (view === 'sheep') ? '' : 'none';
+  // Coffee and Maize stay in hub view for now (Lite trackers ship later).
+  if (view === 'sheep' && typeof renderSheepRegistry === 'function') {
+    renderSheepRegistry();
+  }
+  if (typeof savePersistedState === 'function') savePersistedState();
+}
+
 function renderOther() {
-  // No-op for v6.3.12 — Other tab content is static HTML.
-  // Phase 4 will add: sheep census + lambing, maize cycle progress, 
-  // coffee tree status, with domain-aware data feeds.
+  // v6.4.0 Step 1 — Apply the persisted otherView (or default to 'hub').
+  // Step 2 will populate the sheep registry contents on entry.
+  setOtherView(STATE.otherView || 'hub');
+}
+
+/* v6.4.0 Step 1 — Sheep registry placeholder renderer. Step 2 replaces 
+   this with the full list view (filterable by owner, breed, sex, status), 
+   add-sheep form, and profile page. For now, just refreshes the flock 
+   count meta in the section head so the count is accurate even when 
+   empty. */
+function renderSheepRegistry() {
+  const meta = document.getElementById('sheep-flock-meta');
+  if (meta) {
+    const total = (STATE.sheep || []).filter(s => s.status === 'alive').length;
+    const all   = (STATE.sheep || []).length;
+    meta.textContent = total === all 
+      ? `${total} sheep` 
+      : `${total} alive · ${all} total`;
+  }
 }
 
 function renderSettings() {
@@ -13804,6 +13943,9 @@ function showUpdateBanner() {
   STATE.actuals = storedActuals.map(a => ({ block: 'All blocks', ...a }));
   STATE.banked = await storageGet(K_BANKED, []);
   STATE.poultry = await storageGet(K_POULTRY, []);
+  // v6.4.0 Step 1 — Hydrate Dorper Farm sheep registry and event log.
+  STATE.sheep = await storageGet(K_SHEEP, []);
+  STATE.sheepEvents = await storageGet(K_SHEEP_EVENTS, []);
   // v6.0 SHIP 1 — Egg Collection state
   STATE.eggCollection = await storageGet(K_EGG_COLLECTION, []);
   
