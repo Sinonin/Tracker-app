@@ -2880,7 +2880,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.24</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.3.25</span>
 </header>
 
 <main>
@@ -4142,7 +4142,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.3.24</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.3.25</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -4499,7 +4499,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.3.24';
+const APP_VERSION = 'v6.3.25';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -7351,16 +7351,58 @@ function mergeByKey(local, cloud, keyFn, mapCloud) {
 
 // Cloud row shape → local row shape for each data type
 function cloudToLocalPlucker(r) {
-  // Parse "6. Gladys Yego" into id + name if possible
-  let pluckerId = null, pluckerName = r.plucker || '';
-  const m = /^(\d+)\.\s*(.+)$/.exec(r.plucker || '');
-  if (m) {
-    pluckerId = parseInt(m[1], 10);
-    pluckerName = m[2].trim();
+  // v6.3.25 — Robust plucker field resolution. The cloud row's field name 
+  // for the plucker may be `r.plucker`, `r.pluckerName`, `r.plucker_name`, 
+  // or `r.name`. Format may be "6. Gladys Yego" (canonical), "6 Gladys Yego", 
+  // "6) Gladys Yego", or just "Gladys Yego". This function:
+  //   1. Probes every plausible field name and uses the first non-empty one.
+  //   2. Tries multiple regex variants for the leading-id format.
+  //   3. Falls back to PLUCKERS roster lookup by name if no id was parsed.
+  //   4. Logs the first 3 rows seen at boot so we can diagnose any future 
+  //      sheet-format drift from the browser console.
+  
+  // Probe field names
+  const rawPlucker = (r.plucker ?? r.pluckerName ?? r.plucker_name ?? r.name ?? '').toString().trim();
+  
+  let pluckerId = null;
+  let pluckerName = rawPlucker;
+  
+  if (rawPlucker) {
+    // Try canonical "6. Gladys Yego" first
+    let m = /^(\d+)\.\s*(.+)$/.exec(rawPlucker);
+    if (!m) {
+      // Try "6 Gladys", "6) Gladys", "6 - Gladys", "6: Gladys", "6| Gladys"
+      m = /^(\d+)\s*[.)\-:|]\s*(.+)$/.exec(rawPlucker);
+    }
+    if (!m) {
+      // Try "6 Gladys" (no delimiter, just space)
+      m = /^(\d+)\s+([A-Za-z].*)$/.exec(rawPlucker);
+    }
+    if (m) {
+      pluckerId = parseInt(m[1], 10);
+      pluckerName = m[2].trim();
+    } else if (typeof PLUCKERS !== 'undefined' && PLUCKERS) {
+      // Fallback: name-only — look up roster by case-insensitive name match
+      const found = PLUCKERS.find(p => 
+        p.name && p.name.toLowerCase() === rawPlucker.toLowerCase()
+      );
+      if (found) {
+        pluckerId = found.id;
+        pluckerName = found.name;  // canonical casing
+      }
+    }
   }
+  
+  // Diagnostic — log first few rows seen this session so cloud-to-local 
+  // failures can be traced from the browser console.
+  if (!cloudToLocalPlucker._loggedCount) cloudToLocalPlucker._loggedCount = 0;
+  if (cloudToLocalPlucker._loggedCount < 3) {
+    cloudToLocalPlucker._loggedCount++;
+    console.log(`[cloudToLocalPlucker #${cloudToLocalPlucker._loggedCount}] raw row keys:`, Object.keys(r), '| rawPlucker:', JSON.stringify(rawPlucker), '| → pluckerId:', pluckerId, 'pluckerName:', JSON.stringify(pluckerName));
+  }
+  
   return {
-    // v5.9.3 — Use pluckedKgOf helper for consistent kg field resolution
-    id: 'C-P-' + r.date + '-' + (pluckerId || pluckerName) + '-' + pluckedKgOf(r).toFixed(2),
+    id: 'C-P-' + r.date + '-' + (pluckerId || pluckerName || 'unknown') + '-' + pluckedKgOf(r).toFixed(2),
     ts: r.timestamp || r.date + 'T00:00:00Z',
     date: r.date,
     block: r.block,
