@@ -2444,6 +2444,56 @@
   .rank-row .name .meta { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; color: var(--slate-light); letter-spacing: 0.08em; margin-top: 0.1rem; }
   .rank-row .kg { font-family: 'IBM Plex Mono', monospace; font-size: 0.9rem; color: var(--forest); font-variant-numeric: tabular-nums; font-weight: 500; }
 
+  /* v6.4.0 Step 2 — SHEEP REGISTRY rows. Tappable rows representing one 
+     sheep each. Tag is mono (identifier feel), name+breed serif (read 
+     feel), status pill on the right (semantic colour). */
+  .sheep-row {
+    display: grid; grid-template-columns: auto 1fr auto;
+    gap: 0.65rem; align-items: center;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--rule);
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+  }
+  .sheep-row:last-child { border-bottom: none; }
+  .sheep-row:hover { background-color: var(--ivory-warm); }
+  .sheep-row .sr-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem; font-weight: 600;
+    color: var(--forest);
+    letter-spacing: 0.04em;
+    min-width: 60px;
+  }
+  .sheep-row .sr-info { min-width: 0; }
+  .sheep-row .sr-line1 {
+    font-family: 'Fraunces', serif;
+    font-size: 0.92rem;
+    color: var(--ink);
+    line-height: 1.3;
+  }
+  .sheep-row .sr-line1 .sr-sex { color: var(--brass); margin-right: 0.3rem; }
+  .sheep-row .sr-line2 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    color: var(--slate-light);
+    margin-top: 0.15rem;
+  }
+  .sheep-row .sr-status {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .sheep-row .sr-status.alive    { background: rgba(30,58,47,0.1);  color: var(--forest); }
+  .sheep-row .sr-status.sold     { background: rgba(180,140,80,0.18); color: var(--brass-dim); }
+  .sheep-row .sr-status.died     { background: rgba(184,113,77,0.15); color: #b8714d; }
+  .sheep-row .sr-status.culled   { background: rgba(184,113,77,0.15); color: #b8714d; }
+  .sheep-row .sr-status.external { background: rgba(180,140,80,0.12); color: var(--brass); font-style: italic; }
+
   .recon-row {
     padding: 0.7rem 0;
     border-bottom: 1px solid var(--rule);
@@ -2880,7 +2930,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.4.0-step1</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.5.0</span>
 </header>
 
 <main>
@@ -3921,11 +3971,16 @@
       </p>
     </div>
 
-    <!-- v6.4.0 Step 1 — SHEEP DETAIL VIEW. Empty state for now (Step 2 
-         adds the registry list, add-sheep form, and profile drill-in). 
-         The back-button returns to the hub. -->
+    <!-- v6.4.0 Step 2 — SHEEP DETAIL VIEW with three sub-sections:
+         · sheep-list-section: filterable list of all sheep (default)
+         · sheep-form-section: Add / Edit sheep form (toggled in)
+         · sheep-profile-section: per-tag profile page (toggled in)
+         Sub-section toggling is in-page only (not persisted) — local UI 
+         state, returns to list on tab switch. -->
     <div id="other-sheep-view" style="display:none">
-      <div class="section">
+
+      <!-- LIST SECTION (default) -->
+      <div class="section" id="sheep-list-section">
         <div class="section-head">
           <button type="button" onclick="setOtherView('hub')" style="background:transparent; border:none; color:var(--brass); font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; padding:0;">← Other</button>
           <span class="meta" id="sheep-flock-meta">0 sheep</span>
@@ -3933,16 +3988,319 @@
         <h3 style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.4rem; color:var(--forest); margin:0.4rem 0 0.2rem; letter-spacing:-0.01em;">Dorper Farm</h3>
         <p style="color:var(--slate-light); font-size:0.85rem; line-height:1.5; margin:0.2rem 0 1rem;">Sheep registry · multi-owner · breed-aware</p>
 
-        <div id="sheep-registry-empty" style="text-align:center; padding:2rem 1rem; color:var(--slate-light)">
-          <div style="font-size:2.5rem; opacity:0.3; margin-bottom:0.6rem">🐑</div>
-          <div style="font-family:'Fraunces',serif; font-style:italic; font-size:1rem; color:var(--ink); margin-bottom:0.3rem">Empty registry</div>
-          <div style="font-size:0.85rem; line-height:1.5; max-width:280px; margin:0 auto">
-            Step 2 brings the Add Sheep form, list view, and profile pages.
-            <br><br>
-            <span style="font-size:0.78rem; opacity:0.7">Tag prefix scheme: <strong>S-</strong> Sinonin · <strong>H-</strong> Heinz · <strong>E-</strong> Elias · <strong>M-</strong> Mother</span>
+        <button type="button" onclick="openSheepForm('add', null)" style="display:block; width:100%; padding:0.75rem; background:var(--forest-dark); color:var(--ivory); border:none; border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:0.78rem; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer; margin-bottom:1rem;">+ Add sheep</button>
+
+        <!-- v6.5.0 Step 3+4 — Quick Add events row. Six event types most 
+             common in daily/weekly Dorper Farm operations. Each opens the 
+             unified event form with the appropriate type pre-selected. 
+             "New Sheep" keeps its own button above (different shape: 
+             registers an animal, doesn't log an event). -->
+        <div class="quick-add-section" style="margin-bottom:1rem">
+          <div class="quick-add-head">Record event</div>
+          <div class="quick-add-grid quick-add-tight" style="grid-template-columns:repeat(6,1fr)">
+            <button class="quick-add-card" type="button" onclick="openSheepEventForm('lambed', null)">
+              <span class="qa-icon">🐑</span>
+              <span class="qa-label">Lambing</span>
+            </button>
+            <button class="quick-add-card" type="button" onclick="openSheepEventForm('served', null)">
+              <span class="qa-icon">❤️</span>
+              <span class="qa-label">Served</span>
+            </button>
+            <button class="quick-add-card" type="button" onclick="openSheepEventForm('sold', null)">
+              <span class="qa-icon">💰</span>
+              <span class="qa-label">Sale</span>
+            </button>
+            <button class="quick-add-card" type="button" onclick="openSheepEventForm('vaccinated', null)">
+              <span class="qa-icon">💉</span>
+              <span class="qa-label">Vaccinate</span>
+            </button>
+            <button class="quick-add-card" type="button" onclick="openSheepEventForm('dewormed', null)">
+              <span class="qa-icon">🪱</span>
+              <span class="qa-label">Deworm</span>
+            </button>
+            <button class="quick-add-card" type="button" onclick="openSheepEventForm('weighed', null)">
+              <span class="qa-icon">⚖️</span>
+              <span class="qa-label">Weigh</span>
+            </button>
           </div>
         </div>
+
+        <!-- Filter bar — owner / breed / sex / status -->
+        <div id="sheep-filter-bar" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:0.9rem;">
+          <select id="sheep-filter-owner" onchange="renderSheepRegistry()" style="padding:0.4rem; font-family:'IBM Plex Mono',monospace; font-size:0.72rem; border:1px solid var(--rule); border-radius:4px; background:var(--ivory-warm)">
+            <option value="">All owners</option>
+          </select>
+          <select id="sheep-filter-breed" onchange="renderSheepRegistry()" style="padding:0.4rem; font-family:'IBM Plex Mono',monospace; font-size:0.72rem; border:1px solid var(--rule); border-radius:4px; background:var(--ivory-warm)">
+            <option value="">All breeds</option>
+          </select>
+          <select id="sheep-filter-sex" onchange="renderSheepRegistry()" style="padding:0.4rem; font-family:'IBM Plex Mono',monospace; font-size:0.72rem; border:1px solid var(--rule); border-radius:4px; background:var(--ivory-warm)">
+            <option value="">All sex</option>
+            <option value="F">♀ Ewes</option>
+            <option value="M">♂ Rams / wethers</option>
+          </select>
+          <select id="sheep-filter-status" onchange="renderSheepRegistry()" style="padding:0.4rem; font-family:'IBM Plex Mono',monospace; font-size:0.72rem; border:1px solid var(--rule); border-radius:4px; background:var(--ivory-warm)">
+            <option value="alive">Alive only</option>
+            <option value="">All statuses</option>
+            <option value="sold">Sold</option>
+            <option value="died">Died</option>
+            <option value="culled">Culled</option>
+            <option value="external_ram">External rams</option>
+          </select>
+        </div>
+
+        <div id="sheep-list"></div>
       </div>
+
+      <!-- FORM SECTION — Add / Edit sheep -->
+      <div class="section" id="sheep-form-section" style="display:none">
+        <div class="section-head">
+          <button type="button" onclick="closeSheepForm()" style="background:transparent; border:none; color:var(--brass); font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; padding:0;">← Cancel</button>
+          <span class="meta" id="sheep-form-mode">add</span>
+        </div>
+        <h3 id="sheep-form-title" style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.3rem; color:var(--forest); margin:0.4rem 0 1rem; letter-spacing:-0.01em;">Add sheep</h3>
+
+        <div class="field">
+          <label>Tag ID <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(prefix-number, e.g. S-001)</span></label>
+          <input type="text" id="sf-tag" placeholder="S-001" autocomplete="off" oninput="onSheepTagChange()">
+          <div id="sf-tag-feedback" style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; margin-top:0.25rem; min-height:1em"></div>
+        </div>
+
+        <div class="field">
+          <label>Owner <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(derived from prefix)</span></label>
+          <input type="text" id="sf-owner-display" disabled style="background:var(--ivory-warm); color:var(--slate-light); font-style:italic">
+        </div>
+
+        <div class="field">
+          <label>Sex</label>
+          <select id="sf-sex">
+            <option value="F">♀ Female (ewe)</option>
+            <option value="M">♂ Male (ram / wether)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Breed</label>
+          <select id="sf-breed" onchange="onBreedChange()">
+            <option value="Dorper">Dorper</option>
+            <option value="Red Maasai">Red Maasai</option>
+            <option value="Persian (Black-Head)">Persian (Black-Head)</option>
+            <option value="East African Fat-Tail">East African Fat-Tail</option>
+            <option value="Mixed">Mixed</option>
+            <option value="Other">Other (specify in notes)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Colour <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional)</span></label>
+          <input type="text" id="sf-colour" placeholder="white-headed black, all white, red brown..." autocomplete="off">
+        </div>
+
+        <div class="field">
+          <label>Origin</label>
+          <select id="sf-acquisition" onchange="onAcquisitionChange()">
+            <option value="born_on_farm">Born on the farm</option>
+            <option value="acquired">Acquired (purchased / gifted / received)</option>
+            <option value="external_ram_placeholder">External ram placeholder (borrowed / AI semen)</option>
+          </select>
+        </div>
+
+        <!-- Born-on-farm sub-block -->
+        <div id="sf-born-block">
+          <div class="field">
+            <label>Date of birth</label>
+            <input type="date" id="sf-dob">
+          </div>
+          <div class="field">
+            <label>Dam (mother) <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional)</span></label>
+            <select id="sf-dam">
+              <option value="">— unknown / not on registry —</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Sire (father) <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional)</span></label>
+            <select id="sf-sire">
+              <option value="">— unknown / not on registry —</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Acquired sub-block -->
+        <div id="sf-acquired-block" style="display:none">
+          <div class="field">
+            <label>Date acquired</label>
+            <input type="date" id="sf-date-acquired">
+          </div>
+          <div class="field">
+            <label>Source farm / source person</label>
+            <input type="text" id="sf-source-farm" placeholder="Kosgei farm, neighbour, auction..." autocomplete="off">
+          </div>
+        </div>
+
+        <!-- External ram placeholder note -->
+        <div id="sf-external-block" style="display:none; padding:0.7rem 0.85rem; background:rgba(180,140,80,0.08); border:0.5px solid rgba(180,140,80,0.3); border-radius:6px; margin-bottom:0.9rem;">
+          <div style="font-family:'Fraunces',serif; font-style:italic; font-size:0.88rem; color:var(--forest); margin-bottom:0.3rem">External ram placeholder</div>
+          <div style="color:var(--slate-light); font-size:0.78rem; line-height:1.5">
+            For borrowed rams, AI semen lots, or rams seen at neighbour farms. Used so lambing records can reference a sire by tag without inventing free-text descriptions. Default tag prefix: <strong>EXT-</strong>. Only basic fields apply (tag, sex M, breed, source).
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Notes <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional)</span></label>
+          <textarea id="sf-notes" rows="2" placeholder="Anything worth flagging..." style="width:100%; padding:0.5rem; font-family:'Fraunces',serif; font-size:0.92rem; border:1px solid var(--rule); border-radius:4px; resize:vertical;"></textarea>
+        </div>
+
+        <div style="display:flex;gap:0.5rem;margin-top:0.8rem">
+          <button type="button" id="sf-delete-btn" onclick="onSheepDelete()" style="flex:0 0 auto; padding:0.6rem 0.9rem; background:transparent; color:#b8714d; border:1px solid #b8714d; border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer; display:none">Delete</button>
+          <button type="button" onclick="closeSheepForm()" class="export-btn" style="flex:1">Cancel</button>
+          <button type="button" onclick="submitSheepForm()" class="export-btn" style="flex:1;background:var(--forest-dark);color:var(--ivory);border-color:var(--forest-dark)">Save</button>
+        </div>
+        <div id="sf-feedback" style="display:none;margin-top:0.7rem;padding:0.6rem 0.8rem;border-radius:6px;font-family:'Fraunces',serif;font-size:0.9rem"></div>
+      </div>
+
+      <!-- v6.5.0 — UNIFIED EVENT FORM SECTION. One form, dynamic fields 
+           per event type (lambed / served / sold / dewormed / vaccinated /
+           weighed / sheared / hooftrim / treated / died). Each type's 
+           specific fields render via openSheepEventForm. -->
+      <div class="section" id="sheep-event-section" style="display:none">
+        <div class="section-head">
+          <button type="button" onclick="closeSheepEventForm()" style="background:transparent; border:none; color:var(--brass); font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; padding:0;">← Cancel</button>
+          <span class="meta" id="sheep-event-mode">event</span>
+        </div>
+        <h3 id="sheep-event-title" style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.3rem; color:var(--forest); margin:0.4rem 0 1rem; letter-spacing:-0.01em;">Record event</h3>
+
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="se-date">
+        </div>
+
+        <!-- Common: sheep selector (some events have specific selectors) -->
+        <div class="field" id="se-tag-field">
+          <label id="se-tag-label">Sheep</label>
+          <select id="se-tag"></select>
+        </div>
+
+        <!-- LAMBED-specific: sire dropdown, born_alive count, lamb tag inputs -->
+        <div id="se-lambed-block" style="display:none">
+          <div class="field">
+            <label>Sire (ram) <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional)</span></label>
+            <select id="se-lambed-sire"></select>
+          </div>
+          <div class="field">
+            <label>Number born alive</label>
+            <input type="number" id="se-lambed-alive" min="0" max="10" value="1" oninput="renderLambTagInputs()">
+          </div>
+          <div class="field">
+            <label>Number born dead <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(stillbirths)</span></label>
+            <input type="number" id="se-lambed-dead" min="0" max="10" value="0">
+          </div>
+          <div id="se-lambed-tags-block" style="margin-top:0.5rem"></div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--brass); margin:0.5rem 0 1rem; line-height:1.5; padding:0.5rem 0.7rem; background:rgba(180,140,80,0.06); border-radius:4px">
+            Each lamb gets a registry record. Owner inherits from the ewe (Cheison's rule).
+          </div>
+        </div>
+
+        <!-- SERVED-specific: ram dropdown -->
+        <div id="se-served-block" style="display:none">
+          <div class="field">
+            <label>Ram (sire)</label>
+            <select id="se-served-ram"></select>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--brass); margin-bottom:1rem; line-height:1.5; padding:0.5rem 0.7rem; background:rgba(180,140,80,0.06); border-radius:4px">
+            Expected lambing: ~150 days from served date.
+          </div>
+        </div>
+
+        <!-- SOLD-specific: weight, price, buyer -->
+        <div id="se-sold-block" style="display:none">
+          <div class="field">
+            <label>Live weight (kg)</label>
+            <input type="number" id="se-sold-kg" min="0" step="0.5" placeholder="35">
+          </div>
+          <div class="field">
+            <label>Price (Ksh)</label>
+            <input type="number" id="se-sold-price" min="0" step="100" placeholder="14000">
+          </div>
+          <div class="field">
+            <label>Sale type</label>
+            <select id="se-sold-type">
+              <option value="slaughter">Slaughter weight</option>
+              <option value="breeding">Live for breeding</option>
+              <option value="cull">Cull / disposal</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Buyer</label>
+            <input type="text" id="se-sold-buyer" placeholder="Name or place" autocomplete="off">
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:#b8714d; margin-bottom:1rem; line-height:1.5; padding:0.5rem 0.7rem; background:rgba(184,113,77,0.08); border-radius:4px">
+            Saving sets sheep status to <strong>sold</strong>.
+          </div>
+        </div>
+
+        <!-- DEWORMED / VACCINATED / TREATED — drug/vaccine name -->
+        <div id="se-drug-block" style="display:none">
+          <div class="field">
+            <label id="se-drug-label">Drug</label>
+            <input type="text" id="se-drug-name" placeholder="Albendazole, Ivermectin..." autocomplete="off">
+          </div>
+        </div>
+
+        <!-- WEIGHED — kg field -->
+        <div id="se-weighed-block" style="display:none">
+          <div class="field">
+            <label>Weight (kg)</label>
+            <input type="number" id="se-weighed-kg" min="0" step="0.1" placeholder="32.5">
+          </div>
+        </div>
+
+        <!-- SHEARED — fleece + value -->
+        <div id="se-sheared-block" style="display:none">
+          <div class="field">
+            <label>Fleece (kg) <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional)</span></label>
+            <input type="number" id="se-sheared-kg" min="0" step="0.1" placeholder="0">
+          </div>
+        </div>
+
+        <!-- DIED — cause -->
+        <div id="se-died-block" style="display:none">
+          <div class="field">
+            <label>Cause</label>
+            <input type="text" id="se-died-cause" placeholder="Disease, predation, accident..." autocomplete="off">
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:#b8714d; margin-bottom:1rem; line-height:1.5; padding:0.5rem 0.7rem; background:rgba(184,113,77,0.08); border-radius:4px">
+            Saving sets sheep status to <strong>died</strong>.
+          </div>
+        </div>
+
+        <!-- BATCH FLAG — for husbandry events that may apply to whole flock -->
+        <div id="se-batch-block" style="display:none">
+          <div class="field" style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.6rem; background:rgba(30,58,47,0.06); border-radius:4px; margin-bottom:0.5rem">
+            <input type="checkbox" id="se-batch-all" onchange="onBatchAllChange()" style="width:18px; height:18px; flex-shrink:0">
+            <label for="se-batch-all" style="font-family:'IBM Plex Mono',monospace; font-size:0.78rem; color:var(--forest); cursor:pointer; margin:0">Apply to all alive sheep</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Notes <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional)</span></label>
+          <textarea id="se-notes" rows="2" placeholder="Anything worth flagging..." style="width:100%; padding:0.5rem; font-family:'Fraunces',serif; font-size:0.92rem; border:1px solid var(--rule); border-radius:4px; resize:vertical;"></textarea>
+        </div>
+
+        <div style="display:flex;gap:0.5rem;margin-top:0.8rem">
+          <button type="button" onclick="closeSheepEventForm()" class="export-btn" style="flex:1">Cancel</button>
+          <button type="button" onclick="submitSheepEventForm()" class="export-btn" style="flex:1;background:var(--forest-dark);color:var(--ivory);border-color:var(--forest-dark)">Save event</button>
+        </div>
+        <div id="se-feedback" style="display:none;margin-top:0.7rem;padding:0.6rem 0.8rem;border-radius:6px;font-family:'Fraunces',serif;font-size:0.9rem"></div>
+      </div>
+
+      <!-- PROFILE SECTION — per-sheep page -->
+      <div class="section" id="sheep-profile-section" style="display:none">
+        <div class="section-head">
+          <button type="button" onclick="closeSheepProfile()" style="background:transparent; border:none; color:var(--brass); font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; padding:0;">← Registry</button>
+          <span class="meta" id="sheep-profile-status">—</span>
+        </div>
+        <div id="sheep-profile-body"></div>
+      </div>
+
     </div>
 
   </section>
@@ -4171,7 +4529,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.4.0-step1</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.5.0</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -4586,7 +4944,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.4.0-step1';
+const APP_VERSION = 'v6.5.0';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -6788,7 +7146,7 @@ async function queueForSync(record, kind) {
   //   litter-change — record carries house + date + op (change/reset)
   // These store the full payload in the queue item; the dispatcher reads
   // item.payload directly instead of looking up by recordId.
-  const isPayloadKind = (kind === 'roster' || kind === 'cohort' || kind === 'litter-change');
+  const isPayloadKind = (kind === 'roster' || kind === 'cohort' || kind === 'litter-change' || kind === 'sheep' || kind === 'sheep-event');
   if (isPayloadKind) {
     queue.push({ kind, payload: record, attempts: 0, queuedAt: new Date().toISOString(), blockedByGate });
   } else {
@@ -7159,6 +7517,7 @@ async function flushQueue(opts) {
       else if (kind === 'cohort')      record = item.payload || null;
       else if (kind === 'litter-change') record = item.payload || null;
       else if (kind === 'roster')  record = item.payload || null; // roster items carry their own payload
+      else if (kind === 'sheep' || kind === 'sheep-event') record = item.payload || null;
       if (!record) continue; // record was deleted locally, drop from queue
       let ok;
       if (kind === 'expense')      ok = await pushExpenseToForm(record);
@@ -7171,6 +7530,8 @@ async function flushQueue(opts) {
       else if (kind === 'cohort')      ok = await syncCohort(record);
       else if (kind === 'litter-change') ok = await syncLitterChange(record);
       else if (kind === 'roster')  ok = await pushRosterToForm(record);
+      else if (kind === 'sheep')       ok = await pushSheepToForm(record);
+      else if (kind === 'sheep-event') ok = await pushSheepEventToForm(record);
       else                         ok = await pushToForm(record);
       if (ok) {
         anySuccess = true;
@@ -7671,6 +8032,18 @@ async function applyCloudResponse(data) {
   if (Array.isArray(data.poultry)) {
     STATE.poultry = data.poultry.map(cloudToLocalPoultry);
     await storageSet(K_POULTRY, STATE.poultry);
+  }
+  /* v6.5.0 — Dorper Farm sync (cloud-replace-local). Both Dorper_Sheep 
+     and Dorper_Events are authoritative on the Sheet — admin/operator 
+     edits via the spreadsheet propagate to all PWA installs on next 
+     fetch. Sheep are upsert-by-tag_id; events are append-only. */
+  if (Array.isArray(data.dorperSheep)) {
+    STATE.sheep = data.dorperSheep.map(cloudToLocalSheep);
+    await storageSet(K_SHEEP, STATE.sheep);
+  }
+  if (Array.isArray(data.dorperEvents)) {
+    STATE.sheepEvents = data.dorperEvents.map(cloudToLocalSheepEvent);
+    await storageSet(K_SHEEP_EVENTS, STATE.sheepEvents);
   }
   /* v6.0 SHIP 2 / v6.2.2 — Egg Collection sync (cloud-replace-local) */
   if (Array.isArray(data.eggCollection)) {
@@ -13210,19 +13583,912 @@ function renderOther() {
   setOtherView(STATE.otherView || 'hub');
 }
 
-/* v6.4.0 Step 1 — Sheep registry placeholder renderer. Step 2 replaces 
-   this with the full list view (filterable by owner, breed, sex, status), 
-   add-sheep form, and profile page. For now, just refreshes the flock 
-   count meta in the section head so the count is accurate even when 
-   empty. */
+/* v6.4.0 Step 2 — Sheep registry CRUD + list + filters + profile.
+   ============================================================
+   This block implements the heart of Dorper Farm: each ear-tagged 
+   animal is a record in STATE.sheep, owners derive from tag prefix,
+   external rams (borrowed / AI semen) are first-class records with 
+   status='external_ram' so every sire reference stays tag-to-tag.
+   Cheison Day 11 sealed: "I don't want them filling in incoherent 
+   text" — every relationship is structured, no free-text sires.
+   ============================================================ */
+
+/* Tag → owner. Returns the owner name from DORPER_OWNERS based on 
+   the prefix letter. EXT- prefix → 'External' (external_ram only).
+   Returns null if the prefix is unrecognised. */
+function tagToOwner(tagId) {
+  if (!tagId) return null;
+  const upper = tagId.toUpperCase().trim();
+  if (upper.startsWith('EXT-') || upper.startsWith('X-')) return 'External';
+  const prefix = upper.charAt(0);
+  const found = DORPER_OWNERS.find(o => o.prefix === prefix);
+  return found ? found.name : null;
+}
+
+/* Validate a tag's format. Returns {ok, msg}. Acceptable forms:
+     S-001  H-14  M-7  E-001  EXT-12  X-001
+   (Prefix S/H/M/E + dash + digits, OR EXT-/X- + digits.) */
+function validateSheepTag(tagId, currentTagBeingEdited) {
+  if (!tagId) return { ok: false, msg: 'Tag ID is required' };
+  const upper = tagId.toUpperCase().trim();
+  const valid = /^([SHMEX]|EXT)-\d+$/.test(upper);
+  if (!valid) return { ok: false, msg: 'Format: S-001, H-14, EXT-2 etc.' };
+  // Duplicate check (allow keeping the same tag when editing)
+  const exists = (STATE.sheep || []).find(s => 
+    s.tag_id.toUpperCase() === upper && s.tag_id !== currentTagBeingEdited
+  );
+  if (exists) return { ok: false, msg: `Tag ${upper} already exists in registry` };
+  return { ok: true, normalised: upper };
+}
+
+/* Compute age string from DOB. Returns "1y 9m" or "3m" or "—". */
+function sheepAge(dob) {
+  if (!dob) return '—';
+  const birth = new Date(dob);
+  if (isNaN(birth.getTime())) return '—';
+  const now = new Date();
+  let months = (now.getFullYear() - birth.getFullYear()) * 12 + (now.getMonth() - birth.getMonth());
+  if (now.getDate() < birth.getDate()) months--;
+  if (months < 0) return '—';
+  if (months < 12) return `${months}m`;
+  const years = Math.floor(months / 12);
+  const rem = months % 12;
+  return rem === 0 ? `${years}y` : `${years}y ${rem}m`;
+}
+
+/* Populate filter dropdowns once (called when sheep view first opens). */
+function ensureSheepFiltersPopulated() {
+  const ownerSel = document.getElementById('sheep-filter-owner');
+  if (ownerSel && ownerSel.options.length <= 1) {
+    DORPER_OWNERS.forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.name;
+      opt.textContent = o.name;
+      ownerSel.appendChild(opt);
+    });
+    const ext = document.createElement('option');
+    ext.value = 'External';
+    ext.textContent = 'External (rams)';
+    ownerSel.appendChild(ext);
+  }
+  const breedSel = document.getElementById('sheep-filter-breed');
+  if (breedSel && breedSel.options.length <= 1) {
+    DORPER_BREEDS.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b;
+      opt.textContent = b;
+      breedSel.appendChild(opt);
+    });
+  }
+}
+
+/* Main render: list view with filters applied. */
 function renderSheepRegistry() {
+  ensureSheepFiltersPopulated();
+  
+  // Update flock count meta
   const meta = document.getElementById('sheep-flock-meta');
   if (meta) {
-    const total = (STATE.sheep || []).filter(s => s.status === 'alive').length;
-    const all   = (STATE.sheep || []).length;
-    meta.textContent = total === all 
-      ? `${total} sheep` 
-      : `${total} alive · ${all} total`;
+    const all = (STATE.sheep || []).length;
+    const alive = (STATE.sheep || []).filter(s => s.status === 'alive').length;
+    meta.textContent = all === 0 ? '0 sheep' :
+      (alive === all ? `${all} sheep` : `${alive} alive · ${all} total`);
+  }
+  
+  const list = document.getElementById('sheep-list');
+  if (!list) return;
+  
+  // Read filters
+  const fOwner = document.getElementById('sheep-filter-owner')?.value || '';
+  const fBreed = document.getElementById('sheep-filter-breed')?.value || '';
+  const fSex = document.getElementById('sheep-filter-sex')?.value || '';
+  const fStatus = document.getElementById('sheep-filter-status')?.value || 'alive';
+  
+  let filtered = (STATE.sheep || []).filter(s => {
+    if (fOwner && s.owner !== fOwner) return false;
+    if (fBreed && s.breed !== fBreed) return false;
+    if (fSex && s.sex !== fSex) return false;
+    if (fStatus && s.status !== fStatus) return false;
+    return true;
+  });
+  
+  // Sort: alive first, then by tag
+  filtered.sort((a, b) => {
+    if (a.status !== b.status) {
+      if (a.status === 'alive') return -1;
+      if (b.status === 'alive') return 1;
+    }
+    return a.tag_id.localeCompare(b.tag_id, undefined, { numeric: true });
+  });
+  
+  if (filtered.length === 0) {
+    if ((STATE.sheep || []).length === 0) {
+      list.innerHTML = `<div class="empty" style="padding:2rem 1rem"><div style="font-size:2.5rem; opacity:0.3; margin-bottom:0.6rem">🐑</div><div style="font-family:'Fraunces',serif; font-style:italic; font-size:1rem; color:var(--ink); margin-bottom:0.3rem">No sheep yet</div><div style="font-size:0.85rem; line-height:1.5; max-width:280px; margin:0 auto">Tap <strong>+ Add sheep</strong> to register your first animal. Tag prefix scheme: <strong>S-</strong> Sinonin · <strong>H-</strong> Heinz · <strong>E-</strong> Elias · <strong>M-</strong> Mother · <strong>EXT-</strong> external rams.</div></div>`;
+    } else {
+      list.innerHTML = `<div class="empty" style="padding:1.5rem 1rem"><div class="sub">No sheep match the current filters</div></div>`;
+    }
+    return;
+  }
+  
+  list.innerHTML = filtered.map(s => {
+    const sex = s.sex === 'F' ? '♀' : '♂';
+    const age = sheepAge(s.dob);
+    const breedColour = [s.breed, s.colour].filter(Boolean).join(' · ');
+    const statusClass = s.status === 'external_ram' ? 'external' : s.status;
+    const statusLabel = s.status === 'external_ram' ? 'EXT' : s.status.toUpperCase();
+    return `
+      <div class="sheep-row" onclick="openSheepProfile('${s.tag_id}')">
+        <span class="sr-tag">${s.tag_id}</span>
+        <div class="sr-info">
+          <div class="sr-line1"><span class="sr-sex">${sex}</span>${breedColour || '—'}</div>
+          <div class="sr-line2">${s.owner} · ${age}${s.notes ? ' · ' + s.notes.slice(0, 40) : ''}</div>
+        </div>
+        <span class="sr-status ${statusClass}">${statusLabel}</span>
+      </div>`;
+  }).join('');
+}
+
+/* Open the form in 'add' or 'edit' mode. tagId is the tag to edit (null for add). */
+function openSheepForm(mode, tagId) {
+  const listSec = document.getElementById('sheep-list-section');
+  const formSec = document.getElementById('sheep-form-section');
+  const profSec = document.getElementById('sheep-profile-section');
+  if (listSec) listSec.style.display = 'none';
+  if (profSec) profSec.style.display = 'none';
+  if (formSec) formSec.style.display = '';
+  
+  const titleEl = document.getElementById('sheep-form-title');
+  const modeEl = document.getElementById('sheep-form-mode');
+  const deleteBtn = document.getElementById('sf-delete-btn');
+  
+  // Populate dam/sire dropdowns from current registry
+  const damSel = document.getElementById('sf-dam');
+  const sireSel = document.getElementById('sf-sire');
+  if (damSel) {
+    damSel.innerHTML = '<option value="">— unknown / not on registry —</option>';
+    (STATE.sheep || []).filter(s => s.sex === 'F').forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.tag_id;
+      opt.textContent = `${s.tag_id} · ${s.owner}`;
+      damSel.appendChild(opt);
+    });
+  }
+  if (sireSel) {
+    sireSel.innerHTML = '<option value="">— unknown / not on registry —</option>';
+    (STATE.sheep || []).filter(s => s.sex === 'M').forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.tag_id;
+      opt.textContent = s.status === 'external_ram'
+        ? `${s.tag_id} · External (${s.source_farm || 'borrowed'})`
+        : `${s.tag_id} · ${s.owner}`;
+      sireSel.appendChild(opt);
+    });
+  }
+  
+  // Form state holder — used by submitSheepForm to know if editing
+  document.getElementById('sheep-form-section').dataset.mode = mode;
+  document.getElementById('sheep-form-section').dataset.editingTag = tagId || '';
+  
+  if (mode === 'add') {
+    if (titleEl) titleEl.textContent = 'Add sheep';
+    if (modeEl) modeEl.textContent = 'add';
+    if (deleteBtn) deleteBtn.style.display = 'none';
+    // Reset fields
+    document.getElementById('sf-tag').value = '';
+    document.getElementById('sf-owner-display').value = '';
+    document.getElementById('sf-sex').value = 'F';
+    document.getElementById('sf-breed').value = 'Dorper';
+    document.getElementById('sf-colour').value = '';
+    document.getElementById('sf-acquisition').value = 'born_on_farm';
+    document.getElementById('sf-dob').value = '';
+    document.getElementById('sf-dam').value = '';
+    document.getElementById('sf-sire').value = '';
+    document.getElementById('sf-date-acquired').value = '';
+    document.getElementById('sf-source-farm').value = '';
+    document.getElementById('sf-notes').value = '';
+    onAcquisitionChange();
+    document.getElementById('sf-tag-feedback').textContent = '';
+  } else if (mode === 'edit' && tagId) {
+    const s = (STATE.sheep || []).find(x => x.tag_id === tagId);
+    if (!s) { closeSheepForm(); return; }
+    if (titleEl) titleEl.textContent = `Edit ${s.tag_id}`;
+    if (modeEl) modeEl.textContent = 'edit';
+    if (deleteBtn) deleteBtn.style.display = '';
+    document.getElementById('sf-tag').value = s.tag_id;
+    document.getElementById('sf-owner-display').value = s.owner || '';
+    document.getElementById('sf-sex').value = s.sex || 'F';
+    document.getElementById('sf-breed').value = s.breed || 'Dorper';
+    document.getElementById('sf-colour').value = s.colour || '';
+    document.getElementById('sf-acquisition').value =
+      s.status === 'external_ram' ? 'external_ram_placeholder' : (s.acquisition || 'born_on_farm');
+    document.getElementById('sf-dob').value = s.dob || '';
+    document.getElementById('sf-dam').value = s.dam_tag || '';
+    document.getElementById('sf-sire').value = s.sire_tag || '';
+    document.getElementById('sf-date-acquired').value = s.date_acquired || '';
+    document.getElementById('sf-source-farm').value = s.source_farm || '';
+    document.getElementById('sf-notes').value = s.notes || '';
+    onAcquisitionChange();
+  }
+  
+  hideSheepFormFeedback();
+}
+
+/* Reactive: tag prefix → owner display field. */
+function onSheepTagChange() {
+  const tag = document.getElementById('sf-tag').value.trim();
+  const owner = tagToOwner(tag);
+  const display = document.getElementById('sf-owner-display');
+  const feedback = document.getElementById('sf-tag-feedback');
+  if (display) display.value = owner || '— invalid prefix —';
+  if (feedback) {
+    if (!tag) {
+      feedback.textContent = '';
+      feedback.style.color = '';
+    } else {
+      const editingTag = document.getElementById('sheep-form-section').dataset.editingTag;
+      const v = validateSheepTag(tag, editingTag);
+      feedback.textContent = v.ok ? '✓ valid' : v.msg;
+      feedback.style.color = v.ok ? 'var(--forest)' : '#b8714d';
+    }
+  }
+}
+
+/* Reactive: acquisition mode → which sub-block shows. */
+function onAcquisitionChange() {
+  const mode = document.getElementById('sf-acquisition').value;
+  const born = document.getElementById('sf-born-block');
+  const acquired = document.getElementById('sf-acquired-block');
+  const external = document.getElementById('sf-external-block');
+  if (born)     born.style.display     = (mode === 'born_on_farm')        ? '' : 'none';
+  if (acquired) acquired.style.display = (mode === 'acquired')            ? '' : 'none';
+  if (external) external.style.display = (mode === 'external_ram_placeholder') ? '' : 'none';
+  // External rams forced to M sex
+  if (mode === 'external_ram_placeholder') {
+    document.getElementById('sf-sex').value = 'M';
+  }
+}
+
+function onBreedChange() {
+  // Future hook for breed-specific colour suggestions
+}
+
+function showSheepFormFeedback(msg, kind) {
+  const f = document.getElementById('sf-feedback');
+  if (!f) return;
+  f.textContent = msg;
+  f.style.display = '';
+  if (kind === 'ok') {
+    f.style.background = 'rgba(30,58,47,0.08)';
+    f.style.color = 'var(--forest)';
+  } else {
+    f.style.background = 'rgba(184,113,77,0.12)';
+    f.style.color = '#b8714d';
+  }
+}
+function hideSheepFormFeedback() {
+  const f = document.getElementById('sf-feedback');
+  if (f) f.style.display = 'none';
+}
+
+/* Save (insert or update). */
+async function submitSheepForm() {
+  const formSec = document.getElementById('sheep-form-section');
+  const mode = formSec.dataset.mode || 'add';
+  const editingTag = formSec.dataset.editingTag || null;
+  
+  const rawTag = document.getElementById('sf-tag').value.trim();
+  const tagCheck = validateSheepTag(rawTag, editingTag);
+  if (!tagCheck.ok) { showSheepFormFeedback(tagCheck.msg, 'err'); return; }
+  const tag_id = tagCheck.normalised;
+  
+  const acquisition = document.getElementById('sf-acquisition').value;
+  const sex = document.getElementById('sf-sex').value;
+  const breed = document.getElementById('sf-breed').value;
+  const colour = document.getElementById('sf-colour').value.trim();
+  const notes = document.getElementById('sf-notes').value.trim();
+  
+  let owner = tagToOwner(tag_id);
+  let status = 'alive';
+  let isExternal = (acquisition === 'external_ram_placeholder');
+  if (isExternal) {
+    status = 'external_ram';
+    owner = 'External';
+  }
+  
+  const record = {
+    tag_id,
+    sex: isExternal ? 'M' : sex,
+    owner,
+    breed,
+    colour,
+    acquisition: isExternal ? 'external_ram_placeholder' :
+                 (acquisition === 'born_on_farm' ? 'born_on_farm' : 'acquired'),
+    dob:           (acquisition === 'born_on_farm') ? document.getElementById('sf-dob').value : null,
+    dam_tag:       (acquisition === 'born_on_farm') ? (document.getElementById('sf-dam').value || null) : null,
+    sire_tag:      (acquisition === 'born_on_farm') ? (document.getElementById('sf-sire').value || null) : null,
+    date_acquired: (acquisition === 'acquired')     ? document.getElementById('sf-date-acquired').value : null,
+    source_farm:   (acquisition === 'acquired')     ? document.getElementById('sf-source-farm').value.trim() :
+                   (isExternal ? document.getElementById('sf-source-farm').value.trim() : ''),
+    status,
+    date_status_changed: null,
+    notes,
+    updated_at: new Date().toISOString()
+  };
+  
+  if (mode === 'edit' && editingTag) {
+    const idx = STATE.sheep.findIndex(s => s.tag_id === editingTag);
+    if (idx === -1) { showSheepFormFeedback('Original record not found', 'err'); return; }
+    // Preserve created_at on edit
+    record.created_at = STATE.sheep[idx].created_at || record.updated_at;
+    STATE.sheep[idx] = record;
+  } else {
+    record.created_at = record.updated_at;
+    STATE.sheep.push(record);
+  }
+  
+  await storageSet(K_SHEEP, STATE.sheep);
+  // v6.5.0 — Queue this sheep upsert for cloud sync. Apps Script handles 
+  // upsert by tag_id (insert if new, update existing row).
+  await queueForSync(record, 'sheep');
+  if (typeof flushQueue === 'function') flushQueue({ manual: true }).catch(() => {});
+  showSheepFormFeedback(`✓ ${tag_id} saved`, 'ok');
+  showToast(`Sheep ${tag_id} saved · ${STATE.sheep.length} total`, 2400);
+  setTimeout(() => closeSheepForm(), 600);
+}
+
+async function onSheepDelete() {
+  const formSec = document.getElementById('sheep-form-section');
+  const editingTag = formSec.dataset.editingTag || null;
+  if (!editingTag) return;
+  if (!confirm(`Permanently remove ${editingTag} from the registry? This does not affect lineage references on other sheep.`)) return;
+  STATE.sheep = STATE.sheep.filter(s => s.tag_id !== editingTag);
+  await storageSet(K_SHEEP, STATE.sheep);
+  showToast(`${editingTag} removed`, 2400);
+  closeSheepForm();
+}
+
+function closeSheepForm() {
+  const listSec = document.getElementById('sheep-list-section');
+  const formSec = document.getElementById('sheep-form-section');
+  if (formSec) formSec.style.display = 'none';
+  if (listSec) listSec.style.display = '';
+  renderSheepRegistry();
+}
+
+/* Profile page — read-only view of one sheep with header, lineage, notes. 
+   Step 3 will add the event timeline and "Record event" actions. */
+function openSheepProfile(tagId) {
+  const sheep = (STATE.sheep || []).find(s => s.tag_id === tagId);
+  if (!sheep) return;
+  const listSec = document.getElementById('sheep-list-section');
+  const formSec = document.getElementById('sheep-form-section');
+  const profSec = document.getElementById('sheep-profile-section');
+  if (listSec) listSec.style.display = 'none';
+  if (formSec) formSec.style.display = 'none';
+  if (profSec) profSec.style.display = '';
+  
+  const statusEl = document.getElementById('sheep-profile-status');
+  if (statusEl) {
+    statusEl.textContent = sheep.status === 'external_ram' ? 'EXTERNAL' : sheep.status.toUpperCase();
+  }
+  
+  const sex = sheep.sex === 'F' ? '♀ Ewe' : (sheep.status === 'external_ram' ? '♂ External Ram' : '♂ Ram');
+  const age = sheepAge(sheep.dob);
+  
+  // Lineage refs
+  const dam = sheep.dam_tag ? (STATE.sheep || []).find(s => s.tag_id === sheep.dam_tag) : null;
+  const sire = sheep.sire_tag ? (STATE.sheep || []).find(s => s.tag_id === sheep.sire_tag) : null;
+  const offspring = (STATE.sheep || []).filter(s => s.dam_tag === tagId || s.sire_tag === tagId);
+  
+  const body = document.getElementById('sheep-profile-body');
+  if (body) {
+    body.innerHTML = `
+      <div style="margin:0.4rem 0 1.2rem">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:1.5rem; font-weight:600; color:var(--forest); letter-spacing:0.04em">${sheep.tag_id}</div>
+        <div style="font-family:'Fraunces',serif; font-size:1.05rem; color:var(--ink); margin-top:0.25rem">${sex} · ${sheep.breed}${sheep.colour ? ' · ' + sheep.colour : ''}</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--slate-light); letter-spacing:0.06em; margin-top:0.3rem; text-transform:uppercase">${sheep.owner} · ${age}${sheep.dob ? ' · born ' + sheep.dob : sheep.date_acquired ? ' · acquired ' + sheep.date_acquired : ''}</div>
+      </div>
+      
+      <div style="margin-bottom:1.2rem">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:0.65rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--brass); margin-bottom:0.5rem">Lineage</div>
+        <div style="font-family:'Fraunces',serif; font-size:0.92rem; color:var(--ink); line-height:1.7">
+          <div>Dam: ${dam ? `<a onclick="openSheepProfile('${dam.tag_id}')" style="color:var(--forest); text-decoration:underline; cursor:pointer">${dam.tag_id}</a> · ${dam.owner}` : '<span style="color:var(--slate-light); font-style:italic">unknown</span>'}</div>
+          <div>Sire: ${sire ? `<a onclick="openSheepProfile('${sire.tag_id}')" style="color:var(--forest); text-decoration:underline; cursor:pointer">${sire.tag_id}</a> · ${sire.status === 'external_ram' ? 'External' : sire.owner}` : '<span style="color:var(--slate-light); font-style:italic">unknown</span>'}</div>
+          <div>Offspring: ${offspring.length === 0 ? '<span style="color:var(--slate-light); font-style:italic">none yet</span>' : offspring.map(o => `<a onclick="openSheepProfile('${o.tag_id}')" style="color:var(--forest); text-decoration:underline; cursor:pointer">${o.tag_id}</a>`).join(' · ')}</div>
+          ${sheep.source_farm ? `<div>Source: <span style="color:var(--ink)">${sheep.source_farm}</span></div>` : ''}
+        </div>
+      </div>
+      
+      ${sheep.notes ? `
+      <div style="margin-bottom:1.2rem">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:0.65rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--brass); margin-bottom:0.5rem">Notes</div>
+        <div style="font-family:'Fraunces',serif; font-size:0.92rem; color:var(--ink); line-height:1.55; white-space:pre-wrap">${sheep.notes}</div>
+      </div>` : ''}
+      
+      <div style="margin-bottom:1rem">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:0.65rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--brass); margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:baseline">
+          <span>Events</span>
+          <span style="font-size:0.6rem; color:var(--slate-light); letter-spacing:0.08em">${(STATE.sheepEvents || []).filter(e => e.tag_id === sheep.tag_id).length} total</span>
+        </div>
+        ${renderSheepProfileTimeline(sheep.tag_id)}
+      </div>
+      
+      <div style="display:flex; gap:0.5rem; margin-top:1.2rem; flex-wrap:wrap">
+        <button type="button" onclick="openSheepEventForm('weighed', '${sheep.tag_id}')" class="export-btn" style="flex:1 1 auto; min-width:90px">⚖️ Weigh</button>
+        <button type="button" onclick="openSheepEventForm('dewormed', '${sheep.tag_id}')" class="export-btn" style="flex:1 1 auto; min-width:90px">🪱 Deworm</button>
+        ${sheep.sex === 'F' && sheep.status === 'alive' ? `<button type="button" onclick="openSheepEventForm('lambed', '${sheep.tag_id}')" class="export-btn" style="flex:1 1 auto; min-width:90px">🐑 Lambing</button>
+        <button type="button" onclick="openSheepEventForm('served', '${sheep.tag_id}')" class="export-btn" style="flex:1 1 auto; min-width:90px">❤️ Served</button>` : ''}
+        ${sheep.status === 'alive' ? `<button type="button" onclick="openSheepEventForm('sold', '${sheep.tag_id}')" class="export-btn" style="flex:1 1 auto; min-width:90px">💰 Sale</button>
+        <button type="button" onclick="openSheepEventForm('died', '${sheep.tag_id}')" class="export-btn" style="flex:1 1 auto; min-width:90px; color:#b8714d; border-color:#b8714d">💀 Died</button>` : ''}
+        <button type="button" onclick="openSheepForm('edit', '${sheep.tag_id}')" class="export-btn" style="flex:1 1 auto; min-width:90px; background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark)">Edit</button>
+      </div>
+    `;
+  }
+}
+
+function closeSheepProfile() {
+  const listSec = document.getElementById('sheep-list-section');
+  const profSec = document.getElementById('sheep-profile-section');
+  if (profSec) profSec.style.display = 'none';
+  if (listSec) listSec.style.display = '';
+  renderSheepRegistry();
+}
+
+/* Build chronological event timeline HTML for a sheep tag. Newest first. */
+function renderSheepProfileTimeline(tagId) {
+  const events = (STATE.sheepEvents || [])
+    .filter(e => e.tag_id === tagId)
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  if (events.length === 0) {
+    return `<div style="font-family:'Fraunces',serif; font-style:italic; font-size:0.88rem; color:var(--slate-light); padding:0.6rem 0">No events yet.</div>`;
+  }
+  const labels = {
+    lambed: 'Lambed', served: 'Served', sold: 'Sold', dewormed: 'Dewormed',
+    vaccinated: 'Vaccinated', weighed: 'Weighed', sheared: 'Sheared',
+    hooftrim: 'Hoof-trimmed', treated: 'Treated', died: 'Died'
+  };
+  return events.map(e => {
+    const lbl = labels[e.type] || e.type;
+    const d = e.details || {};
+    let detail = '';
+    if (e.type === 'lambed') {
+      const lambs = (d.lamb_tags || []).join(', ');
+      detail = `${d.born_alive || 0} alive${d.born_dead ? `, ${d.born_dead} dead` : ''}${lambs ? ` → ${lambs}` : ''}${d.sire_tag ? ` · sire ${d.sire_tag}` : ''}`;
+    } else if (e.type === 'served')     detail = d.ram_tag ? `by ${d.ram_tag}` : '';
+    else if (e.type === 'sold')         detail = `Ksh ${(d.price_kes || 0).toLocaleString('en-KE')}${d.weight_kg ? ` · ${d.weight_kg} kg` : ''}${d.buyer ? ` · ${d.buyer}` : ''}`;
+    else if (e.type === 'weighed')      detail = `${d.kg || 0} kg`;
+    else if (e.type === 'sheared')      detail = d.fleece_kg ? `${d.fleece_kg} kg fleece` : '';
+    else if (e.type === 'died')         detail = d.cause || '';
+    else if (d.drug)                    detail = d.drug;
+    return `
+      <div style="display:grid; grid-template-columns:90px 1fr; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--rule); align-items:baseline">
+        <span style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--slate-light); letter-spacing:0.04em">${e.date || '—'}</span>
+        <div>
+          <div style="font-family:'Fraunces',serif; font-size:0.92rem; color:var(--ink)"><strong>${lbl}</strong>${detail ? ' · ' + detail : ''}</div>
+          ${e.notes ? `<div style="font-family:'IBM Plex Mono',monospace; font-size:0.68rem; color:var(--slate-light); margin-top:0.2rem">${e.notes}</div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   v6.5.0 — DORPER FARM EVENT SYSTEM (Steps 3+4 bundled)
+   ============================================================
+   Events are append-only: lambed, served, sold, dewormed, vaccinated,
+   weighed, sheared, hooftrim, treated, died. Each event references a 
+   tag_id (or two, in the case of lambing — ewe + lambs). Some events 
+   trigger side-effects on the sheep registry:
+     · sold     → status='sold',  date_status_changed=today
+     · died     → status='died',  date_status_changed=today
+     · lambed   → CREATE N new sheep records (N = born_alive count),
+                  each with owner inherited from the ewe
+   
+   The form is a single dynamic shape; openSheepEventForm shows/hides 
+   the per-type field blocks. submitSheepEventForm reads only the active 
+   blocks and writes both an event log entry AND any side-effects.
+   ============================================================ */
+
+let _seCurrentType = null;
+let _seCurrentTagId = null;
+
+function openSheepEventForm(type, presetTagId) {
+  const listSec = document.getElementById('sheep-list-section');
+  const formSec = document.getElementById('sheep-form-section');
+  const profSec = document.getElementById('sheep-profile-section');
+  const evSec   = document.getElementById('sheep-event-section');
+  if (listSec) listSec.style.display = 'none';
+  if (formSec) formSec.style.display = 'none';
+  if (profSec) profSec.style.display = 'none';
+  if (evSec) evSec.style.display = '';
+  
+  _seCurrentType = type;
+  _seCurrentTagId = presetTagId;
+  
+  // Reset all type-specific blocks
+  ['se-lambed-block','se-served-block','se-sold-block','se-drug-block',
+   'se-weighed-block','se-sheared-block','se-died-block','se-batch-block']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  
+  // Common: date defaults today, notes blank
+  document.getElementById('se-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('se-notes').value = '';
+  hideSheepEventFeedback();
+  
+  // Title + meta
+  const titles = {
+    lambed: 'Record lambing', served: 'Record service', sold: 'Record sale',
+    dewormed: 'Record deworming', vaccinated: 'Record vaccination',
+    weighed: 'Record weighing', sheared: 'Record shearing',
+    hooftrim: 'Record hoof trim', treated: 'Record treatment',
+    died: 'Record death'
+  };
+  document.getElementById('sheep-event-title').textContent = titles[type] || 'Record event';
+  document.getElementById('sheep-event-mode').textContent = type;
+  
+  // Tag selector — populate based on event type
+  const tagSel = document.getElementById('se-tag');
+  const tagLabel = document.getElementById('se-tag-label');
+  tagSel.innerHTML = '';
+  
+  // Build the "alive sheep" pool for selectors. Type-specific filters:
+  //   lambed: alive females only (ewes)
+  //   served: alive females only (ewes)
+  //   sold/died: any alive sheep
+  //   husbandry: alive sheep (excl external_ram for treatments since they're not ours)
+  const alive = (STATE.sheep || []).filter(s => s.status === 'alive');
+  let pool = alive;
+  if (type === 'lambed' || type === 'served') {
+    pool = alive.filter(s => s.sex === 'F');
+    tagLabel.textContent = 'Ewe';
+  } else {
+    tagLabel.textContent = 'Sheep';
+  }
+  
+  if (pool.length === 0) {
+    tagSel.innerHTML = '<option value="">— no eligible sheep on registry —</option>';
+  } else {
+    tagSel.innerHTML = '<option value="">— pick one —</option>' + pool.map(s => 
+      `<option value="${s.tag_id}">${s.tag_id} · ${s.owner} · ${s.breed}</option>`
+    ).join('');
+  }
+  if (presetTagId) tagSel.value = presetTagId;
+  
+  // Type-specific blocks
+  if (type === 'lambed') {
+    document.getElementById('se-lambed-block').style.display = '';
+    // Sire dropdown (rams + external rams)
+    const sireSel = document.getElementById('se-lambed-sire');
+    const rams = (STATE.sheep || []).filter(s => s.sex === 'M' && (s.status === 'alive' || s.status === 'external_ram'));
+    sireSel.innerHTML = '<option value="">— unknown / not on registry —</option>' + rams.map(s => 
+      `<option value="${s.tag_id}">${s.tag_id} · ${s.status === 'external_ram' ? 'External' : s.owner}</option>`
+    ).join('');
+    document.getElementById('se-lambed-alive').value = 1;
+    document.getElementById('se-lambed-dead').value = 0;
+    renderLambTagInputs();
+  } else if (type === 'served') {
+    document.getElementById('se-served-block').style.display = '';
+    const ramSel = document.getElementById('se-served-ram');
+    const rams = (STATE.sheep || []).filter(s => s.sex === 'M' && (s.status === 'alive' || s.status === 'external_ram'));
+    ramSel.innerHTML = '<option value="">— pick one —</option>' + rams.map(s => 
+      `<option value="${s.tag_id}">${s.tag_id} · ${s.status === 'external_ram' ? 'External' : s.owner}</option>`
+    ).join('');
+  } else if (type === 'sold') {
+    document.getElementById('se-sold-block').style.display = '';
+    document.getElementById('se-sold-kg').value = '';
+    document.getElementById('se-sold-price').value = '';
+    document.getElementById('se-sold-type').value = 'slaughter';
+    document.getElementById('se-sold-buyer').value = '';
+  } else if (type === 'dewormed' || type === 'vaccinated' || type === 'treated') {
+    document.getElementById('se-drug-block').style.display = '';
+    document.getElementById('se-batch-block').style.display = '';
+    const drugLabel = document.getElementById('se-drug-label');
+    drugLabel.textContent = type === 'vaccinated' ? 'Vaccine' : (type === 'treated' ? 'Drug / treatment' : 'Drug');
+    document.getElementById('se-drug-name').value = '';
+    document.getElementById('se-batch-all').checked = false;
+  } else if (type === 'weighed') {
+    document.getElementById('se-weighed-block').style.display = '';
+    document.getElementById('se-weighed-kg').value = '';
+  } else if (type === 'sheared' || type === 'hooftrim') {
+    if (type === 'sheared') document.getElementById('se-sheared-block').style.display = '';
+    document.getElementById('se-batch-block').style.display = '';
+    document.getElementById('se-batch-all').checked = false;
+  } else if (type === 'died') {
+    document.getElementById('se-died-block').style.display = '';
+    document.getElementById('se-died-cause').value = '';
+  }
+}
+
+function renderLambTagInputs() {
+  const alive = parseInt(document.getElementById('se-lambed-alive').value, 10) || 0;
+  const block = document.getElementById('se-lambed-tags-block');
+  if (!block) return;
+  if (alive === 0) { block.innerHTML = ''; return; }
+  // Suggest next available tag — find the highest existing S-/H-/E-/M- number
+  // and increment. Prefix uses ewe's owner (Cheison's rule).
+  const eweTag = document.getElementById('se-tag').value;
+  const ewe = (STATE.sheep || []).find(s => s.tag_id === eweTag);
+  const ownerPrefix = ewe ? (DORPER_OWNERS.find(o => o.name === ewe.owner)?.prefix || 'S') : 'S';
+  const existing = (STATE.sheep || [])
+    .filter(s => s.tag_id.startsWith(ownerPrefix + '-'))
+    .map(s => parseInt(s.tag_id.substring(ownerPrefix.length + 1), 10) || 0);
+  const nextNum = existing.length === 0 ? 1 : Math.max(...existing) + 1;
+  
+  let html = `<div style="font-family:'IBM Plex Mono',monospace; font-size:0.65rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--brass); margin-bottom:0.4rem">Lamb tags · sex</div>`;
+  for (let i = 0; i < alive; i++) {
+    const suggestedTag = `${ownerPrefix}-${String(nextNum + i).padStart(3, '0')}`;
+    html += `
+      <div style="display:grid; grid-template-columns:1fr 100px; gap:0.5rem; margin-bottom:0.4rem">
+        <input type="text" id="se-lamb-tag-${i}" placeholder="${suggestedTag}" value="${suggestedTag}" autocomplete="off" style="padding:0.5rem; font-family:'IBM Plex Mono',monospace; font-size:0.85rem; border:1px solid var(--rule); border-radius:4px">
+        <select id="se-lamb-sex-${i}" style="padding:0.5rem; font-family:'IBM Plex Mono',monospace; font-size:0.78rem; border:1px solid var(--rule); border-radius:4px">
+          <option value="F">♀ Ewe</option>
+          <option value="M">♂ Ram</option>
+        </select>
+      </div>`;
+  }
+  block.innerHTML = html;
+}
+
+function onBatchAllChange() {
+  const checked = document.getElementById('se-batch-all').checked;
+  const tagField = document.getElementById('se-tag-field');
+  if (tagField) tagField.style.display = checked ? 'none' : '';
+}
+
+function showSheepEventFeedback(msg, kind) {
+  const f = document.getElementById('se-feedback');
+  if (!f) return;
+  f.textContent = msg;
+  f.style.display = '';
+  f.style.background = kind === 'ok' ? 'rgba(30,58,47,0.08)' : 'rgba(184,113,77,0.12)';
+  f.style.color = kind === 'ok' ? 'var(--forest)' : '#b8714d';
+}
+function hideSheepEventFeedback() {
+  const f = document.getElementById('se-feedback');
+  if (f) f.style.display = 'none';
+}
+
+function closeSheepEventForm() {
+  const listSec = document.getElementById('sheep-list-section');
+  const evSec = document.getElementById('sheep-event-section');
+  if (evSec) evSec.style.display = 'none';
+  if (listSec) listSec.style.display = '';
+  renderSheepRegistry();
+}
+
+async function submitSheepEventForm() {
+  const type = _seCurrentType;
+  if (!type) return;
+  const date = document.getElementById('se-date').value;
+  if (!date) { showSheepEventFeedback('Date is required', 'err'); return; }
+  const notes = document.getElementById('se-notes').value.trim();
+  
+  // Determine target sheep: single tag or batch
+  const batchEl = document.getElementById('se-batch-all');
+  const isBatch = batchEl && batchEl.checked && (type === 'dewormed' || type === 'vaccinated' || type === 'treated' || type === 'sheared' || type === 'hooftrim');
+  let targetTags = [];
+  if (isBatch) {
+    targetTags = (STATE.sheep || []).filter(s => s.status === 'alive').map(s => s.tag_id);
+    if (targetTags.length === 0) { showSheepEventFeedback('No alive sheep to apply to', 'err'); return; }
+  } else {
+    const tag = document.getElementById('se-tag').value;
+    if (!tag) { showSheepEventFeedback('Pick a sheep', 'err'); return; }
+    targetTags = [tag];
+  }
+  
+  // Build details based on type
+  function buildDetails(tagId) {
+    if (type === 'lambed') {
+      const alive = parseInt(document.getElementById('se-lambed-alive').value, 10) || 0;
+      const dead = parseInt(document.getElementById('se-lambed-dead').value, 10) || 0;
+      const sireTag = document.getElementById('se-lambed-sire').value || null;
+      const lambs = [];
+      for (let i = 0; i < alive; i++) {
+        const lt = document.getElementById(`se-lamb-tag-${i}`)?.value?.trim().toUpperCase();
+        const ls = document.getElementById(`se-lamb-sex-${i}`)?.value;
+        if (lt) lambs.push({ tag: lt, sex: ls });
+      }
+      return { sire_tag: sireTag, born_alive: alive, born_dead: dead, lamb_tags: lambs.map(l => l.tag), _lambs_full: lambs };
+    }
+    if (type === 'served') return { ram_tag: document.getElementById('se-served-ram').value || null };
+    if (type === 'sold') return {
+      weight_kg: Number(document.getElementById('se-sold-kg').value) || 0,
+      price_kes: Number(document.getElementById('se-sold-price').value) || 0,
+      sale_type: document.getElementById('se-sold-type').value,
+      buyer: document.getElementById('se-sold-buyer').value.trim()
+    };
+    if (type === 'dewormed' || type === 'vaccinated' || type === 'treated') {
+      return { drug: document.getElementById('se-drug-name').value.trim() };
+    }
+    if (type === 'weighed') return { kg: Number(document.getElementById('se-weighed-kg').value) || 0 };
+    if (type === 'sheared') return { fleece_kg: Number(document.getElementById('se-sheared-kg').value) || 0 };
+    if (type === 'died') return { cause: document.getElementById('se-died-cause').value.trim() };
+    return {};
+  }
+  
+  // Validate lambing-specific
+  if (type === 'lambed') {
+    const alive = parseInt(document.getElementById('se-lambed-alive').value, 10) || 0;
+    for (let i = 0; i < alive; i++) {
+      const t = document.getElementById(`se-lamb-tag-${i}`)?.value?.trim().toUpperCase();
+      if (!t) { showSheepEventFeedback(`Lamb #${i+1} needs a tag`, 'err'); return; }
+      const v = validateSheepTag(t, null);
+      if (!v.ok) { showSheepEventFeedback(`Lamb ${i+1} tag: ${v.msg}`, 'err'); return; }
+    }
+  }
+  
+  // Process each target
+  const newEvents = [];
+  for (const tag of targetTags) {
+    const details = buildDetails(tag);
+    const evRecord = {
+      id: 'EV-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7) + '-' + tag,
+      date,
+      tag_id: tag,
+      type,
+      details,
+      notes,
+      timestamp: new Date().toISOString(),
+      _source: 'local'
+    };
+    STATE.sheepEvents.push(evRecord);
+    newEvents.push(evRecord);
+    
+    // Side-effects on the sheep registry
+    const idx = (STATE.sheep || []).findIndex(s => s.tag_id === tag);
+    if (idx !== -1) {
+      if (type === 'sold') {
+        STATE.sheep[idx].status = 'sold';
+        STATE.sheep[idx].date_status_changed = date;
+        STATE.sheep[idx].updated_at = new Date().toISOString();
+      } else if (type === 'died') {
+        STATE.sheep[idx].status = 'died';
+        STATE.sheep[idx].date_status_changed = date;
+        STATE.sheep[idx].updated_at = new Date().toISOString();
+      }
+    }
+  }
+  
+  // Lambing side-effect: create new sheep records for each lamb
+  if (type === 'lambed' && targetTags.length === 1) {
+    const eweTag = targetTags[0];
+    const ewe = (STATE.sheep || []).find(s => s.tag_id === eweTag);
+    const lambs = newEvents[0].details._lambs_full || [];
+    const sireTag = newEvents[0].details.sire_tag;
+    for (const lamb of lambs) {
+      const lambRecord = {
+        tag_id: lamb.tag,
+        sex: lamb.sex,
+        owner: ewe ? ewe.owner : 'Sinonin',  // Cheison's rule: ewe owner inherits
+        breed: ewe ? ewe.breed : 'Dorper',
+        colour: '',
+        acquisition: 'born_on_farm',
+        dob: date,
+        dam_tag: eweTag,
+        sire_tag: sireTag,
+        date_acquired: null,
+        source_farm: '',
+        status: 'alive',
+        date_status_changed: null,
+        notes: '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      // Strip the _lambs_full helper key from event details (not for sync)
+      delete newEvents[0].details._lambs_full;
+      STATE.sheep.push(lambRecord);
+      // Queue lamb sheep for sync
+      await queueForSync(lambRecord, 'sheep');
+    }
+  }
+  
+  // Persist
+  await storageSet(K_SHEEP_EVENTS, STATE.sheepEvents);
+  await storageSet(K_SHEEP, STATE.sheep);
+  
+  // Queue events for sync (one queue item per event)
+  for (const ev of newEvents) {
+    await queueForSync(ev, 'sheep-event');
+  }
+  // Queue updated sheep for sync (status changes)
+  if (type === 'sold' || type === 'died') {
+    for (const tag of targetTags) {
+      const updated = (STATE.sheep || []).find(s => s.tag_id === tag);
+      if (updated) await queueForSync(updated, 'sheep');
+    }
+  }
+  
+  showSheepEventFeedback(`✓ ${newEvents.length} event${newEvents.length === 1 ? '' : 's'} saved`, 'ok');
+  showToast(`Recorded ${type} · ${newEvents.length} event${newEvents.length === 1 ? '' : 's'}`, 2400);
+  if (typeof flushQueue === 'function') flushQueue({ manual: true }).catch(() => {});
+  setTimeout(() => closeSheepEventForm(), 700);
+}
+
+/* ============================================================
+   Sheep cloud-to-local mappers + sync push
+   ============================================================
+   These run during cloud-fetch (cloud → STATE) and during sync 
+   queue dispatch (STATE → cloud). The sheet's column headers may 
+   drift; mappers probe several common variants to stay robust.
+   ============================================================ */
+function cloudToLocalSheep(r) {
+  return {
+    tag_id:      (r.tag_id ?? r.tagId ?? r.tag ?? '').toString().trim().toUpperCase(),
+    sex:         (r.sex || 'F').toString().toUpperCase().charAt(0) === 'M' ? 'M' : 'F',
+    owner:       r.owner || 'Sinonin',
+    breed:       r.breed || 'Dorper',
+    colour:      r.colour || r.color || '',
+    acquisition: r.acquisition || (r.dob ? 'born_on_farm' : 'acquired'),
+    dob:         r.dob || null,
+    dam_tag:     r.dam_tag || r.damTag || null,
+    sire_tag:    r.sire_tag || r.sireTag || null,
+    date_acquired: r.date_acquired || r.dateAcquired || null,
+    source_farm: r.source_farm || r.sourceFarm || '',
+    status:      r.status || 'alive',
+    date_status_changed: r.date_status_changed || r.dateStatusChanged || null,
+    notes:       r.notes || '',
+    created_at:  r.created_at || r.createdAt || null,
+    updated_at:  r.updated_at || r.updatedAt || null,
+    _source: 'cloud'
+  };
+}
+
+function cloudToLocalSheepEvent(r) {
+  let details = r.details || {};
+  if (typeof details === 'string') {
+    try { details = JSON.parse(details); } catch { details = { raw: details }; }
+  }
+  return {
+    id:        r.id || ('EV-cloud-' + (r.timestamp || r.date) + '-' + (r.tag_id || r.tagId || '')),
+    date:      r.date,
+    tag_id:    (r.tag_id ?? r.tagId ?? '').toString().trim().toUpperCase(),
+    type:      r.type,
+    details,
+    notes:     r.notes || '',
+    timestamp: r.timestamp || (r.date ? r.date + 'T00:00:00Z' : null),
+    _source: 'cloud'
+  };
+}
+
+async function pushSheepToForm(record) {
+  return await pushDorperToGate(record, 'add_sheep');
+}
+
+async function pushSheepEventToForm(record) {
+  return await pushDorperToGate(record, 'add_sheep_event');
+}
+
+/* Push a Dorper record (sheep registry or event) to Apps Script gate.
+   Uses the same gate URL and gate-aware fetch as the existing six write 
+   paths. No Form fallback — Dorper writes are gate-only by design 
+   (cleaner v5 routing). If gate is unreachable, returns false and the 
+   queue retains the item for retry on next flush. */
+async function pushDorperToGate(record, action) {
+  if (!USE_APPS_SCRIPT_GATE || !APPS_SCRIPT_GATE_URL) {
+    lastWriteResult = { ok: false, reason: 'gate-not-configured' };
+    return false;
+  }
+  try {
+    const body = {
+      action,
+      payload: record,
+      ts: new Date().toISOString()
+    };
+    const res = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) { lastWriteResult = { ok: false, reason: 'http-' + res.status }; return false; }
+    const json = await res.json();
+    if (json && json.ok === true) {
+      lastWriteResult = { ok: true, via: 'gate', reason: 'ok' };
+      return true;
+    }
+    lastWriteResult = { ok: false, reason: (json && json.reason) || 'gate-rejected', message: (json && json.message) || '' };
+    return false;
+  } catch (e) {
+    lastWriteResult = { ok: false, reason: 'network-error' };
+    return false;
   }
 }
 
