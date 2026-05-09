@@ -2940,7 +2940,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.5.9</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.6.0</span>
 </header>
 
 <main>
@@ -4585,7 +4585,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.5.9</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.6.0</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5002,7 +5002,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.5.9';
+const APP_VERSION = 'v6.6.0';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -12084,6 +12084,132 @@ function renderActionCards() {
   });
 }
 
+/* ============================================================
+   v6.6.0 — LIVE BIRD COUNT MATH (Cheison sealed 09 May 2026)
+   ============================================================
+   Phase A + Phase B together. Bird population panel now folds:
+     · cohorts auto-aged through life stages by date_origin
+     · mortality entries (deducted from current stage+house)
+     · poultry sales (deducted at stage match)
+   on top of the latest manual Bird_Census baseline.
+
+   The "no recount" principle (sealed 09 May 2026 for layers) is 
+   honored: this is computation only — no physical recount required.
+   The math runs in the background; manual census remains the operator's 
+   ground-truth reset whenever they choose to do one.
+
+   STAGE AGING CUTOFFS (Kipkenda layer flock — adjust if breed differs):
+     Day 1-7    → Chicks 1–7 days
+     Day 8-28   → Chicks 7–28 days
+     Day 29-140 → Growers
+     Day 141+   → Layers
+
+   Cockerels are NOT auto-aged — the system can't determine sex from 
+   a cohort. Operator manually moves males to Cockerels via cohort 
+   update or a separate cockerels cohort record.
+   ============================================================ */
+
+function computeCohortStage(dateOrigin, today) {
+  if (!dateOrigin) return null;
+  today = today || new Date().toISOString().slice(0, 10);
+  const origin = new Date(dateOrigin + 'T00:00:00Z');
+  const now    = new Date(today      + 'T00:00:00Z');
+  if (isNaN(origin.getTime()) || isNaN(now.getTime())) return null;
+  const ageDays = Math.floor((now - origin) / (1000 * 60 * 60 * 24));
+  if (ageDays < 0) return null; // future origin (data error)
+  if (ageDays <= 7)   return 'Chicks 1\u20137 days';
+  if (ageDays <= 28)  return 'Chicks 7\u201328 days';
+  if (ageDays <= 140) return 'Growers';
+  return 'Layers';
+}
+
+/* Live count for (stage, house). Returns:
+     { live, baseline, censusDate, cohortDelta, mortalityDelta, salesDelta, hasAdjustments }
+   - baseline   = latest manual census count for stage+house (or summed across houses if !house)
+   - censusDate = date of that census ('1970-01-01' if none)
+   - cohortDelta    = cohorts whose computed_stage(today) === stage AND date_origin > censusDate
+                      (untracked at last census, now visible)
+   - mortalityDelta = deaths recorded since censusDate matching this stage (and house if specified)
+   - salesDelta     = poultry sales since censusDate matching this stage (no house filter — 
+                      sales don't carry house. Skipped when house filter is on.)
+   - hasAdjustments = true if any non-baseline contribution exists (so UI can flag "computed").
+*/
+function computeStageLive(stage, house, today) {
+  today = today || new Date().toISOString().slice(0, 10);
+
+  // Baseline: latest manual census for this (stage, house). 
+  // If house omitted, sum the latest-per-house entries.
+  const census = (STATE.birdCensus || []).filter(c => c.stage === stage);
+  let baseline = 0;
+  let censusDate = '1970-01-01';
+  if (house) {
+    const matching = census.filter(c => c.house === house);
+    matching.forEach(c => {
+      if ((c.date || '') > censusDate) {
+        censusDate = c.date;
+        baseline = Number(c.count) || 0;
+      }
+    });
+  } else {
+    // Sum latest-per-house
+    const latestByHouse = {};
+    census.forEach(c => {
+      const h = c.house || '';
+      if (!latestByHouse[h] || (c.date || '') > (latestByHouse[h].date || '')) {
+        latestByHouse[h] = c;
+      }
+    });
+    Object.values(latestByHouse).forEach(c => {
+      baseline += Number(c.count) || 0;
+      if ((c.date || '') > censusDate) censusDate = c.date;
+    });
+  }
+
+  // Cohort delta: cohorts whose CURRENT stage matches AND originated after census
+  let cohortDelta = 0;
+  (STATE.cohorts || []).forEach(c => {
+    if (house && c.house !== house) return;
+    if (!c.date_origin) return;
+    const stageNow = computeCohortStage(c.date_origin, today);
+    if (stageNow !== stage) return;
+    // Skip if cohort was already in this stage at last census date (already in baseline)
+    if (c.date_origin <= censusDate) {
+      const stageThen = computeCohortStage(c.date_origin, censusDate);
+      if (stageThen === stage) return;
+    }
+    // Cohort entered this stage AFTER census (newly hatched or aged in)
+    cohortDelta += Number(c.current_count) || Number(c.initial_count) || 0;
+  });
+
+  // Mortality delta: deaths matching stage (and house if specified) since census
+  let mortalityDelta = 0;
+  (STATE.mortality || []).forEach(m => {
+    if (m.stage !== stage) return;
+    if (house && m.house !== house) return;
+    if ((m.date || '') > censusDate) {
+      mortalityDelta += Number(m.count) || 0;
+    }
+  });
+
+  // Sales delta: poultry sales matching stage since census. Sales lack a house 
+  // field, so we deduct only at aggregate level. Per-house breakdown shows 
+  // baseline + mortality only (sales are aggregated across houses).
+  let salesDelta = 0;
+  if (!house) {
+    (STATE.poultry || []).forEach(s => {
+      if (s.product === 'Eggs') return; // eggs aren't bird counts
+      if (s.stage !== stage) return;
+      if ((s.date || '') > censusDate) {
+        salesDelta += Number(s.quantity) || 0;
+      }
+    });
+  }
+
+  const live = Math.max(0, baseline + cohortDelta - mortalityDelta - salesDelta);
+  const hasAdjustments = (cohortDelta > 0) || (mortalityDelta > 0) || (salesDelta > 0);
+  return { live, baseline, censusDate, cohortDelta, mortalityDelta, salesDelta, hasAdjustments };
+}
+
 function renderHome() {
   // v6.3.12 — Greeting changed from Swahili time-based to Nandi.
   // "Chamgei chemogeet" — universal Nandi greeting. If you want morning/evening 
@@ -12546,28 +12672,37 @@ function renderHome() {
   const liveBirdsEl = document.getElementById('poultry-live-birds');
   const liveBirdsSubEl = document.getElementById('poultry-live-birds-sub');
 
-  // Latest layers per house (Stage='Layers', most recent census date)
+  // Latest layers per house (kept for vaccination bars + per-house sub-line)
   const latestLayersByHouse = {};
   let latestCensusDate = '';
-  let totalBirds = 0;
-  const stageTotals = {};
   censusBirds.forEach(c => {
-    const cnt = Number(c.count) || 0;
     const stg = c.stage || '';
     if ((c.date || '') > latestCensusDate) latestCensusDate = c.date;
-
-    // Latest by house+stage for live-birds aggregate
     const key = (c.house || '') + '|' + stg;
     const existing = latestLayersByHouse[key];
     if (!existing || (c.date || '') > (existing.date || '')) {
       latestLayersByHouse[key] = c;
     }
   });
-  // Recompute aggregates from latest-by-house+stage map
-  Object.values(latestLayersByHouse).forEach(c => {
-    const cnt = Number(c.count) || 0;
-    totalBirds += cnt;
-    stageTotals[c.stage] = (stageTotals[c.stage] || 0) + cnt;
+
+  // v6.6.0 — LIVE STAGE TOTALS (Phase A + Phase B).
+  // Replaces the previous census-only sum with a computed live count that 
+  // folds in cohort aging, mortality, and sales since latest census.
+  // The math runs per-stage via computeStageLive() defined above renderHome.
+  const today = new Date().toISOString().slice(0, 10);
+  const stageTotals = {};
+  const stageDetails = {};   // for sub-line transparency: census/cohort/mortality/sales breakdown
+  let totalBirds = 0;
+  const STAGES_TRACKED = [
+    'Layers', 'Cockerels', 'Growers',
+    'Chicks 1\u20137 days', 'Chicks 7\u201328 days',
+    'Quarantine', 'Deformities', 'Retired birds'
+  ];
+  STAGES_TRACKED.forEach(s => {
+    const live = computeStageLive(s, null, today);
+    stageTotals[s] = live.live;
+    stageDetails[s] = live;
+    totalBirds += live.live;
   });
 
   const gfLayers = (latestLayersByHouse['Ground Floor|Layers'] && Number(latestLayersByHouse['Ground Floor|Layers'].count)) || 0;
@@ -12601,15 +12736,29 @@ function renderHome() {
     const total = stageTotals[stageName] || 0;
     valEl.textContent = total > 0 ? total.toLocaleString('en-KE') : '—';
     if (!subEl) return;
-    if (censusBirds.length === 0) {
+    if (censusBirds.length === 0 && total === 0) {
       subEl.textContent = 'no census yet';
       return;
     }
     if (total === 0) {
-      subEl.textContent = 'none in census';
+      subEl.textContent = 'none';
       return;
     }
-    // Per-house breakdown for this stage
+    // v6.6.0 — Live count transparency: when computed adjustments apply 
+    // (cohorts/mortality/sales since census), show what's been folded in.
+    const detail = stageDetails[stageName] || {};
+    const adjustments = [];
+    if (detail.cohortDelta > 0)    adjustments.push(`+${detail.cohortDelta} hatched`);
+    if (detail.mortalityDelta > 0) adjustments.push(`−${detail.mortalityDelta} died`);
+    if (detail.salesDelta > 0)     adjustments.push(`−${detail.salesDelta} sold`);
+    if (adjustments.length > 0) {
+      // Computed live count — surface the math transparently
+      const since = (detail.censusDate && detail.censusDate !== '1970-01-01') 
+        ? ` since ${detail.censusDate}` : '';
+      subEl.textContent = `live · ${adjustments.join(' · ')}${since}`;
+      return;
+    }
+    // No adjustments — fall through to per-house breakdown from census
     const perHouse = [];
     Object.values(latestLayersByHouse).forEach(c => {
       if (c.stage === stageName && Number(c.count) > 0) {
@@ -12617,11 +12766,10 @@ function renderHome() {
       }
     });
     if (perHouse.length === 0) {
-      subEl.textContent = `as of ${latestCensusDate}`;
+      subEl.textContent = `as of ${latestCensusDate || '—'}`;
     } else if (perHouse.length === 1) {
       subEl.textContent = `${perHouse[0]} · as of ${latestCensusDate}`;
     } else {
-      // Multiple houses — show first 2, abbreviate
       subEl.textContent = perHouse.slice(0, 2).join(' · ') + (perHouse.length > 2 ? ` +${perHouse.length - 2}` : '');
     }
   }
