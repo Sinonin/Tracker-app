@@ -2940,7 +2940,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.6.0</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.6.2</span>
 </header>
 
 <main>
@@ -4585,7 +4585,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.6.0</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.6.2</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5002,7 +5002,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.6.0';
+const APP_VERSION = 'v6.6.2';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -12689,20 +12689,49 @@ function renderHome() {
   // Replaces the previous census-only sum with a computed live count that 
   // folds in cohort aging, mortality, and sales since latest census.
   // The math runs per-stage via computeStageLive() defined above renderHome.
+  // 
+  // v6.6.2 — Defensive fallback. Quarantine card was showing zero on Faith's
+  // PWA after v6.6.0 deploy despite census data being present. Root cause not
+  // fully isolated, but the symptom suggests computeStageLive's filter or 
+  // baseline computation can miss data that the old direct-iteration of 
+  // latestLayersByHouse catches. Solution: also compute the OLD-style 
+  // census-only total as `stageTotalsCensus`. If computeStageLive returns 
+  // 0 but the old style finds data, use the old number. Defense-in-depth.
   const today = new Date().toISOString().slice(0, 10);
   const stageTotals = {};
-  const stageDetails = {};   // for sub-line transparency: census/cohort/mortality/sales breakdown
+  const stageDetails = {};
   let totalBirds = 0;
   const STAGES_TRACKED = [
     'Layers', 'Cockerels', 'Growers',
     'Chicks 1\u20137 days', 'Chicks 7\u201328 days',
     'Quarantine', 'Deformities', 'Retired birds'
   ];
+  // First: build OLD-style census-only totals as the safety baseline.
+  const stageTotalsCensus = {};
+  Object.values(latestLayersByHouse).forEach(c => {
+    const stg = c.stage;
+    if (!stg) return;
+    stageTotalsCensus[stg] = (stageTotalsCensus[stg] || 0) + (Number(c.count) || 0);
+  });
+  // Second: compute live totals; fall back to census-only when live returns 0 
+  // and census has data.
   STAGES_TRACKED.forEach(s => {
     const live = computeStageLive(s, null, today);
-    stageTotals[s] = live.live;
-    stageDetails[s] = live;
-    totalBirds += live.live;
+    const censusOnly = stageTotalsCensus[s] || 0;
+    if (live.live === 0 && live.baseline === 0 && censusOnly > 0) {
+      // computeStageLive missed it — use census directly as a safety net.
+      stageTotals[s] = censusOnly;
+      stageDetails[s] = {
+        live: censusOnly, baseline: censusOnly, censusDate: latestCensusDate,
+        cohortDelta: 0, mortalityDelta: 0, salesDelta: 0, hasAdjustments: false,
+        _fellBackToCensus: true
+      };
+      console.warn('[stage-live] fallback for "' + s + '" — computeStageLive returned 0, census shows ' + censusOnly);
+    } else {
+      stageTotals[s] = live.live;
+      stageDetails[s] = live;
+    }
+    totalBirds += stageTotals[s];
   });
 
   const gfLayers = (latestLayersByHouse['Ground Floor|Layers'] && Number(latestLayersByHouse['Ground Floor|Layers'].count)) || 0;
@@ -14103,76 +14132,84 @@ function sheepAge(dob) {
 async function renderSheepSyncDiagnostic() {
   const el = document.getElementById('sheep-sync-diagnostic');
   if (!el) return;
+
+  // v6.6.1 — Repurposed from "Sheet sync" status to "Flock summary" widget.
+  // The sync placeholder ("No push attempts yet this session.") was orphan 
+  // space after Push-now removal in v6.5.8. The gate is now proven, so 
+  // sync information is reduced to a small inline indicator (only when 
+  // pending). The space goes to what operators actually need: a roll-up 
+  // by owner — who has how many, what sex split.
   
-  // Read queue and count Dorper items
-  let queueDepth = { sheep: 0, event: 0, total: 0 };
+  // Queue depth (small footnote when something is pending)
+  let queuePending = 0;
   try {
     const queue = await storageGet(K_SYNC_QUEUE, []);
-    queueDepth.total = queue.length;
-    queueDepth.sheep = queue.filter(q => q.kind === 'sheep').length;
-    queueDepth.event = queue.filter(q => q.kind === 'sheep-event').length;
+    queuePending = queue.filter(q => q.kind === 'sheep' || q.kind === 'sheep-event').length;
   } catch {}
-  
+
+  // Live sheep only (filter out sold/died from the running headcount)
+  const livingSheep = (STATE.sheep || []).filter(s => 
+    s && s.status !== 'sold' && s.status !== 'died'
+  );
+
+  // Aggregate by owner
+  const byOwner = {};
+  livingSheep.forEach(s => {
+    const owner = ((s.owner || '').trim()) || 'Unknown';
+    if (!byOwner[owner]) byOwner[owner] = { total: 0, rams: 0, ewes: 0 };
+    byOwner[owner].total++;
+    if (((s.sex || '').toUpperCase()) === 'M') byOwner[owner].rams++;
+    else byOwner[owner].ewes++;
+  });
+
+  const totalSheep = livingSheep.length;
+  const totalRams  = livingSheep.filter(s => ((s.sex || '').toUpperCase()) === 'M').length;
+  const totalEwes  = totalSheep - totalRams;
+
   el.style.display = '';
+  // Slight amber tint when something pending sync; default brass otherwise.
+  el.style.background = queuePending > 0 
+    ? 'rgba(184,113,77,0.08)'
+    : 'rgba(180,140,80,0.06)';
+  el.style.border = '0.5px solid rgba(180,140,80,0.20)';
+  el.style.padding = '0.6rem 0.7rem';
+  el.style.borderRadius = '6px';
+  el.style.fontFamily = "'IBM Plex Mono',monospace";
+  el.style.fontSize = '0.7rem';
+  el.style.lineHeight = '1.5';
+
+  // Header: Flock summary label + summary stats + sync indicator (when relevant)
+  const summaryStats = totalSheep === 0
+    ? 'no sheep registered'
+    : `${totalSheep} alive · ${totalRams}♂ · ${totalEwes}♀${queuePending > 0 ? ` · <span style="color:#b8714d">${queuePending} pending sync</span>` : ''}`;
   
-  const last = _dorperPushLog[0];
-  const lastOk = last && last.ok;
-  const hasFails = !!_dorperPushLog.find(p => !p.ok);
-  
-  // Banner colour
-  let bg, border;
-  if (queueDepth.sheep + queueDepth.event > 0 || hasFails) {
-    bg = 'rgba(184,113,77,0.10)';   // amber for waiting / failures
-    border = '0.5px solid rgba(184,113,77,0.35)';
-  } else if (lastOk) {
-    bg = 'rgba(30,58,47,0.08)';      // green for last success
-    border = '0.5px solid rgba(30,58,47,0.25)';
-  } else {
-    bg = 'rgba(180,140,80,0.08)';    // brass for idle/no attempts yet
-    border = '0.5px solid rgba(180,140,80,0.25)';
-  }
-  el.style.background = bg;
-  el.style.border = border;
-  
-  const fmt = (iso) => {
-    try {
-      const d = new Date(iso);
-      return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    } catch { return iso; }
-  };
-  
-  // Header line: queue + last attempt time
-  // v6.5.8 — "Push now" button removed. It dated to the v6.5.0–6.5.5 
-  // era when the gate was flaky and operators sometimes needed to force 
-  // a manual push. The gate is now proven (v5.0.30/31, 18,159-row resync 
-  // verified, three sheep written end-to-end), and pushes are automatic 
-  // on save. The button became visual noise.
-  let headerHtml = `<div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.4rem">
-    <span style="font-size:0.6rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--brass)">Sheet sync</span>
+  let html = `<div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.5rem; flex-wrap:wrap">
+    <span style="font-size:0.6rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--brass)">Flock summary</span>
+    <span style="font-size:0.6rem; color:var(--slate-light)">${summaryStats}</span>
   </div>`;
-  
-  // Queue summary
-  const queueStr = queueDepth.sheep + queueDepth.event > 0
-    ? `Pending: <strong>${queueDepth.sheep}</strong> sheep, <strong>${queueDepth.event}</strong> events`
-    : `<span style="color:var(--forest)">Queue empty</span>`;
-  headerHtml += `<div style="color:var(--ink); margin-bottom:0.3rem">${queueStr}</div>`;
-  
-  // Recent attempt log
-  if (_dorperPushLog.length === 0) {
-    headerHtml += `<div style="color:var(--slate-light); font-style:italic; font-size:0.65rem">No push attempts yet this session.</div>`;
+
+  if (totalSheep === 0) {
+    html += `<div style="color:var(--slate-light); font-style:italic; font-size:0.7rem">Tap "Register new sheep" to start the registry.</div>`;
   } else {
-    headerHtml += _dorperPushLog.map(p => {
-      const icon = p.ok ? '<span style="color:var(--forest)">✓</span>' : '<span style="color:#b8714d">✗</span>';
-      const time = fmt(p.at);
-      return `<div style="display:flex; gap:0.5rem; align-items:baseline; padding:0.1rem 0; font-size:0.65rem">
-        ${icon}
-        <span style="color:var(--slate-light)">${time}</span>
-        <span style="color:var(--ink); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${p.message || ''}">${p.action}${p.message ? ' — ' + p.message : ''}</span>
+    // Owner breakdown — sorted descending by count, then alphabetically
+    const owners = Object.entries(byOwner).sort((a, b) => {
+      if (b[1].total !== a[1].total) return b[1].total - a[1].total;
+      return a[0].localeCompare(b[0]);
+    });
+    html += `<div style="display:grid; gap:0.15rem">`;
+    html += owners.map(([name, stats]) => {
+      const breakdown = [];
+      if (stats.rams) breakdown.push(`${stats.rams}♂`);
+      if (stats.ewes) breakdown.push(`${stats.ewes}♀`);
+      return `<div style="display:flex; justify-content:space-between; padding:0.1rem 0; font-size:0.72rem">
+        <span style="color:var(--ink)">${name}</span>
+        <span style="color:var(--slate-light); font-variant-numeric:tabular-nums">${stats.total} · ${breakdown.join(' · ')}</span>
       </div>`;
     }).join('');
+    html += `</div>`;
   }
-  
-  el.innerHTML = headerHtml;
+
+  el.innerHTML = html;
 }
 
 /* Manual flush trigger from the Sheep view diagnostic. Forces a queue 
