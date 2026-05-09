@@ -2940,7 +2940,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.5.8</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.5.9</span>
 </header>
 
 <main>
@@ -4585,7 +4585,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.5.8</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.5.9</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5002,7 +5002,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.5.8';
+const APP_VERSION = 'v6.5.9';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -9322,6 +9322,19 @@ async function submitPoultry() {
     markSessionConfirmed('poultry');
   }
 
+  // v6.5.9 — Clear transient fields IMMEDIATELY, BEFORE any await.
+  // Faith's double-tap on 09 May (16:33 + 16:34, 54 sec apart, identical 
+  // payload) showed the previous "clear after storage" timing left a 
+  // window where a second tap re-read populated form. Clearing here 
+  // means a second tap reads empty form → validation fails → returns 
+  // without submitting. Defense beats reactive server-side dedup.
+  // Keep date / product / stage / unit / payment_method — operator 
+  // typically records multiple sales in same product/payment session.
+  document.getElementById('y-quantity').value = '';
+  document.getElementById('y-amount').value = '';
+  document.getElementById('y-buyer').value = '';
+  updatePoultryPreview();
+
   const row = {
     id: 'P' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
     ts: new Date().toISOString(),
@@ -9337,10 +9350,6 @@ async function submitPoultry() {
   STATE.poultry = STATE.poultry || [];
   STATE.poultry.push(row);
   await storageSet(K_POULTRY, STATE.poultry);
-  document.getElementById('y-quantity').value = '';
-  document.getElementById('y-amount').value = '';
-  document.getElementById('y-buyer').value = '';
-  updatePoultryPreview();
   renderRecentPoultry();
   showToast(`Sale recorded · ${v.product} · ${v.payment_method} · Ksh ${moneyRound(v.amount)}`);
   const synced = await syncPoultry(row);
@@ -11387,6 +11396,17 @@ async function submitMortality() {
     markSessionConfirmed('mortality');
   }
 
+  // v6.5.9 — Clear transient fields IMMEDIATELY, BEFORE any await.
+  // Defends against double-tap: a rapid second tap reads empty count/cause, 
+  // fails validation, returns. Keep date / stage / house — operator may 
+  // log multiple deaths in same house in same session.
+  ['mt-count', 'mt-notes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = (id === 'mt-count') ? '1' : '';
+  });
+  const causeElEarly = document.getElementById('mt-cause');
+  if (causeElEarly) causeElEarly.value = '';
+
   const row = {
     id:    'mt-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
     ts:    new Date().toISOString(),
@@ -11420,14 +11440,8 @@ async function submitMortality() {
     showToast('💀 ' + countN + ' bird' + (countN === 1 ? '' : 's') + ' recorded · ' + cause, 2500);
   }
 
-  // Reset transient fields (keep date/stage/house — operator may record multiple deaths)
-  ['mt-count', 'mt-notes'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = (id === 'mt-count') ? '1' : '';
-  });
-  const causeEl = document.getElementById('mt-cause');
-  if (causeEl) causeEl.value = '';
-
+  // (v6.5.9 — field clear moved above to the pre-await position. Old 
+  // post-write clear deleted; lived in this slot.)
   if (typeof renderHome === 'function') renderHome();
 }
 

@@ -54,7 +54,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v164';
+const CACHE = 'sinonin-greenleaf-v165';
 
 const SHELL_FILES = [
   './',
