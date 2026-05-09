@@ -2940,7 +2940,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.5.7</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.5.8</span>
 </header>
 
 <main>
@@ -3846,6 +3846,7 @@
           <option value="Cannibalism or pecking">Cannibalism / pecking</option>
           <option value="Old age or culled">Old age / culled</option>
           <option value="Egg-binding">Egg-binding (layers)</option>
+          <option value="Prolapse">Prolapse (layers)</option>
           <option value="Unknown found dead">Unknown / found dead</option>
           <option value="Other">Other (see notes)</option>
         </select>
@@ -4584,7 +4585,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.5.7</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.5.8</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5001,7 +5002,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.5.7';
+const APP_VERSION = 'v6.5.8';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -13979,9 +13980,13 @@ async function renderSheepSyncDiagnostic() {
   };
   
   // Header line: queue + last attempt time
-  let headerHtml = `<div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.4rem">
+  // v6.5.8 — "Push now" button removed. It dated to the v6.5.0–6.5.5 
+  // era when the gate was flaky and operators sometimes needed to force 
+  // a manual push. The gate is now proven (v5.0.30/31, 18,159-row resync 
+  // verified, three sheep written end-to-end), and pushes are automatic 
+  // on save. The button became visual noise.
+  let headerHtml = `<div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.4rem">
     <span style="font-size:0.6rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--brass)">Sheet sync</span>
-    <button type="button" onclick="forceFlushDorper()" style="background:transparent; border:0.5px solid var(--brass); color:var(--brass); font-family:'IBM Plex Mono',monospace; font-size:0.58rem; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; padding:0.2rem 0.5rem; border-radius:3px;">Push now</button>
   </div>`;
   
   // Queue summary
