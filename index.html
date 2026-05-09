@@ -2940,7 +2940,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.5.5</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.5.6</span>
 </header>
 
 <main>
@@ -4547,7 +4547,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.5.5</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.5.6</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -4962,7 +4962,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.5.5';
+const APP_VERSION = 'v6.5.6';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -8054,13 +8054,35 @@ async function applyCloudResponse(data) {
   /* v6.5.0 — Dorper Farm sync (cloud-replace-local). Both Dorper_Sheep 
      and Dorper_Events are authoritative on the Sheet — admin/operator 
      edits via the spreadsheet propagate to all PWA installs on next 
-     fetch. Sheep are upsert-by-tag_id; events are append-only. */
+     fetch. Sheep are upsert-by-tag_id; events are append-only.
+     
+     v6.5.6 — MERGE strategy, NOT replace. The original v6.5.0 code 
+     overwrote local STATE.sheep with cloud data, which wiped local 
+     un-synced records when cloud was empty. Now we merge: cloud is 
+     source of truth for tags it knows about, but local-only tags 
+     (still in sync queue) survive. Same for events. */
   if (Array.isArray(data.dorperSheep)) {
-    STATE.sheep = data.dorperSheep.map(cloudToLocalSheep);
+    const cloudSheep = data.dorperSheep.map(cloudToLocalSheep);
+    const cloudTags  = new Set(cloudSheep.map(function (s) { return (s.tag_id || '').toUpperCase(); }));
+    // Keep local sheep whose tag isn't in cloud yet (likely queued for sync)
+    const localOnly = (STATE.sheep || []).filter(function (s) {
+      return s && s.tag_id && !cloudTags.has(s.tag_id.toUpperCase());
+    });
+    STATE.sheep = cloudSheep.concat(localOnly);
     await storageSet(K_SHEEP, STATE.sheep);
+    if (localOnly.length > 0) {
+      console.log('[cloud-fetch] dorperSheep merge: ' + cloudSheep.length + 
+                  ' from cloud + ' + localOnly.length + ' local-only preserved');
+    }
   }
   if (Array.isArray(data.dorperEvents)) {
-    STATE.sheepEvents = data.dorperEvents.map(cloudToLocalSheepEvent);
+    const cloudEvents = data.dorperEvents.map(cloudToLocalSheepEvent);
+    const cloudIds    = new Set(cloudEvents.map(function (e) { return (e.id || '').toUpperCase(); }));
+    // Keep local events whose id isn't in cloud yet
+    const localOnly = (STATE.sheepEvents || []).filter(function (e) {
+      return e && e.id && !cloudIds.has(e.id.toUpperCase());
+    });
+    STATE.sheepEvents = cloudEvents.concat(localOnly);
     await storageSet(K_SHEEP_EVENTS, STATE.sheepEvents);
   }
   /* v6.0 SHIP 2 / v6.2.2 — Egg Collection sync (cloud-replace-local) */
