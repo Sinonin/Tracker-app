@@ -2940,7 +2940,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.5.6</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.5.7</span>
 </header>
 
 <main>
@@ -3171,7 +3171,11 @@
          specific form. 5 cards: Eggs, Income, Vaccination, Census, Hatch. -->
     <div class="quick-add-section">
       <div class="quick-add-head">Quick add</div>
-      <div class="quick-add-grid quick-add-tight" style="grid-template-columns:repeat(6,1fr)">
+      <!-- v6.5.7 — restructured from 6-col single row to 4-col × 2-row grid 
+           with new Death card. 7 cards crammed into one row felt tight on 
+           mobile; 4×2 gives each card breathing room and groups related 
+           ops visually (Row 1 = transactions/counts; Row 2 = husbandry). -->
+      <div class="quick-add-grid quick-add-tight" style="grid-template-columns:repeat(4,1fr)">
         <button class="quick-add-card" type="button" onclick="openAddPanel('poultry','egg-collection')">
           <span class="qa-icon">🥚</span>
           <span class="qa-label">Eggs</span>
@@ -3180,13 +3184,17 @@
           <span class="qa-icon">💰</span>
           <span class="qa-label">Income</span>
         </button>
-        <button class="quick-add-card" type="button" onclick="openAddPanel('poultry','vaccination')">
-          <span class="qa-icon">💉</span>
-          <span class="qa-label">Vaccine</span>
+        <button class="quick-add-card" type="button" onclick="openAddPanel('poultry','mortality')">
+          <span class="qa-icon">💀</span>
+          <span class="qa-label">Death</span>
         </button>
         <button class="quick-add-card" type="button" onclick="openAddPanel('poultry','bird-census')">
           <span class="qa-icon">📋</span>
           <span class="qa-label">Census</span>
+        </button>
+        <button class="quick-add-card" type="button" onclick="openAddPanel('poultry','vaccination')">
+          <span class="qa-icon">💉</span>
+          <span class="qa-label">Vaccine</span>
         </button>
         <button class="quick-add-card" type="button" onclick="openAddPanel('poultry','incubation')">
           <span class="qa-icon">🐣</span>
@@ -3395,6 +3403,7 @@
     <div class="kind-toggle" id="kind-toggle-poultry" style="display:none">
       <button class="active" data-kind="poultry">Sales</button>
       <button data-kind="egg-collection">Eggs</button>
+      <button data-kind="mortality">💀 Death</button>
       <button data-kind="bird-census">Census</button>
       <button data-kind="incubation">Incubation</button>
       <button data-kind="vaccination">💉 Vacc</button>
@@ -3802,6 +3811,48 @@
            v6.2.4 has: just the submit button. Form fits viewport. -->
       <button id="vc-submit" class="submit">💉 Record vaccination</button>
     </div>
+
+    <!-- ========= MORTALITY (v5.0.31 / v6.5.7) =========
+         Record bird deaths WITHOUT recounting the flock.
+         Per Cheison's principle: disturbing layers → reduces laying.
+         Append-only event log; cohort current_count NOT auto-updated. -->
+    <div id="mortality-kind" style="display:none">
+      <div class="pair">
+        <div class="field"><label>Date</label><input type="date" id="mt-date"></div>
+        <div class="field"><label>Stage</label>
+          <select id="mt-stage">
+            <option value="">— Stage —</option>
+            <option value="Chicks 1–7 days">Chicks 1–7 days</option>
+            <option value="Chicks 7–28 days">Chicks 8–28 days</option>
+            <option value="Growers">Growers</option>
+            <option value="Cockerels">Cockerels</option>
+            <option value="Layers">Layers</option>
+          </select>
+        </div>
+      </div>
+      <div class="pair">
+        <div class="field"><label>House</label>
+          <select id="mt-house"><option value="">— House —</option></select>
+        </div>
+        <div class="field"><label>Count</label><input type="number" id="mt-count" min="1" value="1" placeholder="1"></div>
+      </div>
+      <div class="field"><label>Cause</label>
+        <select id="mt-cause">
+          <option value="">— Cause —</option>
+          <option value="Predator">Predator</option>
+          <option value="Disease">Disease</option>
+          <option value="Heat or cold stress">Heat / cold stress</option>
+          <option value="Crushing or pile-up">Crushing / pile-up</option>
+          <option value="Cannibalism or pecking">Cannibalism / pecking</option>
+          <option value="Old age or culled">Old age / culled</option>
+          <option value="Egg-binding">Egg-binding (layers)</option>
+          <option value="Unknown found dead">Unknown / found dead</option>
+          <option value="Other">Other (see notes)</option>
+        </select>
+      </div>
+      <div class="field"><label>Notes (optional)</label><input type="text" id="mt-notes" placeholder="e.g. Hawk attack near GH-South gate at dawn"></div>
+      <button id="mt-submit" class="submit">💀 Record death</button>
+    </div>
   </section>
 
   <!-- INSIGHTS -->
@@ -3921,56 +3972,42 @@
   <!-- OTHER · v6.3.12 placeholder — Sheep, Maize, Coffee (Lite scope, deferred to Phase 4) -->
   <section class="panel" id="panel-other">
 
-    <!-- v6.4.0 Step 1 — HUB VIEW: three businesses as tappable cards. 
-         Tapping a card calls setOtherView(name) to drill into the 
-         per-business detail view below. -->
+    <!-- v6.5.7 — HUB VIEW: tap-the-icon grid. The "Open →" affordance was 
+         redundant — the whole card is tappable. Now the cards ARE the buttons:
+         large icon + name, no separate text affordance. Cleaner aesthetic, 
+         faster touch target on mobile. -->
     <div id="other-hub-view" class="section">
       <div class="section-head">
         <h3>Other businesses</h3>
         <span class="meta">tap to open</span>
       </div>
       <p style="color:var(--brass-light); opacity:0.85; line-height:1.6; margin:0.5rem 0 1.2rem; font-size:0.92rem">
-        Coffee, maize, and sheep sit alongside Tea and Poultry as Sinonin Group businesses. The Sheep registry is live; Coffee and Maize Lite trackers ship in a later release.
+        Coffee, maize, and sheep sit alongside Tea and Poultry as Sinonin Group businesses. Sheep registry is live; Coffee and Maize Lite trackers ship in a later release.
       </p>
 
-      <div class="other-card-list" style="display:flex; flex-direction:column; gap:0.6rem">
+      <div class="other-icon-grid" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:0.8rem">
 
-        <button type="button" class="other-stub other-stub-active" onclick="setOtherView('sheep')" style="display:block; width:100%; text-align:left; cursor:pointer; background:rgba(180,140,80,0.08); border:0.5px solid rgba(180,140,80,0.3); border-radius:8px; padding:0.9rem 1rem; font-family:inherit;">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:0.7rem">
-            <div style="display:flex; align-items:center; gap:0.7rem; min-width:0; flex:1">
-              <span style="font-size:1.4rem">🐑</span>
-              <div style="min-width:0">
-                <div style="color:var(--ivory); font-weight:500; font-size:0.95rem">Sheep · Dorper Farm</div>
-                <div style="color:var(--brass-light); opacity:0.8; font-size:0.78rem; margin-top:2px">Registry · lambing · sales · husbandry</div>
-              </div>
-            </div>
-            <div style="font-size:0.7rem; color:var(--forest-mid); opacity:0.85; letter-spacing:0.08em; text-transform:uppercase; flex-shrink:0; font-weight:600">Open →</div>
+        <button type="button" class="other-tile other-tile-active" onclick="setOtherView('sheep')" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.6rem; aspect-ratio:1/1; cursor:pointer; background:rgba(180,140,80,0.10); border:0.5px solid rgba(180,140,80,0.4); border-radius:12px; padding:1rem 0.6rem; font-family:inherit;">
+          <span style="font-size:2.6rem; line-height:1">🐑</span>
+          <div style="text-align:center; min-width:0">
+            <div style="color:var(--ivory); font-weight:500; font-size:0.95rem; line-height:1.2">Dorper</div>
+            <div style="color:var(--brass-light); opacity:0.8; font-size:0.7rem; margin-top:3px; letter-spacing:0.05em">Sheep registry</div>
           </div>
         </button>
 
-        <div class="other-stub" style="background:rgba(180,140,80,0.06); border:0.5px solid rgba(180,140,80,0.2); border-radius:8px; padding:0.9rem 1rem;">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:0.7rem">
-            <div style="display:flex; align-items:center; gap:0.7rem; min-width:0; flex:1">
-              <span style="font-size:1.4rem; opacity:0.7">🌽</span>
-              <div style="min-width:0">
-                <div style="color:var(--ivory); font-weight:500; font-size:0.95rem; opacity:0.8">Maize · Chelabaal</div>
-                <div style="color:var(--brass-light); opacity:0.7; font-size:0.78rem; margin-top:2px">Planted · weeding · spraying · projected harvest</div>
-              </div>
-            </div>
-            <div style="font-size:0.7rem; color:var(--brass-light); opacity:0.6; letter-spacing:0.08em; text-transform:uppercase; flex-shrink:0">Soon</div>
+        <div class="other-tile other-tile-soon" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.6rem; aspect-ratio:1/1; background:rgba(180,140,80,0.05); border:0.5px solid rgba(180,140,80,0.18); border-radius:12px; padding:1rem 0.6rem;">
+          <span style="font-size:2.6rem; line-height:1; opacity:0.55">🌽</span>
+          <div style="text-align:center; min-width:0">
+            <div style="color:var(--ivory); font-weight:500; font-size:0.95rem; line-height:1.2; opacity:0.65">Maize</div>
+            <div style="color:var(--brass-light); opacity:0.55; font-size:0.7rem; margin-top:3px; letter-spacing:0.05em">Soon</div>
           </div>
         </div>
 
-        <div class="other-stub" style="background:rgba(180,140,80,0.06); border:0.5px solid rgba(180,140,80,0.2); border-radius:8px; padding:0.9rem 1rem;">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:0.7rem">
-            <div style="display:flex; align-items:center; gap:0.7rem; min-width:0; flex:1">
-              <span style="font-size:1.4rem; opacity:0.7">☕</span>
-              <div style="min-width:0">
-                <div style="color:var(--ivory); font-weight:500; font-size:0.95rem; opacity:0.8">Coffee</div>
-                <div style="color:var(--brass-light); opacity:0.7; font-size:0.78rem; margin-top:2px">Planted · prune · weeding · harvest</div>
-              </div>
-            </div>
-            <div style="font-size:0.7rem; color:var(--brass-light); opacity:0.6; letter-spacing:0.08em; text-transform:uppercase; flex-shrink:0">Soon</div>
+        <div class="other-tile other-tile-soon" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.6rem; aspect-ratio:1/1; background:rgba(180,140,80,0.05); border:0.5px solid rgba(180,140,80,0.18); border-radius:12px; padding:1rem 0.6rem;">
+          <span style="font-size:2.6rem; line-height:1; opacity:0.55">☕</span>
+          <div style="text-align:center; min-width:0">
+            <div style="color:var(--ivory); font-weight:500; font-size:0.95rem; line-height:1.2; opacity:0.65">Coffee</div>
+            <div style="color:var(--brass-light); opacity:0.55; font-size:0.7rem; margin-top:3px; letter-spacing:0.05em">Soon</div>
           </div>
         </div>
 
@@ -4547,7 +4584,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.5.6</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.5.7</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -4914,6 +4951,8 @@ const K_POULTRY = 'sinonin_poultry_v1';
 // (one record per ear tag); K_SHEEP_EVENTS holds the append-only event log.
 const K_SHEEP = 'sinonin_sheep_v1';
 const K_SHEEP_EVENTS = 'sinonin_sheep_events_v1';
+// v6.5.7 — Bird mortality event log. Append-only. Keyed by ts.
+const K_MORTALITY = 'sinonin_mortality_v1';
 const K_CLOUD_SYNC = 'sinonin_cloud_sync_v1';
 const K_IS_ADMIN = 'sinonin_is_admin_v1';  // v5.0.19 — set true on first successful passphrase grant/revoke
 const K_HOUSES = 'sinonin_houses_v1';       // v6.0 SHIP 3 — Kipkenda houses config
@@ -4962,7 +5001,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.5.6';
+const APP_VERSION = 'v6.5.7';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -5013,6 +5052,8 @@ let STATE = {
   //   detail. Persisted so back-button-to-app reopens last view.
   sheep: [],
   sheepEvents: [],
+  // v6.5.7 — Bird mortality event log. Append-only.
+  mortality: [],
   otherView: 'hub',
   factories: JSON.parse(JSON.stringify(DEFAULT_FACTORIES)),
   settings: { ...DEFAULT_SETTINGS },
@@ -7536,6 +7577,7 @@ async function flushQueue(opts) {
       else if (kind === 'litter-change') record = item.payload || null;
       else if (kind === 'roster')  record = item.payload || null; // roster items carry their own payload
       else if (kind === 'sheep' || kind === 'sheep-event') record = item.payload || null;
+      else if (kind === 'mortality') record = (STATE.mortality || []).find(m => m.id === recordId);
       if (!record) continue; // record was deleted locally, drop from queue
       let ok;
       if (kind === 'expense')      ok = await pushExpenseToForm(record);
@@ -7550,6 +7592,7 @@ async function flushQueue(opts) {
       else if (kind === 'roster')  ok = await pushRosterToForm(record);
       else if (kind === 'sheep')       ok = await pushSheepToForm(record);
       else if (kind === 'sheep-event') ok = await pushSheepEventToForm(record);
+      else if (kind === 'mortality')   ok = await syncMortality(record);
       else                         ok = await pushToForm(record);
       if (ok) {
         anySuccess = true;
@@ -8133,6 +8176,23 @@ async function applyCloudResponse(data) {
     }));
     await storageSet(K_VACCINATIONS, STATE.vaccinations);
   }
+  /* v6.5.7 — Bird Mortality sync (MERGE strategy, NOT replace).
+     Same lesson learned from sheep: never wipe local-only un-synced 
+     records when the cloud snapshot is empty or behind. Match cloud 
+     by ts (since that's the natural unique key for an event). */
+  if (Array.isArray(data.birdMortality)) {
+    const cloudMortality = data.birdMortality.map(cloudToLocalMortality).filter(Boolean);
+    const cloudTs = new Set(cloudMortality.map(function (m) { return m.ts || ''; }));
+    const localOnly = (STATE.mortality || []).filter(function (m) {
+      return m && m.ts && !cloudTs.has(m.ts);
+    });
+    STATE.mortality = cloudMortality.concat(localOnly);
+    await storageSet(K_MORTALITY, STATE.mortality);
+    if (localOnly.length > 0) {
+      console.log('[cloud-fetch] mortality merge: ' + cloudMortality.length + 
+                  ' from cloud + ' + localOnly.length + ' local-only preserved');
+    }
+  }
   /* v6.0.0 — D4: Vaccination schedule sync (cloud-replace-local) */
   if (Array.isArray(data.vaccSchedule)) {
     STATE.vaccSchedule = data.vaccSchedule.map(r => ({
@@ -8679,6 +8739,9 @@ function switchKind(k) {
   // v6.0.0 — D4: Vaccination
   const vcKindEl = document.getElementById('vaccination-kind');
   if (vcKindEl) vcKindEl.style.display = k === 'vaccination' ? '' : 'none';
+  // v6.5.7 — Mortality (bird death event log)
+  const mtKindEl = document.getElementById('mortality-kind');
+  if (mtKindEl) mtKindEl.style.display = k === 'mortality' ? '' : 'none';
   if (k === 'expense') renderRecentExpenses();
   if (k === 'actual') renderRecentActuals();
   if (k === 'banked') renderRecentBanked();
@@ -8688,6 +8751,7 @@ function switchKind(k) {
   if (k === 'incubation' && typeof initIncubationForm === 'function') initIncubationForm();
   if (k === 'incubation' && typeof renderIncubationProgress === 'function') renderIncubationProgress();
   if (k === 'vaccination' && typeof initVaccinationForm === 'function') initVaccinationForm();
+  if (k === 'mortality' && typeof initMortalityForm === 'function') initMortalityForm();
 }
 
 function renderRecentActuals() {
@@ -11250,6 +11314,194 @@ async function syncCohort(record) {
   }
   lastWriteResult = { ok: false, reason: 'gate-unreachable' };
   return false;
+}
+
+// ============================================================
+// v6.5.7 — MORTALITY (bird death event log)
+// ============================================================
+// 
+// Records a bird death without recounting the flock.
+// Per Cheison's principle: disturbing layers reduces laying.
+// Append-only event log; cohort current_count is NOT auto-decremented.
+// If reconciliation is wanted, that's a deliberate separate cohort 
+// 'deduct' action — never coupled to a mortality event.
+
+/* Initialize the mortality form: defaults, populate house dropdown, 
+   wire the submit button. Runs every time kind='mortality' is selected 
+   in the Add panel. */
+function initMortalityForm() {
+  // Default date to today
+  const dEl = document.getElementById('mt-date');
+  if (dEl && !dEl.value) dEl.value = new Date().toISOString().slice(0, 10);
+
+  // Populate Houses dropdown (active only)
+  const houseEl = document.getElementById('mt-house');
+  if (houseEl) {
+    const houses = (Array.isArray(STATE.houses) ? STATE.houses : [])
+      .filter(h => h.active === true || h.active === 'TRUE' || h.active === undefined);
+    if (houses.length === 0) {
+      houseEl.innerHTML = '<option value="">— House —</option>' +
+        '<option value="" disabled>(no active houses · sync or add via Settings)</option>';
+      console.warn('[mortality-form] STATE.houses has no active entries. Cloud sync may be incomplete.');
+    } else {
+      houseEl.innerHTML = '<option value="">— House —</option>' +
+        houses.map(h => `<option value="${h.name}">${h.name}</option>`).join('');
+    }
+  }
+
+  // Wire submit (once)
+  const submitBtn = document.getElementById('mt-submit');
+  if (submitBtn && !submitBtn._wired) {
+    submitBtn.addEventListener('click', submitMortality);
+    submitBtn._wired = true;
+  }
+}
+
+/* Validate the form, build the record, push to gate, queue on failure. */
+async function submitMortality() {
+  const date  = (document.getElementById('mt-date')  || {}).value || '';
+  const stage = (document.getElementById('mt-stage') || {}).value || '';
+  const house = (document.getElementById('mt-house') || {}).value || '';
+  const count = (document.getElementById('mt-count') || {}).value;
+  const cause = (document.getElementById('mt-cause') || {}).value || '';
+  const notes = ((document.getElementById('mt-notes') || {}).value || '').trim();
+
+  if (!date || !stage || !house || count === '' || count === undefined || !cause) {
+    showToast('Please fill date, stage, house, count, and cause', 3000);
+    return;
+  }
+  const countN = Number(count);
+  if (isNaN(countN) || countN < 1) {
+    showToast('Count must be 1 or more', 2500);
+    return;
+  }
+
+  // Tab-gibberish protection (matches vaccination pattern)
+  if (typeof isSessionConfirmed === 'function' && !isSessionConfirmed('mortality')) {
+    const summaryHtml = '<div><strong>' + countN + ' bird' + (countN === 1 ? '' : 's') + ' · ' + cause + '</strong></div>' +
+      '<div style="opacity:0.85;margin-top:0.3rem">' + house + ' · ' + stage + '</div>' +
+      '<div style="opacity:0.7;margin-top:0.2rem;font-size:0.78rem">' + date + (notes ? ' · ' + notes : '') + '</div>';
+    const ok = await confirmFirstSubmit('mortality', summaryHtml);
+    if (!ok) { showToast('Cancelled', 1800); return; }
+    markSessionConfirmed('mortality');
+  }
+
+  const row = {
+    id:    'mt-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+    ts:    new Date().toISOString(),
+    date:  date,
+    house: house,
+    stage: stage,
+    count: countN,
+    cause: cause,
+    cohort_id: '',
+    notes: notes
+  };
+
+  // Optimistic local insert
+  if (!Array.isArray(STATE.mortality)) STATE.mortality = [];
+  STATE.mortality.push(row);
+  await storageSet(K_MORTALITY, STATE.mortality);
+
+  // Push to gate (best-effort)
+  const ok = await syncMortality(row);
+  if (!ok) {
+    // Roll back on strict-rejection (idempotent or duplicate)
+    if (lastWriteResult && lastWriteResult.reason === 'duplicate') {
+      STATE.mortality = STATE.mortality.filter(m => m.id !== row.id);
+      await storageSet(K_MORTALITY, STATE.mortality);
+      showToast('⚠️ ' + (lastWriteResult.message || 'Already recorded'), 5000);
+      return;
+    }
+    await queueForSync(row, 'mortality');
+    showToast('💀 Death recorded locally · will sync when online', 3000);
+  } else {
+    showToast('💀 ' + countN + ' bird' + (countN === 1 ? '' : 's') + ' recorded · ' + cause, 2500);
+  }
+
+  // Reset transient fields (keep date/stage/house — operator may record multiple deaths)
+  ['mt-count', 'mt-notes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = (id === 'mt-count') ? '1' : '';
+  });
+  const causeEl = document.getElementById('mt-cause');
+  if (causeEl) causeEl.value = '';
+
+  if (typeof renderHome === 'function') renderHome();
+}
+
+async function pushMortalityToGate(row) {
+  try {
+    const body = {
+      action: 'mortality',
+      payload: {
+        ts:        row.ts || new Date().toISOString(),
+        date:      row.date || '',
+        house:     row.house || '',
+        stage:     row.stage || '',
+        count:     Number(row.count || 0),
+        cause:     row.cause || '',
+        cohort_id: row.cohort_id || '',
+        notes:     row.notes || ''
+      },
+      source: 'PWA ' + APP_VERSION + ' mortality'
+    };
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:   JSON.stringify(body)
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    if (json && json.ok) {
+      return { ok: true, via: 'gate', possibleDuplicate: !!json.possibleDuplicate, summary: json.summary };
+    }
+    if (json && json.writesLocked) {
+      return { ok: false, reason: 'writes-locked', message: json.reason || 'Writes locked' };
+    }
+    if (json && json.duplicate) {
+      return {
+        ok: false,
+        reason: 'duplicate',
+        message: json.summary || 'Already recorded — check Sheet to confirm.',
+        existing: json.existing
+      };
+    }
+    if (json && json.phase1Limited) return null;
+    return { ok: false, reason: 'gate-rejected', message: (json && json.reason) || 'Rejected by gate' };
+  } catch (e) {
+    return null;
+  }
+}
+
+async function syncMortality(row) {
+  if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL) {
+    const gateResult = await pushMortalityToGate(row);
+    if (gateResult) {
+      lastWriteResult = gateResult;
+      return gateResult.ok;
+    }
+  }
+  lastWriteResult = { ok: false, reason: 'gate-unreachable' };
+  return false;
+}
+
+/* Map an Apps Script Bird_Mortality row into the PWA's local shape. 
+   Tolerates field-name variations (header_case, snake_case, etc). */
+function cloudToLocalMortality(r) {
+  if (!r || typeof r !== 'object') return null;
+  return {
+    id:        'mt-cloud-' + (r.ts || r.timestamp || Math.random().toString(36).slice(2, 10)),
+    ts:        String(r.ts || r.timestamp || ''),
+    date:      String(r.date || ''),
+    house:     String(r.house || ''),
+    stage:     String(r.stage || ''),
+    count:     Number(r.count) || 0,
+    cause:     String(r.cause || ''),
+    cohort_id: String(r.cohort_id || r.cohortId || ''),
+    notes:     String(r.notes || '')
+  };
 }
 
 /* v6.1.7 — Push litter-change record to Apps Script gate.
@@ -14588,6 +14840,7 @@ async function pushSheepEventToForm(record) {
   return await pushDorperToGate(record, 'add_sheep_event');
 }
 
+
 /* v6.5.2 — Recent dorper push results (in-memory ring buffer of 5).
    Surfaced by renderSheepSyncDiagnostic() at the top of the Sheep view 
    so Cheison can see push outcomes without browser DevTools. */
@@ -15410,6 +15663,8 @@ function showUpdateBanner() {
   // v6.4.0 Step 1 — Hydrate Dorper Farm sheep registry and event log.
   STATE.sheep = await storageGet(K_SHEEP, []);
   STATE.sheepEvents = await storageGet(K_SHEEP_EVENTS, []);
+  // v6.5.7 — Bird mortality event log
+  STATE.mortality = await storageGet(K_MORTALITY, []);
   // v6.0 SHIP 1 — Egg Collection state
   STATE.eggCollection = await storageGet(K_EGG_COLLECTION, []);
   
