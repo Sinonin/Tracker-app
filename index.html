@@ -2940,7 +2940,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.6.2</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.7.0</span>
 </header>
 
 <main>
@@ -4585,7 +4585,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.6.2</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.7.0</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5002,7 +5002,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.6.2';
+const APP_VERSION = 'v6.7.0';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -7603,10 +7603,21 @@ async function flushQueue(opts) {
         await storageSet(K_SYNC_STATS, stats);
       } else {
         // v5.0.23 — server-side dedup detected during retry.
+        // v6.7.0 — Broadened detection: ANY of (reason === 'duplicate'), 
+        // (message contains 'duplicate'), or (message contains 'already exists')
+        // counts as hard duplicate. Some push handlers (cohort, sheep, etc.) 
+        // collapse 'duplicate' to 'gate-rejected' and leave the duplicate info 
+        // only in the message string. Cheison's audit log on 10 May showed 
+        // COH-KP16APR264 retrying 13× over 26 hours because of this.
         // Don't keep retrying a hard-duplicate forever — drop from queue,
         // roll back the local optimistic insert, and tell Cheison the queue
         // is being trimmed cleanly.
-        if (lastWriteResult && lastWriteResult.reason === 'duplicate') {
+        const isDuplicateReject = lastWriteResult && (
+          lastWriteResult.reason === 'duplicate' ||
+          (typeof lastWriteResult.message === 'string' && 
+           /duplicate|already exists/i.test(lastWriteResult.message))
+        );
+        if (isDuplicateReject) {
           // Roll back the local entry that the queue item points at
           if (kind === 'greenleaf' && Array.isArray(STATE.entries)) {
             STATE.entries = STATE.entries.filter(e => e.id !== recordId);
@@ -9367,7 +9378,102 @@ async function submitPoultry() {
     // Poultry uses FLAG mode — surface the possible-duplicate review toast
     showPossibleDuplicateToast('poultry');
   }
+  // v6.7.0 — Auto-decrement matching cohort on bird sale.
+  // For non-Egg products, find the oldest cohort whose computed stage matches
+  // and reduce its current_count, increment sold_count. This keeps cohorts 
+  // walking forward honestly through stages and prevents Phase B math from 
+  // overcounting when a cohort ages into Layers carrying un-decremented qty.
+  // Skips for Eggs (eggs don't affect bird count).
+  if (row.product !== 'Eggs') {
+    try { await autoDecrementCohortOnSale(row); } catch (e) { console.warn('[cohort-decrement] failed:', e.message); }
+  }
   updateSyncIndicator();
+}
+
+/* v6.7.0 — Find the oldest cohort matching the sold birds' stage and 
+   reduce its current_count by quantity, raise sold_count by quantity. 
+   FIFO by date_origin. Queues a 'deduct' update for the gate so the 
+   Cohort_Population sheet stays in sync. */
+async function autoDecrementCohortOnSale(saleRow) {
+  if (!Array.isArray(STATE.cohorts) || STATE.cohorts.length === 0) return;
+  const qty = Number(saleRow.quantity) || 0;
+  if (qty <= 0) return;
+  const stage = saleRow.stage;
+  const today = new Date().toISOString().slice(0, 10);
+  // Eligible: current_count > 0, matches stage by age
+  const candidates = STATE.cohorts.filter(c => {
+    const cur = Number(c.current_count) || 0;
+    if (cur <= 0) return false;
+    if (!c.date_origin) return false;
+    if (typeof computeCohortStage !== 'function') return c.stage === stage;
+    return computeCohortStage(c.date_origin, today) === stage;
+  }).sort((a, b) => (a.date_origin || '').localeCompare(b.date_origin || ''));
+  if (candidates.length === 0) {
+    console.log('[cohort-decrement] no matching cohort for stage:', stage);
+    return;
+  }
+  const cohort = candidates[0]; // FIFO — oldest cohort consumed first
+  const oldCurrent = Number(cohort.current_count) || 0;
+  const oldSold    = Number(cohort.sold_count) || 0;
+  const newCurrent = Math.max(0, oldCurrent - qty);
+  const newSold    = oldSold + qty;
+  // Update local STATE
+  cohort.current_count = newCurrent;
+  cohort.sold_count    = newSold;
+  try { await storageSet(K_COHORTS, STATE.cohorts); } catch {}
+  // Queue 'deduct' update to gate (will sync absolutes)
+  const update = {
+    mode: 'deduct',
+    cohort_id: cohort.cohort_id,
+    ts: new Date().toISOString(),
+    current_count: newCurrent,
+    sold_count: newSold
+  };
+  await queueForSync(update, 'cohort');
+  console.log(`[cohort-decrement] ${cohort.cohort_id}: current ${oldCurrent} → ${newCurrent}, sold ${oldSold} → ${newSold}`);
+  if (typeof flushQueue === 'function') flushQueue({ manual: true }).catch(() => {});
+}
+
+/* v6.7.0 — Same pattern for mortality. Match by stage (and house if 
+   cohort.house is set), reduce current_count, raise mortality_count. */
+async function autoDecrementCohortOnMortality(mortRow) {
+  if (!Array.isArray(STATE.cohorts) || STATE.cohorts.length === 0) return;
+  const count = Number(mortRow.count) || 0;
+  if (count <= 0) return;
+  const stage = mortRow.stage;
+  const house = mortRow.house;
+  const today = new Date().toISOString().slice(0, 10);
+  const candidates = STATE.cohorts.filter(c => {
+    const cur = Number(c.current_count) || 0;
+    if (cur <= 0) return false;
+    if (!c.date_origin) return false;
+    // House match if cohort has a house (some don't)
+    if (c.house && house && c.house !== house) return false;
+    if (typeof computeCohortStage !== 'function') return c.stage === stage;
+    return computeCohortStage(c.date_origin, today) === stage;
+  }).sort((a, b) => (a.date_origin || '').localeCompare(b.date_origin || ''));
+  if (candidates.length === 0) {
+    console.log('[cohort-decrement] no matching cohort for mortality stage:', stage, 'house:', house);
+    return;
+  }
+  const cohort = candidates[0];
+  const oldCurrent   = Number(cohort.current_count) || 0;
+  const oldMortality = Number(cohort.mortality_count) || 0;
+  const newCurrent   = Math.max(0, oldCurrent - count);
+  const newMortality = oldMortality + count;
+  cohort.current_count   = newCurrent;
+  cohort.mortality_count = newMortality;
+  try { await storageSet(K_COHORTS, STATE.cohorts); } catch {}
+  const update = {
+    mode: 'deduct',
+    cohort_id: cohort.cohort_id,
+    ts: new Date().toISOString(),
+    current_count: newCurrent,
+    mortality_count: newMortality
+  };
+  await queueForSync(update, 'cohort');
+  console.log(`[cohort-decrement-mortality] ${cohort.cohort_id}: current ${oldCurrent} → ${newCurrent}, mortality ${oldMortality} → ${newMortality}`);
+  if (typeof flushQueue === 'function') flushQueue({ manual: true }).catch(() => {});
 }
 
 function renderRecentPoultry() {
@@ -11307,6 +11413,13 @@ async function pushCohortToGate(record) {
       return { ok: false, reason: 'writes-locked', message: json.reason || 'Writes locked' };
     }
     if (json && json.phase1Limited) return null;
+    // v6.7.0 — pass through specific server reasons so the queue dispatcher 
+    // can hard-clear duplicates instead of retrying forever. Without this, 
+    // every flush re-attempted COH-KP16APR264 and got a 13× rejection storm 
+    // over 26 hours. Bug spotted in Cheison's audit log 10 May 2026.
+    if (json && json.reason === 'duplicate') {
+      return { ok: false, reason: 'duplicate', message: json.reason || 'Duplicate' };
+    }
     return { ok: false, reason: 'gate-rejected', message: (json && json.reason) || 'Rejected by gate' };
   } catch (e) {
     console.warn('[cohort] gate push failed: ' + String(e && e.message || e));
@@ -11439,6 +11552,11 @@ async function submitMortality() {
   } else {
     showToast('💀 ' + countN + ' bird' + (countN === 1 ? '' : 's') + ' recorded · ' + cause, 2500);
   }
+
+  // v6.7.0 — Auto-decrement matching cohort on death. Mirrors the sale 
+  // decrement: reduces cohort.current_count, raises cohort.mortality_count. 
+  // Honors "no recount" — the FLOCK isn't disturbed, just the ledger math.
+  try { await autoDecrementCohortOnMortality(row); } catch (e) { console.warn('[cohort-mortality-decrement] failed:', e.message); }
 
   // (v6.5.9 — field clear moved above to the pre-await position. Old 
   // post-write clear deleted; lived in this slot.)
@@ -12773,9 +12891,21 @@ function renderHome() {
       subEl.textContent = 'none';
       return;
     }
-    // v6.6.0 — Live count transparency: when computed adjustments apply 
-    // (cohorts/mortality/sales since census), show what's been folded in.
+    // v6.7.0 — Stale-census warning. If the latest census for this stage 
+    // is more than 14 days old, prepend an amber chip suggesting a fresh 
+    // count. Operator nudge — not a block. Honors "no recount" principle: 
+    // the system never forces a recount, only suggests when stale.
     const detail = stageDetails[stageName] || {};
+    const censusDate = detail.censusDate || '';
+    let staleChip = '';
+    if (censusDate && censusDate !== '1970-01-01') {
+      const daysOld = Math.floor((Date.now() - new Date(censusDate + 'T00:00:00Z').getTime()) / 86400000);
+      if (daysOld > 14) {
+        staleChip = `<span style="color:#b8714d; font-size:0.66rem; font-weight:600; letter-spacing:0.05em">⚠ stale ${daysOld}d</span> · `;
+      }
+    }
+    // v6.7.0 — Live count transparency: when computed adjustments apply 
+    // (cohorts/mortality/sales since census), show what's been folded in.
     const adjustments = [];
     if (detail.cohortDelta > 0)    adjustments.push(`+${detail.cohortDelta} hatched`);
     if (detail.mortalityDelta > 0) adjustments.push(`−${detail.mortalityDelta} died`);
@@ -12784,7 +12914,7 @@ function renderHome() {
       // Computed live count — surface the math transparently
       const since = (detail.censusDate && detail.censusDate !== '1970-01-01') 
         ? ` since ${detail.censusDate}` : '';
-      subEl.textContent = `live · ${adjustments.join(' · ')}${since}`;
+      subEl.innerHTML = `${staleChip}live · ${adjustments.join(' · ')}${since}`;
       return;
     }
     // No adjustments — fall through to per-house breakdown from census
@@ -12795,11 +12925,11 @@ function renderHome() {
       }
     });
     if (perHouse.length === 0) {
-      subEl.textContent = `as of ${latestCensusDate || '—'}`;
+      subEl.innerHTML = `${staleChip}as of ${latestCensusDate || '—'}`;
     } else if (perHouse.length === 1) {
-      subEl.textContent = `${perHouse[0]} · as of ${latestCensusDate}`;
+      subEl.innerHTML = `${staleChip}${perHouse[0]} · as of ${latestCensusDate}`;
     } else {
-      subEl.textContent = perHouse.slice(0, 2).join(' · ') + (perHouse.length > 2 ? ` +${perHouse.length - 2}` : '');
+      subEl.innerHTML = `${staleChip}` + perHouse.slice(0, 2).join(' · ') + (perHouse.length > 2 ? ` +${perHouse.length - 2}` : '');
     }
   }
   renderStageCard('Layers',              'poultry-stage-layers',    'poultry-stage-layers-sub');
@@ -12850,12 +12980,20 @@ function renderHome() {
   // Total live birds summary line below 6 stage cards (Layers, Cockerels,
   // Growers, Quarantine, Chicks 1-7d, Chicks 8-28d). Note the Quarantine card
   // counts toward totalBirds via its component stages — no double-counting.
+  // v6.7.0 — Wording fix: previously said "X live birds total · as of Y" 
+  // which read like the number was frozen at Y. Now says "live count" 
+  // when adjustments apply, "as of Y" only when count equals census.
   const summaryEl = document.getElementById('poultry-live-birds-summary-text');
   if (summaryEl) {
     if (censusBirds.length === 0) {
       summaryEl.textContent = 'no census yet';
     } else {
-      summaryEl.textContent = `${totalBirds.toLocaleString('en-KE')} live birds total · as of ${latestCensusDate}`;
+      const anyAdjustments = Object.values(stageDetails).some(d => d && d.hasAdjustments);
+      if (anyAdjustments) {
+        summaryEl.textContent = `${totalBirds.toLocaleString('en-KE')} live birds (computed) · last census ${latestCensusDate}`;
+      } else {
+        summaryEl.textContent = `${totalBirds.toLocaleString('en-KE')} live birds total · as of ${latestCensusDate}`;
+      }
     }
   }
 
