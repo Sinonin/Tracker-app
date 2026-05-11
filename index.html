@@ -2940,7 +2940,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.7.0</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.8.0</span>
 </header>
 
 <main>
@@ -4053,7 +4053,11 @@
              registers an animal, doesn't log an event). -->
         <div class="quick-add-section" style="margin-bottom:1rem">
           <div class="quick-add-head">Record event</div>
-          <div class="quick-add-grid quick-add-tight" style="grid-template-columns:repeat(6,1fr)">
+          <!-- v6.8.0 — restructured from 6-col single row to 4-col × 2-row grid. 
+               Added "Death" and "Gift" cards based on Cheison's gifting workflow 
+               (had to mark Pastor Job's gift as "sold KES 1" because no Gift event). 
+               Row 1 = lifecycle/ownership · Row 2 = husbandry. -->
+          <div class="quick-add-grid quick-add-tight" style="grid-template-columns:repeat(4,1fr)">
             <button class="quick-add-card" type="button" onclick="openSheepEventForm('lambed', null)">
               <span class="qa-icon">🐑</span>
               <span class="qa-label">Lambing</span>
@@ -4065,6 +4069,14 @@
             <button class="quick-add-card" type="button" onclick="openSheepEventForm('sold', null)">
               <span class="qa-icon">💰</span>
               <span class="qa-label">Sale</span>
+            </button>
+            <button class="quick-add-card" type="button" onclick="openSheepEventForm('gifted_away', null)">
+              <span class="qa-icon">🎁</span>
+              <span class="qa-label">Gift</span>
+            </button>
+            <button class="quick-add-card" type="button" onclick="openSheepEventForm('died', null)">
+              <span class="qa-icon">🪦</span>
+              <span class="qa-label">Death</span>
             </button>
             <button class="quick-add-card" type="button" onclick="openSheepEventForm('vaccinated', null)">
               <span class="qa-icon">💉</span>
@@ -4155,7 +4167,8 @@
           <label>Origin</label>
           <select id="sf-acquisition" onchange="onAcquisitionChange()">
             <option value="born_on_farm">Born on the farm</option>
-            <option value="acquired">Acquired (purchased / gifted / received)</option>
+            <option value="acquired">Acquired (purchased)</option>
+            <option value="gift_received">Gift received (family / friend / institution)</option>
             <option value="external_ram_placeholder">External ram placeholder (borrowed / AI semen)</option>
           </select>
         </div>
@@ -4290,6 +4303,38 @@
           </div>
           <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:#b8714d; margin-bottom:1rem; line-height:1.5; padding:0.5rem 0.7rem; background:rgba(184,113,77,0.08); border-radius:4px">
             Saving sets sheep status to <strong>sold</strong>.
+          </div>
+        </div>
+
+        <!-- v6.8.0 — GIFTED_AWAY: recipient + relationship + optional weight -->
+        <div id="se-gifted_away-block" style="display:none">
+          <div class="field">
+            <label>Recipient</label>
+            <input type="text" id="se-gifted-recipient" placeholder="Pastor Job Kessio, brother John..." autocomplete="off">
+          </div>
+          <div class="field">
+            <label>Relationship <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional)</span></label>
+            <select id="se-gifted-relation">
+              <option value="">— pick one —</option>
+              <option value="family">Family</option>
+              <option value="friend">Friend</option>
+              <option value="church">Church / pastor</option>
+              <option value="institution">Institution</option>
+              <option value="employee">Employee</option>
+              <option value="community">Community / neighbour</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Live weight (kg) <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional)</span></label>
+            <input type="number" id="se-gifted-kg" min="0" step="0.5" placeholder="35">
+          </div>
+          <div class="field">
+            <label>Occasion <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional)</span></label>
+            <input type="text" id="se-gifted-occasion" placeholder="Retirement gift, wedding, ordination..." autocomplete="off">
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:#b8714d; margin-bottom:1rem; line-height:1.5; padding:0.5rem 0.7rem; background:rgba(184,113,77,0.08); border-radius:4px">
+            Saving sets sheep status to <strong>gifted_away</strong>. No money is recorded — the recipient and occasion are.
           </div>
         </div>
 
@@ -4585,7 +4630,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.7.0</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.8.0</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5002,7 +5047,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.7.0';
+const APP_VERSION = 'v6.8.0';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -9166,7 +9211,43 @@ async function submitActual() {
   } else {
     showPossibleDuplicateToast('actual');
   }
+  // v6.8.0 — Weighbridge mismatch alert. After an actual is recorded, 
+  // compare it to the sum of plucker entries for the same date + block. 
+  // If the gap exceeds 20%, surface a quiet warning so the operator 
+  // can check whether plucker entries are missing. This catches the 
+  // pattern Elias saw on 11 May: 232 kg pluckers logged vs 305.7 kg 
+  // delivered (32% gap from missing plucker entries).
+  try { checkWeighbridgeGap(actual); } catch (e) { console.warn('[weighbridge-check] failed:', e.message); }
   updateSyncIndicator();
+}
+
+/* v6.8.0 — Weighbridge gap detector.
+   Compares actual delivery kg to sum of plucker greenleaf entries for 
+   the same (date, block). If gap > 20%, toasts a warning. Threshold 
+   is intentionally loose — small daily variance is normal, only large 
+   gaps indicate genuine missing entries. */
+function checkWeighbridgeGap(actual) {
+  if (!actual || !actual.date || !actual.block || !actual.kg) return;
+  const pluckerSum = (STATE.entries || [])
+    .filter(e => e.date === actual.date && e.block === actual.block)
+    .reduce((s, e) => s + (Number(e.qty) || 0), 0);
+  if (pluckerSum <= 0) {
+    console.log('[weighbridge-check] no plucker entries yet for', actual.date, actual.block);
+    return;
+  }
+  const gap = actual.kg - pluckerSum;
+  const gapPct = (gap / actual.kg) * 100;
+  if (gapPct >= 20) {
+    showToast(
+      `\u26a0 Weighbridge gap: pluckers ${pluckerSum} kg vs actual ${actual.kg} kg (${gapPct.toFixed(0)}% short). Check for missing plucker entries.`,
+      7000
+    );
+  } else if (gapPct <= -10) {
+    showToast(
+      `\u26a0 Pluckers (${pluckerSum} kg) exceed actual (${actual.kg} kg) by ${(-gapPct).toFixed(0)}%. Cross-block entries?`,
+      7000
+    );
+  }
 }
 
 // ============ BANKED INCOME ============
@@ -10400,7 +10481,21 @@ async function submitIncubationHatch() {
         const cohortPayload = { mode: 'create', ...newCohort };
         const ok = await syncCohort(cohortPayload);
         if (!ok) {
-          await queueForSync(cohortPayload, 'cohort');
+          // v6.8.0 — Auto-cohort silent skip on duplicate. If the gate 
+          // already has this cohort (re-hatch of an existing batch_id), 
+          // don't re-queue and don't toast — the cohort exists. The 
+          // hatch event itself was already saved separately, so the 
+          // operator's work is preserved. Just log silently.
+          const isDup = lastWriteResult && (
+            lastWriteResult.reason === 'duplicate' ||
+            (typeof lastWriteResult.message === 'string' && 
+             /duplicate|already exists/i.test(lastWriteResult.message))
+          );
+          if (isDup) {
+            console.log('[cohort] auto-create skipped — cohort ' + cohortId + ' already exists on server (re-hatch)');
+          } else {
+            await queueForSync(cohortPayload, 'cohort');
+          }
         }
         showToast('🐣 Cohort ' + cohortId + ' created · ' + hc + ' chicks in ' + targetHouse, 4500);
       }
@@ -14565,7 +14660,8 @@ function onAcquisitionChange() {
   const acquired = document.getElementById('sf-acquired-block');
   const external = document.getElementById('sf-external-block');
   if (born)     born.style.display     = (mode === 'born_on_farm')        ? '' : 'none';
-  if (acquired) acquired.style.display = (mode === 'acquired')            ? '' : 'none';
+  // v6.8.0 — gift_received uses the same sub-block as acquired (date + source)
+  if (acquired) acquired.style.display = (mode === 'acquired' || mode === 'gift_received') ? '' : 'none';
   if (external) external.style.display = (mode === 'external_ram_placeholder') ? '' : 'none';
   // External rams forced to M sex
   if (mode === 'external_ram_placeholder') {
@@ -14626,13 +14722,17 @@ async function submitSheepForm() {
     owner,
     breed,
     colour,
+    // v6.8.0 — gift_received preserved as its own acquisition tag so the 
+    // herdbook reads honestly: "gift" appears alongside "acquired/born/external".
     acquisition: isExternal ? 'external_ram_placeholder' :
-                 (acquisition === 'born_on_farm' ? 'born_on_farm' : 'acquired'),
+                 (acquisition === 'born_on_farm' ? 'born_on_farm' :
+                  acquisition === 'gift_received' ? 'gift_received' : 'acquired'),
     dob:           (acquisition === 'born_on_farm') ? document.getElementById('sf-dob').value : null,
     dam_tag:       (acquisition === 'born_on_farm') ? (document.getElementById('sf-dam').value || null) : null,
     sire_tag:      (acquisition === 'born_on_farm') ? (document.getElementById('sf-sire').value || null) : null,
-    date_acquired: (acquisition === 'acquired')     ? document.getElementById('sf-date-acquired').value : null,
-    source_farm:   (acquisition === 'acquired')     ? document.getElementById('sf-source-farm').value.trim() :
+    // v6.8.0 — gift_received uses the same date/source fields as acquired
+    date_acquired: (acquisition === 'acquired' || acquisition === 'gift_received') ? document.getElementById('sf-date-acquired').value : null,
+    source_farm:   (acquisition === 'acquired' || acquisition === 'gift_received') ? document.getElementById('sf-source-farm').value.trim() :
                    (isExternal ? document.getElementById('sf-source-farm').value.trim() : ''),
     status,
     date_status_changed: null,
@@ -14678,6 +14778,109 @@ function closeSheepForm() {
   if (formSec) formSec.style.display = 'none';
   if (listSec) listSec.style.display = '';
   renderSheepRegistry();
+}
+
+/* v6.8.0 — Edit Tag flow.
+   
+   Background: Elias's natural mental model for "this record has the wrong tag 
+   number" was to mark the sheep as sold so it disappears from the live flock. 
+   That destroys history. The right pattern is to rename the tag while preserving 
+   the same animal's record.
+   
+   Implementation (client-side, no Apps Script change needed):
+     1. Prompt for the corrected tag number
+     2. Validate: must be different, must not already exist
+     3. Confirm with user (this is irreversible without manual reversal)
+     4. Register a new sheep record with the new tag but ALL the same data 
+        (lineage, dob, source, status, notes) — gate accepts as new sheep
+     5. Mark the OLD sheep record as status='re-tagged' with notes 
+        `→ {new_tag}` so audit trail shows what happened
+     6. Append a `tag_changed` event to the OLD tag with details 
+        {old_tag, new_tag}
+     7. Both writes queued; gate processes in order
+*/
+async function openEditTagFlow(oldTag) {
+  const sheep = (STATE.sheep || []).find(s => s.tag_id === oldTag);
+  if (!sheep) { 
+    showToast('Sheep not found', 4000); 
+    return; 
+  }
+  if (sheep.status !== 'alive' && sheep.status !== 'external_ram') {
+    showToast(`Cannot edit tag — sheep is ${sheep.status}`, 5000);
+    return;
+  }
+  const newTagRaw = prompt(
+    `Edit Tag for ${oldTag}\n\n` +
+    `Use this when the physical ear tag number is different from what's on record (e.g. you entered S-001 but the real tag is 062).\n\n` +
+    `This is NOT for deleting a sheep. The animal stays in the registry — just under a new tag.\n\n` +
+    `Enter the corrected tag number (e.g. S-062):`,
+    oldTag
+  );
+  if (!newTagRaw) return;
+  const newTag = newTagRaw.trim().toUpperCase();
+  if (newTag === oldTag.toUpperCase()) {
+    showToast('Same tag — no change', 3000);
+    return;
+  }
+  if ((STATE.sheep || []).some(s => s.tag_id === newTag)) {
+    showToast(`Tag ${newTag} already exists — pick a different one`, 5000);
+    return;
+  }
+  // Validate format: prefix + dash + digits (allow EXT-, S-, M-, H-, K-, etc.)
+  if (!/^[A-Z]+-\d+$/.test(newTag)) {
+    showToast(`Tag format: prefix-digits (e.g. S-062, EXT-975)`, 5000);
+    return;
+  }
+  if (!confirm(`Re-tag ${oldTag} → ${newTag}?\n\nThe sheep's full history (lineage, events, status) carries over to the new tag. The old tag stays in the registry marked as "re-tagged" so the audit trail is preserved.\n\nProceed?`)) {
+    return;
+  }
+  // 1. Create the new sheep record (same data, new tag)
+  const nowIso = new Date().toISOString();
+  const newRecord = Object.assign({}, sheep, {
+    tag_id: newTag,
+    notes: (sheep.notes ? sheep.notes + ' · ' : '') + `Re-tagged from ${oldTag}`,
+    created_at: sheep.created_at || nowIso,
+    updated_at: nowIso,
+    _retag_from: oldTag
+  });
+  STATE.sheep.push(newRecord);
+  await storageSet(K_SHEEP, STATE.sheep);
+  
+  // 2. Mark the old record as re-tagged
+  const oldIdx = STATE.sheep.findIndex(s => s.tag_id === oldTag);
+  if (oldIdx !== -1) {
+    STATE.sheep[oldIdx].status = 're-tagged';
+    STATE.sheep[oldIdx].date_status_changed = nowIso.slice(0, 10);
+    STATE.sheep[oldIdx].notes = (sheep.notes ? sheep.notes + ' · ' : '') + `→ ${newTag}`;
+    STATE.sheep[oldIdx].updated_at = nowIso;
+    await storageSet(K_SHEEP, STATE.sheep);
+  }
+  
+  // 3. Append tag_changed event to the OLD tag (preserves where it happened)
+  const evRecord = {
+    id: `EV-${Date.now()}-rt-${oldTag}`,
+    date: nowIso.slice(0, 10),
+    tag_id: oldTag,
+    type: 'tag_changed',
+    details: { old_tag: oldTag, new_tag: newTag },
+    notes: 'Tag correction',
+    timestamp: nowIso,
+    _source: 'local'
+  };
+  if (!Array.isArray(STATE.sheepEvents)) STATE.sheepEvents = [];
+  STATE.sheepEvents.push(evRecord);
+  await storageSet(K_SHEEP_EVENTS, STATE.sheepEvents);
+  
+  // 4. Queue all three for the gate
+  await queueForSync(newRecord, 'sheep');
+  await queueForSync(STATE.sheep[oldIdx], 'sheep');
+  await queueForSync(evRecord, 'sheep-event');
+  
+  if (typeof flushQueue === 'function') flushQueue({ manual: true }).catch(() => {});
+  showToast(`✓ Re-tagged: ${oldTag} → ${newTag}`, 4000);
+  renderSheepRegistry();
+  // Reopen the profile under the new tag
+  openSheepProfile(newTag);
 }
 
 /* Profile page — read-only view of one sheep with header, lineage, notes. 
@@ -14744,8 +14947,10 @@ function openSheepProfile(tagId) {
         ${sheep.sex === 'F' && sheep.status === 'alive' ? `<button type="button" onclick="openSheepEventForm('lambed', '${sheep.tag_id}')" class="export-btn" style="flex:1 1 auto; min-width:90px">🐑 Lambing</button>
         <button type="button" onclick="openSheepEventForm('served', '${sheep.tag_id}')" class="export-btn" style="flex:1 1 auto; min-width:90px">❤️ Served</button>` : ''}
         ${sheep.status === 'alive' ? `<button type="button" onclick="openSheepEventForm('sold', '${sheep.tag_id}')" class="export-btn" style="flex:1 1 auto; min-width:90px">💰 Sale</button>
+        <button type="button" onclick="openSheepEventForm('gifted_away', '${sheep.tag_id}')" class="export-btn" style="flex:1 1 auto; min-width:90px">🎁 Gift</button>
         <button type="button" onclick="openSheepEventForm('died', '${sheep.tag_id}')" class="export-btn" style="flex:1 1 auto; min-width:90px; color:#b8714d; border-color:#b8714d">💀 Died</button>` : ''}
         <button type="button" onclick="openSheepForm('edit', '${sheep.tag_id}')" class="export-btn" style="flex:1 1 auto; min-width:90px; background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark)">Edit</button>
+        <button type="button" onclick="openEditTagFlow('${sheep.tag_id}')" class="export-btn" style="flex:1 1 auto; min-width:90px" title="Change tag number (e.g. corrected ear tag)">🏷 Edit Tag</button>
       </div>
     `;
   }
@@ -14770,7 +14975,8 @@ function renderSheepProfileTimeline(tagId) {
   const labels = {
     lambed: 'Lambed', served: 'Served', sold: 'Sold', dewormed: 'Dewormed',
     vaccinated: 'Vaccinated', weighed: 'Weighed', sheared: 'Sheared',
-    hooftrim: 'Hoof-trimmed', treated: 'Treated', died: 'Died'
+    hooftrim: 'Hoof-trimmed', treated: 'Treated', died: 'Died',
+    gifted_away: 'Gifted away', tag_changed: 'Re-tagged'
   };
   return events.map(e => {
     const lbl = labels[e.type] || e.type;
@@ -14783,6 +14989,8 @@ function renderSheepProfileTimeline(tagId) {
     else if (e.type === 'sold')         detail = `Ksh ${(d.price_kes || 0).toLocaleString('en-KE')}${d.weight_kg ? ` · ${d.weight_kg} kg` : ''}${d.buyer ? ` · ${d.buyer}` : ''}`;
     else if (e.type === 'weighed')      detail = `${d.kg || 0} kg`;
     else if (e.type === 'sheared')      detail = d.fleece_kg ? `${d.fleece_kg} kg fleece` : '';
+    else if (e.type === 'gifted_away')  detail = `${d.recipient || 'recipient'}${d.relationship ? ` (${d.relationship})` : ''}${d.weight_kg ? ` · ${d.weight_kg} kg` : ''}${d.occasion ? ` · ${d.occasion}` : ''}`;
+    else if (e.type === 'tag_changed')  detail = `${d.old_tag || '?'} → ${d.new_tag || '?'}`;
     else if (e.type === 'died')         detail = d.cause || '';
     else if (d.drug)                    detail = d.drug;
     return `
@@ -14903,6 +15111,13 @@ function openSheepEventForm(type, presetTagId) {
     document.getElementById('se-sold-price').value = '';
     document.getElementById('se-sold-type').value = 'slaughter';
     document.getElementById('se-sold-buyer').value = '';
+  } else if (type === 'gifted_away') {
+    // v6.8.0 — Gift event (out). Recipient + relationship + optional weight + occasion.
+    document.getElementById('se-gifted_away-block').style.display = '';
+    document.getElementById('se-gifted-recipient').value = '';
+    document.getElementById('se-gifted-relation').value = '';
+    document.getElementById('se-gifted-kg').value = '';
+    document.getElementById('se-gifted-occasion').value = '';
   } else if (type === 'dewormed' || type === 'vaccinated' || type === 'treated') {
     document.getElementById('se-drug-block').style.display = '';
     document.getElementById('se-batch-block').style.display = '';
@@ -14985,6 +15200,24 @@ async function submitSheepEventForm() {
   if (!type) return;
   const date = document.getElementById('se-date').value;
   if (!date) { showSheepEventFeedback('Date is required', 'err'); return; }
+  
+  // v6.8.0 — Confirm modal on destructive status changes.
+  // These three event types permanently change the sheep's status (sold, 
+  // gifted_away, died) and remove it from the live flock. Before v6.8.0, 
+  // Elias used "sold" as a soft-delete to clear records with wrong tags. 
+  // The Edit Tag flow now handles tag corrections properly — this modal 
+  // ensures operators don't accidentally take the destructive path.
+  if (type === 'sold' || type === 'gifted_away' || type === 'died') {
+    const verb = type === 'sold' ? 'Sale' : (type === 'gifted_away' ? 'Gift away' : 'Death');
+    const tagPicked = document.getElementById('se-tag').value || '(this sheep)';
+    const proceed = confirm(
+      `Record ${verb} for ${tagPicked}?\n\n` +
+      `This permanently changes the sheep's status. The record stays in the registry but the animal is no longer in the live flock.\n\n` +
+      `If you are correcting a wrong tag number, click Cancel and use the \ud83c\udff7 Edit Tag button on the sheep's profile instead.\n\n` +
+      `Proceed with ${verb}?`
+    );
+    if (!proceed) return;
+  }
   const notes = document.getElementById('se-notes').value.trim();
   
   // Determine target sheep: single tag or batch
@@ -15020,6 +15253,16 @@ async function submitSheepEventForm() {
       price_kes: Number(document.getElementById('se-sold-price').value) || 0,
       sale_type: document.getElementById('se-sold-type').value,
       buyer: document.getElementById('se-sold-buyer').value.trim()
+    };
+    // v6.8.0 — Gift event payload: recipient + relationship + weight + occasion.
+    // No money field (gifts have no price). The recipient is the analogue 
+    // of "buyer" so reports that group by "who received the animal" can 
+    // include both sales and gifts under the same logic.
+    if (type === 'gifted_away') return {
+      recipient: document.getElementById('se-gifted-recipient').value.trim(),
+      relationship: document.getElementById('se-gifted-relation').value,
+      weight_kg: Number(document.getElementById('se-gifted-kg').value) || 0,
+      occasion: document.getElementById('se-gifted-occasion').value.trim()
     };
     if (type === 'dewormed' || type === 'vaccinated' || type === 'treated') {
       return { drug: document.getElementById('se-drug-name').value.trim() };
@@ -15067,6 +15310,13 @@ async function submitSheepEventForm() {
         STATE.sheep[idx].updated_at = new Date().toISOString();
       } else if (type === 'died') {
         STATE.sheep[idx].status = 'died';
+        STATE.sheep[idx].date_status_changed = date;
+        STATE.sheep[idx].updated_at = new Date().toISOString();
+      } else if (type === 'gifted_away') {
+        // v6.8.0 — gifted away is ownership transfer without sale. Sheep no 
+        // longer in the flock but isn't dead/sold-for-cash. Status preserves 
+        // the distinction so reports can split "gifted" from "sold".
+        STATE.sheep[idx].status = 'gifted_away';
         STATE.sheep[idx].date_status_changed = date;
         STATE.sheep[idx].updated_at = new Date().toISOString();
       }
