@@ -2940,7 +2940,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.8.0</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.8.1</span>
 </header>
 
 <main>
@@ -4630,7 +4630,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.8.0</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.8.1</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5047,7 +5047,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.8.0';
+const APP_VERSION = 'v6.8.1';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -12390,8 +12390,16 @@ function computeStageLive(stage, house, today) {
       const stageThen = computeCohortStage(c.date_origin, censusDate);
       if (stageThen === stage) return;
     }
-    // Cohort entered this stage AFTER census (newly hatched or aged in)
-    cohortDelta += Number(c.current_count) || Number(c.initial_count) || 0;
+    // Cohort entered this stage AFTER census (newly hatched or aged in).
+    // v6.8.1 — Use initial_count, not current_count. With v6.7.0+ auto-decrement, 
+    // current_count gets reduced on every sale — but salesDelta below also 
+    // deducts those same sales, producing a double-count. Initial_count is the 
+    // additive number of chicks introduced since census; sales/mortality since 
+    // census deduct correctly on their own. This mirrors the Apps Script fix 
+    // applied 11 May 2026 to rebuildLivePopulationSheet. current_count remains 
+    // the cohort's own status indicator (useful for cohort-level views) but is 
+    // not the right input to the live formula.
+    cohortDelta += Number(c.initial_count) || Number(c.current_count) || 0;
   });
 
   // Mortality delta: deaths matching stage (and house if specified) since census
