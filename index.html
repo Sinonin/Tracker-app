@@ -1557,7 +1557,28 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     width: 100%;
-    text-align: center;
+    text-align: center;  }
+  
+  /* v6.8.2 — Single-row 7-card variant for the Poultry quick-add grid.
+     Used in addition to .quick-add-tight. Shrinks padding, icon, and 
+     label proportionally so 7 cards fit one row on a typical mobile 
+     viewport (~380-400px) without overflow. Touch target stays large 
+     enough (>= 44px) and the icons remain readable. Sheep events grid 
+     keeps the 4×2 layout — it has 8 cards. */
+  .quick-add-grid.quick-add-tight.quick-add-row-7 {
+    gap: 0.22rem;
+  }
+  .quick-add-grid.quick-add-tight.quick-add-row-7 .quick-add-card {
+    padding: 0.45rem 0.1rem 0.4rem;
+    min-height: 52px;
+    gap: 0.15rem;
+  }
+  .quick-add-grid.quick-add-tight.quick-add-row-7 .qa-icon {
+    font-size: 0.95rem;
+  }
+  .quick-add-grid.quick-add-tight.quick-add-row-7 .qa-label {
+    font-size: 0.44rem;
+    letter-spacing: 0.04em;
   }
   
   /* v6.3.12 — Home: extra space below Action Cards (Notifications) so they 
@@ -2940,7 +2961,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.8.1</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.8.2</span>
 </header>
 
 <main>
@@ -3171,11 +3192,15 @@
          specific form. 5 cards: Eggs, Income, Vaccination, Census, Hatch. -->
     <div class="quick-add-section">
       <div class="quick-add-head">Quick add</div>
-      <!-- v6.5.7 — restructured from 6-col single row to 4-col × 2-row grid 
-           with new Death card. 7 cards crammed into one row felt tight on 
-           mobile; 4×2 gives each card breathing room and groups related 
-           ops visually (Row 1 = transactions/counts; Row 2 = husbandry). -->
-      <div class="quick-add-grid quick-add-tight" style="grid-template-columns:repeat(4,1fr)">
+      <!-- v6.8.2 — Single-row layout per Cheison's aesthetic request 
+           (12 May 2026). 7 cards across one row; the new 
+           .quick-add-row-7 modifier tightens padding, icon, and label 
+           sizing to fit a typical mobile viewport (~380-400px) without 
+           overflow. Each card retains a comfortable touch target 
+           (~50px wide × 50px tall on a 380px screen). Sheep events 
+           tab stays 4×2 — that has 8 cards and they're more varied 
+           in frequency. -->
+      <div class="quick-add-grid quick-add-tight quick-add-row-7" style="grid-template-columns:repeat(7,1fr)">
         <button class="quick-add-card" type="button" onclick="openAddPanel('poultry','egg-collection')">
           <span class="qa-icon">🥚</span>
           <span class="qa-label">Eggs</span>
@@ -4630,7 +4655,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.8.1</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.8.2</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5047,7 +5072,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.8.1';
+const APP_VERSION = 'v6.8.2';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -9232,7 +9257,29 @@ function checkWeighbridgeGap(actual) {
     .filter(e => e.date === actual.date && e.block === actual.block)
     .reduce((s, e) => s + (Number(e.qty) || 0), 0);
   if (pluckerSum <= 0) {
-    console.log('[weighbridge-check] no plucker entries yet for', actual.date, actual.block);
+    // v6.8.2 — Zero plucker entries is MORE suspicious than a partial gap, 
+    // not less. The pre-v6.8.2 code returned silently here on the assumption 
+    // "maybe pluckers will be entered later" — but that early-return killed 
+    // the alert entirely. Cheison spotted this on 12 May (Sinonin 14.9 kg 
+    // with zero pluckers stayed silent).
+    //
+    // Operational pattern: Cheison often posts actuals from his phone in 
+    // Verden when he receives the factory SMS, while the field operator 
+    // (Victor normally, Elias when Victor is on leave) enters the plucker 
+    // records later from the field. So this toast may fire on Cheison's 
+    // phone before the field operator has had a chance to enter pluckers. 
+    // That's fine — it's a reminder Cheison can act on by pinging the 
+    // field operator. Threshold of 10 kg avoids false alarms on small 
+    // genuinely-self-plucked test loads.
+    if (actual.kg > 10) {
+      showToast(
+        `\u26a0 ${actual.block}: ${actual.kg} kg saved, no plucker entries yet. ` +
+        `Pending field operator, or self-plucked?`,
+        7000
+      );
+    } else {
+      console.log('[weighbridge-check] no pluckers but kg below 10 threshold:', actual.date, actual.block, actual.kg);
+    }
     return;
   }
   const gap = actual.kg - pluckerSum;
