@@ -2961,7 +2961,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.8.3</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.8.5</span>
 </header>
 
 <main>
@@ -4660,7 +4660,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.8.3</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.8.5</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5077,7 +5077,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.8.3';
+const APP_VERSION = 'v6.8.5';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -9183,7 +9183,20 @@ function recordedKgFor(date, factory, block) {
    banner surfaces unresolved duplicates on Home until the operator either 
    confirms both rows are legit (OK) or marks them corrected after fixing 
    the sheet. Acknowledgments persist per (block, row-signature) so a new 
-   dupe row appearing later invalidates the prior ack automatically. */
+   dupe row appearing later invalidates the prior ack automatically. 
+   
+   v6.8.5 — Forward-only scope (sealed 13 May 2026 evening). Cheison: 
+   "I don't want to burn the midnight oil cleaning what is already clean." 
+   The banner now only surfaces duplicate groups where AT LEAST ONE row 
+   was submitted AT OR AFTER the activation timestamp below. Historical 
+   duplicates (rows whose ts is all before the cutoff) stay silent. New 
+   duplicates from tomorrow onwards trigger the banner normally.
+   
+   To rescope later: change DUPE_BANNER_ACTIVATION_TS to any ISO datetime 
+   in the future. The submit-time check in submitActual remains always-on 
+   regardless of this cutoff — that's prevention, not detection. */
+
+const DUPE_BANNER_ACTIVATION_TS = '2026-05-14T00:00:00.000Z';
 
 const K_ACTUAL_DUPE_ACKS = 'sinonin_actual_dupe_acks_v1';
 
@@ -9215,6 +9228,12 @@ function findActualDuplicates() {
   const acks = _getActualDupeAcks();
   return Object.values(groups)
     .filter(g => g.rows.length >= 2)
+    // v6.8.5 — Forward-only scope. A duplicate group surfaces ONLY if at 
+    // least one row was submitted at or after the activation timestamp. 
+    // This silences all historical accumulated duplicates while still 
+    // catching new ones the moment they're created. Submit-time check 
+    // remains always-on independently.
+    .filter(g => g.rows.some(r => r.ts && r.ts >= DUPE_BANNER_ACTIVATION_TS))
     .map(g => {
       // Row signature includes count + sorted kg values, so if a new 3rd 
       // row appears or any kg changes, the ackKey changes and the banner 
@@ -12636,9 +12655,13 @@ function renderHome() {
   document.getElementById('hero-date').textContent =
     new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-  // v6.8.3 — Render the persistent duplicate-actuals banner at top of Home.
-  // Scans STATE.actuals for groups sharing date+factory+block; surfaces a 
-  // warning until operator acknowledges (OK · both legit) or marks corrected.
+  // v6.8.5 — Re-enable the persistent duplicate-actuals banner with 
+  // FORWARD-ONLY scope (cutoff at DUPE_BANNER_ACTIVATION_TS = 
+  // 2026-05-14T00:00:00Z, i.e. start of 14 May UTC = 02:00 CEST tomorrow). 
+  // Only groups containing at least one row submitted after the cutoff 
+  // surface. Historical duplicates (all submissions pre-cutoff) stay 
+  // silent. Filter is implemented inside findActualDuplicates so the 
+  // banner just renders whatever's relevant.
   if (typeof renderActualDupeBanner === 'function') renderActualDupeBanner();
 
   // v6.1.0 — Auto-age cohorts before rendering. This runs every time Home
