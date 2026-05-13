@@ -2961,12 +2961,17 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.8.2</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.8.3</span>
 </header>
 
 <main>
   <!-- HOME -->
   <section class="panel active" id="panel-home">
+    <!-- v6.8.3 — Persistent duplicate-actuals warning banner. 
+         Self-hides if no unacknowledged dupes exist. Placed at the very 
+         top of Home so it's the first thing the principal sees when 
+         opening the app — duplicates are a revenue-integrity issue. -->
+    <div id="actual-dupe-banner" style="display:none"></div>
     <div class="hero">
       <!-- v6.3.12 — Greeting + date on a single left-aligned row, Nandi 
            greeting "Chamgei chemogeet". -->
@@ -4655,7 +4660,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.8.2</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.8.3</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5072,7 +5077,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.8.2';
+const APP_VERSION = 'v6.8.3';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -9171,6 +9176,120 @@ function recordedKgFor(date, factory, block) {
     .reduce((s, e) => s + (Number(e.qty) || 0), 0);
 }
 
+/* v6.8.3 — Actuals duplicate detection + persistent home banner.
+   Background: 13 May 2026, Cheison submitted a Sinonin actual at 93.7 kg,
+   then a corrected 93.2 kg submission landed as a SECOND row. Gate's flag-
+   mode dedup let both through; revenue would double-count. The persistent 
+   banner surfaces unresolved duplicates on Home until the operator either 
+   confirms both rows are legit (OK) or marks them corrected after fixing 
+   the sheet. Acknowledgments persist per (block, row-signature) so a new 
+   dupe row appearing later invalidates the prior ack automatically. */
+
+const K_ACTUAL_DUPE_ACKS = 'sinonin_actual_dupe_acks_v1';
+
+function _dupeKey(a) {
+  return (a.date || '') + '|' + (a.factory || '') + '|' + (a.block || '');
+}
+
+function _getActualDupeAcks() {
+  try {
+    const raw = localStorage.getItem(K_ACTUAL_DUPE_ACKS);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) { return {}; }
+}
+
+function _setActualDupeAcks(acks) {
+  try { localStorage.setItem(K_ACTUAL_DUPE_ACKS, JSON.stringify(acks || {})); } 
+  catch (e) { console.warn('[dupe-acks] save failed:', e.message); }
+}
+
+function findActualDuplicates() {
+  const actuals = STATE.actuals || [];
+  const groups = {};
+  actuals.forEach(a => {
+    if (!a || !a.date || !a.factory) return;
+    const k = _dupeKey(a);
+    if (!groups[k]) groups[k] = { key: k, date: a.date, factory: a.factory, block: a.block || '', rows: [] };
+    groups[k].rows.push(a);
+  });
+  const acks = _getActualDupeAcks();
+  return Object.values(groups)
+    .filter(g => g.rows.length >= 2)
+    .map(g => {
+      // Row signature includes count + sorted kg values, so if a new 3rd 
+      // row appears or any kg changes, the ackKey changes and the banner 
+      // re-surfaces. Operator must reconfirm the changed state.
+      const rowSignature = g.rows.length + '@' + g.rows.map(r => Number(r.kg) || 0).sort().join(',');
+      const ackKey = g.key + '#' + rowSignature;
+      return Object.assign({}, g, { ackKey, ack: acks[ackKey] || null, rowSignature });
+    });
+}
+
+function acknowledgeActualDuplicate(ackKey, action) {
+  // action: 'ok' (legitimate same-day double delivery — keep both rows) 
+  //      or 'corrected' (operator has deleted/edited one row in the sheet).
+  // Either dismisses the banner for this row-signature. If duplicates persist 
+  // and the signature stays the same, the ack holds. If the signature changes 
+  // (new row appears, kg changes), banner re-surfaces with a fresh ackKey.
+  const acks = _getActualDupeAcks();
+  acks[ackKey] = { action: action, ackedAt: new Date().toISOString() };
+  _setActualDupeAcks(acks);
+  if (typeof renderActualDupeBanner === 'function') renderActualDupeBanner();
+  showToast(
+    action === 'ok' 
+      ? '✓ Acknowledged — both rows kept as legit deliveries'
+      : '✓ Marked corrected — verify the sheet has only one row',
+    4000
+  );
+}
+
+function renderActualDupeBanner() {
+  const container = document.getElementById('actual-dupe-banner');
+  if (!container) return;
+  const dupes = findActualDuplicates();
+  const unacked = dupes.filter(d => !d.ack);
+  if (unacked.length === 0) {
+    container.innerHTML = '';
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = '';
+  const lines = unacked.map(d => {
+    const kgList = d.rows.map(r => (Number(r.kg) || 0).toFixed(1)).join(' kg · ');
+    const safeAckKey = d.ackKey.replace(/'/g, "\\'");
+    return `
+      <div style="border-top:1px solid rgba(184,113,77,0.25); padding:0.55rem 0; display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap">
+        <div style="flex:1 1 60%; min-width:200px">
+          <div style="font-family:'Playfair Display',serif; font-size:0.95rem; color:#5a2f1f; font-weight:600">
+            ${d.factory} · ${d.block || 'no block'} · ${d.date}
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:#7a4d3a; margin-top:0.2rem">
+            ${d.rows.length} rows: ${kgList} kg
+          </div>
+        </div>
+        <div style="display:flex; gap:0.3rem; flex-wrap:wrap">
+          <button class="export-btn" onclick="acknowledgeActualDuplicate('${safeAckKey}', 'ok')" 
+                  style="padding:0.35rem 0.6rem; font-size:0.7rem">OK · both legit</button>
+          <button class="export-btn" onclick="acknowledgeActualDuplicate('${safeAckKey}', 'corrected')" 
+                  style="padding:0.35rem 0.6rem; font-size:0.7rem; background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark)">Corrected</button>
+        </div>
+      </div>`;
+  }).join('');
+  container.innerHTML = `
+    <div style="background:rgba(184,113,77,0.12); border:1px solid rgba(184,113,77,0.4); border-radius:6px; padding:0.7rem 0.85rem; margin-bottom:1rem">
+      <div style="font-family:'Playfair Display',serif; font-size:1rem; color:#5a2f1f; font-weight:700; margin-bottom:0.3rem">
+        ⚠ Duplicate actuals detected
+      </div>
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:0.65rem; color:#7a4d3a; letter-spacing:0.04em; line-height:1.5; margin-bottom:0.4rem">
+        Two or more rows share the same date · factory · block. 
+        Tea revenue from these blocks may be inflated until resolved. 
+        Edit/delete the wrong row in the Actuals sheet, then click <strong>Corrected</strong>. 
+        Or click <strong>OK</strong> if both rows are legitimate same-day deliveries.
+      </div>
+      ${lines}
+    </div>`;
+}
+
 function updateActualPreview() {
   const v = aValues();
   const card = document.getElementById('a-preview');
@@ -9205,6 +9324,37 @@ async function submitActual() {
     const ok = await confirmFirstSubmit('actual', summaryHtml);
     if (!ok) { showToast('Cancelled', 1800); return; }
     markSessionConfirmed('actual');
+  }
+
+  // v6.8.3 — Pre-submit duplicate check for Actuals.
+  // Background: 13 May 2026, Cheison submitted a Sinonin actual at 93.7 kg,
+  // realized it was wrong, and a corrected submission at 93.2 kg was made 
+  // later. The gate accepted both — TWO rows for the same date+factory+block 
+  // landed in the Actuals sheet, which inflates revenue. Operators have no
+  // edit-in-place workflow yet, so duplicates accumulate.
+  //
+  // Solution (tonight): catch the duplicate at submit time with a friendly 
+  // confirm modal. Operator can cancel and edit the sheet manually, or 
+  // proceed anyway (the home page banner will flag it for follow-up).
+  // The check uses LOCAL STATE.actuals so it works offline; the home banner 
+  // covers cases that slip through (race conditions, stale state, etc.).
+  const existing = (STATE.actuals || []).find(a => 
+    a.date === v.date && a.factory === v.factory && (a.block || '') === (v.block || '')
+  );
+  if (existing) {
+    const existingKg = Number(existing.kg) || 0;
+    const msg = 
+      `An actual for ${v.factory} · ${v.block || 'no-block'} on ${v.date} ` +
+      `already exists at ${existingKg} kg.\n\n` +
+      `You're about to submit ${v.kg} kg as a SECOND row.\n\n` +
+      `If this is a correction, click Cancel — then edit the existing row ` +
+      `directly in the Google Sheet (or delete it), then re-submit.\n\n` +
+      `If this is a real second delivery on the same day (rare but possible), ` +
+      `click OK to proceed. The Home page will flag it for your review.`;
+    if (!confirm(msg)) {
+      showToast('Cancelled — edit the existing row in the sheet to correct', 5000);
+      return;
+    }
   }
 
   const actual = {
@@ -12485,6 +12635,11 @@ function renderHome() {
   document.getElementById('hero-greeting').textContent = 'Chamgei chemogeet';
   document.getElementById('hero-date').textContent =
     new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  // v6.8.3 — Render the persistent duplicate-actuals banner at top of Home.
+  // Scans STATE.actuals for groups sharing date+factory+block; surfaces a 
+  // warning until operator acknowledges (OK · both legit) or marks corrected.
+  if (typeof renderActualDupeBanner === 'function') renderActualDupeBanner();
 
   // v6.1.0 — Auto-age cohorts before rendering. This runs every time Home
   // is rendered (entry to app, after Resync, after submit). Idempotent —
