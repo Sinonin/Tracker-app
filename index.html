@@ -2961,7 +2961,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.8.9</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.0</span>
 </header>
 
 <main>
@@ -3126,6 +3126,16 @@
       </div>
       <div class="ac-list" id="ac-list"></div>
     </div>
+
+    <!-- v6.9.0 — Urgent hatch progress widget (Cheison 14 May 2026):
+         "Copy the code you have in the incubation card under poultry but 
+         showing <7days, same graphics." Renders the same .ip-card visual 
+         language as #home-incubation-list (used in Poultry tab), but 
+         filtered to batches whose expected_hatch is within 7 days. 
+         Self-hides when no batches in window. Sits in the notifications 
+         area of the Home tab so the operator sees PREP-phase batches 
+         immediately on opening the app. -->
+    <div id="home-urgent-hatch-progress" style="display:none"></div>
 
   </section>
 
@@ -4660,7 +4670,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.8.9</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.9.0</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5077,7 +5087,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.8.9';
+const APP_VERSION = 'v6.9.0';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -12201,6 +12211,117 @@ function renderIncubationProgress() {
   });
 }
 
+/* v6.9.0 — Urgent hatch progress widget for Home notifications area.
+   Sealed by Cheison 14 May 2026: "Copy the code you have in the incubation 
+   card under poultry but showing <7days, same graphics." Renders the same 
+   .ip-card visual as renderIncubationProgress, but only for batches whose 
+   expected_hatch is within HATCH_PREP_HORIZON_DAYS (default 7). Self-hides 
+   when no batches in window. Tap-to-record-hatch wired for phase-ready / 
+   phase-overdue cards (same behavior as the Poultry-tab version). */
+function renderHomeUrgentHatchProgress() {
+  const container = document.getElementById('home-urgent-hatch-progress');
+  if (!container) return;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Same permissive filter as v6.8.8: exclude only hatched/cancelled.
+  // Then compute daysToHatch and keep only those within the 7-day window.
+  const urgent = (STATE.incubation || [])
+    .filter(b => b && b.status !== 'hatched' && b.status !== 'cancelled')
+    .map(b => {
+      const dateSet = b.date_set ? new Date(b.date_set) : null;
+      if (!dateSet || isNaN(dateSet.getTime())) return null;
+      dateSet.setHours(0, 0, 0, 0);
+      const daysElapsed = Math.floor((today - dateSet) / 86400000);
+      const expHatch = b.expected_hatch ? new Date(b.expected_hatch) : null;
+      let daysTotal = 21;
+      if (expHatch && !isNaN(expHatch.getTime())) {
+        expHatch.setHours(0, 0, 0, 0);
+        daysTotal = Math.max(1, Math.floor((expHatch - dateSet) / 86400000));
+      }
+      const daysToHatch = daysTotal - daysElapsed;
+      return { batch: b, daysElapsed, daysTotal, daysToHatch };
+    })
+    .filter(x => x !== null)
+    // Show batches within 7 days of expected hatch (or overdue by up to 1d).
+    // This matches the PREP-Marek, READY, and recently-overdue phases.
+    .filter(x => x.daysToHatch >= -1 && x.daysToHatch <= 7)
+    .sort((a, b) => a.daysToHatch - b.daysToHatch);
+
+  if (urgent.length === 0) {
+    container.innerHTML = '';
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = '';
+
+  // Build .ip-card markup using the SAME phase logic / labels as 
+  // renderIncubationProgress, so the visual language is identical to 
+  // the Incubation card under Poultry tab.
+  const cardsHtml = urgent.map(x => {
+    const b = x.batch;
+    const daysElapsed = x.daysElapsed;
+    const daysTotal = x.daysTotal;
+    const daysToHatch = x.daysToHatch;
+    const progressPct = Math.min(100, Math.max(0, (daysElapsed / daysTotal) * 100));
+
+    let phase, barLabel, isOverdueCTA = false;
+    if (daysElapsed > daysTotal + 1) {
+      phase = 'phase-overdue';
+      const daysOver = daysElapsed - daysTotal;
+      barLabel = '🐣 RECORD HATCH · ' + daysOver + 'd late';
+      isOverdueCTA = true;
+    } else if (daysElapsed >= daysTotal - 1 && daysElapsed <= daysTotal + 1) {
+      phase = 'phase-ready';
+      barLabel = '🐣 Day ' + daysElapsed + ' · READY · TAP to record';
+      isOverdueCTA = true;
+    } else if (daysToHatch > 0 && daysToHatch < 7) {
+      phase = 'phase-approach';
+      barLabel = '🟡 Day ' + daysElapsed + ' · PREP Marek · ' + daysToHatch + 'd to go';
+    } else {
+      phase = 'phase-early';
+      barLabel = 'Day ' + daysElapsed + ' of ' + daysTotal + ' — early';
+    }
+    const cardClass = isOverdueCTA ? 'ip-card ip-card-actionable' : 'ip-card';
+    const dataAttr  = isOverdueCTA ? `data-record-hatch="${b.batch_id}"` : '';
+
+    return `
+      <div class="${cardClass}" ${dataAttr}>
+        <div class="ip-head">
+          <span class="ip-batch-id">${b.batch_id}</span>
+          <span class="ip-meta">${(Number(b.eggs_in) || 0).toLocaleString('en-KE')} eggs · set ${b.date_set}</span>
+        </div>
+        <div class="ip-bar-track">
+          <div class="ip-bar-fill ${phase}" style="width:${progressPct.toFixed(1)}%"></div>
+          <div class="ip-bar-label ${phase}">${barLabel}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Wrap in a section-head matching the Poultry-tab version, but with
+  // a tighter label suited to Home's "notifications" framing.
+  const totalEggs = urgent.reduce((s, x) => s + (Number(x.batch.eggs_in) || 0), 0);
+  const metaText = `${urgent.length} batch${urgent.length === 1 ? '' : 'es'} · ${totalEggs.toLocaleString('en-KE')} eggs · ≤7 days`;
+  container.innerHTML = `
+    <div style="margin-top:1rem;padding:0.85rem 0.85rem 0.7rem;background:rgba(217,159,93,0.08);border:1px solid rgba(217,159,93,0.3);border-radius:6px">
+      <div class="section-head" style="margin-bottom:0.55rem"><h4 style="font-size:0.78rem;letter-spacing:0.16em;color:var(--brass);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;font-weight:500;margin:0">🐣 Hatch prep · next 7 days</h4><span class="meta">${metaText}</span></div>
+      ${cardsHtml}
+    </div>`;
+
+  // Wire tap-to-record-hatch on actionable cards (same behavior as 
+  // renderIncubationProgress). Scoped to this container to avoid 
+  // double-wiring with the Poultry-tab progress bars.
+  container.querySelectorAll('.ip-card.ip-card-actionable[data-record-hatch]').forEach(cardEl => {
+    cardEl.style.cursor = 'pointer';
+    cardEl.onclick = function() {
+      const batchId = cardEl.getAttribute('data-record-hatch');
+      if (typeof openHatchFormPrefilled === 'function') openHatchFormPrefilled(batchId);
+    };
+  });
+}
+
 /* v6.1.0 — Open Add → Poultry → Incubation → Hatch tab, pre-filled with batch_id.
    Used when operator taps a phase-ready or phase-overdue incubation card. */
 function openHatchFormPrefilled(batchId) {
@@ -12490,40 +12611,13 @@ function renderActionCards() {
       });
     });
 
-  // ─── HATCH alerts: UPCOMING within next 7 days (Cheison v6.8.9: 
-  //     "show IF <7 days to hatch date — helps with prep!"). Separate 
-  //     from the today/overdue section above so urgency stays right: 
-  //     these are SOFT warnings (urgency: 'approaching'), not "act now" 
-  //     prompts. Operator gets lead time to prep brooders, order feed, 
-  //     set up lamps, paper, waterers. 
-  //     Filter is permissive (excludes hatched/cancelled), matching 
-  //     v6.8.8's home incubation fix — batches with empty/undefined 
-  //     status still surface. ───
-  (STATE.incubation || [])
-    .filter(b => b && b.status !== 'hatched' && b.status !== 'cancelled')
-    .filter(b => {
-      const exp = b.expected_hatch || '';
-      // Strictly future (today already handled above) within +7 days.
-      return exp && exp > todayStr && exp <= daysFromToday(7);
-    })
-    .sort((a, b) => (a.expected_hatch || '').localeCompare(b.expected_hatch || ''))
-    .forEach(b => {
-      const exp = b.expected_hatch;
-      const daysUntil = Math.round((new Date(exp) - new Date(todayStr)) / 86400000);
-      const dayLabel = daysUntil === 1 ? 'tomorrow' : `in ${daysUntil} days`;
-      items.push({
-        type: 'hatch-upcoming',
-        urgency: 'approaching',
-        action: 'Prep brooder',
-        context: `${b.batch_id} · ${(Number(b.eggs_in) || 0).toLocaleString('en-KE')} eggs · hatches ${dayLabel}`,
-        onTap: () => {
-          // Open the incubation tab so the operator can review the batch
-          if (typeof openTab === 'function') openTab('add');
-          if (typeof openAddPanel === 'function') openAddPanel('poultry', 'incubation');
-        },
-        icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M12 22a8 8 0 0 0 8-8c0-5-4-12-8-12S4 9 4 14a8 8 0 0 0 8 8z"/></svg>`,
-      });
-    });
+  // ─── HATCH alerts: UPCOMING (within next 7 days) — handled by the 
+  //     dedicated rich progress-bar widget below action-cards 
+  //     (#home-urgent-hatch-progress, rendered by 
+  //     renderHomeUrgentHatchProgress). Sealed by Cheison 14 May 2026: 
+  //     "Copy the code you have in the incubation card under poultry 
+  //     but showing <7days, same graphics." Text-only entries here 
+  //     would duplicate the visual widget, so we skip them. ───
 
   // ─── VACCINATION alerts: TODAY OR OVERDUE only (Cheison v6.3.16) ───
   (STATE.vaccinations || [])
@@ -13742,6 +13836,11 @@ function renderHome() {
 
   // v5.9.0 — Paint home incubation progress in Kipkenda Poultry section
   if (typeof renderIncubationProgress === 'function') renderIncubationProgress();
+
+  // v6.9.0 — Paint urgent hatch progress widget on Home (≤7 days to hatch).
+  // Lives in the notifications area below #action-cards. Self-hides when 
+  // no batches in window. Same .ip-card visual as the Poultry-tab card.
+  if (typeof renderHomeUrgentHatchProgress === 'function') renderHomeUrgentHatchProgress();
 }
 
 /* Records filter context-awareness — hide Block/Factory dropdowns when the
