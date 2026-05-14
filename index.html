@@ -2961,7 +2961,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.8.6</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.8.7</span>
 </header>
 
 <main>
@@ -2972,13 +2972,6 @@
          top of Home so it's the first thing the principal sees when 
          opening the app — duplicates are a revenue-integrity issue. -->
     <div id="actual-dupe-banner" style="display:none"></div>
-    
-    <!-- v6.8.6 — Hatch-due card. Surfaces incubation batches whose 
-         expected_hatch is within HATCH_PREP_HORIZON_DAYS (7 days). 
-         Self-hides when no relevant hatches. Helps with prep: brooder 
-         cleaning, feed ordering, lamps, paper, waterers. Sealed by 
-         Cheison 14 May 2026 ("Helps with prep!"). -->
-    <div id="hatches-due-card" style="display:none"></div>
     <div class="hero">
       <!-- v6.3.12 — Greeting + date on a single left-aligned row, Nandi 
            greeting "Chamgei chemogeet". -->
@@ -4667,7 +4660,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.8.6</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.8.7</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5084,7 +5077,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.8.6';
+const APP_VERSION = 'v6.8.7';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -12753,11 +12746,14 @@ function renderHome() {
   // banner just renders whatever's relevant.
   if (typeof renderActualDupeBanner === 'function') renderActualDupeBanner();
 
-  // v6.8.6 — Render the hatch-due card. Surfaces incubation batches 
-  // hatching within the next 7 days so the operator can prep brooders, 
-  // feed, lamps, paper, waterers. Self-hides when no upcoming hatches 
-  // in the window. Sealed by Cheison 14 May 2026 ("Helps with prep!").
-  if (typeof renderHatchesDueCard === 'function') renderHatchesDueCard();
+  // v6.8.7 — Removed the redundant top-of-Home hatch card I added in v6.8.6. 
+  // The bottom-of-Home incubation section (renderIncubationProgress, called 
+  // below at the end of renderHome) already paints progress bars for every 
+  // incubating batch — including the "PREPARE" phase styling when daysToHatch 
+  // < 7. Cheison rightly pointed out (14 May 2026) that the existing area 
+  // is the right place; a duplicate card at the top would just be noise.
+  // The findUpcomingHatches/renderHatchesDueCard functions remain dormant 
+  // in source (not called) for possible future re-purposing.
 
   // v6.1.0 — Auto-age cohorts before rendering. This runs every time Home
   // is rendered (entry to app, after Resync, after submit). Idempotent —
