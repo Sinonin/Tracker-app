@@ -2961,7 +2961,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.8.7</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.8.8</span>
 </header>
 
 <main>
@@ -4660,7 +4660,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.8.7</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.8.8</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5077,7 +5077,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.8.7';
+const APP_VERSION = 'v6.8.8';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -12088,7 +12088,17 @@ function renderIncubationProgress() {
   const homeMeta = document.getElementById('home-ip-meta');
   if (!addList && !homeList) return;
 
-  const incubating = (STATE.incubation || []).filter(b => b.status === 'incubating');
+  // v6.8.8 — Filter is now PERMISSIVE (exclude hatched/cancelled only) 
+  // instead of STRICT (require status === 'incubating'). Why: a batch 
+  // with an empty/missing status field was being filtered out of the 
+  // home progress display even though it's clearly still incubating. 
+  // This matches populateHatchBatchDropdown's existing logic and treats 
+  // anything-not-terminal as still active. If status is empty, 
+  // undefined, 'incubating', or any non-terminal value, the batch shows.
+  // 14 May 2026 — Cheison: hatch in 4 days not feeding the homepage.
+  const incubating = (STATE.incubation || []).filter(b => 
+    b && b.status !== 'hatched' && b.status !== 'cancelled'
+  );
   if (incubating.length === 0) {
     const emptyHtml = `<div style="text-align:center;padding:1.2rem 0.6rem;color:var(--slate);font-family:'Fraunces',serif;font-style:italic;font-size:0.88rem;opacity:0.75">No batches incubating yet</div>`;
     if (addList) addList.innerHTML = emptyHtml;
