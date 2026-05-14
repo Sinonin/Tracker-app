@@ -2961,7 +2961,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.8.8</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.8.9</span>
 </header>
 
 <main>
@@ -4660,7 +4660,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.8.8</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.8.9</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5077,7 +5077,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.8.8';
+const APP_VERSION = 'v6.8.9';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -12485,6 +12485,41 @@ function renderActionCards() {
           if (typeof openHatchFormPrefilled === 'function') {
             openHatchFormPrefilled(b.batch_id);
           }
+        },
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M12 22a8 8 0 0 0 8-8c0-5-4-12-8-12S4 9 4 14a8 8 0 0 0 8 8z"/></svg>`,
+      });
+    });
+
+  // ─── HATCH alerts: UPCOMING within next 7 days (Cheison v6.8.9: 
+  //     "show IF <7 days to hatch date — helps with prep!"). Separate 
+  //     from the today/overdue section above so urgency stays right: 
+  //     these are SOFT warnings (urgency: 'approaching'), not "act now" 
+  //     prompts. Operator gets lead time to prep brooders, order feed, 
+  //     set up lamps, paper, waterers. 
+  //     Filter is permissive (excludes hatched/cancelled), matching 
+  //     v6.8.8's home incubation fix — batches with empty/undefined 
+  //     status still surface. ───
+  (STATE.incubation || [])
+    .filter(b => b && b.status !== 'hatched' && b.status !== 'cancelled')
+    .filter(b => {
+      const exp = b.expected_hatch || '';
+      // Strictly future (today already handled above) within +7 days.
+      return exp && exp > todayStr && exp <= daysFromToday(7);
+    })
+    .sort((a, b) => (a.expected_hatch || '').localeCompare(b.expected_hatch || ''))
+    .forEach(b => {
+      const exp = b.expected_hatch;
+      const daysUntil = Math.round((new Date(exp) - new Date(todayStr)) / 86400000);
+      const dayLabel = daysUntil === 1 ? 'tomorrow' : `in ${daysUntil} days`;
+      items.push({
+        type: 'hatch-upcoming',
+        urgency: 'approaching',
+        action: 'Prep brooder',
+        context: `${b.batch_id} · ${(Number(b.eggs_in) || 0).toLocaleString('en-KE')} eggs · hatches ${dayLabel}`,
+        onTap: () => {
+          // Open the incubation tab so the operator can review the batch
+          if (typeof openTab === 'function') openTab('add');
+          if (typeof openAddPanel === 'function') openAddPanel('poultry', 'incubation');
         },
         icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M12 22a8 8 0 0 0 8-8c0-5-4-12-8-12S4 9 4 14a8 8 0 0 0 8 8z"/></svg>`,
       });
