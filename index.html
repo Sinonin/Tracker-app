@@ -2961,7 +2961,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.8.5</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.8.6</span>
 </header>
 
 <main>
@@ -2972,6 +2972,13 @@
          top of Home so it's the first thing the principal sees when 
          opening the app — duplicates are a revenue-integrity issue. -->
     <div id="actual-dupe-banner" style="display:none"></div>
+    
+    <!-- v6.8.6 — Hatch-due card. Surfaces incubation batches whose 
+         expected_hatch is within HATCH_PREP_HORIZON_DAYS (7 days). 
+         Self-hides when no relevant hatches. Helps with prep: brooder 
+         cleaning, feed ordering, lamps, paper, waterers. Sealed by 
+         Cheison 14 May 2026 ("Helps with prep!"). -->
+    <div id="hatches-due-card" style="display:none"></div>
     <div class="hero">
       <!-- v6.3.12 — Greeting + date on a single left-aligned row, Nandi 
            greeting "Chamgei chemogeet". -->
@@ -4660,7 +4667,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.8.5</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.8.6</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5077,7 +5084,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.8.5';
+const APP_VERSION = 'v6.8.6';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -9262,6 +9269,88 @@ function acknowledgeActualDuplicate(ackKey, action) {
   );
 }
 
+/* v6.8.6 — Hatch-due card on Home.
+   Surfaces incubation batches whose expected_hatch is within HATCH_PREP_HORIZON_DAYS 
+   so the operator can prepare: clean brooders, order feed, set up lamps, 
+   chick paper, waterers. Sealed by Cheison 14 May 2026 ("Helps with prep!").
+   Self-hides when no relevant hatches. Card uses warm poultry-amber styling. */
+
+const HATCH_PREP_HORIZON_DAYS = 7;
+
+function findUpcomingHatches() {
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayDate = new Date(todayIso + 'T00:00:00Z');
+  return (STATE.incubation || [])
+    .filter(b => b && b.status !== 'hatched' && b.status !== 'cancelled')
+    .map(b => {
+      // Prefer the explicit expected_hatch field. Fall back to 
+      // date_set + 21 days for legacy entries that pre-date that field.
+      let hatchIso = b.expected_hatch || '';
+      if (!hatchIso && b.date_set) {
+        try {
+          const setDate = new Date(b.date_set + 'T00:00:00Z');
+          if (!isNaN(setDate.getTime())) {
+            const expected = new Date(setDate.getTime() + 21 * 86400000);
+            hatchIso = expected.toISOString().slice(0, 10);
+          }
+        } catch (e) { /* leave hatchIso empty */ }
+      }
+      if (!hatchIso) return null;
+      const hatchDate = new Date(hatchIso + 'T00:00:00Z');
+      if (isNaN(hatchDate.getTime())) return null;
+      const daysUntil = Math.round((hatchDate - todayDate) / 86400000);
+      return { batch: b, hatchIso: hatchIso, daysUntil: daysUntil };
+    })
+    .filter(x => x !== null)
+    .filter(x => x.daysUntil >= 0 && x.daysUntil <= HATCH_PREP_HORIZON_DAYS)
+    .sort((a, b) => a.daysUntil - b.daysUntil);
+}
+
+function renderHatchesDueCard() {
+  const container = document.getElementById('hatches-due-card');
+  if (!container) return;
+  const due = findUpcomingHatches();
+  if (due.length === 0) {
+    container.innerHTML = '';
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = '';
+  const rows = due.map(x => {
+    const b = x.batch;
+    let dayLabel;
+    if (x.daysUntil === 0) dayLabel = 'today';
+    else if (x.daysUntil === 1) dayLabel = 'tomorrow';
+    else dayLabel = `in ${x.daysUntil} days`;
+    const eggs = Number(b.eggs_in) || 0;
+    const source = b.source ? ` \u00b7 ${b.source}` : '';
+    return `
+      <div style="border-top:1px solid rgba(217,159,93,0.3); padding:0.55rem 0; display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap">
+        <div style="flex:1 1 60%; min-width:180px">
+          <div style="font-family:'Playfair Display',serif; font-size:0.95rem; color:#6b4423; font-weight:600">
+            ${b.batch_id || 'unnamed'} \u00b7 ${eggs} egg${eggs === 1 ? '' : 's'}${source}
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:#8a6543; margin-top:0.2rem">
+            Hatches ${dayLabel} \u00b7 ${x.hatchIso}
+          </div>
+        </div>
+        <div style="font-family:'Playfair Display',serif; font-size:1.4rem; color:#b8714d; font-weight:700; letter-spacing:0.04em">
+          ${x.daysUntil}d
+        </div>
+      </div>`;
+  }).join('');
+  container.innerHTML = `
+    <div style="background:rgba(217,159,93,0.12); border:1px solid rgba(217,159,93,0.4); border-radius:6px; padding:0.7rem 0.85rem; margin-bottom:1rem">
+      <div style="font-family:'Playfair Display',serif; font-size:1rem; color:#6b4423; font-weight:700; margin-bottom:0.3rem">
+        \ud83d\udc23 Hatches due (\u2264 ${HATCH_PREP_HORIZON_DAYS} days)
+      </div>
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:0.65rem; color:#8a6543; letter-spacing:0.04em; line-height:1.5; margin-bottom:0.3rem">
+        Prep brooders, feed, lamps, paper, waterers. Card hides when no hatches within the window.
+      </div>
+      ${rows}
+    </div>`;
+}
+
 function renderActualDupeBanner() {
   const container = document.getElementById('actual-dupe-banner');
   if (!container) return;
@@ -12663,6 +12752,12 @@ function renderHome() {
   // silent. Filter is implemented inside findActualDuplicates so the 
   // banner just renders whatever's relevant.
   if (typeof renderActualDupeBanner === 'function') renderActualDupeBanner();
+
+  // v6.8.6 — Render the hatch-due card. Surfaces incubation batches 
+  // hatching within the next 7 days so the operator can prep brooders, 
+  // feed, lamps, paper, waterers. Self-hides when no upcoming hatches 
+  // in the window. Sealed by Cheison 14 May 2026 ("Helps with prep!").
+  if (typeof renderHatchesDueCard === 'function') renderHatchesDueCard();
 
   // v6.1.0 — Auto-age cohorts before rendering. This runs every time Home
   // is rendered (entry to app, after Resync, after submit). Idempotent —
