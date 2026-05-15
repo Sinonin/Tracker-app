@@ -2961,7 +2961,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.3</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.4</span>
 </header>
 
 <main>
@@ -4669,7 +4669,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.9.3</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.9.4</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5086,7 +5086,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.9.3';
+const APP_VERSION = 'v6.9.4';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -12922,57 +12922,99 @@ function computeStageLive(stage, house, today) {
     });
   }
 
-  // Cohort delta: cohorts whose CURRENT stage matches AND originated after census
-  let cohortDelta = 0;
+  // v6.9.4 — PER-COHORT live computation replaces stage-bucketed sales 
+  // deduction. 
+  // 
+  // Background: the prior salesDelta filter (s.stage === target_stage) 
+  // missed sales bucketed under a cohort's OLD stage after that cohort 
+  // promoted to a NEW stage. Concretely: COH-KP16APR264 had 60 sales 
+  // tagged 'Chicks 1-7 days'; when the cohort promoted to 'Chicks 7-28 
+  // days' on 15 May 2026, those sales no longer matched the new stage's 
+  // filter, so 7-28d displayed initial_count (81) instead of live (21).
+  // 
+  // New approach (mirrors v5.0.35 Apps Script): for each cohort whose 
+  // CURRENT stage is the target stage, compute its live count by 
+  // matching sales/mortality against its stagesPassed set (every stage 
+  // the cohort has been through since origin). Sum cohort live counts 
+  // for the stage. Naturally tracks cohorts through stage transitions 
+  // without relying on stage tags following the cohort.
+  // 
+  // The mortalityDelta and salesDelta returned as 0 — those events are 
+  // already accounted for inside each cohort's live math. The trade-off 
+  // is that sales/deaths against pure-baseline birds (no cohort attached) 
+  // aren't deducted post-census; acceptable for current scale.
+
+  // Helper: stage from age in days (mirrors computeCohortStage logic but 
+  // takes ageDays directly so we can iterate day-by-day cheaply)
+  function _stageForAge(ageDays) {
+    if (ageDays == null || isNaN(ageDays) || ageDays < 0) return null;
+    if (ageDays <= 7)   return 'Chicks 1\u20137 days';
+    if (ageDays <= 28)  return 'Chicks 7\u201328 days';
+    if (ageDays <= 140) return 'Growers';
+    return 'Layers';
+  }
+
+  let cohortLiveTotal = 0;
   (STATE.cohorts || []).forEach(c => {
     if (house && c.house !== house) return;
     if (!c.date_origin) return;
+
     const stageNow = computeCohortStage(c.date_origin, today);
     if (stageNow !== stage) return;
-    // Skip if cohort was already in this stage at last census date (already in baseline)
+
+    // Skip if cohort was already in this stage at last census (in baseline)
     if (c.date_origin <= censusDate) {
       const stageThen = computeCohortStage(c.date_origin, censusDate);
       if (stageThen === stage) return;
     }
-    // Cohort entered this stage AFTER census (newly hatched or aged in).
-    // v6.8.1 — Use initial_count, not current_count. With v6.7.0+ auto-decrement, 
-    // current_count gets reduced on every sale — but salesDelta below also 
-    // deducts those same sales, producing a double-count. Initial_count is the 
-    // additive number of chicks introduced since census; sales/mortality since 
-    // census deduct correctly on their own. This mirrors the Apps Script fix 
-    // applied 11 May 2026 to rebuildLivePopulationSheet. current_count remains 
-    // the cohort's own status indicator (useful for cohort-level views) but is 
-    // not the right input to the live formula.
-    cohortDelta += Number(c.initial_count) || Number(c.current_count) || 0;
-  });
 
-  // Mortality delta: deaths matching stage (and house if specified) since census
-  let mortalityDelta = 0;
-  (STATE.mortality || []).forEach(m => {
-    if (m.stage !== stage) return;
-    if (house && m.house !== house) return;
-    if ((m.date || '') > censusDate) {
-      mortalityDelta += Number(m.count) || 0;
+    // Compute age and stagesPassed
+    const origin = new Date(c.date_origin + 'T00:00:00Z');
+    const nowDate = new Date(today + 'T00:00:00Z');
+    if (isNaN(origin.getTime()) || isNaN(nowDate.getTime())) return;
+    const ageDays = Math.floor((nowDate - origin) / 86400000);
+    if (ageDays < 0) return;
+
+    const stagesPassed = {};
+    for (let d = 0; d <= ageDays; d++) {
+      const s = _stageForAge(d);
+      if (s) stagesPassed[s] = true;
     }
+
+    const initial = Number(c.initial_count) || 0;
+
+    let soldForCohort = 0;
+    (STATE.poultry || []).forEach(s => {
+      if (s.product === 'Eggs') return;
+      if (!stagesPassed[s.stage]) return;
+      if (!s.date || s.date < c.date_origin) return;
+      soldForCohort += Number(s.quantity) || 0;
+    });
+
+    let mortForCohort = 0;
+    (STATE.mortality || []).forEach(m => {
+      if (!stagesPassed[m.stage]) return;
+      if (!m.date || m.date < c.date_origin) return;
+      // If house filter is active, only count mortality for that house
+      if (house && m.house !== house) return;
+      mortForCohort += Number(m.count) || 0;
+    });
+
+    const cohortLive = Math.max(0, initial - soldForCohort - mortForCohort);
+    cohortLiveTotal += cohortLive;
   });
 
-  // Sales delta: poultry sales matching stage since census. Sales lack a house 
-  // field, so we deduct only at aggregate level. Per-house breakdown shows 
-  // baseline + mortality only (sales are aggregated across houses).
-  let salesDelta = 0;
-  if (!house) {
-    (STATE.poultry || []).forEach(s => {
-      if (s.product === 'Eggs') return; // eggs aren't bird counts
-      if (s.stage !== stage) return;
-      if ((s.date || '') > censusDate) {
-        salesDelta += Number(s.quantity) || 0;
-      }
-    });
-  }
-
-  const live = Math.max(0, baseline + cohortDelta - mortalityDelta - salesDelta);
-  const hasAdjustments = (cohortDelta > 0) || (mortalityDelta > 0) || (salesDelta > 0);
-  return { live, baseline, censusDate, cohortDelta, mortalityDelta, salesDelta, hasAdjustments };
+  const live = Math.max(0, baseline + cohortLiveTotal);
+  const hasAdjustments = cohortLiveTotal > 0;
+  return { 
+    live: live, 
+    baseline: baseline, 
+    censusDate: censusDate, 
+    cohortDelta: cohortLiveTotal,  // now LIVE per-cohort, not raw initial
+    mortalityDelta: 0,              // rolled into cohortDelta
+    salesDelta: 0,                  // rolled into cohortDelta
+    hasAdjustments: hasAdjustments 
+  };
 }
 
 function renderHome() {
