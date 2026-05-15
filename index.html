@@ -2961,7 +2961,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.1</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.2</span>
 </header>
 
 <main>
@@ -4669,7 +4669,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.9.1</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.9.2</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5086,7 +5086,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.9.1';
+const APP_VERSION = 'v6.9.2';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -10944,8 +10944,76 @@ function ageAllCohorts() {
     if (c.stage !== expectedStage) {
       // Promote
       const fromStage = c.stage;
+      const currentBefore = Number(c.current_count) || 0;
+      const initialBefore = Number(c.initial_count) || 0;
       c.stage = expectedStage;
-      promotions.push({ cohort_id: c.cohort_id, from: fromStage, to: expectedStage, ageDays: ageDays });
+
+      // v6.9.2 — REBASELINE at stage migration: carry CURRENT count, not 
+      // INITIAL count, into the new stage. 
+      // 
+      // Sealed by Cheison 15 May 2026 after COH-KP16APR264 auto-promoted 
+      // to Chicks 7–28d but Home displayed 81 birds (initial hatch count) 
+      // instead of 6 (current remaining after 75 sales). 
+      // 
+      // Why this is the right move: computeStageLive's salesDelta filters 
+      // poultry sales by `s.stage === stage`. Sales recorded while the 
+      // cohort was in 1–7d carry stage='Chicks 1–7 days'; after promotion 
+      // to 7–28d, those sales no longer match the filter and don't deduct 
+      // from the new stage's live count. Rebaselining initial_count to 
+      // current_count means the cohort's contribution to the new stage 
+      // already reflects sales/deaths that happened in the prior stage. 
+      // Future sales in the new stage will deduct correctly via salesDelta.
+      // 
+      // The historical hatch count (81) is preserved in the audit_log for 
+      // the original cohort-create payload; the Cohorts sheet's 
+      // initial_count gets overwritten with the rebaselined value, which 
+      // is the right operational reading going forward.
+      c.initial_count = currentBefore;
+      const rebaselineNote = (initialBefore !== currentBefore)
+        ? ` · rebaselined initial ${initialBefore}→${currentBefore}`
+        : '';
+
+      promotions.push({ 
+        cohort_id: c.cohort_id, 
+        from: fromStage, 
+        to: expectedStage, 
+        ageDays: ageDays,
+        initialBefore: initialBefore,
+        rebaselinedCount: currentBefore,
+        rebaselineNote: rebaselineNote
+      });
+      promotedCount++;
+    }
+    
+    // v6.9.2 — Repair pass for cohorts promoted BEFORE this fix landed.
+    // Detection: cohort is past Chicks 1–7d AND initial_count > current_count, 
+    // which means it was promoted from 1–7d while sales had already deducted 
+    // from current_count, but initial_count was never rebaselined. Without 
+    // repair, computeStageLive overcounts because sales records carry the 
+    // PRIOR stage and don't match the current stage's salesDelta filter.
+    // 
+    // This block runs OUTSIDE the (stage !== expectedStage) branch, so it 
+    // catches already-promoted cohorts that don't need a fresh promotion 
+    // today. Idempotent: after one repair, initial === current and the 
+    // condition becomes false. Only fires when current > 0 (skips emptied 
+    // cohorts that shouldn't have data shown anyway).
+    else if (c.stage !== 'Chicks 1\u20137 days' && 
+             c.stage !== 'Cockerels' &&
+             Number(c.initial_count) > Number(c.current_count) &&
+             Number(c.current_count) > 0) {
+      const repairFrom = Number(c.initial_count) || 0;
+      const repairTo = Number(c.current_count) || 0;
+      c.initial_count = repairTo;
+      promotions.push({
+        cohort_id: c.cohort_id,
+        from: c.stage,
+        to: c.stage,  // no stage change, just rebaseline
+        ageDays: ageDays,
+        initialBefore: repairFrom,
+        rebaselinedCount: repairTo,
+        rebaselineNote: ` · REPAIR initial ${repairFrom}→${repairTo} (legacy promotion before v6.9.2 fix)`,
+        isRepair: true
+      });
       promotedCount++;
     }
   });
@@ -10965,7 +11033,19 @@ function ageAllCohorts() {
     for (const p of promotions) {
       const cohort = STATE.cohorts.find(c => c.cohort_id === p.cohort_id);
       if (!cohort) continue;
-      const promoPayload = { mode: 'update', cohort_id: p.cohort_id, stage: p.to };
+      // v6.9.2 — Include initial_count in the update payload so the server's 
+      // Cohorts sheet rebaselines too. Without this, the next data sync from 
+      // the server would overwrite the PWA's locally-correct initial_count 
+      // back to the historical hatch count, and the bug would resurface.
+      // For pure repair entries (no stage change), the stage field is the 
+      // same on both sides so it's a harmless no-op there; what matters is 
+      // initial_count getting through.
+      const promoPayload = { 
+        mode: 'update', 
+        cohort_id: p.cohort_id, 
+        stage: p.to,
+        initial_count: cohort.initial_count
+      };
       // syncCohort returns Promise<boolean>; use .then to keep ageAllCohorts 
       // non-blocking (callers expect synchronous-feeling render)
       syncCohort(promoPayload).then(ok => {
@@ -10977,8 +11057,8 @@ function ageAllCohorts() {
       });
     }
     
-    console.log('[v6.1.7] Auto-aged ' + promotedCount + ' cohort(s):',
-                promotions.map(p => p.cohort_id + ' ' + p.from + '→' + p.to).join(' · '));
+    console.log('[v6.9.2] Auto-aged ' + promotedCount + ' cohort(s):',
+                promotions.map(p => p.cohort_id + ' ' + p.from + '→' + p.to + (p.rebaselineNote || '')).join(' · '));
   }
 
   return promotedCount;
