@@ -2961,7 +2961,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.2</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.3</span>
 </header>
 
 <main>
@@ -4669,7 +4669,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.9.2</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.9.3</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5086,7 +5086,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.9.2';
+const APP_VERSION = 'v6.9.3';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -10964,10 +10964,15 @@ function ageAllCohorts() {
       // already reflects sales/deaths that happened in the prior stage. 
       // Future sales in the new stage will deduct correctly via salesDelta.
       // 
-      // The historical hatch count (81) is preserved in the audit_log for 
-      // the original cohort-create payload; the Cohorts sheet's 
-      // initial_count gets overwritten with the rebaselined value, which 
-      // is the right operational reading going forward.
+      // v6.9.3 caveat — this only works when STATE.cohorts.current_count 
+      // is accurate. For FRESH cohorts hatched on this PWA where every 
+      // sale runs through v6.7.0+ auto-decrement, current_count is reliable 
+      // and rebaseline is safe. For LEGACY cohorts whose current_count 
+      // may be stale (server-side backfills not reflected locally), 
+      // rebaseline can produce a wrong number. Operators should sanity-
+      // check after auto-promotion; the auto-repair pass that previously 
+      // ran here has been removed because it caused damage when trusting 
+      // stale local state.
       c.initial_count = currentBefore;
       const rebaselineNote = (initialBefore !== currentBefore)
         ? ` · rebaselined initial ${initialBefore}→${currentBefore}`
@@ -10985,37 +10990,21 @@ function ageAllCohorts() {
       promotedCount++;
     }
     
-    // v6.9.2 — Repair pass for cohorts promoted BEFORE this fix landed.
-    // Detection: cohort is past Chicks 1–7d AND initial_count > current_count, 
-    // which means it was promoted from 1–7d while sales had already deducted 
-    // from current_count, but initial_count was never rebaselined. Without 
-    // repair, computeStageLive overcounts because sales records carry the 
-    // PRIOR stage and don't match the current stage's salesDelta filter.
-    // 
-    // This block runs OUTSIDE the (stage !== expectedStage) branch, so it 
-    // catches already-promoted cohorts that don't need a fresh promotion 
-    // today. Idempotent: after one repair, initial === current and the 
-    // condition becomes false. Only fires when current > 0 (skips emptied 
-    // cohorts that shouldn't have data shown anyway).
-    else if (c.stage !== 'Chicks 1\u20137 days' && 
-             c.stage !== 'Cockerels' &&
-             Number(c.initial_count) > Number(c.current_count) &&
-             Number(c.current_count) > 0) {
-      const repairFrom = Number(c.initial_count) || 0;
-      const repairTo = Number(c.current_count) || 0;
-      c.initial_count = repairTo;
-      promotions.push({
-        cohort_id: c.cohort_id,
-        from: c.stage,
-        to: c.stage,  // no stage change, just rebaseline
-        ageDays: ageDays,
-        initialBefore: repairFrom,
-        rebaselinedCount: repairTo,
-        rebaselineNote: ` · REPAIR initial ${repairFrom}→${repairTo} (legacy promotion before v6.9.2 fix)`,
-        isRepair: true
-      });
-      promotedCount++;
-    }
+    // v6.9.3 — REMOVED the auto-repair pass that v6.9.2 introduced. The 
+    // repair detected cohorts where stage != 'Chicks 1-7 days' AND 
+    // initial_count > current_count, and rebaselined initial to current. 
+    // This was unsafe: it trusted STATE.cohorts.current_count, which can 
+    // go stale (e.g. when a server-side backfill updates cohort fields 
+    // but the PWA never re-syncs that specific cohort). For COH-KP16APR264 
+    // on 15 May 2026, the local current_count was 73 (pre-backfill value 
+    // = 81 - 8), the server's was 21 (after backfill = 81 - 60), and the 
+    // true live count via cohort_id-matched sales was 6. The repair wrote 
+    // 73 to the server, corrupting both sides. 
+    //
+    // Lesson: legacy state must be corrected manually in the Cohorts sheet, 
+    // not by automated logic that trusts a possibly-stale field. The 
+    // migration-time rebaseline above is safe for fresh cohorts whose 
+    // current_count is reliable from inception.
   });
 
   if (promotedCount > 0) {
@@ -11057,7 +11046,7 @@ function ageAllCohorts() {
       });
     }
     
-    console.log('[v6.9.2] Auto-aged ' + promotedCount + ' cohort(s):',
+    console.log('[v6.9.3] Auto-aged ' + promotedCount + ' cohort(s):',
                 promotions.map(p => p.cohort_id + ' ' + p.from + '→' + p.to + (p.rebaselineNote || '')).join(' · '));
   }
 
