@@ -2972,6 +2972,13 @@
          top of Home so it's the first thing the principal sees when 
          opening the app — duplicates are a revenue-integrity issue. -->
     <div id="actual-dupe-banner" style="display:none"></div>
+    <!-- v6.9.5 — Persistent block-gap banner (10–20% actual-vs-pluckers).
+         Surfaces per (block, date) where the gap is in the soft-confirm
+         band. Operator taps "Confirm — all entries made" once they've
+         verified, OR the banner auto-clears when sufficient additional
+         plucker entries push the gap below 10%. § 6.11 ack persists
+         server-side so other devices stay quiet. -->
+    <div id="block-gap-banner" style="display:none"></div>
     <div class="hero">
       <!-- v6.3.12 — Greeting + date on a single left-aligned row, Nandi 
            greeting "Chamgei chemogeet". -->
@@ -5086,7 +5093,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.9.4';
+const APP_VERSION = 'v6.9.5';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -8372,6 +8379,58 @@ async function applyCloudResponse(data) {
     await storageSet(K_PLUCKERS, PLUCKERS);
     repopulatePluckerDropdown();
   }
+  // v6.9.5 — Merge server-persisted acknowledgements into the local
+  // cache (§ 6.11). The local cache is authoritative for instant UI
+  // (button-tap dismiss is immediate); the server snapshot adds any
+  // acks made on OTHER devices since last sync. Union of both wins —
+  // we never DELETE a local ack just because the server doesn't have
+  // it yet (it may be in the pending-ack queue for retry).
+  if (Array.isArray(data.actualDupeAcks)) {
+    try {
+      const local = _getActualDupeAcks();
+      let merged = 0;
+      data.actualDupeAcks.forEach(function (a) {
+        if (!a || !a.ack_signature) return;
+        if (!local[a.ack_signature]) {
+          local[a.ack_signature] = {
+            action: a.decision || 'ok',
+            ackedAt: a.acked_at || new Date().toISOString(),
+            ackedBy: a.acked_by || 'unknown',
+            _source: 'cloud'
+          };
+          merged++;
+        }
+      });
+      _setActualDupeAcks(local);
+      if (merged > 0) console.log('[cloud-fetch] merged ' + merged + ' actualDupeAcks from server');
+    } catch (e) { console.warn('[cloud-fetch] actualDupeAcks merge failed:', e && e.message); }
+  }
+  if (Array.isArray(data.blockGapAcks)) {
+    try {
+      const local = _getBlockGapAcks();
+      let merged = 0;
+      data.blockGapAcks.forEach(function (a) {
+        if (!a || !a.ack_signature) return;
+        if (!local[a.ack_signature]) {
+          local[a.ack_signature] = {
+            ackedAt: a.acked_at || new Date().toISOString(),
+            ackedBy: a.acked_by || 'unknown',
+            _source: 'cloud'
+          };
+          merged++;
+        }
+      });
+      _setBlockGapAcks(local);
+      if (merged > 0) console.log('[cloud-fetch] merged ' + merged + ' blockGapAcks from server');
+    } catch (e) { console.warn('[cloud-fetch] blockGapAcks merge failed:', e && e.message); }
+  }
+  // v6.9.5 — After acks merge, try to flush any pending acks that couldn't
+  // reach the server last time (offline submit, transient gate error).
+  if (typeof flushPendingAcks === 'function') {
+    flushPendingAcks().catch(function (e) {
+      console.warn('[cloud-fetch] flushPendingAcks failed:', e && e.message);
+    });
+  }
   // v5.9.3 — Enhanced syncMeta with row counts + generatedAt for operator
   // observability. Settings can show "X entries · Y actuals · Z expenses"
   // and operators can spot unexpected data loss between syncs.
@@ -8696,6 +8755,11 @@ async function submitQuick() {
       showPossibleDuplicateToast('greenleaf');
     }
     updateSyncIndicator();
+    // v6.9.5 — Bidirectional block-gap evaluation. A plucker entry that
+    // closes the gap should dismiss the banner; one that opens or maintains
+    // it should keep the banner visible. The renderer reads state freshly
+    // and self-determines.
+    if (typeof renderBlockGapBanner === 'function') renderBlockGapBanner();
     console.log('[submitQuick] step 10: COMPLETE');
   } catch (err) {
     console.error('[submitQuick] EXCEPTION at step:', err);
@@ -9269,6 +9333,289 @@ function acknowledgeActualDuplicate(ackKey, action) {
       : '✓ Marked corrected — verify the sheet has only one row',
     4000
   );
+  // v6.9.5 — Propagate the ack to the server so other devices stay quiet
+  // (§ 6.11 adjudicate-once-propagate-everywhere, sealed 16 May 2026).
+  // Fire-and-forget; queue + retry handled inside syncActualDupeAck on failure.
+  if (typeof syncActualDupeAck === 'function') {
+    syncActualDupeAck(ackKey, action).catch(err => {
+      console.warn('[actual-dupe-ack] sync error (queued for retry):', err && err.message);
+    });
+  }
+}
+
+/* v6.9.5 — Block-gap ack store.
+   Sibling of K_ACTUAL_DUPE_ACKS. Persists operator's "all plucker entries
+   made" confirmation for a (block, date) where the residual gap is real
+   variance, not missing entries. Once acked, the block-gap banner stays
+   dismissed for that (block, date) on every device that syncs. Server
+   side is authoritative; localStorage is an instant-response cache. */
+
+const K_BLOCK_GAP_ACKS = 'sinonin_block_gap_acks_v1';
+
+function _blockGapAckKey(date, block) {
+  return String(date || '') + '|' + String(block || '');
+}
+
+function _getBlockGapAcks() {
+  try {
+    const raw = localStorage.getItem(K_BLOCK_GAP_ACKS);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) { return {}; }
+}
+
+function _setBlockGapAcks(acks) {
+  try { localStorage.setItem(K_BLOCK_GAP_ACKS, JSON.stringify(acks || {})); }
+  catch (e) { console.warn('[block-gap-acks] save failed:', e.message); }
+}
+
+/* Find blocks whose actual-vs-pluckers gap is in the 10-20% soft-confirm
+   band AND have not been acked yet. Returns one alert per (block, date).
+   
+   Skipped:
+   - (block, date) pairs with no actual recorded yet (no denominator)
+   - Gaps < 10% (silent — within normal variance)
+   - Gaps >= 20% (handled by the existing sharp toast in checkWeighbridgeGap)
+   - Already-acked (block, date) pairs
+   - Negative gaps (pluckers > actual — different anomaly, handled separately) */
+function findBlockGapAlerts() {
+  const acks = _getBlockGapAcks();
+  const actuals = (STATE.actuals || []).filter(a => a && a.date && a.block);
+  // Sum pluckers per (date, block) once for efficiency
+  const pluckerSums = {};
+  (STATE.entries || []).forEach(e => {
+    if (!e || !e.date || !e.block) return;
+    const k = e.date + '|' + e.block;
+    pluckerSums[k] = (pluckerSums[k] || 0) + (Number(e.qty) || 0);
+  });
+  // Sum actuals per (date, block) — handles the rare multi-delivery-day case
+  const actualSums = {};
+  actuals.forEach(a => {
+    const k = a.date + '|' + a.block;
+    actualSums[k] = (actualSums[k] || 0) + (Number(a.kg) || 0);
+  });
+  const alerts = [];
+  Object.keys(actualSums).forEach(k => {
+    const [date, block] = k.split('|');
+    const actualKg = actualSums[k];
+    if (actualKg <= 0) return;
+    const pluckerKg = pluckerSums[k] || 0;
+    const gap = actualKg - pluckerKg;
+    const gapPct = (gap / actualKg) * 100;
+    // 10-20% band; >= 20% is handled by checkWeighbridgeGap sharp toast.
+    if (gapPct < 10 || gapPct >= 20) return;
+    const ackKey = _blockGapAckKey(date, block);
+    if (acks[ackKey]) return;   // Operator already confirmed
+    alerts.push({
+      ackKey: ackKey,
+      date: date,
+      block: block,
+      pluckerKg: pluckerKg,
+      actualKg: actualKg,
+      gapKg: gap,
+      gapPct: gapPct
+    });
+  });
+  // Most recent dates first — operator sees today's blocks at the top.
+  alerts.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  return alerts;
+}
+
+function acknowledgeBlockGap(ackKey) {
+  const acks = _getBlockGapAcks();
+  acks[ackKey] = { ackedAt: new Date().toISOString() };
+  _setBlockGapAcks(acks);
+  if (typeof renderBlockGapBanner === 'function') renderBlockGapBanner();
+  showToast('✓ Confirmed — all plucker entries recorded', 3500);
+  // v6.9.5 — Propagate to server (§ 6.11). Look up gap_pct from current
+  // state for the diagnostic field; not required for correctness.
+  let diagnosticPct = null;
+  try {
+    const alerts = findBlockGapAlerts.toString && findBlockGapAlerts();
+    // The ack just landed locally, so the alert is gone from findBlockGapAlerts;
+    // we recompute the % from raw state for the audit record.
+    const [date, block] = ackKey.split('|');
+    const aSum = (STATE.actuals || [])
+      .filter(a => a.date === date && a.block === block)
+      .reduce((s, a) => s + (Number(a.kg) || 0), 0);
+    const pSum = (STATE.entries || [])
+      .filter(e => e.date === date && e.block === block)
+      .reduce((s, e) => s + (Number(e.qty) || 0), 0);
+    if (aSum > 0) diagnosticPct = ((aSum - pSum) / aSum) * 100;
+  } catch (e) { /* diagnostic only — never block the ack */ }
+  if (typeof syncBlockGapAck === 'function') {
+    syncBlockGapAck(ackKey, diagnosticPct).catch(err => {
+      console.warn('[block-gap-ack] sync error (queued for retry):', err && err.message);
+    });
+  }
+}
+
+/* Render the block-gap banner. One row per alert. Self-hides when no
+   alerts. Operators tap the gold "Confirm — all entries made" button
+   to dismiss for that (block, date). Banner uses warm-ivory amber 
+   styling distinct from the duplicate banner's burnt-orange. */
+function renderBlockGapBanner() {
+  const container = document.getElementById('block-gap-banner');
+  if (!container) return;
+  const alerts = findBlockGapAlerts();
+  if (alerts.length === 0) {
+    container.innerHTML = '';
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = '';
+  const lines = alerts.map(a => {
+    const safeKey = a.ackKey.replace(/'/g, "\\'");
+    return `
+      <div style="border-top:1px solid rgba(184,147,90,0.25); padding:0.55rem 0; display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap">
+        <div style="flex:1 1 60%; min-width:200px">
+          <div style="font-family:'Playfair Display',serif; font-size:0.95rem; color:#5a4220; font-weight:600">
+            ${a.block} · ${a.date}
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:#7a5a30; margin-top:0.2rem">
+            Pluckers ${a.pluckerKg.toFixed(1)} kg vs actual ${a.actualKg.toFixed(1)} kg · ${a.gapPct.toFixed(0)}% gap
+          </div>
+        </div>
+        <div style="display:flex; gap:0.3rem; flex-wrap:wrap">
+          <button class="export-btn" onclick="acknowledgeBlockGap('${safeKey}')"
+                  style="padding:0.35rem 0.6rem; font-size:0.7rem; background:var(--brass); color:var(--ivory); border-color:var(--brass)">Confirm · all entries made</button>
+        </div>
+      </div>`;
+  }).join('');
+  container.innerHTML = `
+    <div style="background:rgba(184,147,90,0.12); border:1px solid rgba(184,147,90,0.4); border-radius:6px; padding:0.7rem 0.85rem; margin-bottom:1rem">
+      <div style="font-family:'Playfair Display',serif; font-size:1rem; color:#5a4220; font-weight:700; margin-bottom:0.3rem">
+        ⚠ Plucker entries: check soft gaps
+      </div>
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:0.65rem; color:#7a5a30; letter-spacing:0.04em; line-height:1.5; margin-bottom:0.4rem">
+        Actuals exceed recorded pluckers by 10–20% in these (block · date) pairs. 
+        Add the missing plucker entries — the row clears as soon as the gap drops below 10%. 
+        Or, if entries are complete and the gap is real factory variance, tap 
+        <strong>Confirm · all entries made</strong> to dismiss.
+      </div>
+      ${lines}
+    </div>`;
+}
+
+/* v6.9.5 — Gate POST: persist an actual-dupe-ack server-side.
+   Returns true on success (including idempotent replays), false on 
+   recoverable failure (network etc.) — caller can queue. */
+async function pushActualDupeAckToGate(ackKey, action) {
+  if (!APPS_SCRIPT_GATE_URL) return false;
+  try {
+    const body = {
+      action: 'actual-dupe-ack',
+      payload: {
+        ts:            new Date().toISOString(),
+        ack_signature: ackKey,
+        decision:      action,                                  // 'ok' | 'corrected'
+        acked_by:      (typeof ADMIN_STATE === 'object' && ADMIN_STATE && ADMIN_STATE.grantedBy) || 'unknown',
+        acked_at:      new Date().toISOString(),
+        context:       { app_version: APP_VERSION }
+      },
+      source: `PWA ${APP_VERSION} actual-dupe-ack`
+    };
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:   JSON.stringify(body)
+    });
+    if (!response.ok) return false;
+    const json = await response.json();
+    // ok:true OR idempotent:true (signature already acked) both count as success
+    return !!(json && (json.ok || json.idempotent));
+  } catch (e) {
+    console.warn('[pushActualDupeAckToGate] failed:', e && e.message);
+    return false;
+  }
+}
+
+/* v6.9.5 — Gate POST: persist a block-gap-ack server-side. */
+async function pushBlockGapAckToGate(ackKey, gapPct) {
+  if (!APPS_SCRIPT_GATE_URL) return false;
+  try {
+    const body = {
+      action: 'block-gap-ack',
+      payload: {
+        ts:            new Date().toISOString(),
+        ack_signature: ackKey,
+        acked_by:      (typeof ADMIN_STATE === 'object' && ADMIN_STATE && ADMIN_STATE.grantedBy) || 'unknown',
+        acked_at:      new Date().toISOString(),
+        gap_pct:       (typeof gapPct === 'number' && isFinite(gapPct)) ? gapPct : null,
+        context:       { app_version: APP_VERSION }
+      },
+      source: `PWA ${APP_VERSION} block-gap-ack`
+    };
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:   JSON.stringify(body)
+    });
+    if (!response.ok) return false;
+    const json = await response.json();
+    return !!(json && (json.ok || json.idempotent));
+  } catch (e) {
+    console.warn('[pushBlockGapAckToGate] failed:', e && e.message);
+    return false;
+  }
+}
+
+/* v6.9.5 — Sync wrapper for an actual-dupe-ack. Online: POST directly.
+   Offline / failure: stash the bare ack in a small retry pocket inside
+   localStorage so it can be flushed later. */
+async function syncActualDupeAck(ackKey, action) {
+  if (!navigator.onLine) {
+    _stashAckForRetry('actual-dupe-ack', { ackKey, action });
+    return false;
+  }
+  const ok = await pushActualDupeAckToGate(ackKey, action);
+  if (!ok) _stashAckForRetry('actual-dupe-ack', { ackKey, action });
+  return ok;
+}
+
+async function syncBlockGapAck(ackKey, gapPct) {
+  if (!navigator.onLine) {
+    _stashAckForRetry('block-gap-ack', { ackKey, gapPct });
+    return false;
+  }
+  const ok = await pushBlockGapAckToGate(ackKey, gapPct);
+  if (!ok) _stashAckForRetry('block-gap-ack', { ackKey, gapPct });
+  return ok;
+}
+
+const K_PENDING_ACK_QUEUE = 'sinonin_pending_ack_queue_v1';
+function _stashAckForRetry(kind, payload) {
+  try {
+    const raw = localStorage.getItem(K_PENDING_ACK_QUEUE);
+    const q = raw ? JSON.parse(raw) : [];
+    q.push({ kind, payload, queuedAt: new Date().toISOString() });
+    localStorage.setItem(K_PENDING_ACK_QUEUE, JSON.stringify(q));
+  } catch (e) { console.warn('[ack-stash] save failed:', e.message); }
+}
+async function flushPendingAcks() {
+  if (!navigator.onLine) return;
+  let q = [];
+  try {
+    const raw = localStorage.getItem(K_PENDING_ACK_QUEUE);
+    q = raw ? JSON.parse(raw) : [];
+  } catch (e) { return; }
+  if (q.length === 0) return;
+  const remaining = [];
+  for (const item of q) {
+    let ok = false;
+    if (item.kind === 'actual-dupe-ack') {
+      ok = await pushActualDupeAckToGate(item.payload.ackKey, item.payload.action);
+    } else if (item.kind === 'block-gap-ack') {
+      ok = await pushBlockGapAckToGate(item.payload.ackKey, item.payload.gapPct);
+    }
+    if (!ok) remaining.push(item);
+  }
+  try { localStorage.setItem(K_PENDING_ACK_QUEUE, JSON.stringify(remaining)); }
+  catch (e) {}
+  if (remaining.length < q.length) {
+    console.log('[ack-flush] flushed ' + (q.length - remaining.length) + '/' + q.length + ' pending acks');
+  }
 }
 
 /* v6.8.6 — Hatch-due card on Home.
@@ -9503,6 +9850,10 @@ async function submitActual() {
   // pattern Elias saw on 11 May: 232 kg pluckers logged vs 305.7 kg 
   // delivered (32% gap from missing plucker entries).
   try { checkWeighbridgeGap(actual); } catch (e) { console.warn('[weighbridge-check] failed:', e.message); }
+  // v6.9.5 — Re-evaluate the 10-20% block-gap banner now that a new
+  // actual has landed. The renderer reads state and decides whether
+  // to surface, update, or hide the row for this (block, date).
+  if (typeof renderBlockGapBanner === 'function') renderBlockGapBanner();
   updateSyncIndicator();
 }
 
@@ -13033,6 +13384,10 @@ function renderHome() {
   // silent. Filter is implemented inside findActualDuplicates so the 
   // banner just renders whatever's relevant.
   if (typeof renderActualDupeBanner === 'function') renderActualDupeBanner();
+  // v6.9.5 — Persistent 10-20% block-gap banner. Self-hides when no
+  // (block, date) sits in the soft-confirm band, or when operator
+  // has acked. Operator-confirm persists server-side per § 6.11.
+  if (typeof renderBlockGapBanner === 'function') renderBlockGapBanner();
 
   // v6.8.7 — Removed the redundant top-of-Home hatch card I added in v6.8.6. 
   // The bottom-of-Home incubation section (renderIncubationProgress, called 

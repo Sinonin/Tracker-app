@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.9.5 — Cache bump for actual-dupe-ack + block-gap-ack server persistence (16 May 2026)
 // v6.3.10 — Tea "Plucker Kg" label · Poultry=gold(eggshell) Sireet=deeper-green theming (07 May 2026 Verden)
 // v6.3.9 — Tea quick-add: Pluckers→Greenleaf (07 May 2026 Verden)
 // v6.3.8 — Hero cards as distinct chips (07 May 2026 Verden)
@@ -54,7 +55,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v184';
+const CACHE = 'sinonin-greenleaf-v185';
 
 const SHELL_FILES = [
   './',
