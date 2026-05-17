@@ -2961,7 +2961,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.5</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.6</span>
 </header>
 
 <main>
@@ -4676,7 +4676,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.9.5</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.9.6</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5093,7 +5093,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.9.5';
+const APP_VERSION = 'v6.9.6';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -9271,6 +9271,16 @@ function recordedKgFor(date, factory, block) {
 
 const DUPE_BANNER_ACTIVATION_TS = '2026-05-14T00:00:00.000Z';
 
+/* v6.9.6 — Block-gap banner forward-only scope (sealed 17 May 2026 morning).
+   Same discipline as DUPE_BANNER_ACTIVATION_TS above. Without this gate, the
+   10–20% block-gap banner would surface every historical (block, date) pair
+   in STATE.actuals — including 2019 entries Faith hasn't thought about in
+   years. The banner is meant for ADJUDICATION of fresh deliveries, not
+   retroactive forensics on closed weeks. A (block, date) only surfaces when
+   AT LEAST ONE underlying actual row has a submission timestamp at or after
+   the activation cutoff. Historical noise stays silent. */
+const BLOCK_GAP_ACTIVATION_TS = '2026-05-16T20:00:00.000Z';
+
 const K_ACTUAL_DUPE_ACKS = 'sinonin_actual_dupe_acks_v1';
 
 function _dupeKey(a) {
@@ -9380,6 +9390,18 @@ function _setBlockGapAcks(acks) {
 function findBlockGapAlerts() {
   const acks = _getBlockGapAcks();
   const actuals = (STATE.actuals || []).filter(a => a && a.date && a.block);
+  // v6.9.6 — Forward-only: collect the SET of (date, block) pairs that have
+  // at least one underlying actual submitted at or after the activation
+  // timestamp. Only those pairs are eligible to surface. Historical actuals
+  // contribute to gap math (so a 5-year-old block doesn't accidentally look
+  // post-activation just because it shares a key) but cannot ALONE trigger
+  // surfacing. See BLOCK_GAP_ACTIVATION_TS commentary above.
+  const eligibleKeys = new Set();
+  actuals.forEach(a => {
+    if (a.ts && a.ts >= BLOCK_GAP_ACTIVATION_TS) {
+      eligibleKeys.add(a.date + '|' + a.block);
+    }
+  });
   // Sum pluckers per (date, block) once for efficiency
   const pluckerSums = {};
   (STATE.entries || []).forEach(e => {
@@ -9395,6 +9417,8 @@ function findBlockGapAlerts() {
   });
   const alerts = [];
   Object.keys(actualSums).forEach(k => {
+    // v6.9.6 — forward-only gate. Pair must have at least one post-activation actual.
+    if (!eligibleKeys.has(k)) return;
     const [date, block] = k.split('|');
     const actualKg = actualSums[k];
     if (actualKg <= 0) return;
