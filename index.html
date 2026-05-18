@@ -2961,7 +2961,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.6</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.7</span>
 </header>
 
 <main>
@@ -3833,6 +3833,15 @@
           </select>
         </div>
       </div>
+      <!-- v6.9.7 — Cohort identity capture. Pre-v6.9.7 the vaccination form 
+           sent cohort_id='' and Cheison had to manually edit the sheet to 
+           tag which cohort was vaccinated. Sealed 18 May 2026 (Hanover train 
+           ride): "That manual waiting [editing] should be avoided." Dropdown 
+           filters to cohorts matching the selected Stage. When opened from 
+           a hatch flow, the just-hatched cohort is pre-selected. -->
+      <div class="field"><label>Cohort</label>
+        <select id="vc-cohort"><option value="">— Pick a stage first —</option></select>
+      </div>
       <div class="pair">
         <div class="field"><label>House</label>
           <select id="vc-house"><option value="">— House —</option></select>
@@ -4676,7 +4685,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.9.6</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.9.7</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5093,7 +5102,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.9.6';
+const APP_VERSION = 'v6.9.7';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -8424,6 +8433,29 @@ async function applyCloudResponse(data) {
       if (merged > 0) console.log('[cloud-fetch] merged ' + merged + ' blockGapAcks from server');
     } catch (e) { console.warn('[cloud-fetch] blockGapAcks merge failed:', e && e.message); }
   }
+  // v6.9.7 — Bird-population (no-change) acks
+  if (Array.isArray(data.birdPopulationAcks)) {
+    try {
+      const local = _getBirdPopulationAcks();
+      let merged = 0;
+      data.birdPopulationAcks.forEach(function (a) {
+        if (!a || !a.ack_signature) return;
+        if (!local[a.ack_signature]) {
+          // Parse stage from signature (stage|date)
+          const parts = a.ack_signature.split('|');
+          local[a.ack_signature] = {
+            ackedAt: a.acked_at || new Date().toISOString(),
+            stage: a.stage || parts[0] || '',
+            computedCount: Number(a.computed_count_at_ack) || 0,
+            _source: 'cloud'
+          };
+          merged++;
+        }
+      });
+      _setBirdPopulationAcks(local);
+      if (merged > 0) console.log('[cloud-fetch] merged ' + merged + ' birdPopulationAcks from server');
+    } catch (e) { console.warn('[cloud-fetch] birdPopulationAcks merge failed:', e && e.message); }
+  }
   // v6.9.5 — After acks merge, try to flush any pending acks that couldn't
   // reach the server last time (offline submit, transient gate error).
   if (typeof flushPendingAcks === 'function') {
@@ -9362,6 +9394,72 @@ function acknowledgeActualDuplicate(ackKey, action) {
 
 const K_BLOCK_GAP_ACKS = 'sinonin_block_gap_acks_v1';
 
+/* v6.9.7 — Bird-population staleness ack store.
+   Sealed § 6.x (17 May 2026, Berlin train ride): handling layers for a
+   recount stresses birds and reduces lay efficiency, so the system must
+   accept "no change" affirmations as a valid census signal. ack_signature
+   is per-stage-per-date: e.g., "Layers|2026-05-18". Each ack covers one
+   stage and lasts a calendar day; on a new staleness chip, the operator
+   confirms (or recounts) again. Auditable via Bird_Population_Acks sheet
+   server-side. */
+const K_BIRD_POPULATION_ACKS = 'sinonin_bird_population_acks_v1';
+
+function _birdPopulationAckKey(stage, dateStr) {
+  return String(stage || '') + '|' + String(dateStr || new Date().toISOString().slice(0, 10));
+}
+
+function _getBirdPopulationAcks() {
+  try {
+    const raw = localStorage.getItem(K_BIRD_POPULATION_ACKS);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) { return {}; }
+}
+
+function _setBirdPopulationAcks(acks) {
+  try { localStorage.setItem(K_BIRD_POPULATION_ACKS, JSON.stringify(acks || {})); }
+  catch (e) { console.warn('[bird-pop-acks] save failed:', e.message); }
+}
+
+/* Test whether a stale-census chip for `stage` should be suppressed.
+   An ack issued today AND covering this stage suppresses the chip until
+   tomorrow. If census date is older than the latest ack, the chip stays
+   silent: operator's affirmation is the fresh signal. */
+function isBirdPopulationAcked(stage, censusDateStr) {
+  if (!stage) return false;
+  const acks = _getBirdPopulationAcks();
+  // An ack from today (or later) for this stage clears the chip
+  const today = new Date().toISOString().slice(0, 10);
+  for (const key of Object.keys(acks)) {
+    const [ackStage, ackDate] = key.split('|');
+    if (ackStage === stage && ackDate >= (censusDateStr || '1970-01-01') && ackDate <= today) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function acknowledgeBirdPopulation(stage, computedCount) {
+  const today = new Date().toISOString().slice(0, 10);
+  const ackKey = _birdPopulationAckKey(stage, today);
+  const acks = _getBirdPopulationAcks();
+  acks[ackKey] = {
+    ackedAt: new Date().toISOString(),
+    stage: stage,
+    computedCount: Number(computedCount) || 0
+  };
+  _setBirdPopulationAcks(acks);
+  showToast('✓ Affirmed — no change in ' + stage + ' (' + (computedCount || '—') + ' birds)', 3500);
+  // Re-render the population card to clear the chip
+  if (typeof renderHome === 'function') renderHome();
+  if (typeof renderPoultryPanel === 'function') renderPoultryPanel();
+  // Persist server-side (§ 6.11)
+  if (typeof syncBirdPopulationAck === 'function') {
+    syncBirdPopulationAck(ackKey, stage, computedCount).catch(err => {
+      console.warn('[bird-pop-ack] sync error (queued for retry):', err && err.message);
+    });
+  }
+}
+
 function _blockGapAckKey(date, block) {
   return String(date || '') + '|' + String(block || '');
 }
@@ -9585,6 +9683,38 @@ async function pushBlockGapAckToGate(ackKey, gapPct) {
   }
 }
 
+/* v6.9.7 — Gate POST: persist a bird-population (no-change) ack. */
+async function pushBirdPopulationAckToGate(ackKey, stage, computedCount) {
+  if (!APPS_SCRIPT_GATE_URL) return false;
+  try {
+    const body = {
+      action: 'bird-population-ack',
+      payload: {
+        ts:                    new Date().toISOString(),
+        ack_signature:         ackKey,
+        stage:                 stage || '',
+        acked_by:              (typeof ADMIN_STATE === 'object' && ADMIN_STATE && ADMIN_STATE.grantedBy) || 'unknown',
+        acked_at:              new Date().toISOString(),
+        computed_count_at_ack: (typeof computedCount === 'number' && isFinite(computedCount)) ? computedCount : null,
+        context:               { app_version: APP_VERSION }
+      },
+      source: `PWA ${APP_VERSION} bird-population-ack`
+    };
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:   JSON.stringify(body)
+    });
+    if (!response.ok) return false;
+    const json = await response.json();
+    return !!(json && (json.ok || json.idempotent));
+  } catch (e) {
+    console.warn('[pushBirdPopulationAckToGate] failed:', e && e.message);
+    return false;
+  }
+}
+
 /* v6.9.5 — Sync wrapper for an actual-dupe-ack. Online: POST directly.
    Offline / failure: stash the bare ack in a small retry pocket inside
    localStorage so it can be flushed later. */
@@ -9605,6 +9735,17 @@ async function syncBlockGapAck(ackKey, gapPct) {
   }
   const ok = await pushBlockGapAckToGate(ackKey, gapPct);
   if (!ok) _stashAckForRetry('block-gap-ack', { ackKey, gapPct });
+  return ok;
+}
+
+/* v6.9.7 — Bird-population ack sync wrapper. */
+async function syncBirdPopulationAck(ackKey, stage, computedCount) {
+  if (!navigator.onLine) {
+    _stashAckForRetry('bird-population-ack', { ackKey, stage, computedCount });
+    return false;
+  }
+  const ok = await pushBirdPopulationAckToGate(ackKey, stage, computedCount);
+  if (!ok) _stashAckForRetry('bird-population-ack', { ackKey, stage, computedCount });
   return ok;
 }
 
@@ -9632,6 +9773,8 @@ async function flushPendingAcks() {
       ok = await pushActualDupeAckToGate(item.payload.ackKey, item.payload.action);
     } else if (item.kind === 'block-gap-ack') {
       ok = await pushBlockGapAckToGate(item.payload.ackKey, item.payload.gapPct);
+    } else if (item.kind === 'bird-population-ack') {
+      ok = await pushBirdPopulationAckToGate(item.payload.ackKey, item.payload.stage, item.payload.computedCount);
     }
     if (!ok) remaining.push(item);
   }
@@ -11180,6 +11323,40 @@ async function submitIncubationHatch() {
           }
         }
         showToast('🐣 Cohort ' + cohortId + ' created · ' + hc + ' chicks in ' + targetHouse, 4500);
+
+        // v6.9.7 — Offer to record day-1 Marek's vaccination immediately.
+        // Sealed 18 May 2026 (Hanover train ride): "trigger vaccinate record
+        // from the population card, open vaccinate with cohort choices or if
+        // from our hatch offer it as the first." Marek's is universally
+        // given at day 1 for Chicks 1–7 days (per VACC_SCHEDULE_DEFAULT).
+        // Skip the offer silently if the schedule has no day-1 entry for
+        // this stage (e.g. operator customised the schedule).
+        try {
+          const stage = 'Chicks 1\u20137 days';
+          const day1Vaccine = (Array.isArray(STATE.vaccSchedule) ? STATE.vaccSchedule : [])
+            .filter(s => s.stage === stage && Number(s.day_of_life) <= 1)
+            .sort((a, b) => Number(a.day_of_life) - Number(b.day_of_life))[0];
+          if (day1Vaccine && typeof openVaccinationFormPrefilled === 'function') {
+            // Slight delay so the success toast is visible before the prompt
+            setTimeout(() => {
+              const shouldOpen = window.confirm(
+                '🐣 Cohort ' + cohortId + ' created.\n\n' +
+                'Record ' + day1Vaccine.vaccine + ' (day 1) for ' + hc + ' chicks now?'
+              );
+              if (shouldOpen) {
+                openVaccinationFormPrefilled({
+                  cohort_id: cohortId,
+                  stage: stage,
+                  house: targetHouse,
+                  vaccine: day1Vaccine.vaccine,
+                  birds_count: hc
+                });
+              }
+            }, 800);
+          }
+        } catch (vaccOfferErr) {
+          console.warn('[hatch→vacc-offer] failed silently:', vaccOfferErr && vaccOfferErr.message);
+        }
       }
     } catch (cohortErr) {
       // Stringify + single-arg to avoid AbortSignal cloning crash.
@@ -12038,6 +12215,46 @@ function initVaccinationForm() {
   // Stage→Vaccine cascade
   const stageEl = document.getElementById('vc-stage');
   const vaccEl = document.getElementById('vc-vaccine');
+  // v6.9.7 — Stage→Cohort cascade.
+  // Active cohort = current_count > 0 AND matches the selected stage.
+  // Sort newest-first by date_origin so freshly hatched cohorts appear at top.
+  // When a cohort is selected, auto-fill the House field (operator can override
+  // if the vaccination was administered somewhere unusual).
+  const cohortEl = document.getElementById('vc-cohort');
+  const houseElForCohort = document.getElementById('vc-house');
+  const populateCohorts = () => {
+    if (!cohortEl) return;
+    const stage = stageEl ? stageEl.value : '';
+    if (!stage) {
+      cohortEl.innerHTML = '<option value="">— Pick a stage first —</option>';
+      return;
+    }
+    const eligible = (Array.isArray(STATE.cohorts) ? STATE.cohorts : [])
+      .filter(c => c && (c.stage || '') === stage)
+      .filter(c => Number(c.current_count || 0) > 0)
+      .sort((a, b) => String(b.date_origin || '').localeCompare(String(a.date_origin || '')));
+    if (eligible.length === 0) {
+      cohortEl.innerHTML = '<option value="">— No active cohorts at this stage —</option>';
+      return;
+    }
+    cohortEl.innerHTML = '<option value="">— Select a cohort —</option>' +
+      eligible.map(c => {
+        const house = c.house ? ' · ' + c.house : '';
+        const count = ' · ' + (Number(c.current_count) || 0) + ' birds';
+        const age = c.date_origin ? ' · ' + c.date_origin : '';
+        return `<option value="${c.cohort_id}" data-house="${c.house || ''}">${c.cohort_id}${house}${count}${age}</option>`;
+      }).join('');
+  };
+  if (cohortEl) {
+    cohortEl.addEventListener('change', () => {
+      const opt = cohortEl.options[cohortEl.selectedIndex];
+      const autoHouse = opt && opt.dataset ? opt.dataset.house : '';
+      if (autoHouse && houseElForCohort && !houseElForCohort.value) {
+        houseElForCohort.value = autoHouse;
+      }
+      updatePreview();
+    });
+  }
   if (stageEl && vaccEl) {
     const populateVaccines = () => {
       const stage = stageEl.value;
@@ -12049,8 +12266,12 @@ function initVaccinationForm() {
       updateNextDue();
       updatePreview();
     };
-    stageEl.addEventListener('change', populateVaccines);
+    stageEl.addEventListener('change', () => {
+      populateVaccines();
+      populateCohorts();
+    });
     populateVaccines();
+    populateCohorts();
   }
 
   function updateNextDue() {
@@ -12115,6 +12336,8 @@ async function submitVaccination() {
   const count      = (document.getElementById('vc-count') || {}).value;
   const next_due_date = (document.getElementById('vc-next-due') || {}).value || '';
   const notes      = ((document.getElementById('vc-notes') || {}).value || '').trim();
+  // v6.9.7 — Cohort identity capture
+  const cohort_id  = ((document.getElementById('vc-cohort') || {}).value || '').trim();
 
   if (!date_given || !stage || !house || !vaccine || count === '' || count === undefined) {
     showToast('Please fill date, stage, house, vaccine, and count', 3000);
@@ -12140,7 +12363,7 @@ async function submitVaccination() {
     vaccine: vaccine,
     birds_count: Number(count),
     next_due_date: next_due_date,
-    cohort_id: '',
+    cohort_id: cohort_id,    // v6.9.7 — captured from form, was always ''
     notes: notes
   };
 
@@ -12770,9 +12993,19 @@ function renderHomeUrgentHatchProgress() {
 /* v6.1.0 — Open Add → Poultry → Incubation → Hatch tab, pre-filled with batch_id.
    Used when operator taps a phase-ready or phase-overdue incubation card. */
 function openHatchFormPrefilled(batchId) {
-  // v6.3.12 — Switch to Poultry tab (routes to panel-add with biz=poultry pre-set)
-  if (typeof switchView === 'function') switchView('poultry');
-  if (typeof switchKind === 'function') switchKind('incubation');
+  // v6.9.7 — Fix two-tap bug (Cheison field report 17 May 2026 Verden).
+  // Pre-v6.9.7: called switchView('poultry') + switchKind('incubation') which 
+  // routes to panel-POULTRY (overview), not panel-ADD (forms). Operator landed 
+  // on the kind selectors and had to manually tap "Incubation" to drill in.
+  // openAddPanel('poultry', 'incubation') goes directly to panel-add with the 
+  // incubation kind selected — one tap, no manual second step.
+  if (typeof openAddPanel === 'function') {
+    openAddPanel('poultry', 'incubation');
+  } else {
+    // Defensive fallback for older PWA cached state
+    if (typeof switchView === 'function') switchView('poultry');
+    if (typeof switchKind === 'function') switchKind('incubation');
+  }
 
   // v6.3.12 — Two bugs fixed (Cheison field report 07 May 2026):
   //   1. The data attribute is `data-incmode`, NOT `data-mode` — old fallback 
@@ -12819,6 +13052,47 @@ function openHatchFormPrefilled(batchId) {
       const hcEl = document.getElementById('ih-hatched');
       if (hcEl) hcEl.focus();
     }, 50);
+  }, 80);
+}
+
+/* v6.9.7 — Open the vaccination form with fields pre-filled from a known
+   context (e.g. the cohort just created by a hatch, or a population card 
+   click). Sealed 18 May 2026 (Hanover train ride): "open vaccinate with 
+   cohort choices or if from our hatch offer it as the first." */
+function openVaccinationFormPrefilled(opts) {
+  opts = opts || {};
+  if (typeof openAddPanel === 'function') {
+    openAddPanel('poultry', 'vaccination');
+  } else {
+    if (typeof switchView === 'function') switchView('poultry');
+    if (typeof switchKind === 'function') switchKind('vaccination');
+  }
+  // After form initialization (initVaccinationForm runs in switchKind),
+  // prefill the fields. Order matters: set Stage first → triggers Vaccine
+  // and Cohort dropdown population → THEN set Cohort/Vaccine/House/count.
+  setTimeout(() => {
+    const setVal = (id, val) => {
+      const el = document.getElementById(id);
+      if (el && val !== undefined && val !== null && val !== '') {
+        el.value = val;
+        el.dispatchEvent(new Event('change'));
+      }
+    };
+    if (opts.stage) setVal('vc-stage', opts.stage);
+    // Cohort + vaccine populate from stage. Give them a tick to refresh.
+    setTimeout(() => {
+      if (opts.cohort_id) setVal('vc-cohort', opts.cohort_id);
+      if (opts.vaccine)   setVal('vc-vaccine', opts.vaccine);
+      if (opts.house)     setVal('vc-house', opts.house);
+      if (opts.birds_count !== undefined && opts.birds_count !== null) {
+        const cEl = document.getElementById('vc-count');
+        if (cEl) cEl.value = String(opts.birds_count);
+      }
+      // Focus the count field (typically the only thing operator needs to
+      // verify/edit) so they can submit immediately if the prefill is right.
+      const cEl = document.getElementById('vc-count');
+      if (cEl) cEl.focus();
+    }, 60);
   }, 80);
 }
 
@@ -13981,13 +14255,25 @@ function renderHome() {
     // is more than 14 days old, prepend an amber chip suggesting a fresh 
     // count. Operator nudge — not a block. Honors "no recount" principle: 
     // the system never forces a recount, only suggests when stale.
+    // v6.9.7 — Chip is now suppressed if the operator has acked "no change"
+    // for this stage today. Per § 6.x (sealed 17 May 2026 Berlin train ride):
+    // recounting layers stresses birds and reduces lay efficiency, so an
+    // affirmation is a valid census signal. Chip is tappable — click opens
+    // a confirm() dialog; on accept, server-persisted ack via § 6.11.
     const detail = stageDetails[stageName] || {};
     const censusDate = detail.censusDate || '';
     let staleChip = '';
     if (censusDate && censusDate !== '1970-01-01') {
       const daysOld = Math.floor((Date.now() - new Date(censusDate + 'T00:00:00Z').getTime()) / 86400000);
-      if (daysOld > 14) {
-        staleChip = `<span style="color:#b8714d; font-size:0.66rem; font-weight:600; letter-spacing:0.05em">⚠ stale ${daysOld}d</span> · `;
+      if (daysOld > 14 && !isBirdPopulationAcked(stageName, censusDate)) {
+        // Escape any apostrophes/quotes in stageName so the onclick attribute is safe.
+        // (Stage names are static enums today, but defensive for future custom stages.)
+        const safeStage = String(stageName).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        const safeCount = Number(total) || 0;
+        staleChip = `<span role="button" tabindex="0" ` +
+          `onclick="event.stopPropagation(); if (window.confirm('Confirm no change in &quot;${safeStage}&quot; population since ${censusDate}?\\n\\nCurrent computed count: ${safeCount} birds.\\n\\nTap OK to dismiss the staleness chip without a recount.')) { acknowledgeBirdPopulation('${safeStage}', ${safeCount}); }" ` +
+          `style="color:#b8714d; font-size:0.66rem; font-weight:600; letter-spacing:0.05em; cursor:pointer; text-decoration:underline dotted; text-underline-offset:2px" ` +
+          `title="Tap to affirm no population change (avoids a stressful recount)">⚠ stale ${daysOld}d</span> · `;
       }
     }
     // v6.7.0 — Live count transparency: when computed adjustments apply 
