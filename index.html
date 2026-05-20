@@ -2965,7 +2965,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.12</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.13</span>
 </header>
 
 <main>
@@ -3719,18 +3719,31 @@
       </div>
 
       <!-- v5.8.0 — Collector dropdown: structured operator attribution.
-           v5.8.1 — Frank and Stanley confirmed as TWO different people. -->
+           v5.8.1 — Frank and Stanley confirmed as TWO different people.
+           v6.9.13 — Roster aligned to Cheison's confirmed collector set 
+           (20 May 2026): Faith FC, Frankline FK, Hillary HC, Victor VK, 
+           Elias EK, Stanley SK. Each generates a code that becomes the 
+           suffix of the auto-generated Egg_Batch_ID. -->
       <div class="field" style="margin-top:0.7rem"><label>Collector</label>
         <select id="ec-collector">
           <option value="">— Select collector —</option>
-          <option value="Hillary">Hillary</option>
-          <option value="Faith">Faith</option>
-          <option value="Frank">Frank</option>
-          <option value="Stanley">Stanley</option>
-          <option value="Elias">Elias</option>
-          <option value="Victor">Victor</option>
-          <option value="Other">Other</option>
+          <option value="Faith"     data-code="FC">Faith</option>
+          <option value="Frankline" data-code="FK">Frankline</option>
+          <option value="Hillary"   data-code="HC">Hillary</option>
+          <option value="Victor"    data-code="VK">Victor</option>
+          <option value="Elias"     data-code="EK">Elias</option>
+          <option value="Stanley"   data-code="SK">Stanley</option>
         </select>
+      </div>
+      <!-- v6.9.13 — Egg_Batch_ID preview. Auto-generated from date + 
+           collector code: KP{DDmonYYYY}{XX}. Read-only display so 
+           operator can verify before submission. Generation requires 
+           BOTH date AND collector to be set. -->
+      <div class="field" style="margin-top:0.7rem">
+        <label>Egg Batch ID <span style="opacity:0.65;font-size:0.78rem;font-weight:400">(auto)</span></label>
+        <input type="text" id="ec-batch-id" readonly 
+               placeholder="— select collector to generate —"
+               style="background:var(--ivory-warm);opacity:0.92;font-family:'IBM Plex Mono',monospace">
       </div>
 
       <div class="field" style="margin-top:0.7rem"><label>Notes (optional)</label><input type="text" id="ec-notes" placeholder="e.g. cleaning day, hot weather" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
@@ -4699,7 +4712,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.9.12</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.9.13</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5116,7 +5129,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.9.12';
+const APP_VERSION = 'v6.9.13';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -10564,20 +10577,75 @@ function initEggCollectionForm() {
   }
   validateEggCollection();
   // v5.7 Wide-schema fields: per-house counts + notes
+  // v6.9.13 — collector becomes compulsory + auto-generates Egg_Batch_ID
   const fields = ['ec-date', 'ec-gf-normal', 'ec-gf-small', 'ec-gf-broken',
-                  'ec-ud-normal', 'ec-ud-small', 'ec-ud-broken', 'ec-notes'];
+                  'ec-ud-normal', 'ec-ud-small', 'ec-ud-broken',
+                  'ec-collector', 'ec-notes'];
   fields.forEach(id => {
     const el = document.getElementById(id);
     if (el && !el.dataset.wired) {
       el.dataset.wired = '1';
-      el.addEventListener('input', validateEggCollection);
-      el.addEventListener('change', validateEggCollection);
+      el.addEventListener('input', () => { validateEggCollection(); refreshEggBatchId(); });
+      el.addEventListener('change', () => { validateEggCollection(); refreshEggBatchId(); });
     }
   });
   const submitBtn = document.getElementById('ec-submit');
   if (submitBtn && !submitBtn.dataset.wired) {
     submitBtn.dataset.wired = '1';
     submitBtn.addEventListener('click', submitEggCollection);
+  }
+  // Initial preview render
+  refreshEggBatchId();
+}
+
+/* v6.9.13 — Egg Batch ID generator.
+   Format: KP{DDmonYYYY}{collector_code}  e.g. KP20MAY2026FC
+   Sealed 20 May 2026 (Cheison Verden session, egg-batch design):
+   - DDmonYYYY (not DDMMYYYY) for glance-readability
+   - No separators
+   - Auto-generated; not embedded in mutable data
+   - Collector compulsory because the code suffix needs it
+*/
+const EGG_BATCH_ID_MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
+function formatEggBatchDate(isoDate) {
+  if (!isoDate || typeof isoDate !== 'string') return '';
+  const parts = isoDate.split('-');
+  if (parts.length !== 3) return '';
+  const [yy, mm, dd] = parts;
+  const monIdx = Number(mm) - 1;
+  if (isNaN(monIdx) || monIdx < 0 || monIdx > 11) return '';
+  return String(dd).padStart(2, '0') + EGG_BATCH_ID_MONTHS[monIdx] + yy;
+}
+
+function getCollectorCode(collectorName) {
+  if (!collectorName) return '';
+  const sel = document.getElementById('ec-collector');
+  if (!sel) return '';
+  const opt = Array.from(sel.options).find(o => o.value === collectorName);
+  return (opt && opt.dataset && opt.dataset.code) ? opt.dataset.code : '';
+}
+
+function generateEggBatchId(isoDate, collectorName) {
+  const dateStr = formatEggBatchDate(isoDate);
+  const code = getCollectorCode(collectorName);
+  if (!dateStr || !code) return '';
+  return 'KP' + dateStr + code;
+}
+
+function refreshEggBatchId() {
+  const date = (document.getElementById('ec-date') || {}).value || '';
+  const collector = (document.getElementById('ec-collector') || {}).value || '';
+  const batchEl = document.getElementById('ec-batch-id');
+  if (!batchEl) return;
+  const id = generateEggBatchId(date, collector);
+  batchEl.value = id;
+  if (id) {
+    batchEl.placeholder = '';
+  } else {
+    batchEl.placeholder = collector
+      ? '— select date to generate —'
+      : '— select collector to generate —';
   }
 }
 
@@ -10589,12 +10657,14 @@ function validateEggCollection() {
   const udN = (document.getElementById('ec-ud-normal') || {}).value;
   const udS = (document.getElementById('ec-ud-small')  || {}).value;
   const udB = (document.getElementById('ec-ud-broken') || {}).value;
+  // v6.9.13 — Collector now compulsory (drives Egg_Batch_ID generation).
+  const collector = (document.getElementById('ec-collector') || {}).value || '';
   const submit = document.getElementById('ec-submit');
   const preview = document.getElementById('ec-preview');
 
   // At least one of the six counts must be filled
   const anyFilled = [gfN,gfS,gfB,udN,udS,udB].some(v => v !== '' && v !== undefined);
-  const valid = !!date && anyFilled;
+  const valid = !!date && anyFilled && !!collector;
   if (submit) submit.disabled = !valid;
 
   if (preview) {
@@ -10655,6 +10725,10 @@ async function submitEggCollection() {
     small_abnormal: num(gfS) + num(udS),
     broken:         num(gfB) + num(udB),
     collector: collector, // v5.8.0
+    // v6.9.13 — Egg_Batch_ID generated from date + collector code
+    egg_batch_id: (typeof generateEggBatchId === 'function')
+      ? generateEggBatchId(date, collector)
+      : '',
     notes: notes
   };
 
@@ -10700,6 +10774,8 @@ async function pushEggCollectionToGate(row) {
         ud_small:  Number(row.ud_small  || 0),
         ud_broken: Number(row.ud_broken || 0),
         collector: row.collector || '',  // v5.8.1 — was missing in v5.8.0
+        // v6.9.13 — Egg_Batch_ID travels with the collection
+        egg_batch_id: row.egg_batch_id || '',
         notes:     row.notes || ''
       },
       source: `PWA ${APP_VERSION} egg-collection`
