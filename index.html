@@ -2961,7 +2961,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.9</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.10</span>
 </header>
 
 <main>
@@ -3652,6 +3652,16 @@
         <div class="field"><label>Product</label><select id="y-product"></select></div>
       </div>
       <div class="field"><label>Stage</label><select id="y-stage"></select></div>
+      <!-- v6.9.10 — Cohort attribution at sale time (§ 7.6 closed). Pre-v6.9.10
+           sales were attributed to cohorts post-hoc via stagesPassed inference,
+           which failed when multiple cohorts coexisted at the same stage.
+           Dropdown populates from active cohorts in the selected stage; defaults
+           to the OLDEST (FIFO — older birds sell first). Empty stage = stage
+           prompt. Empty for non-bird sales (Eggs etc) — backend treats blank
+           as legacy fallback. -->
+      <div class="field"><label>Cohort</label>
+        <select id="y-cohort"><option value="">— Pick a stage first —</option></select>
+      </div>
       <div class="pair">
         <div class="field"><label>Quantity</label><input type="number" id="y-quantity" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
         <div class="field"><label>Unit</label><select id="y-unit"></select></div>
@@ -4685,7 +4695,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.9.9</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.9.10</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5102,7 +5112,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.9.9';
+const APP_VERSION = 'v6.9.10';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -7494,7 +7504,9 @@ async function pushPoultryToGate(row) {
         unit:           row.unit || '',
         amount:         Number(row.amount),
         payment_method: row.payment_method || '',
-        buyer:          row.buyer || ''
+        buyer:          row.buyer || '',
+        // v6.9.10 — Cohort identity travels with the sale (§ 7.6 closed)
+        cohort_id:      row.cohort_id || ''
       },
       source: `PWA ${APP_VERSION} poultry`
     };
@@ -8945,6 +8957,7 @@ function switchKind(k) {
   if (k === 'actual') renderRecentActuals();
   if (k === 'banked') renderRecentBanked();
   if (k === 'poultry') renderRecentPoultry();
+  if (k === 'poultry' && typeof populatePoultryCohortDropdown === 'function') populatePoultryCohortDropdown();
   if (k === 'egg-collection' && typeof initEggCollectionForm === 'function') initEggCollectionForm();
   if (k === 'bird-census' && typeof initBirdCensusForm === 'function') initBirdCensusForm();
   if (k === 'incubation' && typeof initIncubationForm === 'function') initIncubationForm();
@@ -10241,8 +10254,42 @@ function yValues() {
     quantity: parseFloat(document.getElementById('y-quantity').value) || 0,
     amount: parseFloat(document.getElementById('y-amount').value) || 0,
     payment_method: document.getElementById('y-payment').value,
-    buyer: document.getElementById('y-buyer').value.trim()
+    buyer: document.getElementById('y-buyer').value.trim(),
+    // v6.9.10 — Cohort identity captured at write boundary (§ 7.6 closed).
+    // Empty for non-bird products (Eggs) or when no stage is selected.
+    cohort_id: (document.getElementById('y-cohort') || {}).value || ''
   };
+}
+
+/* v6.9.10 — Populate the cohort dropdown based on selected stage.
+   Active cohort = stage matches AND current_count > 0. Sorted ASC by
+   date_origin (FIFO — older birds sell first). Auto-selects the oldest
+   so the operator's default is the right answer for typical sales.
+   Empty stage shows prompt; empty result set shows informative message. */
+function populatePoultryCohortDropdown() {
+  const cohortEl = document.getElementById('y-cohort');
+  if (!cohortEl) return;
+  const stageEl = document.getElementById('y-stage');
+  const stage = stageEl ? stageEl.value : '';
+  if (!stage) {
+    cohortEl.innerHTML = '<option value="">— Pick a stage first —</option>';
+    return;
+  }
+  const eligible = (Array.isArray(STATE.cohorts) ? STATE.cohorts : [])
+    .filter(c => c && (c.stage || '') === stage)
+    .filter(c => Number(c.current_count || 0) > 0)
+    .sort((a, b) => String(a.date_origin || '').localeCompare(String(b.date_origin || '')));
+  if (eligible.length === 0) {
+    cohortEl.innerHTML = '<option value="">— No active cohorts at this stage —</option>';
+    return;
+  }
+  cohortEl.innerHTML = eligible.map((c, idx) => {
+    const house = c.house ? ' · ' + c.house : '';
+    const count = ' · ' + (Number(c.current_count) || 0) + ' birds';
+    const age = c.date_origin ? ' · ' + c.date_origin : '';
+    const sel = idx === 0 ? ' selected' : '';
+    return `<option value="${c.cohort_id}"${sel}>${c.cohort_id}${house}${count}${age}</option>`;
+  }).join('');
 }
 
 function updatePoultryPreview() {
@@ -10280,12 +10327,15 @@ async function submitPoultry() {
         : null;
       const liveCount = (stageLive && Number(stageLive.live)) || 0;
       if (v.quantity > liveCount) {
-        const msg = liveCount === 0
-          ? `🚫 Cannot sell ${v.quantity} bird${v.quantity === 1 ? '' : 's'} from "${v.stage}" — population is 0. ` +
-            `If this is a non-standard sale (dwarf, cull, sick), pick the bird's actual stage instead.`
-          : `🚫 Cannot sell ${v.quantity} bird${v.quantity === 1 ? '' : 's'} from "${v.stage}" — only ${liveCount} alive. ` +
+        // v6.9.10 — Lift rejection from toast to modal (Cheison feedback:
+        // toasts are barely legible for critical rejections).
+        const escStage = String(v.stage).replace(/</g, '&lt;');
+        const bodyHtml = liveCount === 0
+          ? `Cannot sell <strong>${v.quantity}</strong> bird${v.quantity === 1 ? '' : 's'} from "<strong>${escStage}</strong>" — population is <strong>0</strong>.<br><br>` +
+            `If this is a non-standard sale (dwarf, cull, sick), pick the bird's <em>actual</em> stage instead and the system will deduct from the right cohort.`
+          : `Cannot sell <strong>${v.quantity}</strong> bird${v.quantity === 1 ? '' : 's'} from "<strong>${escStage}</strong>" — only <strong>${liveCount}</strong> alive.<br><br>` +
             `Adjust quantity or pick the correct stage.`;
-        showToast(msg, 7000);
+        await showAlertModal('🚫 Sale rejected', bodyHtml, 'Got it');
         return;
       }
     } catch (e) {
@@ -10328,7 +10378,8 @@ async function submitPoultry() {
     quantity: v.quantity,
     amount: v.amount,
     payment_method: v.payment_method,
-    buyer: v.buyer
+    buyer: v.buyer,
+    cohort_id: v.cohort_id   // v6.9.10 — captured from form
   };
   STATE.poultry = STATE.poultry || [];
   STATE.poultry.push(row);
@@ -13705,17 +13756,29 @@ function computeStageLive(stage, house, today) {
 
     const initial = Number(c.initial_count) || 0;
 
+    // v6.9.10 — Dual-key sale matching: cohort_id (Phase 2) first, 
+    // stagesPassed (legacy) fallback. Mirrors Apps Script v5.0.38.
     let soldForCohort = 0;
     (STATE.poultry || []).forEach(s => {
       if (s.product === 'Eggs') return;
-      if (!stagesPassed[s.stage]) return;
+      const saleCohortId = String(s.cohort_id || '').trim();
+      if (saleCohortId) {
+        if (saleCohortId !== c.cohort_id) return;
+      } else {
+        if (!stagesPassed[s.stage]) return;
+      }
       if (!s.date || s.date < c.date_origin) return;
       soldForCohort += Number(s.quantity) || 0;
     });
 
     let mortForCohort = 0;
     (STATE.mortality || []).forEach(m => {
-      if (!stagesPassed[m.stage]) return;
+      const mortCohortId = String(m.cohort_id || '').trim();
+      if (mortCohortId) {
+        if (mortCohortId !== c.cohort_id) return;
+      } else {
+        if (!stagesPassed[m.stage]) return;
+      }
       if (!m.date || m.date < c.date_origin) return;
       // If house filter is active, only count mortality for that house
       if (house && m.house !== house) return;
@@ -17588,6 +17651,56 @@ function showToast(msg, durationMs) {
   setTimeout(() => t.classList.remove('show'), durationMs || 2200);
 }
 
+/* v6.9.10 — Modal alert dialog for messages that demand attention (sale
+   rejections, hard validation failures). Mirrors confirmFirstSubmit's
+   visual language but with a single OK button. Used instead of showToast
+   when the message must be acknowledged rather than fade away. Sealed 
+   20 May 2026 (Cheison smoke-test feedback: "Enhance and lift it to fill 
+   the dialogue box, [toast] is barely legible"). */
+function showAlertModal(title, htmlBody, buttonLabel) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.id = 'alert-modal-overlay';
+    overlay.style.cssText = `
+      position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:9999;
+      display:flex; align-items:center; justify-content:center; padding:1rem;
+      backdrop-filter:blur(2px);
+    `;
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      background:var(--ink,#1a2826); border:1px solid var(--brass,#b8935a);
+      border-radius:8px; padding:1.4rem 1.2rem; max-width:420px; width:100%;
+      box-shadow:0 8px 32px rgba(0,0,0,0.5);
+      font-family:'Fraunces',serif; color:var(--ivory,#f5e8d3);
+    `;
+    modal.innerHTML = `
+      <div style="font-size:1.15rem;font-weight:600;margin-bottom:0.7rem;color:var(--brass-light,#d4a55b);">
+        ${title}
+      </div>
+      <div style="font-size:0.95rem;line-height:1.5;margin-bottom:1.1rem;opacity:0.92;">
+        ${htmlBody}
+      </div>
+      <div style="display:flex;justify-content:flex-end;">
+        <button id="alert-modal-ok" style="padding:0.6rem 1.3rem;background:var(--brass,#b8935a);
+                border:1px solid var(--brass,#b8935a);color:#1a2826;
+                border-radius:4px;font-family:inherit;font-weight:600;font-size:0.92rem;cursor:pointer;">
+          ${buttonLabel || 'Got it'}
+        </button>
+      </div>
+    `;
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    const cleanup = () => {
+      if (overlay.parentNode) document.body.removeChild(overlay);
+      resolve(true);
+    };
+    document.getElementById('alert-modal-ok').addEventListener('click', cleanup);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) cleanup();
+    });
+  });
+}
+
 /* v5.0.12 — Tappable update banner. Shown when SW_ACTIVATED message fires.
    Replaces the old "refresh for full effect" toast that operators couldn't
    action on a PWA (no browser address bar to refresh). One tap on the banner
@@ -17840,11 +17953,21 @@ function showUpdateBanner() {
   document.getElementById('i-submit').addEventListener('click', submitBanked);
 
   // Poultry Sales
-  ['y-date','y-product','y-stage','y-unit','y-quantity','y-amount','y-payment','y-buyer'].forEach(id => {
+  ['y-date','y-product','y-stage','y-cohort','y-unit','y-quantity','y-amount','y-payment','y-buyer'].forEach(id => {
     const el = document.getElementById(id);
+    if (!el) return;
     el.addEventListener('input', updatePoultryPreview);
     el.addEventListener('change', updatePoultryPreview);
   });
+  // v6.9.10 — Stage change repopulates the cohort dropdown with active 
+  // cohorts in that stage. Auto-select the OLDEST cohort (FIFO — older 
+  // birds sell first) so the operator's default is the right answer.
+  const yStageEl = document.getElementById('y-stage');
+  if (yStageEl) {
+    yStageEl.addEventListener('change', () => {
+      if (typeof populatePoultryCohortDropdown === 'function') populatePoultryCohortDropdown();
+    });
+  }
   document.getElementById('y-submit').addEventListener('click', submitPoultry);
 
   // Greenleaf Quick
