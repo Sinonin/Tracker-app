@@ -2961,7 +2961,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.10</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.11</span>
 </header>
 
 <main>
@@ -4695,7 +4695,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.9.10</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.9.11</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5112,7 +5112,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.9.10';
+const APP_VERSION = 'v6.9.11';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -10423,13 +10423,15 @@ async function autoDecrementCohortOnSale(saleRow) {
   if (qty <= 0) return;
   const stage = saleRow.stage;
   const today = new Date().toISOString().slice(0, 10);
-  // Eligible: current_count > 0, matches stage by age
+  // Eligible: current_count > 0, matches stage (asserted or aged) per § 6.x
   const candidates = STATE.cohorts.filter(c => {
     const cur = Number(c.current_count) || 0;
     if (cur <= 0) return false;
     if (!c.date_origin) return false;
-    if (typeof computeCohortStage !== 'function') return c.stage === stage;
-    return computeCohortStage(c.date_origin, today) === stage;
+    // v6.9.11 — Use effectiveCohortStage so asserted stages (Cockerels etc)
+    // match by stored stage; otherwise computed by age.
+    if (typeof effectiveCohortStage === 'function') return effectiveCohortStage(c, today) === stage;
+    return c.stage === stage;
   }).sort((a, b) => (a.date_origin || '').localeCompare(b.date_origin || ''));
   if (candidates.length === 0) {
     console.log('[cohort-decrement] no matching cohort for stage:', stage);
@@ -10472,8 +10474,9 @@ async function autoDecrementCohortOnMortality(mortRow) {
     if (!c.date_origin) return false;
     // House match if cohort has a house (some don't)
     if (c.house && house && c.house !== house) return false;
-    if (typeof computeCohortStage !== 'function') return c.stage === stage;
-    return computeCohortStage(c.date_origin, today) === stage;
+    // v6.9.11 — Asserted-stage-aware match
+    if (typeof effectiveCohortStage === 'function') return effectiveCohortStage(c, today) === stage;
+    return c.stage === stage;
   }).sort((a, b) => (a.date_origin || '').localeCompare(b.date_origin || ''));
   if (candidates.length === 0) {
     console.log('[cohort-decrement] no matching cohort for mortality stage:', stage, 'house:', house);
@@ -13646,6 +13649,22 @@ function computeCohortStage(dateOrigin, today) {
   return 'Layers';
 }
 
+/* v6.9.11 — Sealed § 6.x principle (20 May 2026, Verden): two kinds of
+   stage knowledge — aged (derived from date_origin + ageDays) and asserted
+   (operator classification). Cockerels, Quarantine, Deformities, and Retired
+   are asserted: no amount of aging derives them. When a cohort's stored stage
+   asserts one of these, the system respects it; otherwise it computes by age.
+   This unblocks creation of Cockerels cohorts (COH-CGF, COH-CUD) without the
+   rebuild math silently relabeling them as Layers. */
+const ASSERTED_STAGES = ['Cockerels', 'Quarantine', 'Deformities', 'Retired birds'];
+
+function effectiveCohortStage(cohort, today) {
+  if (!cohort) return null;
+  const stored = String(cohort.stage || '').trim();
+  if (stored && ASSERTED_STAGES.indexOf(stored) !== -1) return stored;
+  return computeCohortStage(cohort.date_origin, today);
+}
+
 /* Live count for (stage, house). Returns:
      { live, baseline, censusDate, cohortDelta, mortalityDelta, salesDelta, hasAdjustments }
    - baseline   = latest manual census count for stage+house (or summed across houses if !house)
@@ -13732,12 +13751,15 @@ function computeStageLive(stage, house, today) {
     if (house && c.house !== house) return;
     if (!c.date_origin) return;
 
-    const stageNow = computeCohortStage(c.date_origin, today);
+    // v6.9.11 — Use effectiveCohortStage so Cockerels (and other asserted
+    // stages) are matched by the cohort's stored stage, not by age-derived
+    // stage. Without this, COH-CGF and COH-CUD would silently land in Layers.
+    const stageNow = effectiveCohortStage(c, today);
     if (stageNow !== stage) return;
 
     // Skip if cohort was already in this stage at last census (in baseline)
     if (c.date_origin <= censusDate) {
-      const stageThen = computeCohortStage(c.date_origin, censusDate);
+      const stageThen = effectiveCohortStage(c, censusDate);
       if (stageThen === stage) return;
     }
 

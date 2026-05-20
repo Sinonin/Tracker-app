@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.9.11 — Asserted stages (Cockerels/Quarantine/Deformities/Retired) (20 May 2026)
 // v6.9.10 — Cohort_ID Phase 2: write capture + dual-key matching + UX modal (20 May 2026)
 // v6.9.9 — Zero-population sale block (§ 6.x sealed) (20 May 2026)
 // v6.9.8 — Date-default-to-today on form open + cohort-event-as-measurement (20 May 2026)
@@ -60,7 +61,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v190';
+const CACHE = 'sinonin-greenleaf-v191';
 
 const SHELL_FILES = [
   './',
