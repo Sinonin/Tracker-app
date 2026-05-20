@@ -2965,7 +2965,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.13</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.14</span>
 </header>
 
 <main>
@@ -3746,7 +3746,32 @@
                style="background:var(--ivory-warm);opacity:0.92;font-family:'IBM Plex Mono',monospace">
       </div>
 
-      <div class="field" style="margin-top:0.7rem"><label>Notes (optional)</label><input type="text" id="ec-notes" placeholder="e.g. cleaning day, hot weather" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
+      <!-- v6.9.14 — Curated disposition dropdown replaces free-text notes 
+           (Cheison 20 May 2026 design: "minimise Notes entry and pick 
+           standard text from a list instead"). Reduces typo accumulation 
+           across operators (Faith / Frankline / Hillary / Victor / Elias / 
+           Stanley). Other... reveals a text input for genuinely unique 
+           cases. The dropdown value (or the Other text) lands in the 
+           existing Notes column — no schema change. -->
+      <div class="field" style="margin-top:0.7rem">
+        <label>Disposition</label>
+        <select id="ec-notes-dispo">
+          <option value="">— Select disposition —</option>
+          <option value="For sale">For sale</option>
+          <option value="Reserved">Reserved</option>
+          <option value="For incubation">For incubation</option>
+          <option value="Don't incubate">Don't incubate</option>
+          <option value="Home use">Home use</option>
+          <option value="Gifted">Gifted</option>
+          <option value="Discarded">Discarded</option>
+          <option value="__OTHER__">Other (type your own)…</option>
+        </select>
+      </div>
+      <div class="field" id="ec-notes-other-wrap" style="margin-top:0.7rem; display:none">
+        <label>Custom note</label>
+        <input type="text" id="ec-notes" placeholder="describe the disposition or context" 
+               style="font-family:'Fraunces',serif;font-size:1.05rem">
+      </div>
 
       <button class="submit" id="ec-submit" disabled>Record Collection</button>
 
@@ -4712,7 +4737,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.9.13</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.9.14</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5129,7 +5154,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.9.13';
+const APP_VERSION = 'v6.9.14';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -10578,9 +10603,10 @@ function initEggCollectionForm() {
   validateEggCollection();
   // v5.7 Wide-schema fields: per-house counts + notes
   // v6.9.13 — collector becomes compulsory + auto-generates Egg_Batch_ID
+  // v6.9.14 — Disposition dropdown replaces free-text notes (with Other escape)
   const fields = ['ec-date', 'ec-gf-normal', 'ec-gf-small', 'ec-gf-broken',
                   'ec-ud-normal', 'ec-ud-small', 'ec-ud-broken',
-                  'ec-collector', 'ec-notes'];
+                  'ec-collector', 'ec-notes-dispo', 'ec-notes'];
   fields.forEach(id => {
     const el = document.getElementById(id);
     if (el && !el.dataset.wired) {
@@ -10589,6 +10615,20 @@ function initEggCollectionForm() {
       el.addEventListener('change', () => { validateEggCollection(); refreshEggBatchId(); });
     }
   });
+  // v6.9.14 — Reveal/hide the free-text "Other" input based on dropdown value
+  const dispoEl = document.getElementById('ec-notes-dispo');
+  const otherWrap = document.getElementById('ec-notes-other-wrap');
+  if (dispoEl && otherWrap && !dispoEl.dataset.dispoWired) {
+    dispoEl.dataset.dispoWired = '1';
+    dispoEl.addEventListener('change', () => {
+      const isOther = dispoEl.value === '__OTHER__';
+      otherWrap.style.display = isOther ? '' : 'none';
+      if (isOther) {
+        const otherEl = document.getElementById('ec-notes');
+        if (otherEl) { otherEl.focus(); }
+      }
+    });
+  }
   const submitBtn = document.getElementById('ec-submit');
   if (submitBtn && !submitBtn.dataset.wired) {
     submitBtn.dataset.wired = '1';
@@ -10696,7 +10736,11 @@ async function submitEggCollection() {
   const udS = (document.getElementById('ec-ud-small')  || {}).value;
   const udB = (document.getElementById('ec-ud-broken') || {}).value;
   const collector = ((document.getElementById('ec-collector') || {}).value || '').trim(); // v5.8.0
-  const notes = ((document.getElementById('ec-notes') || {}).value || '').trim();
+  // v6.9.14 — Notes value resolves from disposition dropdown OR (when 
+  // "Other" picked) from the free-text input.
+  const dispoVal = ((document.getElementById('ec-notes-dispo') || {}).value || '').trim();
+  const otherTxt = ((document.getElementById('ec-notes') || {}).value || '').trim();
+  const notes = (dispoVal === '__OTHER__') ? otherTxt : dispoVal;
 
   if (!date) { showToast('Please pick a date', 3000); return; }
 
@@ -10739,8 +10783,11 @@ async function submitEggCollection() {
   showToast(`Saved · GF ${row.gf_normal} · UD ${row.ud_normal} · ${row.date}${collector ? ' · ' + collector : ''}`);
 
   // Clear form (date + collector stays for batch entry sessions)
-  ['ec-gf-normal','ec-gf-small','ec-gf-broken','ec-ud-normal','ec-ud-small','ec-ud-broken','ec-notes']
+  ['ec-gf-normal','ec-gf-small','ec-gf-broken','ec-ud-normal','ec-ud-small','ec-ud-broken','ec-notes','ec-notes-dispo']
     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  // v6.9.14 — Hide the "Other" wrapper so a fresh submission starts clean
+  const otherWrap = document.getElementById('ec-notes-other-wrap');
+  if (otherWrap) otherWrap.style.display = 'none';
   validateEggCollection();
 
   const synced = await syncEggCollection(row);

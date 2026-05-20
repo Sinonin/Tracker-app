@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.9.14 — Disposition dropdown for egg notes (PWA-only) (20 May 2026)
 // v6.9.13 — Egg_Batch_ID at write boundary + collector compulsory (20 May 2026)
 // v6.9.12 — UX polish: cohort-aware validation + bigger poultry buttons + Income→Sales (20 May 2026)
 // v6.9.11 — Asserted stages (Cockerels/Quarantine/Deformities/Retired) (20 May 2026)
@@ -63,7 +64,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v193';
+const CACHE = 'sinonin-greenleaf-v194';
 
 const SHELL_FILES = [
   './',
