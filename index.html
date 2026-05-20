@@ -1569,15 +1569,19 @@
     gap: 0.22rem;
   }
   .quick-add-grid.quick-add-tight.quick-add-row-7 .quick-add-card {
-    padding: 0.45rem 0.1rem 0.4rem;
-    min-height: 52px;
-    gap: 0.15rem;
+    padding: 0.5rem 0.15rem 0.45rem;
+    min-height: 58px;
+    gap: 0.2rem;
   }
   .quick-add-grid.quick-add-tight.quick-add-row-7 .qa-icon {
-    font-size: 0.95rem;
+    font-size: 1.1rem;
   }
+  /* v6.9.12 — Cheison feedback (20 May 2026): "buttons under poultry are 
+     a bit small, there's still some space left." Bumped label 0.44 → 0.56 
+     (~27% larger), icon 0.95 → 1.1, padding/min-height nudged so touch 
+     target grows in proportion. Still fits 7-col on a 380px viewport. */
   .quick-add-grid.quick-add-tight.quick-add-row-7 .qa-label {
-    font-size: 0.44rem;
+    font-size: 0.56rem;
     letter-spacing: 0.04em;
   }
   
@@ -2961,7 +2965,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.11</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.12</span>
 </header>
 
 <main>
@@ -3228,7 +3232,7 @@
         </button>
         <button class="quick-add-card" type="button" onclick="openAddPanel('poultry','poultry')">
           <span class="qa-icon">💰</span>
-          <span class="qa-label">Income</span>
+          <span class="qa-label">Sales</span>
         </button>
         <button class="quick-add-card" type="button" onclick="openAddPanel('poultry','mortality')">
           <span class="qa-icon">💀</span>
@@ -4695,7 +4699,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.9.11</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.9.12</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5112,7 +5116,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.9.11';
+const APP_VERSION = 'v6.9.12';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -10322,19 +10326,32 @@ async function submitPoultry() {
   if (v.product !== 'Eggs') {
     try {
       const todayIso = new Date().toISOString().slice(0, 10);
-      const stageLive = (typeof computeStageLive === 'function')
-        ? computeStageLive(v.stage, null, todayIso)
-        : null;
-      const liveCount = (stageLive && Number(stageLive.live)) || 0;
+      // v6.9.12 — Cohort-aware validation. When the operator has picked a 
+      // specific cohort, validate against THAT cohort's current_count, not 
+      // the stage's total. Pre-v6.9.12 a sale of 200 cockerels from COH-CGF 
+      // (45 alive) reported "only 61 alive" because the check summed CGF + 
+      // CUD's stage population. The check should match the unit of deduction. 
+      // Sealed § 6.x (20 May 2026 Cheison message-clarity observation).
+      let liveCount, whereLabel;
+      if (v.cohort_id) {
+        const cohort = (STATE.cohorts || []).find(c => c.cohort_id === v.cohort_id);
+        liveCount = cohort ? (Number(cohort.current_count) || 0) : 0;
+        whereLabel = v.cohort_id;
+      } else {
+        const stageLive = (typeof computeStageLive === 'function')
+          ? computeStageLive(v.stage, null, todayIso)
+          : null;
+        liveCount = (stageLive && Number(stageLive.live)) || 0;
+        whereLabel = '"' + v.stage + '"';
+      }
       if (v.quantity > liveCount) {
-        // v6.9.10 — Lift rejection from toast to modal (Cheison feedback:
-        // toasts are barely legible for critical rejections).
-        const escStage = String(v.stage).replace(/</g, '&lt;');
+        const escWhere = String(whereLabel).replace(/</g, '&lt;');
+        const inCohortPhrase = v.cohort_id ? ' in this cohort' : '';
         const bodyHtml = liveCount === 0
-          ? `Cannot sell <strong>${v.quantity}</strong> bird${v.quantity === 1 ? '' : 's'} from "<strong>${escStage}</strong>" — population is <strong>0</strong>.<br><br>` +
-            `If this is a non-standard sale (dwarf, cull, sick), pick the bird's <em>actual</em> stage instead and the system will deduct from the right cohort.`
-          : `Cannot sell <strong>${v.quantity}</strong> bird${v.quantity === 1 ? '' : 's'} from "<strong>${escStage}</strong>" — only <strong>${liveCount}</strong> alive.<br><br>` +
-            `Adjust quantity or pick the correct stage.`;
+          ? `Cannot sell <strong>${v.quantity}</strong> bird${v.quantity === 1 ? '' : 's'} from <strong>${escWhere}</strong> — population is <strong>0</strong>${inCohortPhrase}.<br><br>` +
+            `If this is a non-standard sale (dwarf, cull, sick), pick the bird's <em>actual</em> stage or cohort instead.`
+          : `Cannot sell <strong>${v.quantity}</strong> bird${v.quantity === 1 ? '' : 's'} from <strong>${escWhere}</strong> — only <strong>${liveCount}</strong> alive${inCohortPhrase}.<br><br>` +
+            `Adjust quantity or pick the correct cohort.`;
         await showAlertModal('🚫 Sale rejected', bodyHtml, 'Got it');
         return;
       }
