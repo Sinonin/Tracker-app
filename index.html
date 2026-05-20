@@ -2961,7 +2961,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.8</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.9</span>
 </header>
 
 <main>
@@ -4685,7 +4685,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.9.8</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.9.9</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5102,7 +5102,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.9.8';
+const APP_VERSION = 'v6.9.9';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -10261,6 +10261,38 @@ function updatePoultryPreview() {
 async function submitPoultry() {
   const v = yValues();
   if (!v.date || !v.product || !v.stage || !v.unit || v.quantity <= 0 || v.amount <= 0 || !v.payment_method) return;
+
+  // v6.9.9 — Zero-population sale block. Sealed § 6.x principle (20 May 2026,
+  // Elias dwarf-layer Quarantine incident): rejects any sale that would push
+  // the stage's live count below zero. Pre-v6.9.9 the system "generously"
+  // accepted sales from empty stages, corrupting the audit trail and hiding
+  // operator improvisation (selling a dwarf layer as a "Quarantine" bird).
+  // 
+  // try/catch wrapper: if computeStageLive itself errors, fall through and
+  // allow the sale rather than blocking legitimate work due to a bug in the
+  // checker. Safer than strict-on-error during initial rollout. Eggs are
+  // exempt — they don't affect bird population.
+  if (v.product !== 'Eggs') {
+    try {
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const stageLive = (typeof computeStageLive === 'function')
+        ? computeStageLive(v.stage, null, todayIso)
+        : null;
+      const liveCount = (stageLive && Number(stageLive.live)) || 0;
+      if (v.quantity > liveCount) {
+        const msg = liveCount === 0
+          ? `🚫 Cannot sell ${v.quantity} bird${v.quantity === 1 ? '' : 's'} from "${v.stage}" — population is 0. ` +
+            `If this is a non-standard sale (dwarf, cull, sick), pick the bird's actual stage instead.`
+          : `🚫 Cannot sell ${v.quantity} bird${v.quantity === 1 ? '' : 's'} from "${v.stage}" — only ${liveCount} alive. ` +
+            `Adjust quantity or pick the correct stage.`;
+        showToast(msg, 7000);
+        return;
+      }
+    } catch (e) {
+      console.warn('[zero-pop-check] checker failed silently, allowing sale through:', e && e.message);
+      // Fall through — defensive design: bug in checker shouldn't block legitimate sale.
+    }
+  }
 
   // v5.8.5 — Add tab gibberish protection
   if (!isSessionConfirmed('poultry')) {
