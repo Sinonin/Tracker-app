@@ -2961,7 +2961,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.7</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.8</span>
 </header>
 
 <main>
@@ -4685,7 +4685,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.9.7</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.9.8</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5102,7 +5102,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.9.7';
+const APP_VERSION = 'v6.9.8';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -8934,6 +8934,13 @@ function switchKind(k) {
   // v6.5.7 — Mortality (bird death event log)
   const mtKindEl = document.getElementById('mortality-kind');
   if (mtKindEl) mtKindEl.style.display = k === 'mortality' ? '' : 'none';
+  // v6.9.8 — Date inputs reset to today on every form open. Sealed § 6.x
+  // (20 May 2026 Cheison observation): pre-v6.9.8 the date field preserved
+  // its prior value across form opens — Cheison logged Saturday's 17 May
+  // actuals on 19 May, then his next entry inherited 17 May silently and
+  // posted a wrong-date row. One explicit click for backfill is cheap;
+  // a silent stale default corrupts the audit trail.
+  if (typeof resetFormDate === 'function') resetFormDate(k);
   if (k === 'expense') renderRecentExpenses();
   if (k === 'actual') renderRecentActuals();
   if (k === 'banked') renderRecentBanked();
@@ -8944,6 +8951,33 @@ function switchKind(k) {
   if (k === 'incubation' && typeof renderIncubationProgress === 'function') renderIncubationProgress();
   if (k === 'vaccination' && typeof initVaccinationForm === 'function') initVaccinationForm();
   if (k === 'mortality' && typeof initMortalityForm === 'function') initMortalityForm();
+}
+
+/* v6.9.8 — Reset all date inputs for the current kind to today's date.
+   Called from switchKind on every form open so a date never lingers stale
+   across multiple form visits. Per-kind map ensures we don't touch unrelated
+   forms; missing kinds are a no-op (defensive). Operator's explicit backfill
+   choice still survives WITHIN one form session — only re-OPENING the form
+   resets the date. Sealed § 6.x (20 May 2026 Cheison-on-train observation). */
+function resetFormDate(kind) {
+  const today = new Date().toISOString().slice(0, 10);
+  const idsByKind = {
+    'greenleaf':       ['q-date'],
+    'expense':         ['x-date', 'xb-date'],
+    'actual':          ['a-date'],
+    'banked':          ['b-date'],
+    'poultry':         ['y-date'],
+    'egg-collection':  ['ec-date'],
+    'bird-census':     ['bc-date'],
+    'incubation':      ['id-date-set', 'ih-date-hatched'],
+    'vaccination':     ['vc-date'],
+    'mortality':       ['mt-date']
+  };
+  const ids = idsByKind[kind] || [];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = today;
+  });
 }
 
 function renderRecentActuals() {
@@ -13604,6 +13638,13 @@ function computeStageLive(stage, house, today) {
   }
 
   let cohortLiveTotal = 0;
+  // v6.9.8 — Track the latest cohort origin date among cohorts CURRENTLY 
+  // in this stage. Used by the staleness chip: a cohort event (hatch, 
+  // stage transition, or backfilled creation) is itself a measurement —
+  // birds were counted at that moment. Sealed § 6.x (20 May 2026 
+  // Cheison observation: COH-KP27APR264 day-3 chicks displayed as 
+  // "stale 16d" because the chip used only censusDate).
+  let latestCohortDate = '';
   (STATE.cohorts || []).forEach(c => {
     if (house && c.house !== house) return;
     if (!c.date_origin) return;
@@ -13651,14 +13692,26 @@ function computeStageLive(stage, house, today) {
 
     const cohortLive = Math.max(0, initial - soldForCohort - mortForCohort);
     cohortLiveTotal += cohortLive;
+    // v6.9.8 — Capture origin date only for cohorts with live birds (a
+    // fully-sold cohort that's left this stage shouldn't anchor freshness).
+    if (cohortLive > 0 && c.date_origin > latestCohortDate) {
+      latestCohortDate = c.date_origin;
+    }
   });
 
   const live = Math.max(0, baseline + cohortLiveTotal);
   const hasAdjustments = cohortLiveTotal > 0;
+  // v6.9.8 — effectiveFreshnessDate = max(censusDate, latestCohortDate). 
+  // The chip renderer reads this; the "since X" text uses it too.
+  const effectiveFreshnessDate = (latestCohortDate && latestCohortDate > censusDate) 
+    ? latestCohortDate 
+    : censusDate;
   return { 
     live: live, 
     baseline: baseline, 
     censusDate: censusDate, 
+    latestCohortDate: latestCohortDate || '',
+    effectiveFreshnessDate: effectiveFreshnessDate,
     cohortDelta: cohortLiveTotal,  // now LIVE per-cohort, not raw initial
     mortalityDelta: 0,              // rolled into cohortDelta
     salesDelta: 0,                  // rolled into cohortDelta
@@ -14201,6 +14254,8 @@ function renderHome() {
       stageTotals[s] = censusOnly;
       stageDetails[s] = {
         live: censusOnly, baseline: censusOnly, censusDate: latestCensusDate,
+        latestCohortDate: '',
+        effectiveFreshnessDate: latestCensusDate,
         cohortDelta: 0, mortalityDelta: 0, salesDelta: 0, hasAdjustments: false,
         _fellBackToCensus: true
       };
@@ -14260,18 +14315,24 @@ function renderHome() {
     // recounting layers stresses birds and reduces lay efficiency, so an
     // affirmation is a valid census signal. Chip is tappable — click opens
     // a confirm() dialog; on accept, server-persisted ack via § 6.11.
+    // v6.9.8 — Freshness anchor is now max(census, latest_cohort_origin) — 
+    // cohort events (hatch, stage transition) are themselves measurements.
+    // Sealed § 6.x (20 May 2026, Cheison observation): a 3-day-old hatch
+    // displaying as "stale 16d" because the chip used only census date 
+    // mis-flagged fresh data and trained operators to dismiss the chip.
     const detail = stageDetails[stageName] || {};
     const censusDate = detail.censusDate || '';
+    const freshnessDate = detail.effectiveFreshnessDate || censusDate;
     let staleChip = '';
-    if (censusDate && censusDate !== '1970-01-01') {
-      const daysOld = Math.floor((Date.now() - new Date(censusDate + 'T00:00:00Z').getTime()) / 86400000);
-      if (daysOld > 14 && !isBirdPopulationAcked(stageName, censusDate)) {
+    if (freshnessDate && freshnessDate !== '1970-01-01') {
+      const daysOld = Math.floor((Date.now() - new Date(freshnessDate + 'T00:00:00Z').getTime()) / 86400000);
+      if (daysOld > 14 && !isBirdPopulationAcked(stageName, freshnessDate)) {
         // Escape any apostrophes/quotes in stageName so the onclick attribute is safe.
         // (Stage names are static enums today, but defensive for future custom stages.)
         const safeStage = String(stageName).replace(/'/g, "\\'").replace(/"/g, '&quot;');
         const safeCount = Number(total) || 0;
         staleChip = `<span role="button" tabindex="0" ` +
-          `onclick="event.stopPropagation(); if (window.confirm('Confirm no change in &quot;${safeStage}&quot; population since ${censusDate}?\\n\\nCurrent computed count: ${safeCount} birds.\\n\\nTap OK to dismiss the staleness chip without a recount.')) { acknowledgeBirdPopulation('${safeStage}', ${safeCount}); }" ` +
+          `onclick="event.stopPropagation(); if (window.confirm('Confirm no change in &quot;${safeStage}&quot; population since ${freshnessDate}?\\n\\nCurrent computed count: ${safeCount} birds.\\n\\nTap OK to dismiss the staleness chip without a recount.')) { acknowledgeBirdPopulation('${safeStage}', ${safeCount}); }" ` +
           `style="color:#b8714d; font-size:0.66rem; font-weight:600; letter-spacing:0.05em; cursor:pointer; text-decoration:underline dotted; text-underline-offset:2px" ` +
           `title="Tap to affirm no population change (avoids a stressful recount)">⚠ stale ${daysOld}d</span> · `;
       }
@@ -14283,9 +14344,11 @@ function renderHome() {
     if (detail.mortalityDelta > 0) adjustments.push(`−${detail.mortalityDelta} died`);
     if (detail.salesDelta > 0)     adjustments.push(`−${detail.salesDelta} sold`);
     if (adjustments.length > 0) {
-      // Computed live count — surface the math transparently
-      const since = (detail.censusDate && detail.censusDate !== '1970-01-01') 
-        ? ` since ${detail.censusDate}` : '';
+      // v6.9.8 — Use the cohort-aware freshness date for the "since" text so 
+      // a 3-day-old hatch shows "since 2026-05-18" not "since 2026-05-04".
+      const sinceDate = detail.latestCohortDate || detail.censusDate;
+      const since = (sinceDate && sinceDate !== '1970-01-01') 
+        ? ` since ${sinceDate}` : '';
       subEl.innerHTML = `${staleChip}live · ${adjustments.join(' · ')}${since}`;
       return;
     }

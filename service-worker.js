@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.9.8 — Date-default-to-today on form open + cohort-event-as-measurement (20 May 2026)
 // v6.9.7 — Vaccination cohort_id + hatch CTA fix + stale-census affirmation + auto-rebuild on hatch (18 May 2026)
 // v6.9.6 — Block-gap banner forward-only scope + CLOUD_ENDPOINT alignment (17 May 2026)
 // v6.9.5 — Cache bump for actual-dupe-ack + block-gap-ack server persistence (16 May 2026)
@@ -57,7 +58,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v187';
+const CACHE = 'sinonin-greenleaf-v188';
 
 const SHELL_FILES = [
   './',
