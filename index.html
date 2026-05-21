@@ -2965,7 +2965,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.17</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.18</span>
 </header>
 
 <main>
@@ -4745,7 +4745,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.9.17</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.9.18</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5162,7 +5162,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.9.17';
+const APP_VERSION = 'v6.9.18';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -10138,11 +10138,55 @@ async function submitActual() {
    the same (date, block). If gap > 20%, toasts a warning. Threshold 
    is intentionally loose — small daily variance is normal, only large 
    gaps indicate genuine missing entries. */
+/* v6.9.18 — Helper: navigate to the Greenleaf (plucker entry) form and 
+   prefill date/block/factory from an actual. Used by both the no-pluckers
+   modal and the 20%-short modal. Extracted to avoid duplication and to
+   make the CTA navigation testable in one place. */
+function navigateToPluckerEntryPrefilled(actual) {
+  if (typeof openAddPanel !== 'function') return;
+  openAddPanel('tea', 'greenleaf');
+  setTimeout(() => {
+    try {
+      const setVal = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+      setVal('q-date',    actual.date);
+      setVal('q-block',   actual.block);
+      setVal('q-factory', actual.factory);
+      setVal('b-date',    actual.date);
+      setVal('b-block',   actual.block);
+      setVal('b-factory', actual.factory);
+    } catch (e) { console.warn('[plucker-prefill] failed:', e && e.message); }
+  }, 120);
+}
+
+/* v6.8.0 — Weighbridge gap detector.
+   Compares actual delivery kg to sum of plucker greenleaf entries for
+   the same delivery leg. If the gap is significant, surfaces a modal.
+
+   v6.9.18 — Factory-aware reconciliation. The pre-v6.9.18 filter compared
+   pluckers and actuals by (date, block) only, ignoring factory. This caused
+   cross-factory false positives: when the same block delivered to two
+   factories on the same day, each delivery was compared against the SUM
+   of all the block's pluckers, double-counting. Cheison's 21 May test
+   (Sinonin → Sang'alo 100 kg, with 142 kg Sinonin → Sireet pluckers already
+   recorded) exposed this: the system reported "pluckers exceed actual by
+   42%" when in reality each leg of the delivery was a separate reconciliation
+   unit. Sealed § 6.x: reconciliation matches the unit of delivery —
+   (date, block, factory), not (date, block).
+
+   Also v6.9.18 — Both gap toasts lifted to modals with the showChoiceModal
+   weight (matches confirmFirstSubmit and the no-pluckers modal). Cheison
+   feedback: "small and long, lift it to the same position as the first-
+   submission helper for prominence." */
 function checkWeighbridgeGap(actual) {
   if (!actual || !actual.date || !actual.block || !actual.kg) return;
   const pluckerSum = (STATE.entries || [])
-    .filter(e => e.date === actual.date && e.block === actual.block)
+    .filter(e => e.date === actual.date
+              && e.block === actual.block
+              && e.factory === actual.factory)
     .reduce((s, e) => s + (Number(e.qty) || 0), 0);
+
+  const route = `${actual.block} → ${actual.factory || 'factory'}`;
+
   if (pluckerSum <= 0) {
     // v6.8.2 — Zero plucker entries is MORE suspicious than a partial gap,
     // not less. The pre-v6.8.2 code returned silently here on the assumption
@@ -10150,14 +10194,7 @@ function checkWeighbridgeGap(actual) {
     // the alert entirely. Cheison spotted this on 12 May (Sinonin 14.9 kg
     // with zero pluckers stayed silent).
     //
-    // Operational pattern: Cheison often posts actuals from his phone in
-    // Verden when he receives the factory SMS, while the field operator
-    // (Victor normally, Elias when Victor is on leave) enters the plucker
-    // records later from the field. So this alert may fire on Cheison's
-    // phone before the field operator has had a chance to enter pluckers.
-    // That's fine — it's a reminder Cheison can act on by pinging the
-    // field operator. Threshold of 10 kg avoids false alarms on small
-    // test loads.
+    // Threshold of 10 kg avoids false alarms on small test loads.
     //
     // v6.9.16 — Toast lifted to modal (consistent with the poultry sale
     // rejection pattern). The pre-v6.9.16 message asked "Pending field
@@ -10165,45 +10202,61 @@ function checkWeighbridgeGap(actual) {
     // (§ 6.2) is that every plucker is paid PER BLOCK PER KG, including
     // Elias the Manager when he picks. There is no "self-plucked"
     // category; that wording is removed.
+    //
+    // v6.9.18 — Message now names the route (block → factory) so the
+    // operator immediately sees which leg of delivery is unaccounted for.
     if (actual.kg > 10) {
-      const body = `<strong>${actual.block}</strong>: <strong>${actual.kg} kg</strong> saved for <strong>${actual.date}</strong> (${actual.factory || 'factory'}), but no plucker entries have been recorded yet.<br><br>` +
+      const body = `<strong>${route}</strong>: <strong>${actual.kg} kg</strong> saved for <strong>${actual.date}</strong>, but no plucker entries from <strong>${actual.block}</strong> have been recorded yet for <strong>${actual.factory || 'this factory'}</strong>.<br><br>` +
                    `The field operator may still be entering them. If not, you may want to ping them.`;
       showChoiceModal('⚠ No plucker entries yet', body, [
         { label: 'Record pluckers', value: 'pluckers', primary: true },
         { label: 'Got it',          value: 'ok',       primary: false }
       ]).then(choice => {
-        if (choice === 'pluckers' && typeof openAddPanel === 'function') {
-          openAddPanel('tea', 'greenleaf');
-          setTimeout(() => {
-            try {
-              const setVal = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
-              setVal('q-date',    actual.date);
-              setVal('q-block',   actual.block);
-              setVal('q-factory', actual.factory);
-              setVal('b-date',    actual.date);
-              setVal('b-block',   actual.block);
-              setVal('b-factory', actual.factory);
-            } catch (e) { console.warn('[no-pluckers-modal] prefill failed:', e && e.message); }
-          }, 120);
-        }
+        if (choice === 'pluckers') navigateToPluckerEntryPrefilled(actual);
       });
     } else {
-      console.log('[weighbridge-check] no pluckers but kg below 10 threshold:', actual.date, actual.block, actual.kg);
+      console.log('[weighbridge-check] no pluckers but kg below 10 threshold:', actual.date, actual.block, actual.factory, actual.kg);
     }
     return;
   }
+
   const gap = actual.kg - pluckerSum;
   const gapPct = (gap / actual.kg) * 100;
+
   if (gapPct >= 20) {
-    showToast(
-      `\u26a0 Weighbridge gap: pluckers ${pluckerSum} kg vs actual ${actual.kg} kg (${gapPct.toFixed(0)}% short). Check for missing plucker entries.`,
-      7000
-    );
+    // v6.9.18 — Lifted from toast to modal. Cheison: "small and long. Lift
+    // to the same position as the first-submission helper for prominence."
+    const body = `Reconciliation gap on <strong>${route}</strong> for <strong>${actual.date}</strong>.<br><br>` +
+                 `<span style="font-family:'IBM Plex Mono',monospace;font-size:0.92em;line-height:1.7;">` +
+                 `Pluckers: <strong>${pluckerSum} kg</strong><br>` +
+                 `Actual: &nbsp;&nbsp;<strong>${actual.kg} kg</strong><br>` +
+                 `Gap: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>${gapPct.toFixed(0)}% short</strong> (${gap.toFixed(0)} kg)` +
+                 `</span><br><br>` +
+                 `Likely cause: missing plucker entries from <strong>${actual.block}</strong> going to <strong>${actual.factory || 'this factory'}</strong>.`;
+    showChoiceModal('⚠ Weighbridge gap — short', body, [
+      { label: 'Record pluckers', value: 'pluckers', primary: true },
+      { label: 'Got it',          value: 'ok',       primary: false }
+    ]).then(choice => {
+      if (choice === 'pluckers') navigateToPluckerEntryPrefilled(actual);
+    });
   } else if (gapPct <= -10) {
-    showToast(
-      `\u26a0 Pluckers (${pluckerSum} kg) exceed actual (${actual.kg} kg) by ${(-gapPct).toFixed(0)}%. Cross-block entries?`,
-      7000
-    );
+    // v6.9.18 — Lifted from toast to modal AND wording updated. The
+    // pre-v6.9.18 toast asked "Cross-block entries?" — with the new
+    // factory-aware filter, the comparison is per (block, factory), so
+    // the more likely causes are now: typo in a plucker qty, plucker
+    // tagged with the wrong factory, or the factory's SMS slip under-
+    // recorded the delivery.
+    const overshoot = Math.abs(gap);
+    const body = `Reconciliation surplus on <strong>${route}</strong> for <strong>${actual.date}</strong>.<br><br>` +
+                 `<span style="font-family:'IBM Plex Mono',monospace;font-size:0.92em;line-height:1.7;">` +
+                 `Pluckers: <strong>${pluckerSum} kg</strong><br>` +
+                 `Actual: &nbsp;&nbsp;<strong>${actual.kg} kg</strong><br>` +
+                 `Gap: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>${(-gapPct).toFixed(0)}% over</strong> (${overshoot.toFixed(0)} kg)` +
+                 `</span><br><br>` +
+                 `Possible causes: a typo in a plucker qty, a plucker tagged with the wrong factory, or the factory's SMS slip under-recorded this delivery.`;
+    showChoiceModal('⚠ Weighbridge gap — pluckers over', body, [
+      { label: 'Got it', value: 'ok', primary: true }
+    ]);
   }
 }
 
