@@ -2965,7 +2965,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.14</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.15</span>
 </header>
 
 <main>
@@ -3183,7 +3183,15 @@
     <div class="section">
       <div class="section-head"><h3>Sinonin Tea</h3><span class="meta" id="tea-section-meta">this month</span></div>
       <div class="biz-grid">
-        <div class="biz-card"><div class="lbl">Factory-confirmed kg</div><div class="val" id="tea-kg-month">0</div><div class="sub">all factories</div></div>
+        <!-- v6.9.15 — Top card repurposed to TODAY (read from actuals).
+             Previously displayed Factory-confirmed kg (all factories, this 
+             month) which duplicated the MTD all-factories aggregate card 
+             below — same teaKgMonth source, same scope, same number. The 
+             top card now carries a distinct time-scope (today), and the 
+             aggregate row keeps MTD next to YTD. Three scopes, three 
+             cards, no redundancy. Sealed § 6.x (21 May 2026, Cheison
+             Verden screenshot observation). -->
+        <div class="biz-card"><div class="lbl">Today</div><div class="val" id="tea-kg-month">0</div><div class="sub">kg from actuals</div></div>
         <div class="biz-card"><div class="lbl">Expected income</div><div class="val" id="tea-expected-month">Ksh 0</div><div class="sub">net after transport &amp; equity</div></div>
         <div class="biz-card"><div class="lbl">Tea expenses</div><div class="val" id="tea-expenses-month">Ksh 0</div><div class="sub" id="tea-expenses-sub">tea blocks &amp; tea ops</div></div>
         <div class="biz-card"><div class="lbl">Sireet equity built</div><div class="val" id="tea-shares-month">Ksh 0</div><div class="sub">5 KES/kg accrued</div></div>
@@ -4737,7 +4745,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.9.14</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.9.15</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5154,7 +5162,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.9.14';
+const APP_VERSION = 'v6.9.15';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -14296,7 +14304,10 @@ function renderHome() {
     .filter(x => BLOCKS.includes(x.block) || teaTiers.includes(x.tier))
     .reduce((s, x) => s + (x.amount || 0), 0);
 
-  document.getElementById('tea-kg-month').innerHTML = kg(teaKgMonth) + '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:0.7rem;color:var(--slate-light);margin-left:0.25rem;">kg</span>';
+  // v6.9.15 — Top card displays TODAY's kg (read from actuals), not MTD.
+  // teaTodayKgForMeta is already computed for the section meta a few lines 
+  // above. The MTD/YTD aggregate row below still shows teaKgMonth + ytdKg.
+  document.getElementById('tea-kg-month').innerHTML = kg(teaTodayKgForMeta) + '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:0.7rem;color:var(--slate-light);margin-left:0.25rem;">kg</span>';
   document.getElementById('tea-expected-month').textContent = 'Ksh ' + moneyRound(teaExpectedMonth);
   document.getElementById('tea-expenses-month').textContent = 'Ksh ' + moneyRound(teaExpensesMonth);
   document.getElementById('tea-shares-month').textContent = 'Ksh ' + moneyRound(teaShareMonth);
