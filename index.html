@@ -2965,7 +2965,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.18</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.20</span>
 </header>
 
 <main>
@@ -3546,7 +3546,32 @@
       <div class="field"><label>Category</label><select id="x-category"><option value="">— Category —</option></select></div>
       <div class="field"><label>Description</label><input type="text" id="x-description" placeholder="e.g. DAP fertilizer, 50kg bag" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
       <div class="field"><label>Allocation</label><select id="x-block"><option value="Whole farm">Whole farm</option></select></div>
-      <div class="field"><label>Paid to (optional)</label><input type="text" id="x-payee" placeholder="e.g. Kapsabet Agrovet" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
+      <!-- v6.9.19 — Field repurposed from "Paid to" (free text) to 
+           "Payment method" (curated dropdown). Cheison observation 
+           (21 May 2026 Verden): "despite tutorials, the team still writes 
+           method of payment in the Paid to field." The team's actual usage 
+           reflects what they need to record (HOW paid), not what the 
+           original field designed for (WHO paid). Align the label and 
+           type to actual usage. Backend payload field name stays 'payee' 
+           for sheet/Apps-Script compatibility — only the PWA form changes.
+           Options match Cheison's specification: Cash, MPESA, TILL, Bank,
+           Kind (in-kind / barter). Differs from POULTRY_PAYMENT_METHODS
+           (no PayBill since this is outgoing; plus Kind since paying with
+           goods/services is real). Sealed § 6.x: curated dropdowns for
+           repeat-use categorical fields (same family as Disposition on
+           egg collection). -->
+      <div class="field">
+        <label>Payment method (optional)</label>
+        <select id="x-payee" style="font-family:'Fraunces',serif;font-size:1.05rem">
+          <option value="">— Select method —</option>
+          <option value="Cash">Cash</option>
+          <option value="MPESA">MPESA</option>
+          <option value="TILL">TILL</option>
+          <option value="PayBill">PayBill</option>
+          <option value="Bank">Bank</option>
+          <option value="Kind">Kind</option>
+        </select>
+      </div>
 
       <button class="submit" id="x-submit" disabled>Record Expense</button>
 
@@ -4745,7 +4770,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.9.18</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.9.20</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5162,7 +5187,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.9.18';
+const APP_VERSION = 'v6.9.20';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -9237,7 +9262,20 @@ function xbAddRow() {
     <div class="field"><label>Amount (Ksh)</label><input type="number" class="xb-amt" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
     <div class="field"><label>Description</label><input type="text" class="xb-desc" placeholder="e.g. DAP fertilizer, 50kg" style="font-family:'Fraunces',serif;font-size:1rem"></div>
     <div class="field"><label>Allocation</label><select class="xb-block">${blockOpts}</select></div>
-    <div class="field"><label>Paid to (optional)</label><input type="text" class="xb-payee" placeholder="e.g. Kapsabet Agrovet" style="font-family:'Fraunces',serif;font-size:1rem"></div>
+    <!-- v6.9.19 — Same change as the single-expense form (x-payee). 
+         Batch class is xb-payee. -->
+    <div class="field">
+      <label>Payment method (optional)</label>
+      <select class="xb-payee" style="font-family:'Fraunces',serif;font-size:1rem">
+        <option value="">— Select method —</option>
+        <option value="Cash">Cash</option>
+        <option value="MPESA">MPESA</option>
+        <option value="TILL">TILL</option>
+        <option value="PayBill">PayBill</option>
+        <option value="Bank">Bank</option>
+        <option value="Kind">Kind</option>
+      </select>
+    </div>
   `;
   document.getElementById('xb-rows').appendChild(wrap);
   // Wire the delete button
@@ -17972,9 +18010,17 @@ function showAlertModal(title, htmlBody, buttonLabel) {
    feedback: "too small and low"). Wider modal, bigger title, body
    wrapped in an info-box like confirmFirstSubmit's summary panel, more
    padding, more substantial buttons. The increased content height
-   naturally lifts the centered modal up the viewport. Sealed § 6.x:
-   modal weight should match the gravity of the message — both nudges
-   and rejections require operator attention and deserve real estate. */
+   naturally lifts the centered modal up the viewport.
+
+   v6.9.20 — Trimmed ~15% (Cheison: "a little too big though"). All
+   dimensions reduced proportionally while keeping body font at 1rem
+   for readability — max-width 500→425, padding 1.6/1.4→1.35/1.2,
+   title 1.25→1.1rem, info-box padding 0.95/1.05→0.8/0.9, button
+   padding 0.65/1.15→0.55/1, button font 0.95→0.88rem.
+
+   Sealed § 6.x: modal weight should match the gravity of the message —
+   both nudges and rejections require operator attention and deserve
+   real estate. */
 function showChoiceModal(title, htmlBody, buttons) {
   buttons = (Array.isArray(buttons) && buttons.length) ? buttons : [{ label: 'Got it', value: true, primary: true }];
   return new Promise(resolve => {
@@ -17988,7 +18034,7 @@ function showChoiceModal(title, htmlBody, buttons) {
     const modal = document.createElement('div');
     modal.style.cssText = `
       background:var(--ink,#1a2826); border:1px solid var(--brass,#b8935a);
-      border-radius:8px; padding:1.6rem 1.4rem; max-width:500px; width:100%;
+      border-radius:8px; padding:1.35rem 1.2rem; max-width:425px; width:100%;
       box-shadow:0 8px 32px rgba(0,0,0,0.5);
       font-family:'Fraunces',serif; color:var(--ivory,#f5e8d3);
     `;
@@ -17997,18 +18043,18 @@ function showChoiceModal(title, htmlBody, buttons) {
       const styles = isPrimary
         ? `background:var(--brass,#b8935a); color:#1a2826; border:1px solid var(--brass,#b8935a); font-weight:600;`
         : `background:transparent; color:var(--ivory,#f5e8d3); border:1px solid rgba(245,232,211,0.35); font-weight:500;`;
-      return `<button data-choice-idx="${i}" style="padding:0.65rem 1.15rem;${styles}border-radius:5px;font-family:inherit;font-size:0.95rem;cursor:pointer;">${b.label}</button>`;
+      return `<button data-choice-idx="${i}" style="padding:0.55rem 1rem;${styles}border-radius:4px;font-family:inherit;font-size:0.88rem;cursor:pointer;">${b.label}</button>`;
     }).join('');
     modal.innerHTML = `
-      <div style="font-size:1.25rem;font-weight:600;margin-bottom:0.9rem;color:var(--brass-light,#d4a55b);line-height:1.2;">
+      <div style="font-size:1.1rem;font-weight:600;margin-bottom:0.75rem;color:var(--brass-light,#d4a55b);line-height:1.2;">
         ${title}
       </div>
       <div style="background:rgba(212,165,91,0.08);border:1px solid rgba(212,165,91,0.25);
-                  border-radius:6px;padding:0.95rem 1.05rem;margin-bottom:1.25rem;
-                  font-size:1rem;line-height:1.55;opacity:0.96;">
+                  border-radius:6px;padding:0.8rem 0.9rem;margin-bottom:1.05rem;
+                  font-size:1rem;line-height:1.5;opacity:0.96;">
         ${htmlBody}
       </div>
-      <div style="display:flex;justify-content:flex-end;flex-wrap:wrap;gap:0.5rem;">
+      <div style="display:flex;justify-content:flex-end;flex-wrap:wrap;gap:0.45rem;">
         ${buttonHtml}
       </div>
     `;
