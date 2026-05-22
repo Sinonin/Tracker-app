@@ -2965,7 +2965,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.0</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.1</span>
 </header>
 
 <main>
@@ -4935,7 +4935,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.10.0</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.10.1</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5417,7 +5417,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.0';
+const APP_VERSION = 'v6.10.1';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -7621,7 +7621,7 @@ async function queueForSync(record, kind) {
   //   litter-change — record carries house + date + op (change/reset)
   // These store the full payload in the queue item; the dispatcher reads
   // item.payload directly instead of looking up by recordId.
-  const isPayloadKind = (kind === 'roster' || kind === 'cohort' || kind === 'litter-change' || kind === 'sheep' || kind === 'sheep-event');
+  const isPayloadKind = (kind === 'roster' || kind === 'cohort' || kind === 'litter-change' || kind === 'sheep' || kind === 'sheep-event' || kind === 'cow' || kind === 'cow-event');
   if (isPayloadKind) {
     queue.push({ kind, payload: record, attempts: 0, queuedAt: new Date().toISOString(), blockedByGate });
   } else {
@@ -7995,6 +7995,7 @@ async function flushQueue(opts) {
       else if (kind === 'litter-change') record = item.payload || null;
       else if (kind === 'roster')  record = item.payload || null; // roster items carry their own payload
       else if (kind === 'sheep' || kind === 'sheep-event') record = item.payload || null;
+      else if (kind === 'cow' || kind === 'cow-event') record = item.payload || null;
       else if (kind === 'mortality') record = (STATE.mortality || []).find(m => m.id === recordId);
       if (!record) continue; // record was deleted locally, drop from queue
       let ok;
@@ -8010,6 +8011,8 @@ async function flushQueue(opts) {
       else if (kind === 'roster')  ok = await pushRosterToForm(record);
       else if (kind === 'sheep')       ok = await pushSheepToForm(record);
       else if (kind === 'sheep-event') ok = await pushSheepEventToForm(record);
+      else if (kind === 'cow')         ok = await pushCowToForm(record);
+      else if (kind === 'cow-event')   ok = await pushCowEventToForm(record);
       else if (kind === 'mortality')   ok = await syncMortality(record);
       else                         ok = await pushToForm(record);
       if (ok) {
@@ -17535,6 +17538,17 @@ async function pushSheepEventToForm(record) {
   return await pushDorperToGate(record, 'add_sheep_event');
 }
 
+/* v6.10.1 — Cow push helpers. Same gate, same fetch infrastructure, 
+   different action codes. Apps Script must register add_cow + add_cow_event 
+   handlers (see Apps Script v5.0.42 patch). */
+async function pushCowToForm(record) {
+  return await pushDorperToGate(record, 'add_cow');
+}
+
+async function pushCowEventToForm(record) {
+  return await pushDorperToGate(record, 'add_cow_event');
+}
+
 
 /* v6.5.2 — Recent dorper push results (in-memory ring buffer of 5).
    Surfaced by renderSheepSyncDiagnostic() at the top of the Sheep view 
@@ -17965,9 +17979,19 @@ async function submitCowForm() {
     return;
   }
 
-  // v6.10.0 — Apps Script sync deferred. Cow data is local-only for this 
-  // version. v6.10.1 will add push handlers (pushCowToForm) and Apps Script
-  // endpoints (add_cow, add_cow_event) so cows reach the cloud sheet.
+  // v6.10.1 — Push to cloud (Apps Script). Same fire-and-queue pattern 
+  // as sheep: try push immediately; if offline or push fails, queue for 
+  // retry via the standard sync queue. Apps Script must have add_cow 
+  // handler registered (see Apps Script patch v5.0.42).
+  try {
+    const pushed = await pushCowToForm(record);
+    if (!pushed) {
+      await queueForSync(record, 'cow');
+    }
+  } catch (e) {
+    console.warn('[cow-push] error pushing to cloud — will retry from queue:', e.message);
+    await queueForSync(record, 'cow');
+  }
 
   showCowFeedback(editing ? `Updated ${tag_id}` : `Added ${tag_id}`, 'ok');
   setTimeout(() => closeCowForm(), 500);
