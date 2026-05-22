@@ -2965,7 +2965,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.21</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.0</span>
 </header>
 
 <main>
@@ -4144,7 +4144,7 @@
         <span class="meta">tap to open</span>
       </div>
       <p style="color:var(--brass-light); opacity:0.85; line-height:1.6; margin:0.5rem 0 1.2rem; font-size:0.92rem">
-        Coffee, maize, and sheep sit alongside Tea and Poultry as Sinonin Group businesses. Sheep registry is live; Coffee and Maize Lite trackers ship in a later release.
+        Coffee, maize, and livestock sit alongside Tea and Poultry as Sinonin Group businesses. Sheep and Cow registries are live; Coffee and Maize Lite trackers ship in a later release.
       </p>
 
       <div class="other-icon-grid" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:0.8rem">
@@ -4154,6 +4154,17 @@
           <div style="text-align:center; min-width:0">
             <div style="color:var(--ivory); font-weight:500; font-size:0.95rem; line-height:1.2">Dorper</div>
             <div style="color:var(--brass-light); opacity:0.8; font-size:0.7rem; margin-top:3px; letter-spacing:0.05em">Sheep registry</div>
+          </div>
+        </button>
+
+        <!-- v6.10.0 — Cow tile, alongside Sheep. Sealed Cheison 22 May 2026: 
+             "keep in Other next to Sheep card." Cows in-calf for now; 
+             registry + events first, milking + sales in v6.10.1. -->
+        <button type="button" class="other-tile other-tile-active" onclick="setOtherView('cows')" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.6rem; aspect-ratio:1/1; cursor:pointer; background:rgba(180,140,80,0.10); border:0.5px solid rgba(180,140,80,0.4); border-radius:12px; padding:1rem 0.6rem; font-family:inherit;">
+          <span style="font-size:2.6rem; line-height:1">🐄</span>
+          <div style="text-align:center; min-width:0">
+            <div style="color:var(--ivory); font-weight:500; font-size:0.95rem; line-height:1.2">Dairy</div>
+            <div style="color:var(--brass-light); opacity:0.8; font-size:0.7rem; margin-top:3px; letter-spacing:0.05em">Cow registry</div>
           </div>
         </button>
 
@@ -4176,7 +4187,7 @@
       </div>
 
       <p style="color:var(--brass-light); opacity:0.55; font-size:0.78rem; line-height:1.5; margin:1.2rem 0 0; font-style:italic">
-        Tea and Poultry remain the operational core; Sheep joins as the third active enterprise.
+        Tea and Poultry remain the operational core; Sheep and Cows join as the active livestock enterprises.
       </p>
     </div>
 
@@ -4565,6 +4576,139 @@
 
     </div>
 
+    <!-- v6.10.0 — COW DETAIL VIEW. Mirrors sheep view structure with two
+         sub-sections:
+         · cow-list-section: filterable list of all cows (default)
+         · cow-form-section: Add / Edit cow form (toggled in)
+         Profile + event sections deferred to v6.10.1 (cows are all in-calf,
+         no events to record yet beyond the initial 'served' which we'll 
+         add in v6.10.1). -->
+    <div id="other-cows-view" style="display:none">
+
+      <!-- LIST SECTION (default) -->
+      <div class="section" id="cow-list-section">
+        <div class="section-head">
+          <button type="button" onclick="setOtherView('hub')" style="background:transparent; border:none; color:var(--brass); font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; padding:0;">← Other</button>
+          <span class="meta" id="cow-herd-meta">0 cows</span>
+        </div>
+        <h3 style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.4rem; color:var(--forest); margin:0.4rem 0 0.2rem; letter-spacing:-0.01em;">Dairy</h3>
+        <p style="color:var(--slate-light); font-size:0.85rem; line-height:1.5; margin:0.2rem 0 1rem;">Cow registry · multi-owner · breed-aware · semen-source tracked</p>
+
+        <button type="button" onclick="openCowForm('add')" class="export-btn" style="background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark); margin-bottom:1rem; width:100%">+ Add cow</button>
+
+        <!-- Filter bar — owner / breed / sex / status -->
+        <div id="cow-filter-bar" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:0.9rem;">
+          <select id="cow-filter-owner" onchange="renderCowRegistry()" style="padding:0.4rem; font-family:'IBM Plex Mono',monospace; font-size:0.72rem; border:1px solid var(--rule); border-radius:4px; background:var(--ivory-warm)">
+            <option value="">All owners</option>
+          </select>
+          <select id="cow-filter-breed" onchange="renderCowRegistry()" style="padding:0.4rem; font-family:'IBM Plex Mono',monospace; font-size:0.72rem; border:1px solid var(--rule); border-radius:4px; background:var(--ivory-warm)">
+            <option value="">All breeds</option>
+          </select>
+          <select id="cow-filter-sex" onchange="renderCowRegistry()" style="padding:0.4rem; font-family:'IBM Plex Mono',monospace; font-size:0.72rem; border:1px solid var(--rule); border-radius:4px; background:var(--ivory-warm)">
+            <option value="">Any sex</option>
+            <option value="F">♀ Female</option>
+            <option value="M">♂ Male</option>
+          </select>
+          <select id="cow-filter-status" onchange="renderCowRegistry()" style="padding:0.4rem; font-family:'IBM Plex Mono',monospace; font-size:0.72rem; border:1px solid var(--rule); border-radius:4px; background:var(--ivory-warm)">
+            <option value="">Any status</option>
+            <option value="alive">alive</option>
+            <option value="sold">sold</option>
+            <option value="died">died</option>
+            <option value="culled">culled</option>
+            <option value="external_bull">external_bull</option>
+          </select>
+        </div>
+
+        <div id="cow-list"></div>
+      </div>
+
+      <!-- ADD / EDIT FORM SECTION (hidden by default) -->
+      <div class="section" id="cow-form-section" style="display:none">
+        <div class="section-head">
+          <button type="button" onclick="closeCowForm()" style="background:transparent; border:none; color:var(--brass); font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; padding:0;">← Cancel</button>
+          <span class="meta" id="cow-form-mode">add</span>
+        </div>
+        <h3 id="cow-form-title" style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.3rem; color:var(--forest); margin:0.4rem 0 1rem; letter-spacing:-0.01em;">Add cow</h3>
+
+        <div class="field">
+          <label>Tag ID <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(prefix-number, e.g. V-001)</span></label>
+          <input type="text" id="cf-tag" placeholder="V-001" autocomplete="off" oninput="onCowTagChange()">
+          <div id="cf-tag-feedback" style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; margin-top:0.25rem; min-height:1em"></div>
+        </div>
+
+        <div class="field">
+          <label>Owner <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(derived from prefix)</span></label>
+          <input type="text" id="cf-owner-display" disabled style="background:var(--ivory-warm); color:var(--slate-light); font-style:italic">
+        </div>
+
+        <div class="field">
+          <label>Name <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional, e.g. Mwende)</span></label>
+          <input type="text" id="cf-name" placeholder="Mwende" autocomplete="off">
+        </div>
+
+        <div class="field">
+          <label>Sex</label>
+          <select id="cf-sex">
+            <option value="F">♀ Female (heifer / cow)</option>
+            <option value="M">♂ Male (bull / steer)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Breed</label>
+          <select id="cf-breed"></select>
+        </div>
+
+        <div class="field">
+          <label>Source <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(how this cow arrived)</span></label>
+          <select id="cf-source" onchange="onCowSourceChange()"></select>
+        </div>
+
+        <div class="field">
+          <label>Date acquired / born</label>
+          <input type="date" id="cf-date-acquired">
+        </div>
+
+        <!-- Conditional sub-block: source farm/person (shown for Bought / Donated / Dowry / External) -->
+        <div class="field" id="cf-source-farm-block" style="display:none">
+          <label>Source farm / source person</label>
+          <input type="text" id="cf-source-farm" placeholder="Kosgei farm, neighbour, auction, in-laws..." autocomplete="off">
+        </div>
+
+        <!-- Conditional sub-block: dam (shown for Born source) -->
+        <div class="field" id="cf-dam-block" style="display:none">
+          <label>Dam (mother) <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional)</span></label>
+          <select id="cf-dam">
+            <option value="">— unknown / not on registry —</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Status</label>
+          <select id="cf-status">
+            <option value="alive">alive</option>
+            <option value="sold">sold</option>
+            <option value="died">died</option>
+            <option value="culled">culled</option>
+            <option value="external_bull">external_bull (temporarily here)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Notes <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional)</span></label>
+          <textarea id="cf-notes" rows="2" placeholder="In-calf, expected to deliver around..." style="width:100%; padding:0.5rem; font-family:'Fraunces',serif; font-size:0.92rem; border:1px solid var(--rule); border-radius:4px; resize:vertical;"></textarea>
+        </div>
+
+        <div style="display:flex;gap:0.5rem;margin-top:0.8rem">
+          <button type="button" id="cf-delete-btn" onclick="onCowDelete()" style="flex:0 0 auto; padding:0.6rem 0.9rem; background:transparent; color:#b8714d; border:1px solid #b8714d; border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer; display:none">Delete</button>
+          <button type="button" onclick="closeCowForm()" class="export-btn" style="flex:1">Cancel</button>
+          <button type="button" onclick="submitCowForm()" class="export-btn" style="flex:1;background:var(--forest-dark);color:var(--ivory);border-color:var(--forest-dark)">Save</button>
+        </div>
+        <div id="cf-feedback" style="display:none;margin-top:0.7rem;padding:0.6rem 0.8rem;border-radius:6px;font-family:'Fraunces',serif;font-size:0.9rem"></div>
+      </div>
+
+    </div>
+
   </section>
 
   <!-- SETTINGS · v6.3.12 surfaces as "Admin" tab -->
@@ -4791,7 +4935,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.9.21</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.10.0</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5063,12 +5207,25 @@ let PLUCKERS = JSON.parse(JSON.stringify(DEFAULT_PLUCKERS));
    rams or AI semen lots, so every lineage edge in the graph stays 
    tag-to-tag — no free-text sire descriptions.
    ============================================================ */
-const DORPER_OWNERS = [
-  { prefix: 'S', name: 'Sinonin' },  // Cheison's group flock
+/* v6.10.0 — HOUSEHOLD_MEMBERS consolidated roster, shared across all 
+   value chains. Sealed Cheison 22 May 2026 Verden: "Add Victor to sheep 
+   owners as well. Scaling." Prefix codes mix role-based (S=Sinonin entity, 
+   M=Mother, W=Wife) with name-based (H/E/F/C/V) — sealed § 6.x: meaning 
+   lives in the human-readable name beside the prefix; the data model 
+   treats all prefixes as opaque single letters. */
+const HOUSEHOLD_MEMBERS = [
+  { prefix: 'S', name: 'Sinonin' },  // group entity (the operation itself)
+  { prefix: 'M', name: 'Mother'  },  // Cheison's mother (role-prefix)
+  { prefix: 'F', name: 'Felix'   },  // eldest son · new 22 May 2026
   { prefix: 'H', name: 'Heinz'   },  // son in Bremen
+  { prefix: 'C', name: 'Cherop'  },  // new 22 May 2026
+  { prefix: 'W', name: 'Ednah'   },  // W=Wife · role-prefix · new 22 May 2026
   { prefix: 'E', name: 'Elias'   },  // farm manager
-  { prefix: 'M', name: 'Mother'  }   // Cheison's mother
+  { prefix: 'V', name: 'Victor'  }   // operator · new 22 May 2026 · cross-chain
 ];
+// Back-compat alias — every existing sheep code path references DORPER_OWNERS.
+// Both names point to the same array; updates to HOUSEHOLD_MEMBERS propagate.
+const DORPER_OWNERS = HOUSEHOLD_MEMBERS;
 
 const DORPER_BREEDS = [
   'Dorper',
@@ -5088,11 +5245,60 @@ const SHEEP_EVENT_TYPES = [
   'sheared',    // rare for Dorpers; details: fleece_kg, value_if_sold
   'hooftrim',   // husbandry; semi-annual
   'vaccinated', // husbandry; details: vaccine_name, dose
+  'dipped',     // v6.10.0 — chemical bath for ticks/parasites (added with cow module; applies to sheep too)
   'weighed',    // performance; details: kg
   'sold',       // status-change event; details: price_kes, buyer, weight_kg
   'died',       // status-change event; details: cause
   'treated'     // sickness; details: condition, drug, outcome
 ];
+
+/* v6.10.0 — COW MODULE constants. Parallel to sheep but with cow-specific
+   vocabulary. Sealed Cheison 22 May 2026 Verden. */
+const COW_BREEDS = [
+  'Friesian',
+  'Holstein-Friesian',
+  'Jersey',
+  'Ayrshire',
+  'Guernsey',
+  'Sahiwal',
+  'Boran',
+  'Crossbreed',
+  'Mixed',
+  'Other'
+];
+
+const COW_STATUSES = ['alive', 'sold', 'died', 'culled', 'external_bull'];
+
+const COW_SOURCES = [
+  'Bought',                       // purchased — auction, neighbour, dealer
+  'Donated/Gifted',               // relative, friend, institution
+  'Born',                         // calved on the farm — dam is in the registry
+  'Dowry',                        // ruriet / bride-price tradition (Nandi)
+  'External (temporarily here)'   // borrowed for service, on-loan, transient
+];
+
+const COW_EVENT_TYPES = [
+  'served',     // cow served — semen_source: AI | internal_bull | external_bull | unknown; auto expected_calving = served_date + 280
+  'calved',     // delivery event (renamed from 'lambed'); links to calf record(s)
+  'dewormed',
+  'vaccinated',
+  'weighed',
+  'treated',
+  'hooftrim',
+  'dipped',     // chemical bath for ticks — Cheison sealed 22 May 2026
+  'sold',
+  'died'
+  // intentionally no 'sheared' — cows have no fleece
+];
+
+const COW_SEMEN_SOURCES = [
+  { value: 'AI',            label: 'AI (artificial insemination)' },
+  { value: 'internal_bull', label: 'Internal bull (own farm)'     },
+  { value: 'external_bull', label: 'External bull (visiting)'     },
+  { value: 'unknown',       label: 'Unknown (e.g. cow bought in-calf)' }
+];
+
+const COW_GESTATION_DAYS = 280;  // cow gestation; sheep is ~150 days for reference
 
 const DEFAULT_SETTINGS = { teaCessPerKg: 0.22, transportActive: false, currency: 'Ksh', stealthMode: false };
 
@@ -5158,6 +5364,9 @@ const K_POULTRY = 'sinonin_poultry_v1';
 // (one record per ear tag); K_SHEEP_EVENTS holds the append-only event log.
 const K_SHEEP = 'sinonin_sheep_v1';
 const K_SHEEP_EVENTS = 'sinonin_sheep_events_v1';
+// v6.10.0 — Cow module storage keys. Same shape as sheep keys for consistency.
+const K_COWS = 'sinonin_cows_v1';
+const K_COW_EVENTS = 'sinonin_cow_events_v1';
 // v6.5.7 — Bird mortality event log. Append-only. Keyed by ts.
 const K_MORTALITY = 'sinonin_mortality_v1';
 const K_CLOUD_SYNC = 'sinonin_cloud_sync_v1';
@@ -5208,7 +5417,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.9.21';
+const APP_VERSION = 'v6.10.0';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -16166,16 +16375,22 @@ function renderMiniTable(id, firstCol, obj, _legacyLimit) {
    each setOtherView), so reopening the app at the Other tab restores the 
    last sub-view. */
 function setOtherView(view) {
-  if (!['hub', 'sheep', 'coffee', 'maize'].includes(view)) view = 'hub';
+  // v6.10.0 — Added 'cows' as a valid sub-view alongside 'sheep'.
+  if (!['hub', 'sheep', 'cows', 'coffee', 'maize'].includes(view)) view = 'hub';
   STATE.otherView = view;
   // Toggle visibility — show only the active sub-view's container.
   const hub = document.getElementById('other-hub-view');
   const sheep = document.getElementById('other-sheep-view');
+  const cows = document.getElementById('other-cows-view');
   if (hub)   hub.style.display   = (view === 'hub')   ? '' : 'none';
   if (sheep) sheep.style.display = (view === 'sheep') ? '' : 'none';
+  if (cows)  cows.style.display  = (view === 'cows')  ? '' : 'none';
   // Coffee and Maize stay in hub view for now (Lite trackers ship later).
   if (view === 'sheep' && typeof renderSheepRegistry === 'function') {
     renderSheepRegistry();
+  }
+  if (view === 'cows' && typeof renderCowRegistry === 'function') {
+    renderCowRegistry();
   }
   if (typeof savePersistedState === 'function') savePersistedState();
 }
@@ -16214,8 +16429,10 @@ function tagToOwner(tagId) {
 function validateSheepTag(tagId, currentTagBeingEdited) {
   if (!tagId) return { ok: false, msg: 'Tag ID is required' };
   const upper = tagId.toUpperCase().trim();
-  const valid = /^([SHMEX]|EXT)-\d+$/.test(upper);
-  if (!valid) return { ok: false, msg: 'Format: S-001, H-14, EXT-2 etc.' };
+  // v6.10.0 — Expanded prefix set: S/H/M/E (original) + F/C/W/V (new household members).
+  // Plus X / EXT- for external/borrowed animals.
+  const valid = /^([SHMEFCWVX]|EXT)-\d+$/.test(upper);
+  if (!valid) return { ok: false, msg: 'Format: S-001, V-14, EXT-2 etc.' };
   // Duplicate check (allow keeping the same tag when editing)
   const exists = (STATE.sheep || []).find(s => 
     s.tag_id.toUpperCase() === upper && s.tag_id !== currentTagBeingEdited
@@ -17421,6 +17638,364 @@ async function pushDorperToGate(record, action) {
   }
 }
 
+/* ============================================================
+   v6.10.0 — COW MODULE
+   ============================================================
+   Mirrors the sheep module shape but parallel: STATE.cows + STATE.cowEvents 
+   are separate arrays; cow render/form functions are parallel to sheep.
+   Sealed Cheison 22 May 2026 Verden: "shared toolkit + parallel module" —
+   honors Path B intent (HOUSEHOLD_MEMBERS shared, vocabulary aligned, CSS 
+   shared) without disturbing the working sheep module. True consolidation
+   into a species-aware livestock module comes in a future v6.10.x once 
+   cow patterns are stable.
+
+   v6.10.0 SCOPE: registry CRUD only. NO event recording yet (cows are 
+   in-calf; nothing to record beyond the initial 'served' which we'll add 
+   in v6.10.1). NO Apps Script sync yet (deferred — data stays local until 
+   v6.10.1 adds cow + cow-event payload kinds and sheet tabs).
+   ============================================================ */
+
+/* Tag → owner for cows. Same logic as sheep tagToOwner — both species
+   share HOUSEHOLD_MEMBERS so the prefix-to-owner mapping is identical. */
+function validateCowTag(tagId, currentTagBeingEdited) {
+  if (!tagId) return { ok: false, msg: 'Tag ID is required' };
+  const upper = tagId.toUpperCase().trim();
+  const valid = /^([SHMEFCWVX]|EXT)-\d+$/.test(upper);
+  if (!valid) return { ok: false, msg: 'Format: S-001, V-14, EXT-2 etc.' };
+  // Duplicate check WITHIN cows (cow tags need not be unique across species —
+  // S-001 sheep and S-001 cow are different animals in different registries)
+  const exists = (STATE.cows || []).find(c => 
+    c.tag_id.toUpperCase() === upper && c.tag_id !== currentTagBeingEdited
+  );
+  if (exists) return { ok: false, msg: `Tag ${upper} already exists in cow registry` };
+  return { ok: true, normalised: upper };
+}
+
+/* Compute age string from DOB / date_acquired — same shape as sheepAge. */
+function cowAge(dob) {
+  if (!dob) return '—';
+  const birth = new Date(dob);
+  if (isNaN(birth.getTime())) return '—';
+  const now = new Date();
+  let months = (now.getFullYear() - birth.getFullYear()) * 12 + (now.getMonth() - birth.getMonth());
+  if (now.getDate() < birth.getDate()) months--;
+  if (months < 0) return '—';
+  if (months < 12) return `${months}m`;
+  const years = Math.floor(months / 12);
+  const rem = months % 12;
+  return rem === 0 ? `${years}y` : `${years}y ${rem}m`;
+}
+
+/* Main cow list renderer. Reads filters, applies them to STATE.cows,
+   renders rows reusing the .sheep-row CSS (parallel pattern). */
+function renderCowRegistry() {
+  // Populate the filter dropdowns first (owners, breeds) — derive owners 
+  // from HOUSEHOLD_MEMBERS so cows and sheep share the roster.
+  const ownerEl = document.getElementById('cow-filter-owner');
+  if (ownerEl && ownerEl.options.length <= 1) {
+    HOUSEHOLD_MEMBERS.forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.name; opt.textContent = o.name;
+      ownerEl.appendChild(opt);
+    });
+  }
+  const breedEl = document.getElementById('cow-filter-breed');
+  if (breedEl && breedEl.options.length <= 1) {
+    COW_BREEDS.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b; opt.textContent = b;
+      breedEl.appendChild(opt);
+    });
+  }
+
+  // Update header meta count
+  const all = (STATE.cows || []).length;
+  const alive = (STATE.cows || []).filter(c => c.status === 'alive').length;
+  const metaEl = document.getElementById('cow-herd-meta');
+  if (metaEl) {
+    metaEl.textContent = all === 0
+      ? '0 cows · registry empty'
+      : (all === alive ? `${all} cows` : `${alive} alive / ${all} total`);
+  }
+
+  // Apply filters
+  const fOwner = ownerEl ? ownerEl.value : '';
+  const fBreed = breedEl ? breedEl.value : '';
+  const fSex = (document.getElementById('cow-filter-sex') || {}).value || '';
+  const fStatus = (document.getElementById('cow-filter-status') || {}).value || '';
+
+  let filtered = (STATE.cows || []).filter(c => {
+    if (fOwner && c.owner !== fOwner) return false;
+    if (fBreed && c.breed !== fBreed) return false;
+    if (fSex && c.sex !== fSex) return false;
+    if (fStatus && c.status !== fStatus) return false;
+    return true;
+  });
+
+  // Sort: alive first, then by tag ASC
+  filtered.sort((a, b) => {
+    if (a.status === 'alive' && b.status !== 'alive') return -1;
+    if (b.status === 'alive' && a.status !== 'alive') return 1;
+    return String(a.tag_id || '').localeCompare(String(b.tag_id || ''));
+  });
+
+  const listEl = document.getElementById('cow-list');
+  if (!listEl) return;
+  if (filtered.length === 0) {
+    if ((STATE.cows || []).length === 0) {
+      listEl.innerHTML = `
+        <div style="text-align:center; padding:2rem 1rem; color:var(--slate-light); font-family:'Fraunces',serif; font-style:italic; font-size:0.95rem; line-height:1.6;">
+          The herd is empty.<br>
+          <span style="font-size:0.82rem; opacity:0.8">Tap <strong>+ Add cow</strong> above to register the first animal.</span>
+        </div>`;
+    } else {
+      listEl.innerHTML = `<div style="text-align:center; padding:1.5rem 1rem; color:var(--slate-light); font-family:'Fraunces',serif; font-style:italic;">No cows match the current filters.</div>`;
+    }
+    return;
+  }
+
+  // Render rows — reuse .sheep-row CSS for visual consistency
+  listEl.innerHTML = filtered.map(c => {
+    const sexIcon = c.sex === 'F' ? '♀' : '♂';
+    const name = c.name ? ` · ${c.name}` : '';
+    const breed = c.breed || '—';
+    const owner = c.owner || '—';
+    const age = cowAge(c.date_acquired || c.date_of_birth);
+    const status = c.status || 'alive';
+    return `
+      <div class="sheep-row" onclick="openCowForm('edit', '${c.tag_id}')">
+        <div class="sr-tag">${c.tag_id}</div>
+        <div class="sr-info">
+          <div class="sr-line1"><span class="sr-sex">${sexIcon}</span>${owner}${name}</div>
+          <div class="sr-line2">${breed} · ${age}</div>
+        </div>
+        <div class="sr-status ${status}">${status.replace('_', ' ')}</div>
+      </div>`;
+  }).join('');
+}
+
+/* Open the add/edit form. mode = 'add' or 'edit'. */
+function openCowForm(mode, tagId) {
+  // Populate breed dropdown
+  const breedEl = document.getElementById('cf-breed');
+  if (breedEl && breedEl.options.length === 0) {
+    COW_BREEDS.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b; opt.textContent = b;
+      breedEl.appendChild(opt);
+    });
+  }
+  // Populate source dropdown
+  const sourceEl = document.getElementById('cf-source');
+  if (sourceEl && sourceEl.options.length === 0) {
+    COW_SOURCES.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s; opt.textContent = s;
+      sourceEl.appendChild(opt);
+    });
+  }
+  // Populate dam dropdown from existing female cows
+  const damEl = document.getElementById('cf-dam');
+  if (damEl) {
+    // Clear then rebuild
+    damEl.innerHTML = '<option value="">— unknown / not on registry —</option>';
+    (STATE.cows || []).filter(c => c.sex === 'F' && c.status === 'alive').forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.tag_id;
+      opt.textContent = `${c.tag_id}${c.name ? ' · ' + c.name : ''}`;
+      damEl.appendChild(opt);
+    });
+  }
+
+  // Toggle UI: hide list section, show form section
+  document.getElementById('cow-list-section').style.display = 'none';
+  document.getElementById('cow-form-section').style.display = '';
+  document.getElementById('cow-form-mode').textContent = mode;
+  document.getElementById('cow-form-title').textContent = mode === 'edit' ? 'Edit cow' : 'Add cow';
+  // Show delete button only in edit mode
+  document.getElementById('cf-delete-btn').style.display = (mode === 'edit') ? '' : 'none';
+  // Hide feedback panel
+  document.getElementById('cf-feedback').style.display = 'none';
+  // Store editing tag so submit knows what to replace
+  document.getElementById('cow-form-section').dataset.editingTag = (mode === 'edit') ? tagId : '';
+
+  if (mode === 'edit') {
+    const c = (STATE.cows || []).find(x => x.tag_id === tagId);
+    if (!c) {
+      // Cow not found — fall back to add mode (shouldn't happen via UI)
+      closeCowForm();
+      return;
+    }
+    document.getElementById('cf-tag').value = c.tag_id;
+    document.getElementById('cf-name').value = c.name || '';
+    document.getElementById('cf-sex').value = c.sex || 'F';
+    document.getElementById('cf-breed').value = c.breed || COW_BREEDS[0];
+    document.getElementById('cf-source').value = c.source || COW_SOURCES[0];
+    document.getElementById('cf-date-acquired').value = c.date_acquired || '';
+    document.getElementById('cf-source-farm').value = c.source_farm || '';
+    document.getElementById('cf-status').value = c.status || 'alive';
+    document.getElementById('cf-notes').value = c.notes || '';
+    if (damEl) damEl.value = c.dam_tag || '';
+    onCowTagChange();
+    onCowSourceChange();
+  } else {
+    // Fresh form
+    document.getElementById('cf-tag').value = '';
+    document.getElementById('cf-name').value = '';
+    document.getElementById('cf-sex').value = 'F';
+    document.getElementById('cf-breed').value = COW_BREEDS[0];
+    document.getElementById('cf-source').value = COW_SOURCES[0];
+    document.getElementById('cf-date-acquired').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('cf-source-farm').value = '';
+    document.getElementById('cf-status').value = 'alive';
+    document.getElementById('cf-notes').value = '';
+    if (damEl) damEl.value = '';
+    document.getElementById('cf-tag-feedback').textContent = '';
+    document.getElementById('cf-owner-display').value = '';
+    onCowSourceChange();
+  }
+}
+
+function closeCowForm() {
+  document.getElementById('cow-form-section').style.display = 'none';
+  document.getElementById('cow-list-section').style.display = '';
+  renderCowRegistry();
+}
+
+/* Live tag validation + owner-derivation as the user types. */
+function onCowTagChange() {
+  const tag = document.getElementById('cf-tag').value;
+  const ownerEl = document.getElementById('cf-owner-display');
+  const fbEl = document.getElementById('cf-tag-feedback');
+  if (!tag) {
+    ownerEl.value = '';
+    fbEl.textContent = '';
+    fbEl.style.color = '';
+    return;
+  }
+  const owner = tagToOwner(tag);
+  ownerEl.value = owner || '(unknown prefix)';
+  const editing = document.getElementById('cow-form-section').dataset.editingTag || null;
+  const v = validateCowTag(tag, editing);
+  if (v.ok) {
+    fbEl.textContent = '✓ ' + v.normalised;
+    fbEl.style.color = 'var(--forest)';
+  } else {
+    fbEl.textContent = '✗ ' + v.msg;
+    fbEl.style.color = '#b8714d';
+  }
+}
+
+/* Source change: show/hide source-farm and dam blocks per source value.
+   Born → show dam picker, hide source-farm input.
+   Bought / Donated/Gifted / Dowry / External → show source-farm input, hide dam picker. */
+function onCowSourceChange() {
+  const src = document.getElementById('cf-source').value;
+  const farmBlock = document.getElementById('cf-source-farm-block');
+  const damBlock = document.getElementById('cf-dam-block');
+  if (src === 'Born') {
+    farmBlock.style.display = 'none';
+    damBlock.style.display = '';
+  } else if (src === 'External (temporarily here)') {
+    // Coupling: External source typically pairs with external_bull status.
+    // Suggest the status change (don't force).
+    farmBlock.style.display = '';
+    damBlock.style.display = 'none';
+    const statusEl = document.getElementById('cf-status');
+    if (statusEl && statusEl.value === 'alive') {
+      // Only auto-set if status is still default (don't override operator choice)
+      statusEl.value = 'external_bull';
+    }
+  } else {
+    farmBlock.style.display = '';
+    damBlock.style.display = 'none';
+  }
+}
+
+function showCowFeedback(msg, kind) {
+  const el = document.getElementById('cf-feedback');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = '';
+  if (kind === 'err') {
+    el.style.background = 'rgba(184,113,77,0.15)';
+    el.style.color = '#b8714d';
+  } else {
+    el.style.background = 'rgba(30,58,47,0.12)';
+    el.style.color = 'var(--forest)';
+  }
+}
+
+async function submitCowForm() {
+  const tagInput = document.getElementById('cf-tag').value.trim();
+  const editing = document.getElementById('cow-form-section').dataset.editingTag || null;
+  const v = validateCowTag(tagInput, editing);
+  if (!v.ok) { showCowFeedback(v.msg, 'err'); return; }
+  const tag_id = v.normalised;
+  const owner = tagToOwner(tag_id);
+  if (!owner) { showCowFeedback('Unrecognised owner prefix', 'err'); return; }
+
+  const record = {
+    tag_id,
+    name: document.getElementById('cf-name').value.trim(),
+    sex: document.getElementById('cf-sex').value,
+    breed: document.getElementById('cf-breed').value,
+    source: document.getElementById('cf-source').value,
+    date_acquired: document.getElementById('cf-date-acquired').value || null,
+    source_farm: document.getElementById('cf-source-farm').value.trim(),
+    dam_tag: (document.getElementById('cf-dam') || {}).value || null,
+    status: document.getElementById('cf-status').value,
+    notes: document.getElementById('cf-notes').value.trim(),
+    owner,
+    timestamp: new Date().toISOString()
+  };
+
+  if (!Array.isArray(STATE.cows)) STATE.cows = [];
+
+  if (editing) {
+    // Replace existing
+    STATE.cows = STATE.cows.filter(c => c.tag_id !== editing);
+  }
+  STATE.cows.push(record);
+
+  try {
+    await storageSet(K_COWS, STATE.cows);
+  } catch (e) {
+    showCowFeedback('Saved in memory but storage write failed: ' + e.message, 'err');
+    return;
+  }
+
+  // v6.10.0 — Apps Script sync deferred. Cow data is local-only for this 
+  // version. v6.10.1 will add push handlers (pushCowToForm) and Apps Script
+  // endpoints (add_cow, add_cow_event) so cows reach the cloud sheet.
+
+  showCowFeedback(editing ? `Updated ${tag_id}` : `Added ${tag_id}`, 'ok');
+  setTimeout(() => closeCowForm(), 500);
+}
+
+async function onCowDelete() {
+  const editing = document.getElementById('cow-form-section').dataset.editingTag;
+  if (!editing) return;
+  const c = (STATE.cows || []).find(x => x.tag_id === editing);
+  if (!c) return;
+  const proceed = confirm(
+    `Delete cow ${editing}${c.name ? ' ("' + c.name + '")' : ''}?\n\n` +
+    `This removes the cow from the registry entirely. ` +
+    `For sale or death, use status change in the form instead — that keeps the record for history.`
+  );
+  if (!proceed) return;
+  STATE.cows = (STATE.cows || []).filter(c => c.tag_id !== editing);
+  try {
+    await storageSet(K_COWS, STATE.cows);
+  } catch (e) {
+    showCowFeedback('Delete failed: ' + e.message, 'err');
+    return;
+  }
+  closeCowForm();
+}
+/* ============================================================ END COW MODULE ============================================================ */
+
+
 function renderSettings() {
   // Phase 3 Ship 1 — Admin section. Render from cache immediately, then fetch
   // fresh status in the background. Cache-first keeps the UI snappy; the fresh
@@ -18320,6 +18895,9 @@ function showUpdateBanner() {
   // v6.4.0 Step 1 — Hydrate Dorper Farm sheep registry and event log.
   STATE.sheep = await storageGet(K_SHEEP, []);
   STATE.sheepEvents = await storageGet(K_SHEEP_EVENTS, []);
+  // v6.10.0 — Hydrate Cow registry and event log. Parallel shape to sheep.
+  STATE.cows = await storageGet(K_COWS, []);
+  STATE.cowEvents = await storageGet(K_COW_EVENTS, []);
   // v6.5.7 — Bird mortality event log
   STATE.mortality = await storageGet(K_MORTALITY, []);
   // v6.0 SHIP 1 — Egg Collection state
