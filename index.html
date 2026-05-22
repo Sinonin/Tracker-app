@@ -2965,7 +2965,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.20</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.9.21</span>
 </header>
 
 <main>
@@ -3368,6 +3368,27 @@
       <div class="biz-grid" style="margin-top:0.7rem">
         <div class="biz-card"><div class="lbl">🥚 Eggs collected MTD</div><div class="val" id="poultry-eggs-collected-month">0</div><div class="sub" id="poultry-eggs-collected-sub">—</div></div>
         <div class="biz-card"><div class="lbl">🐔 Birds sold MTD</div><div class="val" id="poultry-birds-sold-month">0</div><div class="sub" id="poultry-birds-sold-sub">—</div></div>
+      </div>
+      <!-- v6.9.21 — Available eggs summary (eggs in stock).
+           Same IBM Plex Mono texture as the live-birds summary, but anchored
+           in the EGG-relevant cluster: sits just below the Inventory MTD row
+           (which has the "Eggs collected MTD" card) and just above the LE
+           triplet (which captures laying productivity). The visual flow is:
+           "how many we collected this month → how many are on hand right 
+           now → how productive our layers are." Sealed Cheison 22 May 2026
+           Verden ("egg-relevant ecosystem, before LE cards").
+
+           Formula: collected − sold − incubated, all within EGG_STOCK_HORIZON_DAYS.
+           All grades count (Cheison: "broken/small/abnormal/normal all in 
+           — they're sellable as Grade B/C goods").
+           Horizon = 10 days. Pragmatic operational floor: eggs older than 
+           that have been moved out via tracked OR untracked channels (sold 
+           informally, consumed, gifted, discarded). Counting them as "in 
+           stock" would falsely inflate the figure.
+           Sealed § 6.x: inventory windows match shelf-life reality, not 
+           accounting lifetime. -->
+      <div id="poultry-eggs-stock-summary" style="margin-top:0.7rem;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--slate);letter-spacing:0.04em">
+        <span id="poultry-eggs-stock-summary-text">no eggs collected in window</span>
       </div>
       <!-- v5.7 — Lay Efficiency triplet: Daily / MTD / Global -->
       <div class="biz-grid" style="margin-top:0.7rem;grid-template-columns:1fr 1fr 1fr">
@@ -4770,7 +4791,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.9.20</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.9.21</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5187,7 +5208,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.9.20';
+const APP_VERSION = 'v6.9.21';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -8636,7 +8657,11 @@ function populateDropdowns() {
   document.getElementById('y-product').innerHTML = '<option value="">— Product —</option>' + POULTRY_PRODUCTS.map(p => `<option value="${p}">${p}</option>`).join('');
   document.getElementById('y-stage').innerHTML = '<option value="">— Stage —</option>' + POULTRY_STAGES.map(s => `<option value="${s}">${s}</option>`).join('');
   document.getElementById('y-unit').innerHTML = '<option value="">— Unit —</option>' + POULTRY_UNITS.map(u => `<option value="${u}">${u}</option>`).join('');
-  document.getElementById('y-payment').innerHTML = '<option value="">— Method —</option>' + POULTRY_PAYMENT_METHODS.map(m => `<option value="${m}">${m}</option>`).join('');
+  // v6.9.21 — Payment dropdown is now stage-aware (populator function 
+  // below). "Gift" option appears only for Broken eggs / Small-Abnormal
+  // Eggs — sealed Cheison: "Grade A eggs should be sold; Grade B/C can
+  // be moved any way that clears them, including gifting to staff."
+  if (typeof populatePoultryPaymentDropdown === 'function') populatePoultryPaymentDropdown();
 
   const todayIso = new Date().toISOString().slice(0,10);
   document.getElementById('q-date').value = todayIso;
@@ -10437,40 +10462,106 @@ function yValues() {
   };
 }
 
+/* v6.9.21 — Stage-aware payment method dropdown. Cheison sealed (22 May
+   2026 Verden): "Grade A eggs should be sold; Grade B/C can be moved any
+   way that clears them, including gifting to staff." Implementation: the
+   "Gift" option appears only when product=Eggs AND stage is a non-normal
+   egg category (Broken eggs OR Small/Abnormal Eggs). For Normal eggs and
+   all bird products, the option is hidden as an accidental-write-off
+   guardrail. Preserves the operator's current selection if still valid
+   after the rebuild. */
+const EGG_GIFTABLE_STAGES = ['Broken eggs', 'Small/Abnormal Eggs'];
+
+function populatePoultryPaymentDropdown() {
+  const paymentEl = document.getElementById('y-payment');
+  if (!paymentEl) return;
+  const productEl = document.getElementById('y-product');
+  const stageEl = document.getElementById('y-stage');
+  const product = productEl ? productEl.value : '';
+  const stage = stageEl ? stageEl.value : '';
+
+  const methods = POULTRY_PAYMENT_METHODS.slice(); // Cash, MPESA, TILL, PayBill, Bank
+  const isGiftableEggStage = (product === 'Eggs') && (EGG_GIFTABLE_STAGES.indexOf(stage) !== -1);
+  if (isGiftableEggStage) {
+    methods.push('Gift');
+  }
+
+  // Preserve current selection across rebuild only if it's still valid
+  const currentVal = paymentEl.value;
+  paymentEl.innerHTML = '<option value="">— Method —</option>' +
+                        methods.map(m => `<option value="${m}">${m}</option>`).join('');
+  if (currentVal && methods.indexOf(currentVal) !== -1) {
+    paymentEl.value = currentVal;
+  }
+  // If the operator had 'Gift' selected and changed the stage to a non-
+  // giftable one, Gift is no longer in the methods list. paymentEl.value
+  // falls back to '' (placeholder) — the validation will block submit
+  // until they pick a valid method. Honest, doesn't silently keep an 
+  // invalid value.
+}
+
 /* v6.9.10 — Populate the cohort dropdown based on selected stage.
    Active cohort = stage matches AND current_count > 0. Sorted ASC by
    date_origin (FIFO — older birds sell first). Auto-selects the oldest
    so the operator's default is the right answer for typical sales.
-   Empty stage shows prompt; empty result set shows informative message. */
+   Empty stage shows prompt; empty result set shows informative message.
+
+   v6.9.21 — Special case for product=Eggs. Egg sales come in stages
+   "Normal eggs" / "Small eggs" etc. — none of which match a Layer cohort's
+   `c.stage = 'Layers'`. Override: when product is Eggs, show the active
+   Layer cohorts and prepend a "no attribution" option (Cheison 22 May 2026:
+   "offer cohort ID as optional under egg sales"). Optional means: empty
+   submission allowed, no auto-select. Lets the operator tag eggs to a 
+   specific Layer cohort if they want yield-per-cohort analytics later,
+   without forcing the choice. */
 function populatePoultryCohortDropdown() {
   const cohortEl = document.getElementById('y-cohort');
   if (!cohortEl) return;
   const stageEl = document.getElementById('y-stage');
+  const productEl = document.getElementById('y-product');
   const stage = stageEl ? stageEl.value : '';
-  if (!stage) {
+  const product = productEl ? productEl.value : '';
+
+  // v6.9.21 — For Eggs, override the stage filter to surface Layer cohorts.
+  const isEggSale = product === 'Eggs';
+  const effectiveStage = isEggSale ? 'Layers' : stage;
+
+  if (!effectiveStage) {
     cohortEl.innerHTML = '<option value="">— Pick a stage first —</option>';
     return;
   }
   const eligible = (Array.isArray(STATE.cohorts) ? STATE.cohorts : [])
-    .filter(c => c && (c.stage || '') === stage)
+    .filter(c => c && (c.stage || '') === effectiveStage)
     .filter(c => Number(c.current_count || 0) > 0)
     .sort((a, b) => String(a.date_origin || '').localeCompare(String(b.date_origin || '')));
   if (eligible.length === 0) {
-    cohortEl.innerHTML = '<option value="">— No active cohorts at this stage —</option>';
+    const msg = isEggSale ? '— No active Layer cohorts —' : '— No active cohorts at this stage —';
+    cohortEl.innerHTML = `<option value="">${msg}</option>`;
     return;
   }
-  cohortEl.innerHTML = eligible.map((c, idx) => {
+
+  // For Eggs, prepend an explicit "no attribution" option AND don't auto-
+  // select any cohort (optional). For other products, auto-select oldest.
+  let html = '';
+  if (isEggSale) {
+    html = '<option value="" selected>— no cohort attribution —</option>';
+  }
+  html += eligible.map((c, idx) => {
     const house = c.house ? ' · ' + c.house : '';
     const count = ' · ' + (Number(c.current_count) || 0) + ' birds';
     const age = c.date_origin ? ' · ' + c.date_origin : '';
-    const sel = idx === 0 ? ' selected' : '';
+    const sel = (!isEggSale && idx === 0) ? ' selected' : '';
     return `<option value="${c.cohort_id}"${sel}>${c.cohort_id}${house}${count}${age}</option>`;
   }).join('');
+  cohortEl.innerHTML = html;
 }
 
 function updatePoultryPreview() {
   const v = yValues();
-  const valid = v.date && v.product && v.stage && v.unit && v.quantity > 0 && v.amount > 0 && v.payment_method;
+  // v6.9.21 — Gifts are zero-revenue transactions (broken/small eggs given 
+  // to staff). Amount > 0 is not required when payment_method = 'Gift'.
+  const isGift = v.payment_method === 'Gift';
+  const valid = v.date && v.product && v.stage && v.unit && v.quantity > 0 && (isGift || v.amount > 0) && v.payment_method;
   document.getElementById('y-submit').disabled = !valid;
   const preview = document.getElementById('y-preview');
   if (!valid) { preview.style.display = 'none'; return; }
@@ -10483,7 +10574,11 @@ function updatePoultryPreview() {
 
 async function submitPoultry() {
   const v = yValues();
-  if (!v.date || !v.product || !v.stage || !v.unit || v.quantity <= 0 || v.amount <= 0 || !v.payment_method) return;
+  if (!v.date || !v.product || !v.stage || !v.unit || v.quantity <= 0 || !v.payment_method) return;
+  // v6.9.21 — Gifts may be zero-amount (broken eggs given to staff). 
+  // For non-gifts, amount > 0 is still required.
+  const isGiftSubmit = v.payment_method === 'Gift';
+  if (!isGiftSubmit && v.amount <= 0) return;
 
   // v6.9.9 — Zero-population sale block. Sealed § 6.x principle (20 May 2026,
   // Elias dwarf-layer Quarantine incident): rejects any sale that would push
@@ -14826,6 +14921,58 @@ function renderHome() {
     }
   }
 
+  // v6.9.21 — Available eggs summary (eggs in stock).
+  // Formula: collected − sold − incubated, all within the same horizon.
+  // Horizon = 10 days. Sealed Cheison 22 May 2026 Verden: eggs have shelf
+  // life and informal movement; anything older than 10 days has been moved
+  // out via tracked OR untracked channels (sold, consumed at home, gifted,
+  // discarded). The symmetric window keeps the math honest: we only count
+  // collections, sales, AND incubations that fall inside the window.
+  // All grades count (broken/small/abnormal/normal) — Cheison: "they're 
+  // sellable as Grade B/C goods." Crate size = 30 eggs (Kenyan standard).
+  const EGG_STOCK_HORIZON_DAYS = 10;
+  const horizonCutoffDate = new Date();
+  horizonCutoffDate.setDate(horizonCutoffDate.getDate() - EGG_STOCK_HORIZON_DAYS);
+  const horizonCutoffStr = horizonCutoffDate.toISOString().slice(0, 10);
+
+  const recentEggColl = (Array.isArray(STATE.eggCollection) ? STATE.eggCollection : [])
+    .filter(e => e && (e.date || '') >= horizonCutoffStr);
+  const eggsCollectedInWindow = recentEggColl.reduce((s, e) => {
+    return s + (Number(e.gf_normal) || 0) + (Number(e.gf_small) || 0) + (Number(e.gf_broken) || 0)
+             + (Number(e.ud_normal) || 0) + (Number(e.ud_small) || 0) + (Number(e.ud_broken) || 0);
+  }, 0);
+  const eggsBrokenSmallInWindow = recentEggColl.reduce((s, e) => {
+    return s + (Number(e.gf_small) || 0) + (Number(e.gf_broken) || 0)
+             + (Number(e.ud_small) || 0) + (Number(e.ud_broken) || 0);
+  }, 0);
+  const eggsSoldInWindow = (Array.isArray(STATE.poultry) ? STATE.poultry : [])
+    .filter(p => p && p.product === 'Eggs' && (p.date || '') >= horizonCutoffStr)
+    .reduce((s, p) => {
+      const n = Number(p.quantity) || 0;
+      const unit = String(p.unit || '').trim();
+      return s + (unit === 'Trays' ? n * 30 : n);
+    }, 0);
+  const eggsIncubatedInWindow = (Array.isArray(STATE.incubation) ? STATE.incubation : [])
+    .filter(b => b && (b.date_set || '') >= horizonCutoffStr)
+    .reduce((s, b) => s + (Number(b.eggs_in) || 0), 0);
+
+  const eggsInStock = eggsCollectedInWindow - eggsSoldInWindow - eggsIncubatedInWindow;
+  const eggsStockEl = document.getElementById('poultry-eggs-stock-summary-text');
+  if (eggsStockEl) {
+    if (eggsCollectedInWindow === 0) {
+      eggsStockEl.textContent = `no eggs collected in last ${EGG_STOCK_HORIZON_DAYS} days`;
+    } else if (eggsInStock < 0) {
+      // Defensive: sales/incubation exceed collections in the window.
+      // Possible legit cause: collections were recorded outside the window
+      // but sales/incubation inside it. Show the math honestly.
+      eggsStockEl.textContent = `${eggsInStock.toLocaleString('en-KE')} eggs (sold + incubated exceed collected in last ${EGG_STOCK_HORIZON_DAYS}d) · ${eggsBrokenSmallInWindow} broken/small/abnormal collected`;
+    } else {
+      const crates = Math.floor(eggsInStock / 30);
+      const loose = eggsInStock - crates * 30;
+      eggsStockEl.textContent = `${crates} crates + ${loose} loose · ${eggsInStock.toLocaleString('en-KE')} eggs available · ${eggsBrokenSmallInWindow} broken/small/abnormal · last ${EGG_STOCK_HORIZON_DAYS}d`;
+    }
+  }
+
   // v6.0.0 — D4: Vaccination progress bars per stage card (rendered if data exists).
   if (typeof renderVaccinationBars === 'function') {
     renderVaccinationBars(latestLayersByHouse, latestCensusDate);
@@ -18390,10 +18537,22 @@ function showUpdateBanner() {
   // v6.9.10 — Stage change repopulates the cohort dropdown with active 
   // cohorts in that stage. Auto-select the OLDEST cohort (FIFO — older 
   // birds sell first) so the operator's default is the right answer.
+  // v6.9.21 — Also fire on product change, because the Eggs special case
+  // overrides the stage filter to surface Layer cohorts.
+  // v6.9.21 — Also refresh the payment dropdown so the "Gift" option
+  // appears/disappears as the stage moves into/out of Broken / Small-Abnormal.
   const yStageEl = document.getElementById('y-stage');
   if (yStageEl) {
     yStageEl.addEventListener('change', () => {
       if (typeof populatePoultryCohortDropdown === 'function') populatePoultryCohortDropdown();
+      if (typeof populatePoultryPaymentDropdown === 'function') populatePoultryPaymentDropdown();
+    });
+  }
+  const yProductEl = document.getElementById('y-product');
+  if (yProductEl) {
+    yProductEl.addEventListener('change', () => {
+      if (typeof populatePoultryCohortDropdown === 'function') populatePoultryCohortDropdown();
+      if (typeof populatePoultryPaymentDropdown === 'function') populatePoultryPaymentDropdown();
     });
   }
   document.getElementById('y-submit').addEventListener('click', submitPoultry);
