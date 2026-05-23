@@ -1636,6 +1636,24 @@
   .hero .hero-metric-card.hmc-poultry .hmc-horizon { background: rgba(225, 175, 55, 0.27); border-color: rgba(225, 175, 55, 0.55); }
   .hero .hero-metric-card.hmc-poultry .hmc-h-lbl   { color: #f9e0a0; }
 
+  /* ── 3b. DAIRY ── warm milk-cream / amber-rose (v6.10.2). Distinct from 
+     poultry gold and sireet teal — sits between the warm and cool blocks 
+     in the hero stack like dairy sits between feed-grain and pasture in 
+     the operation. Lighter saturation than the others because dry-state 
+     content (mostly zeros) shouldn't shout. Lactating state still reads 
+     fine against the warm tone. */
+  .hero .hero-metric-card.hmc-dairy {
+    background: rgba(212, 165, 130, 0.38);
+    border: 1px solid rgba(212, 165, 130, 0.65);
+    border-left: 5px solid #e6c4a3;
+  }
+  .hero .hero-metric-card.hmc-dairy .hmc-lbl     { color: #f3dcc4; }
+  .hero .hero-metric-card.hmc-dairy .hmc-period  { color: #f3dcc4; }
+  .hero .hero-metric-card.hmc-dairy .hmc-val     { color: #faeadb; }
+  .hero .hero-metric-card.hmc-dairy .hmc-sub-head { color: #f3dcc4; }
+  .hero .hero-metric-card.hmc-dairy .hmc-horizon { background: rgba(212, 165, 130, 0.25); border-color: rgba(212, 165, 130, 0.50); }
+  .hero .hero-metric-card.hmc-dairy .hmc-h-lbl   { color: #f3dcc4; }
+
   /* ── 4. SIREET ── slate teal (cool blue-green, NOT in sage family) */
   .hero .hero-metric-card.hmc-sireet {
     background: rgba(80, 145, 165, 0.42);
@@ -3083,6 +3101,42 @@
           <div class="hmc-horizon">
             <div class="hmc-h-lbl">Life</div>
             <div class="hmc-h-val" id="hero-poultry-life">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 3b. DAIRY PERFORMANCE ── (v6.10.2)
+           Mirrors Tea + Poultry shape. In dry-state (no cows milking) the
+           headline shows the herd count + status; lactating-state will show
+           daily milk volume + MTD champion. Horizons show milk volume in
+           litres (not Ksh) — milk is the operational metric for cows even
+           when revenue is the strategic one. Sub-line carries the changing
+           operational story: "all in-calf · next due —" today; "🏆 Koroit"
+           when milking is routine. Sealed § 6.x: card shape borrows from
+           value-chain pattern; content adapts to the value chain's reality. -->
+      <div class="hero-metric-card hmc-dairy">
+        <div class="hmc-head">
+          <span class="hmc-lbl">Dairy performance</span>
+          <span class="hmc-period" id="hero-dairy-period">herd status</span>
+        </div>
+        <div class="hmc-val" id="hero-dairy-val">0 L</div>
+        <div class="hmc-sub-head" id="hero-dairy-sub">no cows registered</div>
+        <div class="hmc-horizons">
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">Today</div>
+            <div class="hmc-h-val" id="hero-dairy-today">0 L</div>
+          </div>
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">MTD</div>
+            <div class="hmc-h-val" id="hero-dairy-mtd">0 L</div>
+          </div>
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">YTD</div>
+            <div class="hmc-h-val" id="hero-dairy-ytd">0 L</div>
+          </div>
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">Life</div>
+            <div class="hmc-h-val" id="hero-dairy-life">0 L</div>
           </div>
         </div>
       </div>
@@ -4585,10 +4639,75 @@
          add in v6.10.1). -->
     <div id="other-cows-view" style="display:none">
 
-      <!-- LIST SECTION (default) -->
-      <div class="section" id="cow-list-section">
+      <!-- v6.10.2 — DAIRY DASHBOARD (default sub-view) ============== -->
+      <div class="section" id="cow-dashboard-section">
         <div class="section-head">
           <button type="button" onclick="setOtherView('hub')" style="background:transparent; border:none; color:var(--brass); font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; padding:0;">← Other</button>
+          <span class="meta" id="cow-dash-summary">0 cows</span>
+        </div>
+        <h3 style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.4rem; color:var(--forest); margin:0.4rem 0 0.2rem; letter-spacing:-0.01em;">🐄 Dairy</h3>
+        <p style="color:var(--slate-light); font-size:0.85rem; line-height:1.5; margin:0.2rem 0 1rem;">Herd status · calving pipeline · health · activity</p>
+
+        <!-- FEED CHIP — populated by renderCowDashFeedChip() -->
+        <div id="cow-dash-feed-chip" style="margin-bottom:1rem"></div>
+
+        <!-- PRODUCTION TOP STRIP (v6.10.2: mostly zeros — milk module ships v6.10.5) -->
+        <div style="margin-bottom:1rem">
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--brass); margin-bottom:0.5rem">Production · Revenue · Expenses</div>
+          <div class="biz-grid" style="grid-template-columns:repeat(2, 1fr); gap:0.5rem">
+            <div class="biz-card">
+              <div class="lbl">Milk today</div>
+              <div class="val" style="font-size:1.05rem">0 L</div>
+              <div class="sub">all in-calf · v6.10.5 ships milk</div>
+            </div>
+            <div class="biz-card">
+              <div class="lbl">🏆 Champion today</div>
+              <div class="val" style="font-size:1.05rem">—</div>
+              <div class="sub">first calving pending</div>
+            </div>
+            <div class="biz-card">
+              <div class="lbl">Revenue MTD</div>
+              <div class="val" style="font-size:1.05rem" id="cow-dash-revenue-mtd">Ksh 0</div>
+              <div class="sub">milk + cow sales</div>
+            </div>
+            <div class="biz-card">
+              <div class="lbl">Expenses MTD</div>
+              <div class="val" style="font-size:1.05rem" id="cow-dash-expenses-mtd">Ksh 0</div>
+              <div class="sub">tagged "Dairy" allocation</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CALVING PIPELINE -->
+        <div style="margin-bottom:1.2rem">
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--brass); margin-bottom:0.5rem">Calving pipeline</div>
+          <div id="cow-dash-calving"></div>
+        </div>
+
+        <!-- HEALTH STATUS -->
+        <div style="margin-bottom:1.2rem">
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--brass); margin-bottom:0.5rem">Health status</div>
+          <div id="cow-dash-health"></div>
+        </div>
+
+        <!-- RECENT ACTIVITY -->
+        <div style="margin-bottom:1.2rem">
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--brass); margin-bottom:0.5rem">Recent activity</div>
+          <div id="cow-dash-activity"></div>
+        </div>
+
+        <!-- BOTTOM ACTIONS -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-top:1rem;">
+          <button type="button" onclick="setCowView('list')" class="export-btn" style="background:transparent; color:var(--brass-dark); border:1px solid var(--brass); width:100%">View registry</button>
+          <button type="button" onclick="setCowView('form'); openCowForm('add')" class="export-btn" style="background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark); width:100%">+ Add cow</button>
+        </div>
+      </div>
+      <!-- v6.10.2 — END DAIRY DASHBOARD ============================== -->
+
+      <!-- LIST SECTION (sub-view of dashboard, hidden by default in v6.10.2) -->
+      <div class="section" id="cow-list-section" style="display:none">
+        <div class="section-head">
+          <button type="button" onclick="setCowView('dashboard')" style="background:transparent; border:none; color:var(--brass); font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; padding:0;">← Dashboard</button>
           <span class="meta" id="cow-herd-meta">0 cows</span>
         </div>
         <h3 style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.4rem; color:var(--forest); margin:0.4rem 0 0.2rem; letter-spacing:-0.01em;">Dairy</h3>
@@ -4705,6 +4824,52 @@
           <button type="button" onclick="submitCowForm()" class="export-btn" style="flex:1;background:var(--forest-dark);color:var(--ivory);border-color:var(--forest-dark)">Save</button>
         </div>
         <div id="cf-feedback" style="display:none;margin-top:0.7rem;padding:0.6rem 0.8rem;border-radius:6px;font-family:'Fraunces',serif;font-size:0.9rem"></div>
+      </div>
+
+      <!-- v6.10.2 — SERVE EVENT MODAL ============================
+           Triggered from the calving pipeline's "+ Log service" button
+           on each in-calf cow row. Submits a 'served' event via
+           add_cow_event (Apps Script v5.0.42 handler). Expected calving
+           auto-computed = service_date + 280 days.
+           ====================================================== -->
+      <div id="cow-serve-modal" style="display:none; position:fixed; inset:0; background:rgba(20,32,28,0.62); z-index:1000; align-items:center; justify-content:center; padding:1rem;">
+        <div style="background:var(--ivory-warm); border-radius:10px; max-width:480px; width:100%; max-height:90vh; overflow-y:auto; padding:1.2rem 1.3rem; border:1px solid var(--rule); box-shadow:0 12px 36px rgba(0,0,0,0.32);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
+            <h3 style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.25rem; color:var(--forest-dark); margin:0;">Log service · <span id="cow-serve-cow-label">—</span></h3>
+            <button type="button" onclick="closeCowServeForm()" style="background:transparent; border:none; color:var(--slate); font-size:1.4rem; cursor:pointer; padding:0.2rem 0.4rem; line-height:1">×</button>
+          </div>
+          <p style="color:var(--slate-light); font-size:0.8rem; margin:0 0 1rem; line-height:1.4">Record the service date. Expected calving auto-computes (service + 280 days). For cows already known to be in-calf without a recorded service date, enter the best-known date — operators can refine later.</p>
+
+          <div class="field">
+            <label>Service date</label>
+            <input type="date" id="cow-serve-date" oninput="updateCowServeExpectedCalving()">
+          </div>
+
+          <div class="field">
+            <label>Semen source</label>
+            <select id="cow-serve-semen"></select>
+          </div>
+
+          <div class="field">
+            <label>Bull reference / AI batch <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional)</span></label>
+            <input type="text" id="cow-serve-bull" placeholder="e.g. internal bull S-001, ABS batch, KAGRC code" autocomplete="off">
+          </div>
+
+          <div class="field">
+            <label>Expected calving <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(auto)</span></label>
+            <div style="padding:0.55rem 0.6rem; background:var(--ivory); border:1px solid var(--rule); border-radius:4px; font-family:'Fraunces',serif; font-size:0.95rem; color:var(--forest)"><span id="cow-serve-expected">—</span></div>
+          </div>
+
+          <div class="field">
+            <label>Notes <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional)</span></label>
+            <textarea id="cow-serve-notes" rows="2" placeholder="Anything worth remembering — heat signs, vet present, repeat service..." style="width:100%; padding:0.5rem; font-family:'Fraunces',serif; font-size:0.92rem; border:1px solid var(--rule); border-radius:4px; resize:vertical;"></textarea>
+          </div>
+
+          <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+            <button type="button" onclick="closeCowServeForm()" class="export-btn" style="flex:1">Cancel</button>
+            <button type="button" onclick="submitCowServeForm()" class="export-btn" style="flex:1; background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark);">Save service</button>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -5080,8 +5245,11 @@ const BLOCKS = ['Sinonin', 'Cheptabach', 'Bitonin', 'Kipkenda', 'Kipkorom', 'San
 /* Business units — appear in Allocation dropdown for expenses (and Records
    block filter) alongside the tea blocks. Each one is a separate revenue or
    cost centre under the Sinonin Group umbrella. Chelabaal is the
-   retirement-home-and-orchard project near Eldoret International Airport. */
-const BUSINESS_UNITS = ['Kipkenda Poultry', 'Olomotit Coffee', 'Maize', 'Dorper sheep', 'Chelabaal'];
+   retirement-home-and-orchard project near Eldoret International Airport.
+   v6.10.2 — 'Dairy' added so cow-related expenses (feed, veterinary,
+   AI service, hooftrim, dewormer) can be allocated cleanly. Mirrors the
+   pattern already used for 'Dorper sheep'. */
+const BUSINESS_UNITS = ['Kipkenda Poultry', 'Olomotit Coffee', 'Maize', 'Dorper sheep', 'Dairy', 'Chelabaal'];
 
 const DEFAULT_FACTORIES = [
   { name: "Sireet",    priceKg: 25,   transport: 3.90, shares: 5, wageKg: 9.5,  bonusKg: 0.5, greenleaf: 13 },
@@ -5300,6 +5468,25 @@ const COW_SEMEN_SOURCES = [
 
 const COW_GESTATION_DAYS = 280;  // cow gestation; sheep is ~150 days for reference
 
+/* v6.10.2 — Curated vaccine list. Cheison-approved 22 May 2026 for
+   Sinonin's protocol. Used in v6.10.2's Health Status dashboard (display
+   labels only) and will populate the drug_or_vaccine dropdown when the
+   full events form ships in v6.10.3. Sealed § 6.x: curated vocabulary
+   reflects the operator's protocol, not generic veterinary taxonomy. */
+const CURATED_VACCINES = [
+  { value: 'FMD',          label: 'FMD — Foot and Mouth Disease',                    schedule: 'Annual; county campaigns; often mandatory' },
+  { value: 'ECF',          label: 'ECF — East Coast Fever (Theileria)',              schedule: 'Once with boosters as advised by vet' },
+  { value: 'LSD',          label: 'LSD — Lumpy Skin Disease',                        schedule: 'Annual; often combined with FMD round' },
+  { value: 'Anthrax-BQ',   label: 'Anthrax / Blackquarter (combined)',               schedule: 'Annual' },
+  { value: 'Brucellosis',  label: 'Brucellosis (S19)',                               schedule: 'Once, heifers only at 3–8 months' },
+  { value: 'RVF',          label: 'RVF — Rift Valley Fever',                         schedule: 'Situational; when outbreaks reported' }
+];
+
+/* v6.10.2 — Feed chip horizon. A feed-log entry within this window 
+   counts as "fed today" (green chip). The window is the calendar day 
+   in Nandi local time (EAT, UTC+3). */
+const COW_FEED_CHIP_TODAY_ONLY = true;
+
 const DEFAULT_SETTINGS = { teaCessPerKg: 0.22, transportActive: false, currency: 'Ksh', stealthMode: false };
 
 const DEFAULT_EXPENSE_CATEGORIES = [
@@ -5367,6 +5554,11 @@ const K_SHEEP_EVENTS = 'sinonin_sheep_events_v1';
 // v6.10.0 — Cow module storage keys. Same shape as sheep keys for consistency.
 const K_COWS = 'sinonin_cows_v1';
 const K_COW_EVENTS = 'sinonin_cow_events_v1';
+// v6.10.2 — Daily cow feed log. Append-only. Drives the home-card feed
+// chip and the Health Status feed section. Each row: { ts, date, fed_by,
+// notes }. Idempotent server-side per (date, fed_by) — duplicate taps
+// silently merge rather than queue retries.
+const K_COW_FEED_LOG = 'sinonin_cow_feed_log_v1';
 // v6.5.7 — Bird mortality event log. Append-only. Keyed by ts.
 const K_MORTALITY = 'sinonin_mortality_v1';
 const K_CLOUD_SYNC = 'sinonin_cloud_sync_v1';
@@ -5417,7 +5609,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.1';
+const APP_VERSION = 'v6.10.2';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -7621,7 +7813,7 @@ async function queueForSync(record, kind) {
   //   litter-change — record carries house + date + op (change/reset)
   // These store the full payload in the queue item; the dispatcher reads
   // item.payload directly instead of looking up by recordId.
-  const isPayloadKind = (kind === 'roster' || kind === 'cohort' || kind === 'litter-change' || kind === 'sheep' || kind === 'sheep-event' || kind === 'cow' || kind === 'cow-event');
+  const isPayloadKind = (kind === 'roster' || kind === 'cohort' || kind === 'litter-change' || kind === 'sheep' || kind === 'sheep-event' || kind === 'cow' || kind === 'cow-event' || kind === 'feed-log');
   if (isPayloadKind) {
     queue.push({ kind, payload: record, attempts: 0, queuedAt: new Date().toISOString(), blockedByGate });
   } else {
@@ -7996,6 +8188,7 @@ async function flushQueue(opts) {
       else if (kind === 'roster')  record = item.payload || null; // roster items carry their own payload
       else if (kind === 'sheep' || kind === 'sheep-event') record = item.payload || null;
       else if (kind === 'cow' || kind === 'cow-event') record = item.payload || null;
+      else if (kind === 'feed-log') record = item.payload || null;
       else if (kind === 'mortality') record = (STATE.mortality || []).find(m => m.id === recordId);
       if (!record) continue; // record was deleted locally, drop from queue
       let ok;
@@ -8013,6 +8206,7 @@ async function flushQueue(opts) {
       else if (kind === 'sheep-event') ok = await pushSheepEventToForm(record);
       else if (kind === 'cow')         ok = await pushCowToForm(record);
       else if (kind === 'cow-event')   ok = await pushCowEventToForm(record);
+      else if (kind === 'feed-log')    ok = await pushFeedLogToGate(record);
       else if (kind === 'mortality')   ok = await syncMortality(record);
       else                         ok = await pushToForm(record);
       if (ok) {
@@ -8559,6 +8753,53 @@ async function applyCloudResponse(data) {
     });
     STATE.sheepEvents = cloudEvents.concat(localOnly);
     await storageSet(K_SHEEP_EVENTS, STATE.sheepEvents);
+  }
+  /* v6.10.2 — Cow registry sync (cloud-replace-with-local-preservation).
+     Same merge strategy as sheep: cloud is authoritative for tags it 
+     knows, local-only tags (queued for sync) survive. Closes the v6.10.1 
+     sync gap where cows pushed to the Sheet didn't come BACK to the PWA 
+     on next fetch — fine while STATE.cows persisted across reloads, but 
+     broken for cross-browser/cross-device viewing. */
+  if (Array.isArray(data.cows)) {
+    const cloudCows = data.cows.map(cloudToLocalCow);
+    const cloudTags = new Set(cloudCows.map(function (c) { return (c.tag_id || '').toUpperCase(); }));
+    const localOnly = (STATE.cows || []).filter(function (c) {
+      return c && c.tag_id && !cloudTags.has(c.tag_id.toUpperCase());
+    });
+    STATE.cows = cloudCows.concat(localOnly);
+    await storageSet(K_COWS, STATE.cows);
+    if (localOnly.length > 0) {
+      console.log('[cloud-fetch] cows merge: ' + cloudCows.length + 
+                  ' from cloud + ' + localOnly.length + ' local-only preserved');
+    }
+  }
+  if (Array.isArray(data.cowEvents)) {
+    const cloudEvents = data.cowEvents.map(cloudToLocalCowEvent);
+    // Cow events have no stable id (they're append-only timestamped rows).
+    // Match by (tag_id + event_type + event_date + timestamp) signature.
+    // Local-only events whose signature isn't in the cloud set survive.
+    const sigOf = function (e) {
+      return (e.tag_id || '') + '|' + (e.event_type || '') + '|' + (e.event_date || '') + '|' + (e.timestamp || '');
+    };
+    const cloudSigs = new Set(cloudEvents.map(sigOf));
+    const localOnly = (STATE.cowEvents || []).filter(function (e) {
+      return e && e.tag_id && e.event_type && !cloudSigs.has(sigOf(e));
+    });
+    STATE.cowEvents = cloudEvents.concat(localOnly);
+    await storageSet(K_COW_EVENTS, STATE.cowEvents);
+  }
+  /* v6.10.2 — Cow feed log sync (cloud-replace-with-local-preservation).
+     Auto-created sheet on the Apps Script side. Local-only feed-log rows
+     (queued for sync after offline tap) survive merge. */
+  if (Array.isArray(data.cowFeedLog)) {
+    const cloudFeed = data.cowFeedLog.map(cloudToLocalCowFeedLog);
+    const sigOf = function (f) { return (f.date || '') + '|' + (f.fed_by || ''); };
+    const cloudSigs = new Set(cloudFeed.map(sigOf));
+    const localOnly = (STATE.cowFeedLog || []).filter(function (f) {
+      return f && f.date && f.fed_by && !cloudSigs.has(sigOf(f));
+    });
+    STATE.cowFeedLog = cloudFeed.concat(localOnly);
+    await storageSet(K_COW_FEED_LOG, STATE.cowFeedLog);
   }
   /* v6.0 SHIP 2 / v6.2.2 — Egg Collection sync (cloud-replace-local) */
   if (Array.isArray(data.eggCollection)) {
@@ -14685,6 +14926,60 @@ function renderHome() {
   setText('hero-poultry-ytd',   fmtKes(poultryYTD));
   setText('hero-poultry-life',  fmtKes(poultryLife));
   
+  // v6.10.2 — Populate DAIRY card. Dry-state vs lactating-state aware.
+  //
+  // Dry state (no cow events for 'calved' OR no recent milk records):
+  //   headline: "0 L"
+  //   sub-line: "{N} cows · all in-calf · next due {date or "—"}"
+  //   horizons: 0 L across the board
+  //
+  // Lactating state (at least one cow has 'calved' event + we have milk data):
+  //   headline: today's milk in L
+  //   sub-line: "🏆 {champion}" today
+  //   horizons: today/MTD/YTD/lifetime litres
+  //
+  // Milk volume tracking ships in v6.10.5 (after first calving). For v6.10.2
+  // the card always shows the dry-state shape because none of the 4
+  // Sinonin cows have calved yet — they're all in-calf.
+  const dairyCows = (STATE.cows || []).filter(c => c.status === 'alive');
+  const dairyTotalCows = dairyCows.length;
+  const dairyHerdState = computeDairyHerdState(dairyCows);  // see fn below
+  
+  const dairyValEl = document.getElementById('hero-dairy-val');
+  const dairySubEl = document.getElementById('hero-dairy-sub');
+  const dairyPeriodEl = document.getElementById('hero-dairy-period');
+  if (dairyValEl) {
+    // For now: always show 0 L since no milk module yet. v6.10.5 will
+    // replace this with the actual today's milk volume.
+    dairyValEl.textContent = dairyTotalCows > 0 ? '🐄 ' + dairyTotalCows : '0';
+    dairyValEl.style.fontSize = dairyTotalCows > 0 ? '2.4rem' : '';
+  }
+  if (dairySubEl) {
+    if (dairyTotalCows === 0) {
+      dairySubEl.textContent = 'no cows registered';
+    } else {
+      const parts = [];
+      parts.push(dairyTotalCows + (dairyTotalCows === 1 ? ' cow' : ' cows'));
+      if (dairyHerdState.inCalf > 0) {
+        parts.push(dairyHerdState.allInCalf ? 'all in-calf' : (dairyHerdState.inCalf + ' in-calf'));
+      }
+      const nextDueLabel = dairyHerdState.nextDueDate
+        ? 'next due ' + formatNandiShortDate(dairyHerdState.nextDueDate)
+        : 'next due —';
+      parts.push(nextDueLabel);
+      dairySubEl.textContent = parts.join(' · ');
+    }
+  }
+  if (dairyPeriodEl) {
+    dairyPeriodEl.textContent = dairyTotalCows === 0 ? 'no cows yet'
+                              : (dairyHerdState.fedToday ? '🟢 Fed today' : '🟡 Not yet fed');
+  }
+  // Horizons stay at 0 L for now — milk data ships in v6.10.5
+  setText('hero-dairy-today', '0 L');
+  setText('hero-dairy-mtd',   '0 L');
+  setText('hero-dairy-ytd',   '0 L');
+  setText('hero-dairy-life',  '0 L');
+  
   // Period labels — Farm / Tea / Poultry all show "Month to date"
   const monthNameLong = new Date().toLocaleDateString('en-GB', { month: 'long' });
   ['hero-farm-period', 'hero-tea-period', 'hero-poultry-period'].forEach(id => {
@@ -16392,8 +16687,12 @@ function setOtherView(view) {
   if (view === 'sheep' && typeof renderSheepRegistry === 'function') {
     renderSheepRegistry();
   }
-  if (view === 'cows' && typeof renderCowRegistry === 'function') {
-    renderCowRegistry();
+  // v6.10.2 — When opening cows view, default to the dashboard sub-view
+  // (was: jumped straight to registry list). The dashboard surfaces feed 
+  // status, calving pipeline, and recent activity. Operator clicks 
+  // "View registry" inside the dashboard to see the list.
+  if (view === 'cows' && typeof setCowView === 'function') {
+    setCowView(_cowSubView || 'dashboard');
   }
   if (typeof savePersistedState === 'function') savePersistedState();
 }
@@ -17530,6 +17829,63 @@ function cloudToLocalSheepEvent(r) {
   };
 }
 
+/* v6.10.2 — Cow registry mapper. Mirrors cloudToLocalSheep shape.
+   Apps Script v5.0.42's readCows already maps Title Case sheet headers
+   → snake_case payload fields, so r.tag_id / r.date_acquired / etc. all
+   arrive in the expected lowercase_underscored form. Defensive fallback
+   to alternate spellings just in case. */
+function cloudToLocalCow(r) {
+  return {
+    tag_id:        (r.tag_id ?? r.tagId ?? '').toString().trim().toUpperCase(),
+    name:          r.name || '',
+    sex:           (r.sex || 'F').toString().toUpperCase().charAt(0) === 'M' ? 'M' : 'F',
+    breed:         r.breed || '',
+    source:        r.source || '',
+    date_acquired: r.date_acquired || r.dateAcquired || null,
+    source_farm:   r.source_farm || r.sourceFarm || '',
+    dam_tag:       r.dam_tag || r.damTag || null,
+    status:        r.status || 'alive',
+    notes:         r.notes || '',
+    owner:         r.owner || '',
+    timestamp:     r.timestamp || null,
+    _source: 'cloud'
+  };
+}
+
+function cloudToLocalCowEvent(r) {
+  return {
+    tag_id:             (r.tag_id ?? r.tagId ?? '').toString().trim().toUpperCase(),
+    event_type:         r.event_type || r.eventType || '',
+    event_date:         r.event_date || r.eventDate || null,
+    semen_source:       r.semen_source || r.semenSource || '',
+    bull_ref:           r.bull_ref || r.bullRef || '',
+    expected_calving:   r.expected_calving || r.expectedCalving || null,
+    born_alive:         r.born_alive ?? r.bornAlive ?? null,
+    born_dead:          r.born_dead ?? r.bornDead ?? null,
+    calf_tags:          r.calf_tags || r.calfTags || '',
+    drug_or_vaccine:    r.drug_or_vaccine || r.drugOrVaccine || '',
+    weight_kg:          r.weight_kg ?? r.weightKg ?? null,
+    price_kes:          r.price_kes ?? r.priceKes ?? null,
+    buyer:              r.buyer || '',
+    cause_or_condition: r.cause_or_condition || r.causeOrCondition || '',
+    notes:              r.notes || '',
+    timestamp:          r.timestamp || (r.event_date ? r.event_date + 'T00:00:00Z' : null),
+    _source: 'cloud'
+  };
+}
+
+/* v6.10.2 — Feed log mapper. Cow_Feed_Log auto-created sheet; readFeedLog
+   returns rows in snake_case. */
+function cloudToLocalCowFeedLog(r) {
+  return {
+    ts:     r.ts || null,
+    date:   r.date || null,
+    fed_by: r.fed_by || r.fedBy || '',
+    notes:  r.notes || '',
+    _source: 'cloud'
+  };
+}
+
 async function pushSheepToForm(record) {
   return await pushDorperToGate(record, 'add_sheep');
 }
@@ -17700,6 +18056,490 @@ function cowAge(dob) {
   return rem === 0 ? `${years}y` : `${years}y ${rem}m`;
 }
 
+/* ============================================================
+   v6.10.2 — DAIRY DASHBOARD HELPERS + RENDERERS
+   ============================================================
+   Computes herd state, renders the Other › Cows dashboard view, manages 
+   the daily feed chip and per-cow service-date capture. Service-date 
+   capture reuses the v5.0.42 add_cow_event handler (event_type='served'). 
+   Feed log is its own action ('feed-log') with auto-creating sheet on 
+   the Apps Script side (v5.0.43).
+   
+   Sealed Cheison 23 May 2026 Verden — "Card on home like tea/poultry; 
+   detailed cards under Other › Cows." Adopters in queue: Dr. Kiplimo 
+   Lagat (Nandi County CECM Agriculture), Dr. Levy Kachilei (Kaimosi 
+   FTC Director, ~500 head dairy + Dorper). v6.10.2 keeps the Sinonin-
+   first design — multi-tenant deployment is a v6.11+ concern.
+   ============================================================ */
+
+/* Today's date string in Nandi local time. Calendar day in EAT (UTC+3). 
+   Used to compare against feed-log entries for the home-card chip. */
+function _todayDateStrNandi() {
+  // Nandi time is UTC+3, no DST. Compute today's calendar date there
+  // regardless of where the device is (Verden, Kapsabet, Munich).
+  const now = new Date();
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  const nandi = new Date(utc + 3 * 60 * 60000);
+  return nandi.toISOString().slice(0, 10);  // YYYY-MM-DD
+}
+
+/* Short date format e.g. "24 Aug" or "13 Sep 2027" if not same year. */
+function formatNandiShortDate(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr + (dateStr.length === 10 ? 'T00:00:00Z' : ''));
+  if (isNaN(d.getTime())) return '—';
+  const now = new Date();
+  const thisYear = now.getFullYear();
+  const day = d.getUTCDate();
+  const month = d.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' });
+  return d.getUTCFullYear() === thisYear
+    ? `${day} ${month}`
+    : `${day} ${month} ${d.getUTCFullYear()}`;
+}
+
+/* Given a list of alive cows, compute herd-level state for the home card 
+   and dashboard. Reads STATE.cowEvents to find service dates and STATE.cowFeedLog
+   to determine feed-chip status. */
+function computeDairyHerdState(aliveCows) {
+  const events = STATE.cowEvents || [];
+  const feedLog = STATE.cowFeedLog || [];
+  const today = _todayDateStrNandi();
+  
+  // In-calf detection: a cow is "in-calf" if she has a 'served' event 
+  // OR her registry notes indicate so (Cheison's existing notes say 
+  // "in-calf" but no served event recorded yet). Until v6.10.3 ships 
+  // the full events module, we infer from EITHER source.
+  let inCalfCount = 0;
+  let nextDueDate = null;  // earliest expected_calving across the herd
+  
+  aliveCows.forEach(cow => {
+    const servedEvts = events
+      .filter(e => e.tag_id === cow.tag_id && e.event_type === 'served')
+      .sort((a, b) => (b.event_date || '').localeCompare(a.event_date || ''));
+    const hasServedEvent = servedEvts.length > 0;
+    const notesHint = /in[-\s]?calf/i.test(cow.notes || '');
+    if (hasServedEvent || notesHint) {
+      inCalfCount++;
+      if (hasServedEvent && servedEvts[0].expected_calving) {
+        if (!nextDueDate || servedEvts[0].expected_calving < nextDueDate) {
+          nextDueDate = servedEvts[0].expected_calving;
+        }
+      }
+    }
+  });
+  
+  // Feed chip — has ANY operator tapped "✓ Fed today" for today's date?
+  const fedToday = feedLog.some(f => f.date === today);
+  const lastFeedRecord = feedLog.length > 0
+    ? feedLog.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]
+    : null;
+  
+  return {
+    totalAlive: aliveCows.length,
+    inCalf: inCalfCount,
+    allInCalf: aliveCows.length > 0 && inCalfCount === aliveCows.length,
+    nextDueDate,
+    fedToday,
+    lastFeedRecord
+  };
+}
+
+/* Feed chip state (used on home card + dashboard). Returns:
+   { color: 'green'|'amber'|'red', label: '...', emoji: '🟢' } */
+function computeFeedChip() {
+  const feedLog = STATE.cowFeedLog || [];
+  const today = _todayDateStrNandi();
+  const fedToday = feedLog.some(f => f.date === today);
+  if (fedToday) {
+    const todayEntry = feedLog.find(f => f.date === today);
+    return { color: 'green', emoji: '🟢', label: 'Fed today', detail: 'by ' + (todayEntry.fed_by || 'operator') };
+  }
+  // No entry today — amber. Red would be 24h+ without a log, but we 
+  // keep it simple: anything not-today is amber.
+  return { color: 'amber', emoji: '🟡', label: 'Not yet fed today', detail: '' };
+}
+
+/* Submit a feed-log entry. Called from the "✓ Fed today" button on 
+   the home card and the Health Status feed section. Idempotent server-
+   side by (date, fed_by) — double-taps merge silently. */
+async function submitFeedLog(fedBy, notes) {
+  const today = _todayDateStrNandi();
+  const record = {
+    ts: new Date().toISOString(),
+    date: today,
+    fed_by: fedBy || 'operator',
+    notes: notes || '',
+    timestamp: new Date().toISOString()
+  };
+  // Optimistic local insert
+  if (!Array.isArray(STATE.cowFeedLog)) STATE.cowFeedLog = [];
+  // Avoid local duplicate by (date, fed_by)
+  const exists = STATE.cowFeedLog.find(f => f.date === today && f.fed_by === record.fed_by);
+  if (!exists) {
+    STATE.cowFeedLog.push(record);
+    await storageSet(K_COW_FEED_LOG, STATE.cowFeedLog);
+  }
+  // Push to gate
+  const ok = await pushFeedLogToGate(record);
+  if (!ok) {
+    await queueForSync(record, 'feed-log');
+  }
+  // Re-render the relevant surfaces so the chip updates
+  if (typeof updateHero === 'function') try { updateHero(); } catch (e) {}
+  if (typeof renderCowDashboard === 'function') try { renderCowDashboard(); } catch (e) {}
+  return ok;
+}
+
+async function pushFeedLogToGate(record) {
+  return await pushDorperToGate(record, 'feed-log');
+}
+
+/* Sub-view manager for Other › Cows: 'dashboard' | 'list' | 'form'. 
+   Default is 'dashboard'. setOtherView('cows') opens the dashboard 
+   automatically. */
+let _cowSubView = 'dashboard';
+function setCowView(sub) {
+  _cowSubView = sub;
+  const dash = document.getElementById('cow-dashboard-section');
+  const list = document.getElementById('cow-list-section');
+  const form = document.getElementById('cow-form-section');
+  if (dash) dash.style.display = (sub === 'dashboard') ? '' : 'none';
+  if (list) list.style.display = (sub === 'list')      ? '' : 'none';
+  if (form) form.style.display = (sub === 'form')      ? '' : 'none';
+  if (sub === 'dashboard') renderCowDashboard();
+  if (sub === 'list')      renderCowRegistry();
+}
+
+/* Main dashboard renderer. Reads STATE.cows + STATE.cowEvents + 
+   STATE.cowFeedLog and updates each section. */
+function renderCowDashboard() {
+  const root = document.getElementById('cow-dashboard-section');
+  if (!root) return;
+  
+  const aliveCows = (STATE.cows || []).filter(c => c.status === 'alive');
+  const herd = computeDairyHerdState(aliveCows);
+  const feedChip = computeFeedChip();
+  
+  // Top summary line
+  const summaryEl = document.getElementById('cow-dash-summary');
+  if (summaryEl) {
+    if (aliveCows.length === 0) {
+      summaryEl.textContent = 'No cows registered yet.';
+    } else {
+      const parts = [aliveCows.length + (aliveCows.length === 1 ? ' cow' : ' cows')];
+      if (herd.allInCalf) parts.push('all in-calf');
+      else if (herd.inCalf > 0) parts.push(herd.inCalf + ' in-calf');
+      parts.push(herd.nextDueDate ? 'next due ' + formatNandiShortDate(herd.nextDueDate) : 'next due —');
+      summaryEl.textContent = parts.join(' · ');
+    }
+  }
+  
+  // Feed chip on dashboard
+  renderCowDashFeedChip();
+  
+  // Calving pipeline
+  renderCowDashCalving(aliveCows);
+  
+  // Health status placeholders
+  renderCowDashHealth(aliveCows);
+  
+  // Recent activity
+  renderCowDashActivity(aliveCows);
+}
+
+function renderCowDashFeedChip() {
+  const chip = computeFeedChip();
+  const chipEl = document.getElementById('cow-dash-feed-chip');
+  if (!chipEl) return;
+  const colorStyle = chip.color === 'green'
+    ? 'background: rgba(140, 195, 145, 0.30); border-color: rgba(140, 195, 145, 0.55); color: var(--forest-dark);'
+    : 'background: rgba(225, 175, 55, 0.18); border-color: rgba(225, 175, 55, 0.42); color: var(--brass-dark);';
+  chipEl.innerHTML = `
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:0.6rem; padding:0.8rem 1rem; border:1px solid; border-radius:8px; ${colorStyle}">
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.14em; text-transform:uppercase; opacity:0.85">Feed today</div>
+        <div style="font-family:'Fraunces',serif; font-size:1.1rem; margin-top:0.15rem">${chip.emoji} ${chip.label}${chip.detail ? ' <span style="opacity:0.65; font-style:italic; font-size:0.85rem">' + chip.detail + '</span>' : ''}</div>
+      </div>
+      ${chip.color === 'green' ? '' : `
+        <button type="button" onclick="onCowFeedTap()" style="background:var(--forest-dark); color:var(--ivory); border:none; border-radius:6px; padding:0.55rem 0.9rem; font-family:'IBM Plex Mono',monospace; font-size:0.75rem; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; white-space:nowrap">✓ Fed</button>
+      `}
+    </div>
+  `;
+}
+
+/* Feed-tap handler. Opens a tiny choice if multiple potential operators 
+   (Cheison, Elias, Faith, Victor). For Sinonin's smallholder reality we 
+   pick a sensible default — current operator is whoever opened the app. 
+   For v6.10.2 we keep it simple: prompt with the cow daily-ops roster 
+   (Elias, Victor) and let the operator confirm. */
+async function onCowFeedTap() {
+  // Curated list of daily-ops operators for cows (Elias + Victor are 
+  // Sinonin's hands; Cheison logs from Verden occasionally).
+  const operators = ['Elias', 'Victor', 'Cheison', 'Other'];
+  if (typeof showChoiceModal === 'function') {
+    showChoiceModal({
+      title: 'Who fed today?',
+      options: operators,
+      onChoose: async (choice) => {
+        let fedBy = choice;
+        if (choice === 'Other') {
+          fedBy = prompt('Fed by:') || 'operator';
+        }
+        await submitFeedLog(fedBy, '');
+      }
+    });
+  } else {
+    // Fallback if showChoiceModal isn't available
+    const fedBy = prompt('Fed by (Elias / Victor / Cheison / other):', 'Elias');
+    if (fedBy) await submitFeedLog(fedBy.trim(), '');
+  }
+}
+
+/* Calving pipeline — per-cow row with service-date status. */
+function renderCowDashCalving(aliveCows) {
+  const root = document.getElementById('cow-dash-calving');
+  if (!root) return;
+  if (aliveCows.length === 0) {
+    root.innerHTML = '<div style="padding:0.8rem 0; color:var(--slate-light); font-style:italic">No cows registered. Add the first cow below.</div>';
+    return;
+  }
+  const events = STATE.cowEvents || [];
+  const rows = aliveCows
+    .filter(c => c.sex === 'F')  // males don't calve
+    .map(cow => {
+      const servedEvts = events
+        .filter(e => e.tag_id === cow.tag_id && e.event_type === 'served')
+        .sort((a, b) => (b.event_date || '').localeCompare(a.event_date || ''));
+      const latestServe = servedEvts[0];
+      const notesHint = /in[-\s]?calf/i.test(cow.notes || '');
+      const owner = cow.owner || '—';
+      const displayName = cow.name ? `${cow.name} (${cow.tag_id})` : cow.tag_id;
+      
+      let statusHtml;
+      if (latestServe) {
+        const dueLabel = latestServe.expected_calving 
+          ? `Due ${formatNandiShortDate(latestServe.expected_calving)}`
+          : 'Due — (no expected_calving recorded)';
+        const semenLabel = latestServe.semen_source 
+          ? ` · ${latestServe.semen_source}` 
+          : '';
+        statusHtml = `<div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--forest)">Served ${formatNandiShortDate(latestServe.event_date)}${semenLabel}</div>
+                      <div style="font-family:'Fraunces',serif; font-size:0.95rem; color:var(--ink); margin-top:0.15rem">${dueLabel}</div>`;
+      } else if (notesHint) {
+        statusHtml = `<div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--brass)">In-calf (per notes)</div>
+                      <div style="margin-top:0.2rem">
+                        <button type="button" onclick="openCowServeForm('${cow.tag_id}')" style="background:transparent; border:1px dashed var(--brass); color:var(--brass-dark); border-radius:4px; padding:0.3rem 0.6rem; font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.08em; cursor:pointer">+ Log service date</button>
+                      </div>`;
+      } else {
+        statusHtml = `<div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--slate-light)">Not served · open</div>
+                      <div style="margin-top:0.2rem">
+                        <button type="button" onclick="openCowServeForm('${cow.tag_id}')" style="background:transparent; border:1px dashed var(--rule); color:var(--slate); border-radius:4px; padding:0.3rem 0.6rem; font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.08em; cursor:pointer">+ Log service date</button>
+                      </div>`;
+      }
+      
+      return `
+        <div style="padding:0.7rem 0; border-top:1px solid var(--rule); display:flex; align-items:center; justify-content:space-between; gap:0.8rem;">
+          <div style="flex:1; min-width:0">
+            <div style="font-family:'Fraunces',serif; font-style:italic; font-size:1.05rem; color:var(--forest-dark)">${displayName}</div>
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--slate-light); letter-spacing:0.06em">${(cow.breed || '—')} · ${owner}</div>
+          </div>
+          <div style="text-align:right; min-width:9rem">${statusHtml}</div>
+        </div>
+      `;
+    }).join('');
+  
+  const totalFemales = aliveCows.filter(c => c.sex === 'F').length;
+  root.innerHTML = rows || `<div style="padding:0.6rem 0; color:var(--slate-light); font-style:italic">No female cows in registry yet. Calving pipeline becomes active once heifers/cows are added.</div>`;
+}
+
+function renderCowDashHealth(aliveCows) {
+  const root = document.getElementById('cow-dash-health');
+  if (!root) return;
+  const events = STATE.cowEvents || [];
+  
+  // For each health category, find the most recent event across the herd
+  const lastByType = {};
+  events.forEach(e => {
+    if (!e.event_type) return;
+    const cur = lastByType[e.event_type];
+    if (!cur || (e.event_date || '') > (cur.event_date || '')) {
+      lastByType[e.event_type] = e;
+    }
+  });
+  
+  function statusLine(typeKey, label, emoji) {
+    const ev = lastByType[typeKey];
+    if (!ev) {
+      return `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.55rem 0; border-top:1px solid var(--rule);">
+          <div>
+            <div style="font-family:'Fraunces',serif; font-size:0.95rem; color:var(--ink)">${emoji} ${label}</div>
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--slate-light); margin-top:0.1rem">no records yet</div>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.68rem; color:var(--slate-light); font-style:italic">— v6.10.3</div>
+        </div>
+      `;
+    }
+    return `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:0.55rem 0; border-top:1px solid var(--rule);">
+        <div>
+          <div style="font-family:'Fraunces',serif; font-size:0.95rem; color:var(--ink)">${emoji} ${label}</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--forest); margin-top:0.1rem">Last ${formatNandiShortDate(ev.event_date)}${ev.drug_or_vaccine ? ' · ' + ev.drug_or_vaccine : ''}</div>
+        </div>
+      </div>
+    `;
+  }
+  
+  root.innerHTML = `
+    ${statusLine('vaccinated', 'Vaccinations', '💉')}
+    ${statusLine('dewormed',   'Deworming',    '🪱')}
+    ${statusLine('dipped',     'Dipping',      '💦')}
+    ${statusLine('hooftrim',   'Hooftrim',     '🦶')}
+  `;
+}
+
+function renderCowDashActivity(aliveCows) {
+  const root = document.getElementById('cow-dash-activity');
+  if (!root) return;
+  
+  // Combine recent cow registrations + cow events + feed logs into a single
+  // activity stream, sorted by date desc, top 6.
+  const activity = [];
+  (STATE.cows || []).forEach(c => {
+    if (c.date_acquired) {
+      const label = c.name ? `${c.name} registered (${c.tag_id})` : `${c.tag_id} registered`;
+      const sub = c.source === 'Donated/Gifted' && c.source_farm 
+        ? `gift from ${c.source_farm}` 
+        : (c.source ? c.source.toLowerCase() : '');
+      activity.push({ date: c.date_acquired, label, sub, icon: '🐄' });
+    }
+  });
+  (STATE.cowEvents || []).forEach(e => {
+    const cow = (STATE.cows || []).find(c => c.tag_id === e.tag_id);
+    const name = cow ? (cow.name || cow.tag_id) : e.tag_id;
+    let label, icon;
+    switch (e.event_type) {
+      case 'served':     label = `${name} served`;              icon = '💞'; break;
+      case 'calved':     label = `${name} calved`;              icon = '🐮'; break;
+      case 'dewormed':   label = `${name} dewormed`;            icon = '🪱'; break;
+      case 'vaccinated': label = `${name} vaccinated`;          icon = '💉'; break;
+      case 'dipped':     label = `${name} dipped`;              icon = '💦'; break;
+      case 'sold':       label = `${name} sold`;                icon = '💵'; break;
+      case 'died':       label = `${name} died`;                icon = '⚰️'; break;
+      default:           label = `${name} ${e.event_type}`;     icon = '📝';
+    }
+    activity.push({ date: e.event_date, label, sub: e.notes || '', icon });
+  });
+  (STATE.cowFeedLog || []).slice(-3).forEach(f => {
+    activity.push({ date: f.date, label: `Fed (by ${f.fed_by})`, sub: '', icon: '🌾' });
+  });
+  
+  activity.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const recent = activity.slice(0, 6);
+  
+  if (recent.length === 0) {
+    root.innerHTML = '<div style="padding:0.6rem 0; color:var(--slate-light); font-style:italic">No activity yet.</div>';
+    return;
+  }
+  
+  root.innerHTML = recent.map(a => `
+    <div style="display:flex; gap:0.6rem; padding:0.5rem 0; border-top:1px solid var(--rule); align-items:flex-start;">
+      <div style="font-size:1.1rem; line-height:1.2">${a.icon}</div>
+      <div style="flex:1; min-width:0">
+        <div style="font-family:'Fraunces',serif; font-size:0.95rem; color:var(--ink)">${a.label}</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--slate-light); margin-top:0.1rem">${formatNandiShortDate(a.date)}${a.sub ? ' · ' + a.sub : ''}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   v6.10.2 — SERVICE-DATE CAPTURE
+   Opens a tiny inline form to log a 'served' cow event. Expected calving
+   is auto-computed = served + 280 days. Pushed via add_cow_event (gate
+   v5.0.42 already handles this). 
+   ============================================================ */
+
+let _activeCowServeTag = null;
+function openCowServeForm(tagId) {
+  _activeCowServeTag = tagId;
+  const cow = (STATE.cows || []).find(c => c.tag_id === tagId);
+  if (!cow) { alert('Cow not found: ' + tagId); return; }
+  // Open the modal
+  const modal = document.getElementById('cow-serve-modal');
+  if (!modal) return;
+  document.getElementById('cow-serve-cow-label').textContent = (cow.name ? cow.name + ' (' + cow.tag_id + ')' : cow.tag_id);
+  // Default service date to today (operator can change)
+  document.getElementById('cow-serve-date').value = _todayDateStrNandi();
+  // Populate semen source dropdown
+  const semenSel = document.getElementById('cow-serve-semen');
+  if (semenSel && !semenSel.options.length) {
+    semenSel.innerHTML = COW_SEMEN_SOURCES.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
+  }
+  document.getElementById('cow-serve-bull').value = '';
+  document.getElementById('cow-serve-notes').value = '';
+  updateCowServeExpectedCalving();
+  modal.style.display = 'flex';
+}
+
+function closeCowServeForm() {
+  _activeCowServeTag = null;
+  const modal = document.getElementById('cow-serve-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function updateCowServeExpectedCalving() {
+  const dateEl = document.getElementById('cow-serve-date');
+  const expEl = document.getElementById('cow-serve-expected');
+  if (!dateEl || !expEl) return;
+  const d = dateEl.value;
+  if (!d) { expEl.textContent = '—'; return; }
+  const served = new Date(d + 'T00:00:00Z');
+  if (isNaN(served.getTime())) { expEl.textContent = '—'; return; }
+  served.setUTCDate(served.getUTCDate() + COW_GESTATION_DAYS);
+  expEl.textContent = formatNandiShortDate(served.toISOString().slice(0, 10));
+}
+
+async function submitCowServeForm() {
+  if (!_activeCowServeTag) { closeCowServeForm(); return; }
+  const date = document.getElementById('cow-serve-date').value;
+  if (!date) { alert('Service date required'); return; }
+  const semen = document.getElementById('cow-serve-semen').value;
+  const bull = document.getElementById('cow-serve-bull').value.trim();
+  const notes = document.getElementById('cow-serve-notes').value.trim();
+  // Compute expected_calving
+  const served = new Date(date + 'T00:00:00Z');
+  served.setUTCDate(served.getUTCDate() + COW_GESTATION_DAYS);
+  const expectedCalving = served.toISOString().slice(0, 10);
+  
+  const record = {
+    tag_id: _activeCowServeTag,
+    event_type: 'served',
+    event_date: date,
+    semen_source: semen,
+    bull_ref: bull,
+    expected_calving: expectedCalving,
+    notes,
+    timestamp: new Date().toISOString()
+  };
+  
+  // Optimistic local insert
+  if (!Array.isArray(STATE.cowEvents)) STATE.cowEvents = [];
+  STATE.cowEvents.push(record);
+  await storageSet(K_COW_EVENTS, STATE.cowEvents);
+  
+  // Push to gate
+  const ok = await pushCowEventToForm(record);
+  if (!ok) {
+    await queueForSync(record, 'cow-event');
+  }
+  
+  closeCowServeForm();
+  // Re-render the dashboard + hero card so the new service date appears
+  if (typeof updateHero === 'function') try { updateHero(); } catch (e) {}
+  if (typeof renderCowDashboard === 'function') try { renderCowDashboard(); } catch (e) {}
+}
+
 /* Main cow list renderer. Reads filters, applies them to STATE.cows,
    renders rows reusing the .sheep-row CSS (parallel pattern). */
 function renderCowRegistry() {
@@ -17821,7 +18661,10 @@ function openCowForm(mode, tagId) {
     });
   }
 
-  // Toggle UI: hide list section, show form section
+  // Toggle UI: hide other sub-views, show form section. v6.10.2 — 
+  // dashboard was added; ensure it's hidden too when form opens.
+  const dash = document.getElementById('cow-dashboard-section');
+  if (dash) dash.style.display = 'none';
   document.getElementById('cow-list-section').style.display = 'none';
   document.getElementById('cow-form-section').style.display = '';
   document.getElementById('cow-form-mode').textContent = mode;
@@ -17871,9 +18714,12 @@ function openCowForm(mode, tagId) {
 }
 
 function closeCowForm() {
-  document.getElementById('cow-form-section').style.display = 'none';
-  document.getElementById('cow-list-section').style.display = '';
-  renderCowRegistry();
+  // v6.10.2 — Return to dashboard sub-view by default (was: list). The 
+  // dashboard is the new default home of Other › Cows; the list is a 
+  // sub-view accessed via "View registry". This keeps Cancel/Save 
+  // exiting to the same surface the user came from in 99% of cases 
+  // (Add cow tapped from dashboard's bottom action).
+  setCowView('dashboard');
 }
 
 /* Live tag validation + owner-derivation as the user types. */
@@ -18922,6 +19768,8 @@ function showUpdateBanner() {
   // v6.10.0 — Hydrate Cow registry and event log. Parallel shape to sheep.
   STATE.cows = await storageGet(K_COWS, []);
   STATE.cowEvents = await storageGet(K_COW_EVENTS, []);
+  // v6.10.2 — Hydrate daily cow feed log (drives home-card chip + dashboard).
+  STATE.cowFeedLog = await storageGet(K_COW_FEED_LOG, []);
   // v6.5.7 — Bird mortality event log
   STATE.mortality = await storageGet(K_MORTALITY, []);
   // v6.0 SHIP 1 — Egg Collection state

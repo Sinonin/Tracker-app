@@ -1,14 +1,4 @@
 // Sinonin Group Management App — Service Worker
-// v6.9.14 — Disposition dropdown for egg notes (PWA-only) (20 May 2026)
-// v6.9.13 — Egg_Batch_ID at write boundary + collector compulsory (20 May 2026)
-// v6.9.12 — UX polish: cohort-aware validation + bigger poultry buttons + Income→Sales (20 May 2026)
-// v6.9.11 — Asserted stages (Cockerels/Quarantine/Deformities/Retired) (20 May 2026)
-// v6.9.10 — Cohort_ID Phase 2: write capture + dual-key matching + UX modal (20 May 2026)
-// v6.9.9 — Zero-population sale block (§ 6.x sealed) (20 May 2026)
-// v6.9.8 — Date-default-to-today on form open + cohort-event-as-measurement (20 May 2026)
-// v6.9.7 — Vaccination cohort_id + hatch CTA fix + stale-census affirmation + auto-rebuild on hatch (18 May 2026)
-// v6.9.6 — Block-gap banner forward-only scope + CLOUD_ENDPOINT alignment (17 May 2026)
-// v6.9.5 — Cache bump for actual-dupe-ack + block-gap-ack server persistence (16 May 2026)
 // v6.3.10 — Tea "Plucker Kg" label · Poultry=gold(eggshell) Sireet=deeper-green theming (07 May 2026 Verden)
 // v6.3.9 — Tea quick-add: Pluckers→Greenleaf (07 May 2026 Verden)
 // v6.3.8 — Hero cards as distinct chips (07 May 2026 Verden)
@@ -64,7 +54,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v194';
+const CACHE = 'sinonin-greenleaf-v202';
 
 const SHELL_FILES = [
   './',
