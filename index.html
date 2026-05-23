@@ -9491,6 +9491,14 @@ function switchView(v) {
   if (v === 'admin' || v === 'settings') renderSettings();
   if (v === 'other') renderOther();
   // v6.10.5 — Sheep + Cows soft promotion: activate the right sub-view.
+  // When the user taps "Other" itself, reset to the 'hub' tile picker so 
+  // they don't land on whichever sub-view was last open (e.g. if they 
+  // came from Cows, panel-other would still have cow-dashboard showing — 
+  // confusing because the nav says Other but the content says Cows). 
+  // Sealed § 6.x: when a tab is tapped, the tab's identity should match 
+  // its content. Sticky sub-view state across top-level nav changes 
+  // creates a mismatch.
+  if (v === 'other') setOtherView('hub');
   if (v === 'sheep') setOtherView('sheep');
   if (v === 'cows')  setOtherView('cows');
 }
