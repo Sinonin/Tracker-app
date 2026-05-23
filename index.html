@@ -215,9 +215,16 @@
   }
   
   /* v6.10.5 — Header admin button. Sits to the LEFT of header-refresh
-     (which sits at right:5.6rem). Same dimensions, same styling vocabulary,
-     just shifted further left. Hidden by default (data-lock-state="locked")
-     until revealed via wireAdminEscapeHatch's long-press on version-label. */
+     (which sits at right:5.6rem). Same dimensions, same styling vocabulary.
+     
+     v6.10.5 BUGFIX — Per v5.1.0 design intent, this button is ALWAYS 
+     VISIBLE regardless of lock state. The padlock icon is itself the 
+     state indicator (locked padlock / gear / open padlock). When locked, 
+     tapping it shows a toast/modal; when admin or open, it opens the 
+     Admin panel. The 6378 escape-hatch long-press on the version label 
+     reveals the Admin SECTION (panel content), not the nav button.
+     Sealed § 6.x: visibility of a control and its enabledness are 
+     separate things — the icon communicates state, not the absence. */
   header.brand #nav-settings {
     position: absolute;
     bottom: 0.3rem;
@@ -231,15 +238,11 @@
     border-radius: 4px;
     cursor: pointer;
     opacity: 0.75;
-    display: none;  /* default hidden; data-lock-state="admin"/"open" reveals */
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     transition: opacity 0.15s ease, background 0.15s ease;
     -webkit-tap-highlight-color: transparent;
-  }
-  header.brand #nav-settings[data-lock-state="admin"],
-  header.brand #nav-settings[data-lock-state="open"] {
-    display: inline-flex;
   }
   header.brand #nav-settings:hover,
   header.brand #nav-settings:active {
@@ -255,9 +258,9 @@
     stroke-linecap: round;
     stroke-linejoin: round;
   }
-  /* Icon state visibility — same data-lock-state mechanism as the old
-     bottom-nav button. Default-hide all three icons; data-lock-state
-     reveals the matching one. */
+  /* Icon state visibility — the data-lock-state mechanism controls
+     WHICH icon shows (not whether the button is visible). The button 
+     itself is always rendered. */
   header.brand #nav-settings .nav-lock-icon-locked,
   header.brand #nav-settings .nav-lock-icon-admin,
   header.brand #nav-settings .nav-lock-icon-open {
