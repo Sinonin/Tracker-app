@@ -2983,7 +2983,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.1</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.2</span>
 </header>
 
 <main>
@@ -5100,7 +5100,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.10.1</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta">v6.10.2</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -18267,32 +18267,40 @@ function renderCowDashFeedChip() {
   `;
 }
 
-/* Feed-tap handler. Opens a tiny choice if multiple potential operators 
-   (Cheison, Elias, Faith, Victor). For Sinonin's smallholder reality we 
-   pick a sensible default — current operator is whoever opened the app. 
-   For v6.10.2 we keep it simple: prompt with the cow daily-ops roster 
-   (Elias, Victor) and let the operator confirm. */
+/* Feed-tap handler. Opens a choice modal with the daily-ops operator 
+   roster for cows. Returns the operator name; submits feed-log on choice. 
+   v6.10.2 bugfix — showChoiceModal is positional (title, htmlBody, buttons), 
+   not an object-args call. */
 async function onCowFeedTap() {
-  // Curated list of daily-ops operators for cows (Elias + Victor are 
-  // Sinonin's hands; Cheison logs from Verden occasionally).
+  // Curated list of daily-ops operators for cows. Elias + Victor are 
+  // Sinonin's hands on the ground; Cheison logs from Verden occasionally.
   const operators = ['Elias', 'Victor', 'Cheison', 'Other'];
+  const buttons = operators.map((name, i) => ({
+    label: name,
+    value: name,
+    primary: i === 0  // Elias is the default
+  }));
+  
+  let choice = null;
   if (typeof showChoiceModal === 'function') {
-    showChoiceModal({
-      title: 'Who fed today?',
-      options: operators,
-      onChoose: async (choice) => {
-        let fedBy = choice;
-        if (choice === 'Other') {
-          fedBy = prompt('Fed by:') || 'operator';
-        }
-        await submitFeedLog(fedBy, '');
-      }
-    });
+    choice = await showChoiceModal(
+      '🌾 Who fed today?',
+      'Tap the operator who handled feeding. The daily log drives the home-card status chip and the Health Status section.',
+      buttons
+    );
   } else {
     // Fallback if showChoiceModal isn't available
-    const fedBy = prompt('Fed by (Elias / Victor / Cheison / other):', 'Elias');
-    if (fedBy) await submitFeedLog(fedBy.trim(), '');
+    choice = prompt('Fed by (Elias / Victor / Cheison / other):', 'Elias');
   }
+  
+  if (!choice) return;  // dismissed
+  
+  let fedBy = String(choice).trim();
+  if (fedBy === 'Other') {
+    fedBy = (prompt('Fed by:') || '').trim() || 'operator';
+  }
+  
+  await submitFeedLog(fedBy, '');
 }
 
 /* Calving pipeline — per-cow row with service-date status. */
