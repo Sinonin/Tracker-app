@@ -4738,6 +4738,22 @@
         <h3 style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.4rem; color:var(--forest); margin:0.4rem 0 0.2rem; letter-spacing:-0.01em;">🐄 Dairy</h3>
         <p style="color:var(--slate-light); font-size:0.85rem; line-height:1.5; margin:0.2rem 0 1rem;">Herd status · calving pipeline · health · activity</p>
 
+        <!-- v6.10.5 Stage 3 + tweak — ACTION GRID lifted to top per Cheison
+             23 May 2026: "The 'Action' is likely more important for the 
+             operators while the dashboard suffices for Levy, Elias, Lagat 
+             via the Home tab dairy card." Operator-first ergonomics: most-
+             frequent taps (log milking, log event) above the fold; admin 
+             actions (add cow, view registry) one row down. Sealed § 6.x: 
+             the home tab serves the principal's overview; the chain tab 
+             serves the operator's action. They should be laid out 
+             differently because their primary users are different. -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:1.2rem;">
+          <button type="button" onclick="setCowView('milk'); openCowMilkForm(null, null)" class="export-btn" style="background:var(--forest); color:var(--ivory); border-color:var(--forest); padding:0.7rem 0.5rem; font-size:0.92rem">🥛 + Log milking</button>
+          <button type="button" onclick="openCowEventPicker(null)" class="export-btn" style="background:var(--brass-dark); color:var(--ivory); border-color:var(--brass-dark); padding:0.7rem 0.5rem; font-size:0.92rem">📝 + Log event</button>
+          <button type="button" onclick="setCowView('form'); openCowForm('add')" class="export-btn" style="background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark); padding:0.55rem 0.5rem;">+ Add cow</button>
+          <button type="button" onclick="setCowView('list')" class="export-btn" style="background:transparent; color:var(--brass-dark); border:1px solid var(--brass); padding:0.55rem 0.5rem;">View registry</button>
+        </div>
+
         <!-- FEED CHIP — populated by renderCowDashFeedChip() -->
         <div id="cow-dash-feed-chip" style="margin-bottom:1rem"></div>
 
@@ -4796,19 +4812,10 @@
           <div id="cow-dash-activity"></div>
         </div>
 
-        <!-- BOTTOM ACTIONS -->
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-top:1rem;">
-          <button type="button" onclick="setCowView('list')" class="export-btn" style="background:transparent; color:var(--brass-dark); border:1px solid var(--brass); width:100%">View registry</button>
-          <button type="button" onclick="setCowView('form'); openCowForm('add')" class="export-btn" style="background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark); width:100%">+ Add cow</button>
-        </div>
-        <!-- v6.10.5 — Generic event picker button for ad-hoc event logging
-             (when operator wants to record something not surfaced as its own
-             Health Status row). -->
-        <button type="button" onclick="openCowEventPicker(null)" class="export-btn" style="background:var(--brass-dark); color:var(--ivory); border-color:var(--brass-dark); width:100%; margin-top:0.5rem">📝 + Log event</button>
-        <!-- v6.10.5 Stage 3 — Milk module entry point. Opens cow-milk-section
-             with AM session pre-selected. Per-cow per-session entry with
-             channel attribution at milking time. -->
-        <button type="button" onclick="setCowView('milk'); openCowMilkForm(null, null)" class="export-btn" style="background:var(--forest); color:var(--ivory); border-color:var(--forest); width:100%; margin-top:0.4rem">🥛 + Log milking</button>
+        <!-- v6.10.5 Stage 3 tweak — bottom actions REMOVED. The action grid 
+             now lives at the top of the dashboard (right under the title) 
+             per Cheison's operator-first ergonomics call. Long-scroll past 
+             the dashboard surfaces just to reach a tap was the friction. -->
       </div>
       <!-- v6.10.2 — END DAIRY DASHBOARD ============================== -->
 
