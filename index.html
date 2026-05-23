@@ -2983,7 +2983,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.2</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.5</span>
 </header>
 
 <main>
@@ -5100,7 +5100,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta">v6.10.2</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.5</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5609,7 +5609,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.2';
+const APP_VERSION = 'v6.10.5';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -6379,6 +6379,19 @@ function wireAdminEscapeHatch() {
   if (!versionLabel) {
     console.warn('[escape-hatch] version-label element not found');
     return;
+  }
+  // v6.10.5 — Drive the visible version label from APP_VERSION so future
+  // bumps update everywhere automatically. Kills the v6.10.2 class of bug
+  // where the runtime was correct but the UI lied. Sealed § 6.x: when the
+  // runtime version is right but the UI shows wrong, the UI label is
+  // bypassing the source-of-truth — fix at the source, not the display.
+  // The About-section meta gets the same treatment via initVersionStrings.
+  try {
+    versionLabel.textContent = APP_VERSION;
+    const aboutMeta = document.getElementById('about-version-meta');
+    if (aboutMeta) aboutMeta.textContent = APP_VERSION;
+  } catch (e) {
+    console.warn('[version-label] could not set textContent:', e);
   }
   if (versionLabel.dataset.wired === '1') return;
   versionLabel.dataset.wired = '1';
@@ -16941,9 +16954,13 @@ function renderSheepRegistry() {
     const breedColour = [s.breed, s.colour].filter(Boolean).join(' · ');
     const statusClass = s.status === 'external_ram' ? 'external' : s.status;
     const statusLabel = s.status === 'external_ram' ? 'EXT' : s.status.toUpperCase();
+    // v6.10.5 — Species display marker. Sheep have no names, so the
+    // tag carries a /S/ suffix as explicit species qualifier. Cows
+    // (which have names) use name-as-disambiguator instead. Sealed § 6.x:
+    // species disambiguation rides on the operator's existing vocabulary.
     return `
       <div class="sheep-row" onclick="openSheepProfile('${s.tag_id}')">
-        <span class="sr-tag">${s.tag_id}</span>
+        <span class="sr-tag">🐑 ${s.tag_id} <span style="opacity:0.55;font-size:0.78em;letter-spacing:0.08em">/S/</span></span>
         <div class="sr-info">
           <div class="sr-line1"><span class="sr-sex">${sex}</span>${breedColour || '—'}</div>
           <div class="sr-line2">${s.owner} · ${age}${s.notes ? ' · ' + s.notes.slice(0, 40) : ''}</div>
@@ -18268,17 +18285,19 @@ function renderCowDashFeedChip() {
 }
 
 /* Feed-tap handler. Opens a choice modal with the daily-ops operator 
-   roster for cows. Returns the operator name; submits feed-log on choice. 
-   v6.10.2 bugfix — showChoiceModal is positional (title, htmlBody, buttons), 
-   not an object-args call. */
+   roster for cows. Returns the operator name; submits feed-log on choice.
+   v6.10.5 — Curated dropdown updated per Cheison 23 May 2026: removed
+   Cheison ("I am not physically in Kenya — diasporan principals are
+   stakeholders, not operators"), added Frank/Stanley/Ezron/Faith reflecting
+   the actual ground roster. Alphabetical. Sealed § 6.x: the daily-ops list
+   names who's on the ground; at smallholder scale the same hands cross
+   value chains (Faith collects eggs AND feeds cows). */
 async function onCowFeedTap() {
-  // Curated list of daily-ops operators for cows. Elias + Victor are 
-  // Sinonin's hands on the ground; Cheison logs from Verden occasionally.
-  const operators = ['Elias', 'Victor', 'Cheison', 'Other'];
+  const operators = ['Elias', 'Ezron', 'Faith', 'Frank', 'Stanley', 'Victor', 'Other'];
   const buttons = operators.map((name, i) => ({
     label: name,
     value: name,
-    primary: i === 0  // Elias is the default
+    primary: name === 'Elias'  // Elias is the default — farm manager
   }));
   
   let choice = null;
@@ -18289,11 +18308,10 @@ async function onCowFeedTap() {
       buttons
     );
   } else {
-    // Fallback if showChoiceModal isn't available
-    choice = prompt('Fed by (Elias / Victor / Cheison / other):', 'Elias');
+    choice = prompt('Fed by (Elias / Ezron / Faith / Frank / Stanley / Victor / other):', 'Elias');
   }
   
-  if (!choice) return;  // dismissed
+  if (!choice) return;
   
   let fedBy = String(choice).trim();
   if (fedBy === 'Other') {
@@ -18619,16 +18637,21 @@ function renderCowRegistry() {
   // Render rows — reuse .sheep-row CSS for visual consistency
   listEl.innerHTML = filtered.map(c => {
     const sexIcon = c.sex === 'F' ? '♀' : '♂';
-    const name = c.name ? ` · ${c.name}` : '';
+    const nameSuffix = c.name ? ` · <span style="font-family:'Fraunces',serif;font-style:italic;color:var(--forest-dark);font-weight:500">${c.name}</span>` : '';
     const breed = c.breed || '—';
     const owner = c.owner || '—';
     const age = cowAge(c.date_acquired || c.date_of_birth);
     const status = c.status || 'alive';
+    // v6.10.5 — Cow display: 🐄 emoji prefix + tag + name on the sr-tag line.
+    // Sealed § 6.x: where animals have names, names do the species-
+    // disambiguation work that /S/ does for sheep. Heinz's H-001 sheep 
+    // (dewormed yesterday) and Heinz's H-001 cow Baraton (registered 22 May)
+    // remain distinct because the cow row shows "Baraton" alongside the tag.
     return `
       <div class="sheep-row" onclick="openCowForm('edit', '${c.tag_id}')">
-        <div class="sr-tag">${c.tag_id}</div>
+        <div class="sr-tag">🐄 ${c.tag_id}${nameSuffix}</div>
         <div class="sr-info">
-          <div class="sr-line1"><span class="sr-sex">${sexIcon}</span>${owner}${name}</div>
+          <div class="sr-line1"><span class="sr-sex">${sexIcon}</span>${owner}</div>
           <div class="sr-line2">${breed} · ${age}</div>
         </div>
         <div class="sr-status ${status}">${status.replace('_', ' ')}</div>
