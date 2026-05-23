@@ -2540,10 +2540,21 @@
   /* v6.5.2 — Bottom padding on Sheep sub-views so the Cancel/Save 
      buttons in the form (and event form, profile actions) sit clearly 
      above the bottom navigation. body's 100px padding-bottom alone 
-     wasn't enough on long forms. */
+     wasn't enough on long forms.
+     v6.10.5 — Same rule applies to ALL cow sub-views. The "Save" button
+     at the bottom of the cow registration form was being obscured by 
+     the fixed bottom nav (Cheison report 23 May 2026 Verden). Extending
+     to cow-form-section, cow-dashboard-section, cow-list-section so
+     every bottom-of-scroll action sits comfortably above the nav. 
+     Sealed § 6.x candidate: when one species' form needs nav-clearance
+     padding, the parallel species' forms need it for the same reason —
+     the bottom nav doesn't know which animal is being registered. */
   #sheep-form-section,
   #sheep-event-section,
-  #sheep-profile-section {
+  #sheep-profile-section,
+  #cow-form-section,
+  #cow-dashboard-section,
+  #cow-list-section {
     padding-bottom: 3rem !important;
   }
   
