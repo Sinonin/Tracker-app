@@ -2554,7 +2554,8 @@
   #sheep-profile-section,
   #cow-form-section,
   #cow-dashboard-section,
-  #cow-list-section {
+  #cow-list-section,
+  #cow-event-section {
     padding-bottom: 3rem !important;
   }
   
@@ -4712,6 +4713,10 @@
           <button type="button" onclick="setCowView('list')" class="export-btn" style="background:transparent; color:var(--brass-dark); border:1px solid var(--brass); width:100%">View registry</button>
           <button type="button" onclick="setCowView('form'); openCowForm('add')" class="export-btn" style="background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark); width:100%">+ Add cow</button>
         </div>
+        <!-- v6.10.5 — Generic event picker button for ad-hoc event logging
+             (when operator wants to record something not surfaced as its own
+             Health Status row). -->
+        <button type="button" onclick="openCowEventPicker(null)" class="export-btn" style="background:var(--brass-dark); color:var(--ivory); border-color:var(--brass-dark); width:100%; margin-top:0.5rem">📝 + Log event</button>
       </div>
       <!-- v6.10.2 — END DAIRY DASHBOARD ============================== -->
 
@@ -4835,6 +4840,147 @@
           <button type="button" onclick="submitCowForm()" class="export-btn" style="flex:1;background:var(--forest-dark);color:var(--ivory);border-color:var(--forest-dark)">Save</button>
         </div>
         <div id="cf-feedback" style="display:none;margin-top:0.7rem;padding:0.6rem 0.8rem;border-radius:6px;font-family:'Fraunces',serif;font-size:0.9rem"></div>
+      </div>
+
+      <!-- v6.10.5 STAGE 2 — COW EVENT SECTION ===========================
+           Generic event form for 8 cow event types (vaccinated, dewormed,
+           dipped, hooftrim, weighed, treated, sold, died, calved). Mirrors
+           sheep-event-section structure with cow-appropriate sub-blocks.
+           Served events keep their dedicated cow-serve-modal because they
+           have the auto-computed expected_calving (= served + 280d).
+           Writes via existing add_cow_event handler (Apps Script v5.0.42).
+           ============================================================ -->
+      <div class="section" id="cow-event-section" style="display:none">
+        <div class="section-head">
+          <button type="button" onclick="closeCowEventForm()" style="background:transparent; border:none; color:var(--brass); font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; padding:0;">← Cancel</button>
+          <span class="meta" id="cow-event-mode">event</span>
+        </div>
+        <h3 id="cow-event-title" style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.3rem; color:var(--forest); margin:0.4rem 0 1rem; letter-spacing:-0.01em;">Record event</h3>
+
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="ce-date">
+        </div>
+
+        <div class="field">
+          <label id="ce-tag-label">Cow</label>
+          <select id="ce-tag"></select>
+        </div>
+
+        <!-- VACCINATED: vaccine dropdown from CURATED_VACCINES + next_due_date -->
+        <div id="ce-vaccinated-block" style="display:none">
+          <div class="field">
+            <label>Vaccine</label>
+            <select id="ce-vacc-name"></select>
+          </div>
+          <div class="field">
+            <label>Next due <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional)</span></label>
+            <input type="date" id="ce-vacc-next-due">
+          </div>
+        </div>
+
+        <!-- DEWORMED: drug (free text, common-protocol placeholder) -->
+        <div id="ce-dewormed-block" style="display:none">
+          <div class="field">
+            <label>Drug / dewormer</label>
+            <input type="text" id="ce-deworm-drug" placeholder="Nemarid Super, Albendazole, Ivermectin..." autocomplete="off">
+          </div>
+        </div>
+
+        <!-- DIPPED: acaricide -->
+        <div id="ce-dipped-block" style="display:none">
+          <div class="field">
+            <label>Acaricide</label>
+            <input type="text" id="ce-dip-drug" placeholder="Triatix, Tickoff, Decis..." autocomplete="off">
+          </div>
+        </div>
+
+        <!-- HOOFTRIM: no special fields beyond date+notes -->
+        <div id="ce-hooftrim-block" style="display:none">
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--brass); margin-bottom:1rem; line-height:1.5; padding:0.5rem 0.7rem; background:rgba(180,140,80,0.06); border-radius:4px">
+            Routine hoof trim. Note any issues found in the notes field.
+          </div>
+        </div>
+
+        <!-- WEIGHED: kg -->
+        <div id="ce-weighed-block" style="display:none">
+          <div class="field">
+            <label>Weight (kg)</label>
+            <input type="number" id="ce-weigh-kg" min="0" step="0.5" placeholder="385">
+          </div>
+        </div>
+
+        <!-- TREATED: condition + drug -->
+        <div id="ce-treated-block" style="display:none">
+          <div class="field">
+            <label>Condition</label>
+            <input type="text" id="ce-treat-condition" placeholder="Mastitis, lameness, retained placenta..." autocomplete="off">
+          </div>
+          <div class="field">
+            <label>Drug / treatment <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional)</span></label>
+            <input type="text" id="ce-treat-drug" placeholder="Penicillin, oxytetracycline..." autocomplete="off">
+          </div>
+        </div>
+
+        <!-- SOLD: weight + price + buyer -->
+        <div id="ce-sold-block" style="display:none">
+          <div class="field">
+            <label>Live weight (kg) <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional)</span></label>
+            <input type="number" id="ce-sold-kg" min="0" step="1" placeholder="420">
+          </div>
+          <div class="field">
+            <label>Price (Ksh)</label>
+            <input type="number" id="ce-sold-price" min="0" step="1000" placeholder="85000">
+          </div>
+          <div class="field">
+            <label>Buyer</label>
+            <input type="text" id="ce-sold-buyer" placeholder="Name or place" autocomplete="off">
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:#b8714d; margin-bottom:1rem; line-height:1.5; padding:0.5rem 0.7rem; background:rgba(184,113,77,0.08); border-radius:4px">
+            Saving sets cow status to <strong>sold</strong>.
+          </div>
+        </div>
+
+        <!-- DIED: cause -->
+        <div id="ce-died-block" style="display:none">
+          <div class="field">
+            <label>Cause</label>
+            <input type="text" id="ce-died-cause" placeholder="ECF, calving complications, age, predation..." autocomplete="off">
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:#b8714d; margin-bottom:1rem; line-height:1.5; padding:0.5rem 0.7rem; background:rgba(184,113,77,0.08); border-radius:4px">
+            Saving sets cow status to <strong>died</strong>.
+          </div>
+        </div>
+
+        <!-- CALVED: born_alive + born_dead + calf_tags (no auto-create for v6.10.5; calf rows added manually in registry) -->
+        <div id="ce-calved-block" style="display:none">
+          <div class="field">
+            <label>Number born alive</label>
+            <input type="number" id="ce-calved-alive" min="0" max="3" value="1">
+          </div>
+          <div class="field">
+            <label>Number born dead <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(stillbirths)</span></label>
+            <input type="number" id="ce-calved-dead" min="0" max="3" value="0">
+          </div>
+          <div class="field">
+            <label>Calf tag(s) <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(comma-separated, optional)</span></label>
+            <input type="text" id="ce-calved-tags" placeholder="H-002, M-002" autocomplete="off">
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--brass); margin-bottom:1rem; line-height:1.5; padding:0.5rem 0.7rem; background:rgba(180,140,80,0.06); border-radius:4px">
+            Record the calving event here. Add each calf as a new cow in the registry (+ Add cow) — owner inherits from the dam.
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Notes <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional)</span></label>
+          <textarea id="ce-notes" rows="2" placeholder="Anything worth remembering — vet present, dose adjustment, weather, behavior..." style="width:100%; padding:0.5rem; font-family:'Fraunces',serif; font-size:0.92rem; border:1px solid var(--rule); border-radius:4px; resize:vertical;"></textarea>
+        </div>
+
+        <div style="display:flex; gap:0.5rem; margin-top:0.8rem;">
+          <button type="button" onclick="closeCowEventForm()" class="export-btn" style="flex:1">Cancel</button>
+          <button type="button" onclick="submitCowEventForm()" class="export-btn" style="flex:1; background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark)">Save event</button>
+        </div>
+        <div id="ce-feedback" style="display:none;margin-top:0.7rem;padding:0.6rem 0.8rem;border-radius:6px;font-family:'Fraunces',serif;font-size:0.9rem"></div>
       </div>
 
       <!-- v6.10.2 — SERVE EVENT MODAL ============================
@@ -18222,18 +18368,20 @@ async function pushFeedLogToGate(record) {
   return await pushDorperToGate(record, 'feed-log');
 }
 
-/* Sub-view manager for Other › Cows: 'dashboard' | 'list' | 'form'. 
+/* Sub-view manager for Other › Cows: 'dashboard' | 'list' | 'form' | 'event'. 
    Default is 'dashboard'. setOtherView('cows') opens the dashboard 
-   automatically. */
+   automatically. v6.10.5 — 'event' added for generic event logging. */
 let _cowSubView = 'dashboard';
 function setCowView(sub) {
   _cowSubView = sub;
   const dash = document.getElementById('cow-dashboard-section');
   const list = document.getElementById('cow-list-section');
   const form = document.getElementById('cow-form-section');
+  const evSec = document.getElementById('cow-event-section');
   if (dash) dash.style.display = (sub === 'dashboard') ? '' : 'none';
   if (list) list.style.display = (sub === 'list')      ? '' : 'none';
   if (form) form.style.display = (sub === 'form')      ? '' : 'none';
+  if (evSec) evSec.style.display = (sub === 'event')   ? '' : 'none';
   if (sub === 'dashboard') renderCowDashboard();
   if (sub === 'list')      renderCowRegistry();
 }
@@ -18413,16 +18561,19 @@ function renderCowDashHealth(aliveCows) {
             <div style="font-family:'Fraunces',serif; font-size:0.95rem; color:var(--ink)">${emoji} ${label}</div>
             <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--slate-light); margin-top:0.1rem">no records yet</div>
           </div>
-          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.68rem; color:var(--slate-light); font-style:italic">— v6.10.3</div>
+          <button type="button" onclick="openCowEventForm('${typeKey}', null)" style="background:transparent; border:1px dashed var(--rule); color:var(--slate); border-radius:4px; padding:0.3rem 0.6rem; font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.08em; cursor:pointer">+ Log</button>
         </div>
       `;
     }
+    const cow = (STATE.cows || []).find(c => c.tag_id === ev.tag_id);
+    const cowLabel = cow ? (cow.name || cow.tag_id) : ev.tag_id;
     return `
       <div style="display:flex; justify-content:space-between; align-items:center; padding:0.55rem 0; border-top:1px solid var(--rule);">
         <div>
           <div style="font-family:'Fraunces',serif; font-size:0.95rem; color:var(--ink)">${emoji} ${label}</div>
-          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--forest); margin-top:0.1rem">Last ${formatNandiShortDate(ev.event_date)}${ev.drug_or_vaccine ? ' · ' + ev.drug_or_vaccine : ''}</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--forest); margin-top:0.1rem">${cowLabel} · ${formatNandiShortDate(ev.event_date)}${ev.drug_or_vaccine ? ' · ' + ev.drug_or_vaccine : ''}</div>
         </div>
+        <button type="button" onclick="openCowEventForm('${typeKey}', null)" style="background:transparent; border:1px solid var(--brass); color:var(--brass-dark); border-radius:4px; padding:0.3rem 0.6rem; font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.08em; cursor:pointer">+ Log</button>
       </div>
     `;
   }
@@ -18577,6 +18728,277 @@ async function submitCowServeForm() {
   if (typeof renderCowDashboard === 'function') try { renderCowDashboard(); } catch (e) {}
 }
 
+/* ============================================================
+   v6.10.5 STAGE 2 — Cow event form (8 event types)
+   ============================================================
+   Mirrors openSheepEventForm pattern. Handles vaccinated / dewormed / 
+   dipped / hooftrim / weighed / treated / sold / died / calved. Each 
+   type shows its specific sub-block; common fields are date + tag + 
+   notes. Submits via existing add_cow_event handler (Apps Script v5.0.42).
+   
+   Status side-effects: 'sold' and 'died' flip the cow's status to match. 
+   The cow record gets a STATE.cows update alongside the event record.
+   
+   v6.10.6 will add: auto-create calf rows from calved events with 
+   calf_tags; bulk-apply mode for routine treatments (deworm 4 cows in 
+   one batch like Elias did with the 7 sheep yesterday). For Stage 2 
+   we ship single-cow events with the conventional pattern.
+   ============================================================ */
+
+let _ceCurrentType = null;
+let _ceCurrentTagId = null;
+
+function openCowEventForm(type, presetTagId) {
+  const dash = document.getElementById('cow-dashboard-section');
+  const list = document.getElementById('cow-list-section');
+  const form = document.getElementById('cow-form-section');
+  const evSec = document.getElementById('cow-event-section');
+  if (dash) dash.style.display = 'none';
+  if (list) list.style.display = 'none';
+  if (form) form.style.display = 'none';
+  if (evSec) evSec.style.display = '';
+  
+  _ceCurrentType = type;
+  _ceCurrentTagId = presetTagId;
+  
+  // Hide all type-specific blocks
+  ['ce-vaccinated-block','ce-dewormed-block','ce-dipped-block','ce-hooftrim-block',
+   'ce-weighed-block','ce-treated-block','ce-sold-block','ce-died-block','ce-calved-block']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  
+  // Common: date defaults today, notes blank, feedback hidden
+  document.getElementById('ce-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('ce-notes').value = '';
+  const fb = document.getElementById('ce-feedback');
+  if (fb) fb.style.display = 'none';
+  
+  // Title + mode meta
+  const titles = {
+    vaccinated: 'Record vaccination', dewormed: 'Record deworming',
+    dipped: 'Record dipping',         hooftrim: 'Record hoof trim',
+    weighed: 'Record weighing',        treated: 'Record treatment',
+    sold: 'Record sale',               died: 'Record death',
+    calved: 'Record calving'
+  };
+  document.getElementById('cow-event-title').textContent = titles[type] || 'Record event';
+  document.getElementById('cow-event-mode').textContent = type;
+  
+  // Cow selector — populate based on event type
+  const tagSel = document.getElementById('ce-tag');
+  const tagLabel = document.getElementById('ce-tag-label');
+  const alive = (STATE.cows || []).filter(c => c.status === 'alive');
+  let pool = alive;
+  if (type === 'calved') {
+    pool = alive.filter(c => c.sex === 'F');
+    tagLabel.textContent = 'Cow (dam)';
+  } else {
+    tagLabel.textContent = 'Cow';
+  }
+  
+  if (pool.length === 0) {
+    tagSel.innerHTML = '<option value="">— no eligible cows on registry —</option>';
+  } else {
+    tagSel.innerHTML = '<option value="">— pick one —</option>' + pool.map(c => {
+      const name = c.name ? ' · ' + c.name : '';
+      return `<option value="${c.tag_id}">${c.tag_id}${name} · ${c.owner || '—'} · ${c.breed || '—'}</option>`;
+    }).join('');
+  }
+  if (presetTagId) tagSel.value = presetTagId;
+  
+  // Type-specific block reveal + field setup
+  if (type === 'vaccinated') {
+    document.getElementById('ce-vaccinated-block').style.display = '';
+    const vaccSel = document.getElementById('ce-vacc-name');
+    if (vaccSel && vaccSel.options.length === 0) {
+      vaccSel.innerHTML = '<option value="">— pick one —</option>' + 
+        CURATED_VACCINES.map(v => `<option value="${v.value}" title="${v.schedule}">${v.label}</option>`).join('');
+    }
+    document.getElementById('ce-vacc-next-due').value = '';
+  } else if (type === 'dewormed') {
+    document.getElementById('ce-dewormed-block').style.display = '';
+    document.getElementById('ce-deworm-drug').value = '';
+  } else if (type === 'dipped') {
+    document.getElementById('ce-dipped-block').style.display = '';
+    document.getElementById('ce-dip-drug').value = '';
+  } else if (type === 'hooftrim') {
+    document.getElementById('ce-hooftrim-block').style.display = '';
+  } else if (type === 'weighed') {
+    document.getElementById('ce-weighed-block').style.display = '';
+    document.getElementById('ce-weigh-kg').value = '';
+  } else if (type === 'treated') {
+    document.getElementById('ce-treated-block').style.display = '';
+    document.getElementById('ce-treat-condition').value = '';
+    document.getElementById('ce-treat-drug').value = '';
+  } else if (type === 'sold') {
+    document.getElementById('ce-sold-block').style.display = '';
+    document.getElementById('ce-sold-kg').value = '';
+    document.getElementById('ce-sold-price').value = '';
+    document.getElementById('ce-sold-buyer').value = '';
+  } else if (type === 'died') {
+    document.getElementById('ce-died-block').style.display = '';
+    document.getElementById('ce-died-cause').value = '';
+  } else if (type === 'calved') {
+    document.getElementById('ce-calved-block').style.display = '';
+    document.getElementById('ce-calved-alive').value = 1;
+    document.getElementById('ce-calved-dead').value = 0;
+    document.getElementById('ce-calved-tags').value = '';
+  }
+}
+
+function closeCowEventForm() {
+  _ceCurrentType = null;
+  _ceCurrentTagId = null;
+  setCowView('dashboard');
+}
+
+function _ceShowFeedback(message, kind) {
+  const fb = document.getElementById('ce-feedback');
+  if (!fb) return;
+  const colorStyle = kind === 'error'
+    ? 'background:rgba(184,113,77,0.15); color:#b8714d; border:1px solid rgba(184,113,77,0.35);'
+    : 'background:rgba(140,195,145,0.18); color:var(--forest-dark); border:1px solid rgba(140,195,145,0.45);';
+  fb.style.cssText = 'display:block;margin-top:0.7rem;padding:0.6rem 0.8rem;border-radius:6px;font-family:"Fraunces",serif;font-size:0.9rem;' + colorStyle;
+  fb.textContent = message;
+}
+
+async function submitCowEventForm() {
+  const type = _ceCurrentType;
+  if (!type) { _ceShowFeedback('Internal: no event type set', 'error'); return; }
+  
+  const date = document.getElementById('ce-date').value;
+  const tagId = document.getElementById('ce-tag').value;
+  const notes = (document.getElementById('ce-notes').value || '').trim();
+  
+  if (!date) { _ceShowFeedback('Date is required', 'error'); return; }
+  if (!tagId) { _ceShowFeedback('Pick a cow', 'error'); return; }
+  
+  // Build the type-specific payload
+  const record = {
+    tag_id: tagId,
+    event_type: type,
+    event_date: date,
+    notes,
+    timestamp: new Date().toISOString()
+  };
+  
+  if (type === 'vaccinated') {
+    const vacc = document.getElementById('ce-vacc-name').value;
+    if (!vacc) { _ceShowFeedback('Pick a vaccine', 'error'); return; }
+    record.drug_or_vaccine = vacc;
+    const nextDue = document.getElementById('ce-vacc-next-due').value;
+    if (nextDue) record.notes = (notes ? notes + ' · ' : '') + 'Next due: ' + nextDue;
+  } else if (type === 'dewormed') {
+    const drug = (document.getElementById('ce-deworm-drug').value || '').trim();
+    if (!drug) { _ceShowFeedback('Drug name required', 'error'); return; }
+    record.drug_or_vaccine = drug;
+  } else if (type === 'dipped') {
+    const drug = (document.getElementById('ce-dip-drug').value || '').trim();
+    if (!drug) { _ceShowFeedback('Acaricide required', 'error'); return; }
+    record.drug_or_vaccine = drug;
+  } else if (type === 'hooftrim') {
+    // Just date + cow + notes — no extra fields
+  } else if (type === 'weighed') {
+    const kg = Number(document.getElementById('ce-weigh-kg').value);
+    if (!kg || kg <= 0) { _ceShowFeedback('Weight required', 'error'); return; }
+    record.weight_kg = kg;
+  } else if (type === 'treated') {
+    const cond = (document.getElementById('ce-treat-condition').value || '').trim();
+    if (!cond) { _ceShowFeedback('Condition required', 'error'); return; }
+    record.cause_or_condition = cond;
+    const drug = (document.getElementById('ce-treat-drug').value || '').trim();
+    if (drug) record.drug_or_vaccine = drug;
+  } else if (type === 'sold') {
+    const price = Number(document.getElementById('ce-sold-price').value);
+    if (!price || price <= 0) { _ceShowFeedback('Price required', 'error'); return; }
+    const buyer = (document.getElementById('ce-sold-buyer').value || '').trim();
+    if (!buyer) { _ceShowFeedback('Buyer required', 'error'); return; }
+    const kg = Number(document.getElementById('ce-sold-kg').value);
+    if (kg > 0) record.weight_kg = kg;
+    record.price_kes = price;
+    record.buyer = buyer;
+  } else if (type === 'died') {
+    const cause = (document.getElementById('ce-died-cause').value || '').trim();
+    if (!cause) { _ceShowFeedback('Cause required', 'error'); return; }
+    record.cause_or_condition = cause;
+  } else if (type === 'calved') {
+    const alive = Number(document.getElementById('ce-calved-alive').value) || 0;
+    const dead = Number(document.getElementById('ce-calved-dead').value) || 0;
+    if (alive === 0 && dead === 0) { _ceShowFeedback('At least one calf (alive or dead) required', 'error'); return; }
+    record.born_alive = alive;
+    record.born_dead = dead;
+    const tags = (document.getElementById('ce-calved-tags').value || '').trim();
+    if (tags) record.calf_tags = tags;
+  }
+  
+  // Optimistic local insert
+  if (!Array.isArray(STATE.cowEvents)) STATE.cowEvents = [];
+  STATE.cowEvents.push(record);
+  await storageSet(K_COW_EVENTS, STATE.cowEvents);
+  
+  // Status side-effects: sold and died update the cow's record status
+  if (type === 'sold' || type === 'died') {
+    const cowIdx = (STATE.cows || []).findIndex(c => c.tag_id === tagId);
+    if (cowIdx !== -1) {
+      STATE.cows[cowIdx].status = type;
+      await storageSet(K_COWS, STATE.cows);
+      // Push the status update too (re-runs add_cow which is upsert by tag_id)
+      const cowUpdate = { ...STATE.cows[cowIdx], timestamp: new Date().toISOString() };
+      const cowOk = await pushCowToForm(cowUpdate);
+      if (!cowOk) {
+        await queueForSync(cowUpdate, 'cow');
+      }
+    }
+  }
+  
+  // Push event to gate
+  const ok = await pushCowEventToForm(record);
+  if (!ok) {
+    await queueForSync(record, 'cow-event');
+  }
+  
+  _ceShowFeedback('Event saved · ' + tagId + ' · ' + type, 'success');
+  
+  // Brief pause so the feedback shows, then return to dashboard
+  setTimeout(() => {
+    closeCowEventForm();
+    if (typeof updateHero === 'function') try { updateHero(); } catch (e) {}
+    if (typeof renderCowDashboard === 'function') try { renderCowDashboard(); } catch (e) {}
+  }, 900);
+}
+
+/* Event-type picker — opened from the dashboard's generic [+ Log event] 
+   button when no specific event is in mind. Shows the 9 event types as 
+   choice buttons; on pick, opens cow-event-section for that type. 
+   v6.10.6 will add a "preset cow" flow when called from a per-cow row. */
+async function openCowEventPicker(presetTagId) {
+  const types = [
+    { type: 'vaccinated', label: '💉 Vaccination',   primary: false },
+    { type: 'dewormed',   label: '🪱 Deworming',     primary: true  },
+    { type: 'dipped',     label: '💦 Dipping',       primary: false },
+    { type: 'hooftrim',   label: '🦶 Hooftrim',      primary: false },
+    { type: 'weighed',    label: '⚖️ Weighing',      primary: false },
+    { type: 'treated',    label: '🩺 Treatment',     primary: false },
+    { type: 'calved',     label: '🐮 Calving',       primary: false },
+    { type: 'sold',       label: '💵 Sale',          primary: false },
+    { type: 'died',       label: '⚰️ Death',         primary: false }
+  ];
+  const buttons = types.map(t => ({ label: t.label, value: t.type, primary: t.primary }));
+  
+  let choice = null;
+  if (typeof showChoiceModal === 'function') {
+    choice = await showChoiceModal(
+      '📝 Log cow event',
+      'Pick the event type. Each opens a focused form. Deworming is the most common; tap that to get started.',
+      buttons
+    );
+  } else {
+    choice = prompt('Event type (vaccinated/dewormed/dipped/hooftrim/weighed/treated/calved/sold/died):', 'dewormed');
+  }
+  
+  if (!choice) return;
+  openCowEventForm(choice, presetTagId || null);
+}
+
 /* Main cow list renderer. Reads filters, applies them to STATE.cows,
    renders rows reusing the .sheep-row CSS (parallel pattern). */
 function renderCowRegistry() {
@@ -18705,8 +19127,11 @@ function openCowForm(mode, tagId) {
 
   // Toggle UI: hide other sub-views, show form section. v6.10.2 — 
   // dashboard was added; ensure it's hidden too when form opens.
+  // v6.10.5 — event-section also hidden.
   const dash = document.getElementById('cow-dashboard-section');
   if (dash) dash.style.display = 'none';
+  const evSec = document.getElementById('cow-event-section');
+  if (evSec) evSec.style.display = 'none';
   document.getElementById('cow-list-section').style.display = 'none';
   document.getElementById('cow-form-section').style.display = '';
   document.getElementById('cow-form-mode').textContent = mode;
