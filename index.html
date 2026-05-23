@@ -2618,7 +2618,8 @@
   #cow-form-section,
   #cow-dashboard-section,
   #cow-list-section,
-  #cow-event-section {
+  #cow-event-section,
+  #cow-milk-section {
     padding-bottom: 3rem !important;
   }
   
@@ -4300,29 +4301,16 @@
         <span class="meta">tap to open</span>
       </div>
       <p style="color:var(--brass-light); opacity:0.85; line-height:1.6; margin:0.5rem 0 1.2rem; font-size:0.92rem">
-        Coffee, maize, and livestock sit alongside Tea and Poultry as Sinonin Group businesses. Sheep and Cow registries are live; Coffee and Maize Lite trackers ship in a later release.
+        Coffee and Maize sit here as future Sinonin Group enterprises. Sheep and Cows now live in their own top-level tabs alongside Tea and Poultry.
       </p>
 
       <div class="other-icon-grid" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:0.8rem">
 
-        <button type="button" class="other-tile other-tile-active" onclick="setOtherView('sheep')" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.6rem; aspect-ratio:1/1; cursor:pointer; background:rgba(180,140,80,0.10); border:0.5px solid rgba(180,140,80,0.4); border-radius:12px; padding:1rem 0.6rem; font-family:inherit;">
-          <span style="font-size:2.6rem; line-height:1">🐑</span>
-          <div style="text-align:center; min-width:0">
-            <div style="color:var(--ivory); font-weight:500; font-size:0.95rem; line-height:1.2">Dorper</div>
-            <div style="color:var(--brass-light); opacity:0.8; font-size:0.7rem; margin-top:3px; letter-spacing:0.05em">Sheep registry</div>
-          </div>
-        </button>
-
-        <!-- v6.10.0 — Cow tile, alongside Sheep. Sealed Cheison 22 May 2026: 
-             "keep in Other next to Sheep card." Cows in-calf for now; 
-             registry + events first, milking + sales in v6.10.1. -->
-        <button type="button" class="other-tile other-tile-active" onclick="setOtherView('cows')" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.6rem; aspect-ratio:1/1; cursor:pointer; background:rgba(180,140,80,0.10); border:0.5px solid rgba(180,140,80,0.4); border-radius:12px; padding:1rem 0.6rem; font-family:inherit;">
-          <span style="font-size:2.6rem; line-height:1">🐄</span>
-          <div style="text-align:center; min-width:0">
-            <div style="color:var(--ivory); font-weight:500; font-size:0.95rem; line-height:1.2">Dairy</div>
-            <div style="color:var(--brass-light); opacity:0.8; font-size:0.7rem; margin-top:3px; letter-spacing:0.05em">Cow registry</div>
-          </div>
-        </button>
+        <!-- v6.10.5 Stage 3 — Sheep + Cow tiles removed. They now have 
+             dedicated top-level nav buttons (🐑 Sheep, 🐄 Cows). Sealed 
+             § 6.x: once a sub-view is promoted to top-level nav, the 
+             redundant entry point in the parent is a relic — it confuses 
+             rather than reinforces. Remove with conviction. -->
 
         <div class="other-tile other-tile-soon" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.6rem; aspect-ratio:1/1; background:rgba(180,140,80,0.05); border:0.5px solid rgba(180,140,80,0.18); border-radius:12px; padding:1rem 0.6rem;">
           <span style="font-size:2.6rem; line-height:1; opacity:0.55">🌽</span>
@@ -4343,7 +4331,7 @@
       </div>
 
       <p style="color:var(--brass-light); opacity:0.55; font-size:0.78rem; line-height:1.5; margin:1.2rem 0 0; font-style:italic">
-        Tea and Poultry remain the operational core; Sheep and Cows join as the active livestock enterprises.
+        Tea, Poultry, Sheep, and Cows are the operational top-level surfaces. Coffee and Maize will join when the operations warrant them.
       </p>
     </div>
 
@@ -4753,19 +4741,29 @@
         <!-- FEED CHIP — populated by renderCowDashFeedChip() -->
         <div id="cow-dash-feed-chip" style="margin-bottom:1rem"></div>
 
-        <!-- PRODUCTION TOP STRIP (v6.10.2: mostly zeros — milk module ships v6.10.5) -->
+        <!-- PRODUCTION TOP STRIP — v6.10.5 Stage 3 wired to real milk computes -->
         <div style="margin-bottom:1rem">
           <div style="font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--brass); margin-bottom:0.5rem">Production · Revenue · Expenses</div>
           <div class="biz-grid" style="grid-template-columns:repeat(2, 1fr); gap:0.5rem">
             <div class="biz-card">
               <div class="lbl">Milk today</div>
-              <div class="val" style="font-size:1.05rem">0 L</div>
-              <div class="sub">all in-calf · v6.10.5 ships milk</div>
+              <div class="val" style="font-size:1.05rem" id="cow-dash-milk-today">0 L</div>
+              <div class="sub" id="cow-dash-milk-today-sub">awaiting first milking</div>
             </div>
             <div class="biz-card">
               <div class="lbl">🏆 Champion today</div>
-              <div class="val" style="font-size:1.05rem">—</div>
-              <div class="sub">first calving pending</div>
+              <div class="val" style="font-size:1.05rem" id="cow-dash-champion-today">—</div>
+              <div class="sub" id="cow-dash-champion-today-sub">first calving pending</div>
+            </div>
+            <div class="biz-card">
+              <div class="lbl">Milk MTD</div>
+              <div class="val" style="font-size:1.05rem" id="cow-dash-milk-mtd">0 L</div>
+              <div class="sub" id="cow-dash-milk-mtd-sub">month-to-date herd</div>
+            </div>
+            <div class="biz-card">
+              <div class="lbl">🏆 Champion MTD</div>
+              <div class="val" style="font-size:1.05rem" id="cow-dash-champion-mtd">—</div>
+              <div class="sub" id="cow-dash-champion-mtd-sub">top yield this month</div>
             </div>
             <div class="biz-card">
               <div class="lbl">Revenue MTD</div>
@@ -4807,6 +4805,10 @@
              (when operator wants to record something not surfaced as its own
              Health Status row). -->
         <button type="button" onclick="openCowEventPicker(null)" class="export-btn" style="background:var(--brass-dark); color:var(--ivory); border-color:var(--brass-dark); width:100%; margin-top:0.5rem">📝 + Log event</button>
+        <!-- v6.10.5 Stage 3 — Milk module entry point. Opens cow-milk-section
+             with AM session pre-selected. Per-cow per-session entry with
+             channel attribution at milking time. -->
+        <button type="button" onclick="setCowView('milk'); openCowMilkForm(null, null)" class="export-btn" style="background:var(--forest); color:var(--ivory); border-color:var(--forest); width:100%; margin-top:0.4rem">🥛 + Log milking</button>
       </div>
       <!-- v6.10.2 — END DAIRY DASHBOARD ============================== -->
 
@@ -5071,6 +5073,86 @@
           <button type="button" onclick="submitCowEventForm()" class="export-btn" style="flex:1; background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark)">Save event</button>
         </div>
         <div id="ce-feedback" style="display:none;margin-top:0.7rem;padding:0.6rem 0.8rem;border-radius:6px;font-family:'Fraunces',serif;font-size:0.9rem"></div>
+      </div>
+
+      <!-- v6.10.5 STAGE 3 — COW MILK SECTION ============================
+           Per-session milk recording (AM/PM/Night) with channel attribution
+           captured at milking time. Mirrors cow-event-section structure but
+           writes to Cow_Milk_Log via 'milk-log' action (Apps Script v5.0.44).
+           Design calls sealed by Cheison 23 May 2026:
+             · Per cow, per session — totals computed downstream
+             · Channel at milking time ("delay drains memory")
+             · Gifted recipient dropdown (Church, Guest, etc.)
+             · Operator from the curated roster
+           ============================================================= -->
+      <div class="section" id="cow-milk-section" style="display:none">
+        <div class="section-head">
+          <button type="button" onclick="closeCowMilkForm()" style="background:transparent; border:none; color:var(--brass); font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; padding:0;">← Cancel</button>
+          <span class="meta">milking</span>
+        </div>
+        <h3 style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.3rem; color:var(--forest); margin:0.4rem 0 1rem; letter-spacing:-0.01em;">Log milking</h3>
+
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="cm-date">
+        </div>
+
+        <div class="field">
+          <label>Session</label>
+          <div id="cm-session-group" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.4rem; margin-top:0.3rem;">
+            <button type="button" class="cm-session-btn" data-session="AM" style="padding:0.55rem; background:var(--ivory); border:1px solid var(--rule); border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:0.78rem; letter-spacing:0.08em; cursor:pointer;">☀️ AM</button>
+            <button type="button" class="cm-session-btn" data-session="PM" style="padding:0.55rem; background:var(--ivory); border:1px solid var(--rule); border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:0.78rem; letter-spacing:0.08em; cursor:pointer;">🌇 PM</button>
+            <button type="button" class="cm-session-btn" data-session="Night" style="padding:0.55rem; background:var(--ivory); border:1px solid var(--rule); border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:0.78rem; letter-spacing:0.08em; cursor:pointer;">🌙 Night</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Cow</label>
+          <select id="cm-tag"></select>
+        </div>
+
+        <div class="field">
+          <label>Litres</label>
+          <input type="number" id="cm-litres" min="0" step="0.1" placeholder="e.g. 8.5" inputmode="decimal">
+        </div>
+
+        <div class="field">
+          <label>Channel</label>
+          <select id="cm-channel">
+            <option value="">— pick channel —</option>
+          </select>
+        </div>
+
+        <!-- Conditional: recipient picker when channel = Gifted -->
+        <div class="field" id="cm-recipient-field" style="display:none">
+          <label>Gifted to</label>
+          <select id="cm-recipient">
+            <option value="">— pick recipient —</option>
+          </select>
+          <input type="text" id="cm-recipient-other" placeholder="Specify (when 'Other')" autocomplete="off" style="margin-top:0.4rem; display:none; width:100%; padding:0.5rem; font-family:'Fraunces',serif; font-size:0.92rem; border:1px solid var(--rule); border-radius:4px;">
+        </div>
+
+        <!-- Conditional: buyer (free text) for Farm-Gate / Processed channels -->
+        <div class="field" id="cm-buyer-field" style="display:none">
+          <label id="cm-buyer-label">Buyer / customer <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional)</span></label>
+          <input type="text" id="cm-buyer" placeholder="Name or destination" autocomplete="off">
+        </div>
+
+        <div class="field">
+          <label>Operator <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(who milked?)</span></label>
+          <select id="cm-operator"></select>
+        </div>
+
+        <div class="field">
+          <label>Notes <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional)</span></label>
+          <textarea id="cm-notes" rows="2" placeholder="Anything notable — udder condition, color, missed days, vet visit..." style="width:100%; padding:0.5rem; font-family:'Fraunces',serif; font-size:0.92rem; border:1px solid var(--rule); border-radius:4px; resize:vertical;"></textarea>
+        </div>
+
+        <div style="display:flex; gap:0.5rem; margin-top:0.8rem;">
+          <button type="button" onclick="closeCowMilkForm()" class="export-btn" style="flex:1">Cancel</button>
+          <button type="button" onclick="submitCowMilkForm()" class="export-btn" style="flex:1; background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark)">🥛 Save milking</button>
+        </div>
+        <div id="cm-feedback" style="display:none;margin-top:0.7rem;padding:0.6rem 0.8rem;border-radius:6px;font-family:'Fraunces',serif;font-size:0.9rem"></div>
       </div>
 
       <!-- v6.10.2 — SERVE EVENT MODAL ============================
@@ -5806,6 +5888,47 @@ const K_COW_EVENTS = 'sinonin_cow_events_v1';
 // notes }. Idempotent server-side per (date, fed_by) — duplicate taps
 // silently merge rather than queue retries.
 const K_COW_FEED_LOG = 'sinonin_cow_feed_log_v1';
+// v6.10.5 Stage 3 — Per-session cow milk log. Append-only. Each row:
+// { ts, date, session (AM/PM/Night), tag_id, litres, channel,
+// recipient_or_buyer, operator, notes }. Idempotent server-side per
+// (date, session, tag_id). Drives lactation curves, champion logic,
+// home card lactating-state surfaces.
+const K_COW_MILK_LOG = 'sinonin_cow_milk_log_v1';
+
+// v6.10.5 Stage 3 — Milk module constants.
+//
+// Sessions: AM/PM/Night. A cow may have 1, 2, or 3 entries per day
+// depending on the operation. Sinonin's planned pattern (when first
+// calving lands): AM milking only by default; PM and Night optional.
+// Per Cheison: per cow always, totals computed.
+const MILK_SESSIONS = ['AM', 'PM', 'Night'];
+
+// Channels: 5 attribution destinations chosen at milking time.
+//   · Gifted          — gift recipient (Church · Guest · etc.)
+//   · Farm-Gate       — direct sale at the farm
+//   · Kabiyet         — local Kabiyet cooperative
+//   · New-KCC         — Kenya Cooperative Creameries (national)
+//   · Processed       — yoghurt, mursik, ghee made on-farm
+//
+// Channel is captured at MILKING TIME per Cheison's call: "delay drains
+// memory and invites errors". End-of-day reconciliation rejected.
+const MILK_CHANNELS = [
+  { value: 'Gifted',         label: '🎁 Gifted'           },
+  { value: 'Farm-Gate',      label: '🚪 Farm-Gate'         },
+  { value: 'Kabiyet',        label: '🏘️ Kabiyet co-op'    },
+  { value: 'New-KCC',        label: '🇰🇪 New-KCC'         },
+  { value: 'Processed',      label: '🥄 Processed in-house' }
+];
+
+// Gifted recipient dropdown — curated per Cheison 23 May 2026.
+// Church and Guest are Nandi-reciprocity-specific (hospitality to
+// visitors and tithing to one's congregation are first-order
+// commitments, not afterthoughts). The remainder mirrors typical
+// smallholder gift channels.
+const MILK_RECIPIENTS = [
+  'Church', 'Guest', 'Mother', 'Household',
+  'Employees', 'Vet', 'Neighbours', 'Other'
+];
 // v6.5.7 — Bird mortality event log. Append-only. Keyed by ts.
 const K_MORTALITY = 'sinonin_mortality_v1';
 const K_CLOUD_SYNC = 'sinonin_cloud_sync_v1';
@@ -8073,7 +8196,7 @@ async function queueForSync(record, kind) {
   //   litter-change — record carries house + date + op (change/reset)
   // These store the full payload in the queue item; the dispatcher reads
   // item.payload directly instead of looking up by recordId.
-  const isPayloadKind = (kind === 'roster' || kind === 'cohort' || kind === 'litter-change' || kind === 'sheep' || kind === 'sheep-event' || kind === 'cow' || kind === 'cow-event' || kind === 'feed-log');
+  const isPayloadKind = (kind === 'roster' || kind === 'cohort' || kind === 'litter-change' || kind === 'sheep' || kind === 'sheep-event' || kind === 'cow' || kind === 'cow-event' || kind === 'feed-log' || kind === 'milk-log');
   if (isPayloadKind) {
     queue.push({ kind, payload: record, attempts: 0, queuedAt: new Date().toISOString(), blockedByGate });
   } else {
@@ -8449,6 +8572,7 @@ async function flushQueue(opts) {
       else if (kind === 'sheep' || kind === 'sheep-event') record = item.payload || null;
       else if (kind === 'cow' || kind === 'cow-event') record = item.payload || null;
       else if (kind === 'feed-log') record = item.payload || null;
+      else if (kind === 'milk-log') record = item.payload || null;
       else if (kind === 'mortality') record = (STATE.mortality || []).find(m => m.id === recordId);
       if (!record) continue; // record was deleted locally, drop from queue
       let ok;
@@ -8467,6 +8591,7 @@ async function flushQueue(opts) {
       else if (kind === 'cow')         ok = await pushCowToForm(record);
       else if (kind === 'cow-event')   ok = await pushCowEventToForm(record);
       else if (kind === 'feed-log')    ok = await pushFeedLogToGate(record);
+      else if (kind === 'milk-log')    ok = await pushMilkLogToGate(record);
       else if (kind === 'mortality')   ok = await syncMortality(record);
       else                         ok = await pushToForm(record);
       if (ok) {
@@ -9060,6 +9185,22 @@ async function applyCloudResponse(data) {
     });
     STATE.cowFeedLog = cloudFeed.concat(localOnly);
     await storageSet(K_COW_FEED_LOG, STATE.cowFeedLog);
+  }
+  /* v6.10.5 Stage 3 — Cow milk log sync. Same pattern as cowFeedLog
+     (auto-created sheet, cloud-replace-with-local-preservation). 
+     Signature is (date, session, tag_id) — matches Apps Script 
+     idempotency key. Local-only milk rows (queued from offline) survive. */
+  if (Array.isArray(data.cowMilkLog)) {
+    const cloudMilk = data.cowMilkLog;
+    const sigOf = function (m) {
+      return (m.date || '') + '|' + (m.session || '').toUpperCase() + '|' + (m.tag_id || '').toUpperCase();
+    };
+    const cloudSigs = new Set(cloudMilk.map(sigOf));
+    const localOnly = (STATE.cowMilkLog || []).filter(function (m) {
+      return m && m.date && m.session && m.tag_id && !cloudSigs.has(sigOf(m));
+    });
+    STATE.cowMilkLog = cloudMilk.concat(localOnly);
+    await storageSet(K_COW_MILK_LOG, STATE.cowMilkLog);
   }
   /* v6.0 SHIP 2 / v6.2.2 — Egg Collection sync (cloud-replace-local) */
   if (Array.isArray(data.eggCollection)) {
@@ -18478,9 +18619,243 @@ async function pushFeedLogToGate(record) {
   return await pushDorperToGate(record, 'feed-log');
 }
 
-/* Sub-view manager for Other › Cows: 'dashboard' | 'list' | 'form' | 'event'. 
+/* v6.10.5 Stage 3 — Cow milk module
+   ============================================================
+   Pushes a milk-log row to the Apps Script. Mirrors pushFeedLogToGate.
+   The shared pushDorperToGate handles the POST plumbing; the second 
+   argument is the action name. Apps Script v5.0.44 case 'milk-log' 
+   routes to writeMilkLogEntry which auto-creates Cow_Milk_Log on first 
+   call and idempotency-checks (date, session, tag_id). */
+async function pushMilkLogToGate(record) {
+  return await pushDorperToGate(record, 'milk-log');
+}
+
+/* Submit a milk-log entry. Optimistic local insert + push to gate. If 
+   the push fails (offline), the record gets queued for next sync. Re-
+   renders dashboard surfaces so totals/champion update immediately.
+   Per Cheison 23 May 2026: channel attribution AT milking time — "delay 
+   drains memory and invites errors". The form captures channel up-front 
+   and submits the complete record in one shot. */
+async function submitMilkLog(record) {
+  if (!Array.isArray(STATE.cowMilkLog)) STATE.cowMilkLog = [];
+  
+  // Avoid local duplicate by (date, session, tag_id)
+  const sig = (record.date || '') + '|' + (record.session || '').toUpperCase() + '|' + (record.tag_id || '').toUpperCase();
+  const exists = STATE.cowMilkLog.find(function (m) {
+    return ((m.date || '') + '|' + (m.session || '').toUpperCase() + '|' + (m.tag_id || '').toUpperCase()) === sig;
+  });
+  if (!exists) {
+    STATE.cowMilkLog.push(record);
+    await storageSet(K_COW_MILK_LOG, STATE.cowMilkLog);
+  }
+  
+  const ok = await pushMilkLogToGate(record);
+  if (!ok) {
+    await queueForSync(record, 'milk-log');
+  }
+  
+  // Refresh surfaces so totals + champion + lactation reflect immediately
+  if (typeof updateHero === 'function') try { updateHero(); } catch (e) {}
+  if (typeof renderCowDashboard === 'function') try { renderCowDashboard(); } catch (e) {}
+  return ok;
+}
+
+/* ============================================================
+   v6.10.5 Stage 3 — Milk module compute helpers
+   ============================================================
+   computeCowMilkToday(tagId)    → litres for today (sum AM+PM+Night)
+   computeCowMilkMTD(tagId)      → litres month-to-date
+   computeCowMilkYTD(tagId)      → litres year-to-date
+   computeHerdMilkToday()        → litres for whole herd today
+   computeHerdMilkMTD()          → litres for whole herd month-to-date
+   computeHerdMilkYTD()          → litres for whole herd year-to-date
+   computeChampion(window)       → top-yield cow in window ('today' | 'mtd' | 'ytd')
+   computeDIM(cow, asOf)         → days in milk (since last calved event)
+   computePeakYield(tagId)       → peak daily total in current lactation
+   computeDryOffPrediction(cow)  → predicted dry-off date (calved + 305d)
+   ============================================================ */
+
+function _milkMatch(m, tagId, fromDate, toDate) {
+  if (!m || !m.date) return false;
+  if (tagId && (m.tag_id || '').toUpperCase() !== tagId.toUpperCase()) return false;
+  if (fromDate && m.date < fromDate) return false;
+  if (toDate && m.date > toDate) return false;
+  return true;
+}
+
+function _sumLitres(rows) {
+  return rows.reduce(function (acc, m) { return acc + (Number(m.litres) || 0); }, 0);
+}
+
+function _todayStr() { return _todayDateStrNandi(); }
+function _firstOfMonthStr() {
+  const t = _todayStr();
+  return t.slice(0, 7) + '-01';
+}
+function _firstOfYearStr() {
+  const t = _todayStr();
+  return t.slice(0, 4) + '-01-01';
+}
+
+function computeCowMilkToday(tagId) {
+  const today = _todayStr();
+  const rows = (STATE.cowMilkLog || []).filter(function (m) {
+    return _milkMatch(m, tagId, today, today);
+  });
+  return _sumLitres(rows);
+}
+
+function computeCowMilkMTD(tagId) {
+  const rows = (STATE.cowMilkLog || []).filter(function (m) {
+    return _milkMatch(m, tagId, _firstOfMonthStr(), _todayStr());
+  });
+  return _sumLitres(rows);
+}
+
+function computeCowMilkYTD(tagId) {
+  const rows = (STATE.cowMilkLog || []).filter(function (m) {
+    return _milkMatch(m, tagId, _firstOfYearStr(), _todayStr());
+  });
+  return _sumLitres(rows);
+}
+
+function computeHerdMilkToday() {
+  const today = _todayStr();
+  const rows = (STATE.cowMilkLog || []).filter(function (m) {
+    return _milkMatch(m, null, today, today);
+  });
+  return _sumLitres(rows);
+}
+
+function computeHerdMilkMTD() {
+  const rows = (STATE.cowMilkLog || []).filter(function (m) {
+    return _milkMatch(m, null, _firstOfMonthStr(), _todayStr());
+  });
+  return _sumLitres(rows);
+}
+
+function computeHerdMilkYTD() {
+  const rows = (STATE.cowMilkLog || []).filter(function (m) {
+    return _milkMatch(m, null, _firstOfYearStr(), _todayStr());
+  });
+  return _sumLitres(rows);
+}
+
+/* Champion: highest-yielding cow in the given window. Per Cheison's call 
+   23 May 2026: champion is by daily yield (efficiency-per-feed parked 
+   for a deep-dive). Returns { tag_id, name, litres, day_count } or null
+   if no data. The window is 'today' | 'mtd' | 'ytd'. */
+function computeChampion(window) {
+  const log = STATE.cowMilkLog || [];
+  if (log.length === 0) return null;
+  
+  const from = window === 'today' ? _todayStr() :
+               window === 'mtd'   ? _firstOfMonthStr() :
+                                    _firstOfYearStr();
+  const to = _todayStr();
+  
+  const byTag = {};
+  log.forEach(function (m) {
+    if (!_milkMatch(m, null, from, to)) return;
+    const tag = (m.tag_id || '').toUpperCase();
+    if (!tag) return;
+    if (!byTag[tag]) byTag[tag] = { litres: 0, days: {} };
+    byTag[tag].litres += Number(m.litres) || 0;
+    byTag[tag].days[m.date] = true;
+  });
+  
+  const tags = Object.keys(byTag);
+  if (tags.length === 0) return null;
+  tags.sort(function (a, b) { return byTag[b].litres - byTag[a].litres; });
+  const topTag = tags[0];
+  const cow = (STATE.cows || []).find(function (c) {
+    return (c.tag_id || '').toUpperCase() === topTag;
+  });
+  return {
+    tag_id: topTag,
+    name: cow ? cow.name : null,
+    litres: byTag[topTag].litres,
+    day_count: Object.keys(byTag[topTag].days).length
+  };
+}
+
+/* DIM = Days In Milk. Days since the cow's last 'calved' event.
+   Returns null if no calving event ever recorded for this cow. */
+function computeDIM(cow, asOfStr) {
+  if (!cow) return null;
+  const tag = (cow.tag_id || '').toUpperCase();
+  const events = (STATE.cowEvents || []).filter(function (e) {
+    return (e.tag_id || '').toUpperCase() === tag && e.event_type === 'calved';
+  });
+  if (events.length === 0) return null;
+  events.sort(function (a, b) { return (b.event_date || '').localeCompare(a.event_date || ''); });
+  const lastCalved = events[0].event_date;
+  if (!lastCalved) return null;
+  const asOf = asOfStr || _todayStr();
+  const calvedDate = new Date(lastCalved);
+  const asOfDate = new Date(asOf);
+  const diff = Math.floor((asOfDate - calvedDate) / (24 * 60 * 60 * 1000));
+  return diff >= 0 ? diff : null;
+}
+
+/* Peak daily yield in the current lactation. Returns null if no calving 
+   event recorded or no milk records in the current lactation. */
+function computePeakYield(tagId) {
+  if (!tagId) return null;
+  const tag = tagId.toUpperCase();
+  
+  // Find latest calved event for this cow
+  const events = (STATE.cowEvents || []).filter(function (e) {
+    return (e.tag_id || '').toUpperCase() === tag && e.event_type === 'calved';
+  });
+  if (events.length === 0) return null;
+  events.sort(function (a, b) { return (b.event_date || '').localeCompare(a.event_date || ''); });
+  const lastCalvedDate = events[0].event_date;
+  
+  // Aggregate milk records since lastCalvedDate by day
+  const byDay = {};
+  (STATE.cowMilkLog || []).forEach(function (m) {
+    if ((m.tag_id || '').toUpperCase() !== tag) return;
+    if (!m.date || m.date < lastCalvedDate) return;
+    byDay[m.date] = (byDay[m.date] || 0) + (Number(m.litres) || 0);
+  });
+  
+  const days = Object.keys(byDay);
+  if (days.length === 0) return null;
+  
+  let peakDate = days[0];
+  let peakLitres = byDay[peakDate];
+  days.forEach(function (d) {
+    if (byDay[d] > peakLitres) {
+      peakDate = d;
+      peakLitres = byDay[d];
+    }
+  });
+  return { date: peakDate, litres: peakLitres };
+}
+
+/* Predicted dry-off date: calved + 305 days. Standard lactation length 
+   per Cheison's call. Operators can manually update if their cow's 
+   lactation runs longer/shorter. Returns null if no calving on record. */
+function computeDryOffPrediction(cow) {
+  if (!cow) return null;
+  const tag = (cow.tag_id || '').toUpperCase();
+  const events = (STATE.cowEvents || []).filter(function (e) {
+    return (e.tag_id || '').toUpperCase() === tag && e.event_type === 'calved';
+  });
+  if (events.length === 0) return null;
+  events.sort(function (a, b) { return (b.event_date || '').localeCompare(a.event_date || ''); });
+  const lastCalved = events[0].event_date;
+  if (!lastCalved) return null;
+  const calvedDate = new Date(lastCalved);
+  const dryOff = new Date(calvedDate.getTime() + 305 * 24 * 60 * 60 * 1000);
+  return dryOff.toISOString().slice(0, 10);
+}
+
+/* Sub-view manager for Other › Cows: 'dashboard' | 'list' | 'form' | 'event' | 'milk'. 
    Default is 'dashboard'. setOtherView('cows') opens the dashboard 
-   automatically. v6.10.5 — 'event' added for generic event logging. */
+   automatically. v6.10.5 — 'event' added for generic event logging,
+   'milk' added for per-session milk recording (Stage 3). */
 let _cowSubView = 'dashboard';
 function setCowView(sub) {
   _cowSubView = sub;
@@ -18488,10 +18863,12 @@ function setCowView(sub) {
   const list = document.getElementById('cow-list-section');
   const form = document.getElementById('cow-form-section');
   const evSec = document.getElementById('cow-event-section');
+  const milkSec = document.getElementById('cow-milk-section');
   if (dash) dash.style.display = (sub === 'dashboard') ? '' : 'none';
   if (list) list.style.display = (sub === 'list')      ? '' : 'none';
   if (form) form.style.display = (sub === 'form')      ? '' : 'none';
   if (evSec) evSec.style.display = (sub === 'event')   ? '' : 'none';
+  if (milkSec) milkSec.style.display = (sub === 'milk') ? '' : 'none';
   if (sub === 'dashboard') renderCowDashboard();
   if (sub === 'list')      renderCowRegistry();
 }
@@ -18523,6 +18900,9 @@ function renderCowDashboard() {
   // Feed chip on dashboard
   renderCowDashFeedChip();
   
+  // v6.10.5 Stage 3 — Milk production strip
+  renderCowDashMilkStrip();
+  
   // Calving pipeline
   renderCowDashCalving(aliveCows);
   
@@ -18551,6 +18931,61 @@ function renderCowDashFeedChip() {
       `}
     </div>
   `;
+}
+
+/* v6.10.5 Stage 3 — Production strip renderer. Reads STATE.cowMilkLog 
+   through the compute helpers and populates Today / MTD / Champion 
+   surfaces on the cow dashboard. Empty state shows zeros with a 
+   helpful sub-line ("awaiting first milking" until data flows). 
+   When Sinonin's first calving lands or Dr. Kachilei's 500-head 
+   herd onboards, these cards light up automatically. */
+function renderCowDashMilkStrip() {
+  const log = STATE.cowMilkLog || [];
+  const today = _todayDateStrNandi();
+  
+  const todayL = computeHerdMilkToday();
+  const mtdL   = computeHerdMilkMTD();
+  
+  const todayEl = document.getElementById('cow-dash-milk-today');
+  const todaySubEl = document.getElementById('cow-dash-milk-today-sub');
+  if (todayEl) todayEl.textContent = todayL > 0 ? todayL.toFixed(1) + ' L' : '0 L';
+  if (todaySubEl) {
+    if (log.length === 0) {
+      todaySubEl.textContent = 'awaiting first milking';
+    } else if (todayL > 0) {
+      const todaysCows = new Set(log.filter(function (m) { return m.date === today; }).map(function (m) { return m.tag_id; })).size;
+      todaySubEl.textContent = 'across ' + todaysCows + ' cow' + (todaysCows === 1 ? '' : 's');
+    } else {
+      todaySubEl.textContent = 'no milking logged today yet';
+    }
+  }
+  
+  const mtdEl = document.getElementById('cow-dash-milk-mtd');
+  const mtdSubEl = document.getElementById('cow-dash-milk-mtd-sub');
+  if (mtdEl) mtdEl.textContent = mtdL > 0 ? mtdL.toFixed(1) + ' L' : '0 L';
+  if (mtdSubEl) mtdSubEl.textContent = 'month-to-date herd';
+  
+  const champToday = computeChampion('today');
+  const champTodayEl = document.getElementById('cow-dash-champion-today');
+  const champTodaySubEl = document.getElementById('cow-dash-champion-today-sub');
+  if (champToday) {
+    if (champTodayEl) champTodayEl.textContent = (champToday.name || champToday.tag_id) + ' · ' + champToday.litres.toFixed(1) + 'L';
+    if (champTodaySubEl) champTodaySubEl.textContent = champToday.tag_id;
+  } else {
+    if (champTodayEl) champTodayEl.textContent = '—';
+    if (champTodaySubEl) champTodaySubEl.textContent = log.length === 0 ? 'first calving pending' : 'no milking logged today';
+  }
+  
+  const champMtd = computeChampion('mtd');
+  const champMtdEl = document.getElementById('cow-dash-champion-mtd');
+  const champMtdSubEl = document.getElementById('cow-dash-champion-mtd-sub');
+  if (champMtd) {
+    if (champMtdEl) champMtdEl.textContent = (champMtd.name || champMtd.tag_id) + ' · ' + champMtd.litres.toFixed(1) + 'L';
+    if (champMtdSubEl) champMtdSubEl.textContent = champMtd.day_count + ' day' + (champMtd.day_count === 1 ? '' : 's') + ' · ' + champMtd.tag_id;
+  } else {
+    if (champMtdEl) champMtdEl.textContent = '—';
+    if (champMtdSubEl) champMtdSubEl.textContent = log.length === 0 ? 'top yield this month' : 'no milking this month yet';
+  }
 }
 
 /* Feed-tap handler. Opens a choice modal with the daily-ops operator 
@@ -19109,6 +19544,233 @@ async function openCowEventPicker(presetTagId) {
   openCowEventForm(choice, presetTagId || null);
 }
 
+/* ============================================================
+   v6.10.5 STAGE 3 — Cow milk form (per-session entry)
+   ============================================================
+   Opens the milk section, populates dropdowns, wires session-button
+   toggle behavior, and handles submission. Pattern mirrors cow-event
+   form but with milk-specific shape. Per Cheison 23 May 2026:
+     · One row per (cow, session, day) — operator picks session up-front
+     · Channel attribution AT milking — no deferred reconciliation
+     · Gifted-channel reveals recipient picker; Farm-Gate/Processed 
+       reveals optional buyer text input
+   ============================================================ */
+
+let _cmSelectedSession = null;
+
+function openCowMilkForm(presetTagId, presetSession) {
+  const dash = document.getElementById('cow-dashboard-section');
+  const list = document.getElementById('cow-list-section');
+  const form = document.getElementById('cow-form-section');
+  const evSec = document.getElementById('cow-event-section');
+  const milkSec = document.getElementById('cow-milk-section');
+  if (dash) dash.style.display = 'none';
+  if (list) list.style.display = 'none';
+  if (form) form.style.display = 'none';
+  if (evSec) evSec.style.display = 'none';
+  if (milkSec) milkSec.style.display = '';
+  
+  // Reset state
+  _cmSelectedSession = null;
+  document.getElementById('cm-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('cm-litres').value = '';
+  document.getElementById('cm-channel').value = '';
+  document.getElementById('cm-recipient-field').style.display = 'none';
+  document.getElementById('cm-buyer-field').style.display = 'none';
+  document.getElementById('cm-recipient-other').style.display = 'none';
+  document.getElementById('cm-recipient-other').value = '';
+  document.getElementById('cm-buyer').value = '';
+  document.getElementById('cm-notes').value = '';
+  const fb = document.getElementById('cm-feedback');
+  if (fb) fb.style.display = 'none';
+  
+  // Populate session buttons — reset visual state, optionally preset
+  const sessionBtns = document.querySelectorAll('#cm-session-group .cm-session-btn');
+  sessionBtns.forEach(function (btn) {
+    btn.style.background = 'var(--ivory)';
+    btn.style.borderColor = 'var(--rule)';
+    btn.style.color = '';
+    btn.onclick = function () {
+      _cmSelectedSession = btn.dataset.session;
+      sessionBtns.forEach(function (b) {
+        b.style.background = 'var(--ivory)';
+        b.style.borderColor = 'var(--rule)';
+        b.style.color = '';
+      });
+      btn.style.background = 'var(--forest-dark)';
+      btn.style.borderColor = 'var(--forest-dark)';
+      btn.style.color = 'var(--ivory)';
+    };
+  });
+  if (presetSession) {
+    const btn = document.querySelector('#cm-session-group .cm-session-btn[data-session="' + presetSession + '"]');
+    if (btn) btn.click();
+  } else {
+    // Default to AM (most common first session)
+    const amBtn = document.querySelector('#cm-session-group .cm-session-btn[data-session="AM"]');
+    if (amBtn) amBtn.click();
+  }
+  
+  // Populate cow dropdown (alive females + males if data, but typically females)
+  const tagSel = document.getElementById('cm-tag');
+  const aliveCows = (STATE.cows || []).filter(function (c) {
+    return c.status === 'alive' && c.sex === 'F';
+  });
+  if (aliveCows.length === 0) {
+    tagSel.innerHTML = '<option value="">— no eligible cows on registry —</option>';
+  } else {
+    tagSel.innerHTML = '<option value="">— pick one —</option>' + aliveCows.map(function (c) {
+      const name = c.name ? ' · ' + c.name : '';
+      return '<option value="' + c.tag_id + '">' + c.tag_id + name + ' · ' + (c.breed || '—') + '</option>';
+    }).join('');
+  }
+  if (presetTagId) tagSel.value = presetTagId;
+  
+  // Populate channel dropdown
+  const chanSel = document.getElementById('cm-channel');
+  if (chanSel.options.length <= 1) {
+    MILK_CHANNELS.forEach(function (ch) {
+      const opt = document.createElement('option');
+      opt.value = ch.value;
+      opt.textContent = ch.label;
+      chanSel.appendChild(opt);
+    });
+  }
+  chanSel.onchange = function () {
+    const val = chanSel.value;
+    const recipField = document.getElementById('cm-recipient-field');
+    const buyerField = document.getElementById('cm-buyer-field');
+    const buyerLabel = document.getElementById('cm-buyer-label');
+    if (val === 'Gifted') {
+      recipField.style.display = '';
+      buyerField.style.display = 'none';
+    } else if (val === 'Farm-Gate') {
+      recipField.style.display = 'none';
+      buyerField.style.display = '';
+      if (buyerLabel) buyerLabel.innerHTML = 'Buyer <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(walk-in at farm gate)</span>';
+    } else if (val === 'Processed') {
+      recipField.style.display = 'none';
+      buyerField.style.display = '';
+      if (buyerLabel) buyerLabel.innerHTML = 'Product <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(e.g. yoghurt, mursik, ghee)</span>';
+    } else {
+      recipField.style.display = 'none';
+      buyerField.style.display = 'none';
+    }
+  };
+  
+  // Populate recipient dropdown
+  const recipSel = document.getElementById('cm-recipient');
+  if (recipSel.options.length <= 1) {
+    MILK_RECIPIENTS.forEach(function (r) {
+      const opt = document.createElement('option');
+      opt.value = r;
+      opt.textContent = r;
+      recipSel.appendChild(opt);
+    });
+  }
+  recipSel.onchange = function () {
+    const other = document.getElementById('cm-recipient-other');
+    other.style.display = (recipSel.value === 'Other') ? '' : 'none';
+    if (recipSel.value !== 'Other') other.value = '';
+  };
+  
+  // Populate operator dropdown (same roster as feed-log)
+  const opSel = document.getElementById('cm-operator');
+  if (opSel.options.length <= 1) {
+    opSel.innerHTML = '<option value="">— pick one —</option>';
+    ['Elias', 'Ezron', 'Faith', 'Frank', 'Stanley', 'Victor'].forEach(function (n) {
+      const opt = document.createElement('option');
+      opt.value = n;
+      opt.textContent = n;
+      opSel.appendChild(opt);
+    });
+    const otherOpt = document.createElement('option');
+    otherOpt.value = 'Other';
+    otherOpt.textContent = 'Other (specify in notes)';
+    opSel.appendChild(otherOpt);
+  }
+}
+
+function closeCowMilkForm() {
+  _cmSelectedSession = null;
+  setCowView('dashboard');
+}
+
+function _cmShowFeedback(message, kind) {
+  const fb = document.getElementById('cm-feedback');
+  if (!fb) return;
+  const colorStyle = kind === 'error'
+    ? 'background:rgba(184,113,77,0.15); color:#b8714d; border:1px solid rgba(184,113,77,0.35);'
+    : 'background:rgba(140,195,145,0.18); color:var(--forest-dark); border:1px solid rgba(140,195,145,0.45);';
+  fb.style.cssText = 'display:block;margin-top:0.7rem;padding:0.6rem 0.8rem;border-radius:6px;font-family:"Fraunces",serif;font-size:0.9rem;' + colorStyle;
+  fb.textContent = message;
+}
+
+async function submitCowMilkForm() {
+  const date = document.getElementById('cm-date').value;
+  const session = _cmSelectedSession;
+  const tagId = document.getElementById('cm-tag').value;
+  const litresStr = document.getElementById('cm-litres').value;
+  const channel = document.getElementById('cm-channel').value;
+  const operator = document.getElementById('cm-operator').value;
+  const notes = (document.getElementById('cm-notes').value || '').trim();
+  
+  if (!date)    { _cmShowFeedback('Date is required', 'error'); return; }
+  if (!session) { _cmShowFeedback('Pick a session (AM / PM / Night)', 'error'); return; }
+  if (!tagId)   { _cmShowFeedback('Pick a cow', 'error'); return; }
+  const litres = Number(litresStr);
+  if (!litres || litres <= 0) {
+    _cmShowFeedback('Litres must be a positive number', 'error');
+    return;
+  }
+  if (!channel) { _cmShowFeedback('Pick a channel', 'error'); return; }
+  
+  // Resolve recipient / buyer based on channel
+  let recipientOrBuyer = '';
+  if (channel === 'Gifted') {
+    const recipSel = document.getElementById('cm-recipient').value;
+    if (!recipSel) { _cmShowFeedback('Pick a gift recipient', 'error'); return; }
+    if (recipSel === 'Other') {
+      const otherTxt = (document.getElementById('cm-recipient-other').value || '').trim();
+      if (!otherTxt) { _cmShowFeedback('Specify the recipient', 'error'); return; }
+      recipientOrBuyer = otherTxt;
+    } else {
+      recipientOrBuyer = recipSel;
+    }
+  } else if (channel === 'Farm-Gate' || channel === 'Processed') {
+    recipientOrBuyer = (document.getElementById('cm-buyer').value || '').trim();
+    // Optional for these channels — empty is fine
+  }
+  
+  const record = {
+    ts: new Date().toISOString(),
+    date: date,
+    session: session,
+    tag_id: tagId,
+    litres: litres,
+    channel: channel,
+    recipient_or_buyer: recipientOrBuyer,
+    operator: operator || '',
+    notes: notes,
+    timestamp: new Date().toISOString()
+  };
+  
+  _cmShowFeedback('Saving · ' + tagId + ' · ' + session + ' · ' + litres + 'L · ' + channel + '...', 'success');
+  
+  const ok = await submitMilkLog(record);
+  
+  if (ok) {
+    _cmShowFeedback('🥛 Milking saved · ' + tagId + ' · ' + session + ' · ' + litres + 'L', 'success');
+  } else {
+    _cmShowFeedback('Saved locally — will sync when online · ' + tagId, 'success');
+  }
+  
+  // Brief pause so the feedback shows, then return to dashboard
+  setTimeout(function () {
+    closeCowMilkForm();
+  }, 1100);
+}
+
 /* Main cow list renderer. Reads filters, applies them to STATE.cows,
    renders rows reusing the .sheep-row CSS (parallel pattern). */
 function renderCowRegistry() {
@@ -19237,11 +19899,13 @@ function openCowForm(mode, tagId) {
 
   // Toggle UI: hide other sub-views, show form section. v6.10.2 — 
   // dashboard was added; ensure it's hidden too when form opens.
-  // v6.10.5 — event-section also hidden.
+  // v6.10.5 — event-section and milk-section also hidden.
   const dash = document.getElementById('cow-dashboard-section');
   if (dash) dash.style.display = 'none';
   const evSec = document.getElementById('cow-event-section');
   if (evSec) evSec.style.display = 'none';
+  const milkSec = document.getElementById('cow-milk-section');
+  if (milkSec) milkSec.style.display = 'none';
   document.getElementById('cow-list-section').style.display = 'none';
   document.getElementById('cow-form-section').style.display = '';
   document.getElementById('cow-form-mode').textContent = mode;
@@ -20347,6 +21011,9 @@ function showUpdateBanner() {
   STATE.cowEvents = await storageGet(K_COW_EVENTS, []);
   // v6.10.2 — Hydrate daily cow feed log (drives home-card chip + dashboard).
   STATE.cowFeedLog = await storageGet(K_COW_FEED_LOG, []);
+  // v6.10.5 Stage 3 — Hydrate per-session milk log (drives milk dashboard,
+  // lactation curves, champion logic, home-card lactating state).
+  STATE.cowMilkLog = await storageGet(K_COW_MILK_LOG, []);
   // v6.5.7 — Bird mortality event log
   STATE.mortality = await storageGet(K_MORTALITY, []);
   // v6.0 SHIP 1 — Egg Collection state
@@ -20535,6 +21202,19 @@ function showUpdateBanner() {
   document.querySelectorAll('nav.bottom-nav button').forEach(b => {
     b.addEventListener('click', () => switchView(b.dataset.view));
   });
+  
+  // v6.10.5 STAGE 2b HOTFIX — The Admin button was relocated from bottom-nav 
+  // to the header (left of refresh wheel). The forEach above only covers 
+  // nav.bottom-nav buttons, so the header Admin button was left without a 
+  // click listener — visible but inert. Wiring it here explicitly. Same 
+  // data-view='admin' contract; same switchView() target. Sealed § 6.x: 
+  // when relocating an element across DOM contexts, the wiring that lived
+  // in the old context must follow it — visibility without behavior is 
+  // worse than absence.
+  const headerAdminBtn = document.querySelector('header.brand #nav-settings');
+  if (headerAdminBtn) {
+    headerAdminBtn.addEventListener('click', () => switchView('admin'));
+  }
 
   // Business toggle (Tea / Poultry / Admin)
   document.querySelectorAll('.biz-toggle button').forEach(b => {
