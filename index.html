@@ -1717,6 +1717,22 @@
   .hero .hero-metric-card.hmc-dairy .hmc-horizon { background: rgba(212, 165, 130, 0.25); border-color: rgba(212, 165, 130, 0.50); }
   .hero .hero-metric-card.hmc-dairy .hmc-h-lbl   { color: #f3dcc4; }
 
+  /* v6.10.6 — Dorper flock card. Cooler tones than Dairy's warm cream: 
+     woolly off-white text on a soft sage-grey background. Sheep have a 
+     calmer operational cadence than dairy — less daily peak, more 
+     steady presence. Color reflects that quieter rhythm. */
+  .hero .hero-metric-card.hmc-dorper {
+    background: rgba(168, 184, 156, 0.38);
+    border: 1px solid rgba(168, 184, 156, 0.65);
+    border-left: 5px solid #c0cbb2;
+  }
+  .hero .hero-metric-card.hmc-dorper .hmc-lbl     { color: #e4ebd9; }
+  .hero .hero-metric-card.hmc-dorper .hmc-period  { color: #e4ebd9; }
+  .hero .hero-metric-card.hmc-dorper .hmc-val     { color: #f4f7ec; }
+  .hero .hero-metric-card.hmc-dorper .hmc-sub-head { color: #e4ebd9; }
+  .hero .hero-metric-card.hmc-dorper .hmc-horizon { background: rgba(168, 184, 156, 0.25); border-color: rgba(168, 184, 156, 0.50); }
+  .hero .hero-metric-card.hmc-dorper .hmc-h-lbl   { color: #e4ebd9; }
+
   /* ── 4. SIREET ── slate teal (cool blue-green, NOT in sage family) */
   .hero .hero-metric-card.hmc-sireet {
     background: rgba(80, 145, 165, 0.42);
@@ -2615,6 +2631,7 @@
   #sheep-form-section,
   #sheep-event-section,
   #sheep-profile-section,
+  #sheep-dashboard-section,
   #cow-form-section,
   #cow-dashboard-section,
   #cow-list-section,
@@ -3086,7 +3103,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.5</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.6</span>
 </header>
 
 <main>
@@ -3240,6 +3257,40 @@
           <div class="hmc-horizon">
             <div class="hmc-h-lbl">Life</div>
             <div class="hmc-h-val" id="hero-dairy-life">0 L</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 3c. DORPER FLOCK ── (v6.10.6 — promoted from Other Day 4)
+           Mirrors the Dairy card shape. Sheep don't have a "milk equivalent"
+           daily metric; the headline shows flock count, with horizons
+           showing lambs born (Today / MTD / YTD / Life). Sub-line carries
+           the operational story: "X ewes · Y in-lamb · next due —" or
+           the most recent lambing's tag. Color tone: woolly cream + 
+           moss-grey, slightly cooler than Dairy's warm cream. -->
+      <div class="hero-metric-card hmc-dorper">
+        <div class="hmc-head">
+          <span class="hmc-lbl">Dorper flock</span>
+          <span class="hmc-period" id="hero-dorper-period">flock status</span>
+        </div>
+        <div class="hmc-val" id="hero-dorper-val">0</div>
+        <div class="hmc-sub-head" id="hero-dorper-sub">no sheep registered</div>
+        <div class="hmc-horizons">
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">Lambs &lt;6mo</div>
+            <div class="hmc-h-val" id="hero-dorper-lambs">0</div>
+          </div>
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">In-lamb</div>
+            <div class="hmc-h-val" id="hero-dorper-inlamb">0</div>
+          </div>
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">Ewes</div>
+            <div class="hmc-h-val" id="hero-dorper-ewes">0</div>
+          </div>
+          <div class="hmc-horizon">
+            <div class="hmc-h-lbl">Rams</div>
+            <div class="hmc-h-val" id="hero-dorper-rams">0</div>
           </div>
         </div>
       </div>
@@ -4343,10 +4394,86 @@
          state, returns to list on tab switch. -->
     <div id="other-sheep-view" style="display:none">
 
-      <!-- LIST SECTION (default) -->
-      <div class="section" id="sheep-list-section">
+      <!-- v6.10.6 — SHEEP DASHBOARD SECTION (default sub-view) ============
+           Parallel to cow-dashboard-section. Operator-first ergonomics:
+           action buttons at top, surfaces below. Dashboard surfaces:
+             · Top summary (flock count + status)
+             · Action grid (lambing/event/add/registry — top placement)
+             · Lambing pipeline (served ewes + expected dates · 150d)
+             · Health status (last vacc/deworm/dip across the herd)
+             · Recent activity feed
+           
+           Sealed § 6.x: every value chain's top-level tab should foreground 
+           the operator's most-frequent actions; the dashboard surfaces 
+           explain context, the action grid does work. Same pattern as 
+           cow dashboard, applied here for parity.
+           ============================================================ -->
+      <div class="section" id="sheep-dashboard-section">
         <div class="section-head">
           <button type="button" onclick="setOtherView('hub')" style="background:transparent; border:none; color:var(--brass); font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; padding:0;">← Other</button>
+          <span class="meta" id="sheep-dash-summary">0 sheep</span>
+        </div>
+        <h3 style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.4rem; color:var(--forest); margin:0.4rem 0 0.2rem; letter-spacing:-0.01em;">🐑 Dorper</h3>
+        <p style="color:var(--slate-light); font-size:0.85rem; line-height:1.5; margin:0.2rem 0 1rem;">Flock status · lambing pipeline · health · activity</p>
+
+        <!-- ACTION GRID — operator-first, top placement -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:1.2rem;">
+          <button type="button" onclick="openSheepEventForm('lambed', null)" class="export-btn" style="background:var(--forest); color:var(--ivory); border-color:var(--forest); padding:0.7rem 0.5rem; font-size:0.92rem">🐑 + Log lambing</button>
+          <button type="button" onclick="openSheepEventPicker(null)" class="export-btn" style="background:var(--brass-dark); color:var(--ivory); border-color:var(--brass-dark); padding:0.7rem 0.5rem; font-size:0.92rem">📝 + Log event</button>
+          <button type="button" onclick="openSheepForm('add', null)" class="export-btn" style="background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark); padding:0.55rem 0.5rem;">+ Add sheep</button>
+          <button type="button" onclick="setSheepView('list')" class="export-btn" style="background:transparent; color:var(--brass-dark); border:1px solid var(--brass); padding:0.55rem 0.5rem;">View registry</button>
+        </div>
+
+        <!-- FLOCK STRIP — counts by status -->
+        <div style="margin-bottom:1rem">
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--brass); margin-bottom:0.5rem">Flock composition</div>
+          <div class="biz-grid" style="grid-template-columns:repeat(2, 1fr); gap:0.5rem">
+            <div class="biz-card">
+              <div class="lbl">Ewes (females)</div>
+              <div class="val" style="font-size:1.05rem" id="sheep-dash-ewes">0</div>
+              <div class="sub" id="sheep-dash-ewes-sub">breeding base</div>
+            </div>
+            <div class="biz-card">
+              <div class="lbl">Rams (males)</div>
+              <div class="val" style="font-size:1.05rem" id="sheep-dash-rams">0</div>
+              <div class="sub" id="sheep-dash-rams-sub">sires + external</div>
+            </div>
+            <div class="biz-card">
+              <div class="lbl">🤰 In-lamb</div>
+              <div class="val" style="font-size:1.05rem" id="sheep-dash-inlamb">0</div>
+              <div class="sub" id="sheep-dash-inlamb-sub">served, awaiting lambing</div>
+            </div>
+            <div class="biz-card">
+              <div class="lbl">🐑 Lambs (under 6mo)</div>
+              <div class="val" style="font-size:1.05rem" id="sheep-dash-lambs">0</div>
+              <div class="sub" id="sheep-dash-lambs-sub">youngest cohort</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- LAMBING PIPELINE -->
+        <div style="margin-bottom:1.2rem">
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--brass); margin-bottom:0.5rem">Lambing pipeline</div>
+          <div id="sheep-dash-lambing"></div>
+        </div>
+
+        <!-- HEALTH STATUS -->
+        <div style="margin-bottom:1.2rem">
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--brass); margin-bottom:0.5rem">Health status</div>
+          <div id="sheep-dash-health"></div>
+        </div>
+
+        <!-- RECENT ACTIVITY -->
+        <div style="margin-bottom:1rem">
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--brass); margin-bottom:0.5rem">Recent activity</div>
+          <div id="sheep-dash-activity"></div>
+        </div>
+      </div>
+
+      <!-- LIST SECTION (default) -->
+      <div class="section" id="sheep-list-section" style="display:none">
+        <div class="section-head">
+          <button type="button" onclick="setSheepView('dashboard')" style="background:transparent; border:none; color:var(--brass); font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; padding:0;">← Dashboard</button>
           <span class="meta" id="sheep-flock-meta">0 sheep</span>
         </div>
         <h3 style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.4rem; color:var(--forest); margin:0.4rem 0 0.2rem; letter-spacing:-0.01em;">Dorper Farm</h3>
@@ -5436,7 +5563,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.5</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.6</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5480,8 +5607,31 @@
          operators on the ground (Elias's 7-sheep dewormings yesterday), it 
          earns top-level nav real estate. -->
     <button data-view="sheep" aria-label="Sheep">
-      <!-- Sheep silhouette icon -->
-      <svg viewBox="0 0 24 24"><path d="M5.5 13c-1.5 0-2.5 1-2.5 2.5S4 18 5.5 18h13c1.5 0 2.5-1 2.5-2.5S20 13 18.5 13h-13z"/><circle cx="8" cy="11" r="1.5"/><circle cx="12" cy="9" r="2.5"/><circle cx="16" cy="11" r="1.5"/><path d="M6.5 18l-1 3M9 18l-0.5 3M15 18l0.5 3M17.5 18l1 3"/></svg>
+      <!-- v6.10.6 — Sheep icon redesigned per Cheison 23 May 2026:
+           "looks like a ruler!" The previous geometry (pill body + 3 tiny 
+           circles on top + 4 short tick-mark legs) read as a measurement 
+           tool rather than an animal at small render size. This version 
+           uses a front-facing sheep face — two fleece puffs flanking a 
+           clearly defined head with two ears, a single eye dot, and a 
+           pair of front legs visible below the body. The dot inside the
+           head reads as the eye even at 21px. -->
+      <svg viewBox="0 0 24 24">
+        <!-- Two fleece puffs flanking the head, top row -->
+        <circle cx="6.5" cy="10" r="2.5"/>
+        <circle cx="17.5" cy="10" r="2.5"/>
+        <!-- Head — slightly oval, between the puffs -->
+        <ellipse cx="12" cy="10.5" rx="3" ry="3.3"/>
+        <!-- Two ears poking sideways from the head -->
+        <ellipse cx="9" cy="10.5" rx="1.2" ry="0.7" transform="rotate(-25 9 10.5)"/>
+        <ellipse cx="15" cy="10.5" rx="1.2" ry="0.7" transform="rotate(25 15 10.5)"/>
+        <!-- Eye dot -->
+        <circle cx="12" cy="10.5" r="0.7" fill="currentColor"/>
+        <!-- Body — woolly cloud beneath -->
+        <path d="M5 15c0-1.5 1-2.5 2.5-2.5c0.5-1 1.7-1.2 2.7-0.5c0.7-1 2.5-1 3.5 0c1-0.7 2.2-0.5 2.7 0.5c1.5 0 2.5 1 2.5 2.5c0 1.5-1.5 2.5-3 2.5h-8c-1.5 0-3-1-3-2.5z"/>
+        <!-- Two front legs visible -->
+        <line x1="9" y1="17.5" x2="9" y2="20.5"/>
+        <line x1="15" y1="17.5" x2="15" y2="20.5"/>
+      </svg>
       <span>Sheep</span>
     </button>
     <button data-view="cows" aria-label="Cows">
@@ -5986,7 +6136,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.5';
+const APP_VERSION = 'v6.10.6';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -15402,11 +15552,58 @@ function renderHome() {
     dairyPeriodEl.textContent = dairyTotalCows === 0 ? 'no cows yet'
                               : (dairyHerdState.fedToday ? '🟢 Fed today' : '🟡 Not yet fed');
   }
-  // Horizons stay at 0 L for now — milk data ships in v6.10.5
-  setText('hero-dairy-today', '0 L');
-  setText('hero-dairy-mtd',   '0 L');
-  setText('hero-dairy-ytd',   '0 L');
-  setText('hero-dairy-life',  '0 L');
+  // v6.10.5 Stage 3 — horizons wired to real milk data via compute helpers
+  const dairyTodayL = typeof computeHerdMilkToday === 'function' ? computeHerdMilkToday() : 0;
+  const dairyMtdL   = typeof computeHerdMilkMTD   === 'function' ? computeHerdMilkMTD()   : 0;
+  const dairyYtdL   = typeof computeHerdMilkYTD   === 'function' ? computeHerdMilkYTD()   : 0;
+  const dairyLifeL  = (STATE.cowMilkLog || []).reduce(function(a,m){ return a + (Number(m.litres)||0); }, 0);
+  setText('hero-dairy-today', dairyTodayL > 0 ? dairyTodayL.toFixed(1) + ' L' : '0 L');
+  setText('hero-dairy-mtd',   dairyMtdL   > 0 ? dairyMtdL.toFixed(1)   + ' L' : '0 L');
+  setText('hero-dairy-ytd',   dairyYtdL   > 0 ? dairyYtdL.toFixed(1)   + ' L' : '0 L');
+  setText('hero-dairy-life',  dairyLifeL  > 0 ? dairyLifeL.toFixed(0)  + ' L' : '0 L');
+  
+  // v6.10.6 — DORPER FLOCK HERO CARD UPDATER
+  // Mirrors the dairy card. Headline = total alive sheep count; horizons 
+  // show flock composition (lambs <6mo, in-lamb, ewes, rams). Sub-line 
+  // tells the operational story: "X ewes · Y in-lamb · next due —" when 
+  // flock is present, "no sheep registered" when empty.
+  const aliveSheep = (STATE.sheep || []).filter(function (s) { return s.status === 'alive'; });
+  const flock = (typeof computeFlockState === 'function') ? computeFlockState(aliveSheep) : null;
+  
+  const dorperValEl = document.getElementById('hero-dorper-val');
+  const dorperSubEl = document.getElementById('hero-dorper-sub');
+  const dorperPeriodEl = document.getElementById('hero-dorper-period');
+  if (dorperValEl) {
+    if (aliveSheep.length === 0) {
+      dorperValEl.textContent = '0';
+      dorperValEl.style.fontSize = '';
+    } else {
+      dorperValEl.textContent = '🐑 ' + aliveSheep.length;
+      dorperValEl.style.fontSize = '2.4rem';
+    }
+  }
+  if (dorperSubEl) {
+    if (aliveSheep.length === 0) {
+      dorperSubEl.textContent = 'no sheep registered';
+    } else if (flock) {
+      const parts = [flock.ewes + (flock.ewes === 1 ? ' ewe' : ' ewes')];
+      if (flock.inLamb > 0) parts.push(flock.inLamb + ' in-lamb');
+      const nextDueLabel = flock.nextDueDate
+        ? 'next due ' + formatNandiShortDate(flock.nextDueDate)
+        : 'next due —';
+      parts.push(nextDueLabel);
+      dorperSubEl.textContent = parts.join(' · ');
+    } else {
+      dorperSubEl.textContent = aliveSheep.length + ' sheep';
+    }
+  }
+  if (dorperPeriodEl) {
+    dorperPeriodEl.textContent = aliveSheep.length === 0 ? 'no flock yet' : 'flock status';
+  }
+  setText('hero-dorper-lambs',  flock ? flock.lambs.toString()  : '0');
+  setText('hero-dorper-inlamb', flock ? flock.inLamb.toString() : '0');
+  setText('hero-dorper-ewes',   flock ? flock.ewes.toString()   : '0');
+  setText('hero-dorper-rams',   flock ? flock.rams.toString()   : '0');
   
   // Period labels — Farm / Tea / Poultry all show "Month to date"
   const monthNameLong = new Date().toLocaleDateString('en-GB', { month: 'long' });
@@ -17111,9 +17308,13 @@ function setOtherView(view) {
   if (hub)   hub.style.display   = (view === 'hub')   ? '' : 'none';
   if (sheep) sheep.style.display = (view === 'sheep') ? '' : 'none';
   if (cows)  cows.style.display  = (view === 'cows')  ? '' : 'none';
-  // Coffee and Maize stay in hub view for now (Lite trackers ship later).
-  if (view === 'sheep' && typeof renderSheepRegistry === 'function') {
-    renderSheepRegistry();
+  // v6.10.6 — When opening sheep view, default to the dashboard sub-view
+  // (was: jumped straight to registry list). The dashboard surfaces flock
+  // composition, lambing pipeline, health status, and recent activity.
+  // Operator clicks "View registry" inside the dashboard to see the list.
+  // Mirrors the cow dashboard pattern shipped in v6.10.2 + v6.10.5.
+  if (view === 'sheep' && typeof setSheepView === 'function') {
+    setSheepView(_sheepSubView || 'dashboard');
   }
   // v6.10.2 — When opening cows view, default to the dashboard sub-view
   // (was: jumped straight to registry list). The dashboard surfaces feed 
@@ -17314,6 +17515,341 @@ function ensureSheepFiltersPopulated() {
   }
 }
 
+/* ============================================================
+   v6.10.6 — SHEEP DASHBOARD (parallel to cow dashboard)
+   ============================================================
+   Sub-view manager + render functions for sheep-dashboard-section.
+   The pattern mirrors cow dashboard exactly so operators experience 
+   consistency across livestock chains. Dorper-specific details: 
+     · Sheep gestation = 150 days (not 280 like cows)
+     · Lambs defined as <6 months old (under 180 days)
+     · No milk module for sheep (yet) — production strip uses flock 
+       composition instead
+   ============================================================ */
+
+/* Sub-view manager for Other › Sheep: 'dashboard' | 'list' | 'form' 
+   | 'event' | 'profile'. Default is 'dashboard'. */
+let _sheepSubView = 'dashboard';
+function setSheepView(sub) {
+  _sheepSubView = sub;
+  const dash = document.getElementById('sheep-dashboard-section');
+  const list = document.getElementById('sheep-list-section');
+  const form = document.getElementById('sheep-form-section');
+  const evSec = document.getElementById('sheep-event-section');
+  const profSec = document.getElementById('sheep-profile-section');
+  if (dash) dash.style.display    = (sub === 'dashboard') ? '' : 'none';
+  if (list) list.style.display    = (sub === 'list')      ? '' : 'none';
+  if (form) form.style.display    = (sub === 'form')      ? '' : 'none';
+  if (evSec) evSec.style.display  = (sub === 'event')     ? '' : 'none';
+  if (profSec) profSec.style.display = (sub === 'profile') ? '' : 'none';
+  if (sub === 'dashboard') renderSheepDashboard();
+  if (sub === 'list')      renderSheepRegistry();
+  if (typeof savePersistedState === 'function') savePersistedState();
+}
+
+/* Sheep gestation period (Dorper). Different from cow's 280-day cycle. */
+const SHEEP_GESTATION_DAYS = 150;
+
+/* Flock state aggregator. Returns counts of ewes, rams, in-lamb (served 
+   but not yet lambed), and recent lambs (under 6 months old). */
+function computeFlockState(aliveSheep) {
+  const ewes = aliveSheep.filter(s => s.sex === 'F');
+  const rams = aliveSheep.filter(s => s.sex === 'M');
+  const externalRams = (STATE.sheep || []).filter(s => s.status === 'external_ram').length;
+  
+  // In-lamb: served event since the most recent lambed event for that ewe
+  // (or served event with no subsequent lambed event)
+  const events = (STATE.sheepEvents || []).filter(e => e && e.tag_id);
+  const byTag = {};
+  events.forEach(e => {
+    const t = (e.tag_id || '').toUpperCase();
+    if (!byTag[t]) byTag[t] = [];
+    byTag[t].push(e);
+  });
+  
+  let inLamb = 0;
+  const inLambPipeline = [];
+  ewes.forEach(ewe => {
+    const tagEvents = (byTag[(ewe.tag_id || '').toUpperCase()] || [])
+      .slice()
+      .sort((a, b) => (b.event_date || '').localeCompare(a.event_date || ''));
+    // Most recent served event after most recent lambed event
+    let lastLambedDate = null;
+    let mostRecentServed = null;
+    for (const ev of tagEvents) {
+      if (ev.event_type === 'lambed' && !lastLambedDate) {
+        lastLambedDate = ev.event_date;
+        break;
+      }
+    }
+    for (const ev of tagEvents) {
+      if (ev.event_type === 'served') {
+        if (!lastLambedDate || (ev.event_date || '') > (lastLambedDate || '')) {
+          mostRecentServed = ev;
+          break;
+        }
+      }
+    }
+    if (mostRecentServed && mostRecentServed.event_date) {
+      const servedDate = new Date(mostRecentServed.event_date);
+      const expectedLambing = new Date(servedDate.getTime() + SHEEP_GESTATION_DAYS * 86400000);
+      const today = new Date();
+      const daysSinceServed = Math.floor((today - servedDate) / 86400000);
+      // Only count as "in-lamb" if less than full gestation has passed
+      // (otherwise the ewe should have lambed; data may be missing)
+      if (daysSinceServed >= 0 && daysSinceServed <= SHEEP_GESTATION_DAYS + 30) {
+        inLamb++;
+        inLambPipeline.push({
+          tag_id: ewe.tag_id,
+          name: ewe.notes || null,
+          owner: ewe.owner,
+          served_date: mostRecentServed.event_date,
+          ram_ref: mostRecentServed.ram_ref || mostRecentServed.bull_ref || null,
+          semen_source: mostRecentServed.semen_source || null,
+          expected_lambing: expectedLambing.toISOString().slice(0, 10),
+          days_since_served: daysSinceServed,
+          days_to_lambing: SHEEP_GESTATION_DAYS - daysSinceServed
+        });
+      }
+    }
+  });
+  
+  // Lambs: alive sheep with dob in last 180 days
+  const today = new Date();
+  const sixMonthsAgo = new Date(today.getTime() - 180 * 86400000).toISOString().slice(0, 10);
+  const lambs = aliveSheep.filter(s => s.dob && s.dob >= sixMonthsAgo).length;
+  
+  // Sort pipeline soonest-due first
+  inLambPipeline.sort((a, b) => (a.expected_lambing || '').localeCompare(b.expected_lambing || ''));
+  
+  // Next due ewe (soonest)
+  const nextDue = inLambPipeline.length > 0 ? inLambPipeline[0] : null;
+  
+  return {
+    ewes: ewes.length,
+    rams: rams.length,
+    externalRams,
+    inLamb,
+    inLambPipeline,
+    lambs,
+    nextDueDate: nextDue ? nextDue.expected_lambing : null
+  };
+}
+
+/* Main dashboard renderer. Reads STATE.sheep + STATE.sheepEvents and 
+   updates each surface. Empty-state aware: empty flock shows zeros 
+   with helpful sub-lines. */
+function renderSheepDashboard() {
+  const root = document.getElementById('sheep-dashboard-section');
+  if (!root) return;
+  
+  const aliveSheep = (STATE.sheep || []).filter(s => s.status === 'alive');
+  const flock = computeFlockState(aliveSheep);
+  
+  // Top summary
+  const summaryEl = document.getElementById('sheep-dash-summary');
+  if (summaryEl) {
+    if (aliveSheep.length === 0) {
+      summaryEl.textContent = 'No sheep registered yet';
+    } else {
+      const parts = [aliveSheep.length + (aliveSheep.length === 1 ? ' sheep' : ' sheep')];
+      if (flock.inLamb > 0) parts.push(flock.inLamb + ' in-lamb');
+      if (flock.nextDueDate) parts.push('next due ' + formatNandiShortDate(flock.nextDueDate));
+      summaryEl.textContent = parts.join(' · ');
+    }
+  }
+  
+  // Flock composition strip
+  const ewesEl = document.getElementById('sheep-dash-ewes');
+  if (ewesEl) ewesEl.textContent = flock.ewes.toString();
+  const ewesSubEl = document.getElementById('sheep-dash-ewes-sub');
+  if (ewesSubEl) ewesSubEl.textContent = flock.ewes === 0 ? 'none yet' : 'breeding base';
+  
+  const ramsEl = document.getElementById('sheep-dash-rams');
+  if (ramsEl) ramsEl.textContent = flock.rams.toString();
+  const ramsSubEl = document.getElementById('sheep-dash-rams-sub');
+  if (ramsSubEl) ramsSubEl.textContent = flock.externalRams > 0
+    ? flock.rams + ' on-farm · ' + flock.externalRams + ' external'
+    : (flock.rams === 0 ? 'none yet' : 'on-farm sires');
+  
+  const inlambEl = document.getElementById('sheep-dash-inlamb');
+  if (inlambEl) inlambEl.textContent = flock.inLamb.toString();
+  const inlambSubEl = document.getElementById('sheep-dash-inlamb-sub');
+  if (inlambSubEl) inlambSubEl.textContent = flock.inLamb === 0
+    ? 'no served ewes pending' 
+    : 'served, awaiting lambing';
+  
+  const lambsEl = document.getElementById('sheep-dash-lambs');
+  if (lambsEl) lambsEl.textContent = flock.lambs.toString();
+  const lambsSubEl = document.getElementById('sheep-dash-lambs-sub');
+  if (lambsSubEl) lambsSubEl.textContent = flock.lambs === 0 ? 'no recent births' : 'born last 6 months';
+  
+  // Lambing pipeline
+  renderSheepDashLambing(flock.inLambPipeline);
+  
+  // Health status
+  renderSheepDashHealth();
+  
+  // Recent activity
+  renderSheepDashActivity(aliveSheep);
+}
+
+/* Lambing pipeline renderer. Per-ewe rows showing served date, expected 
+   lambing, ram ref. Empty state shows a helpful prompt to log servings. */
+function renderSheepDashLambing(pipeline) {
+  const el = document.getElementById('sheep-dash-lambing');
+  if (!el) return;
+  
+  if (!pipeline || pipeline.length === 0) {
+    el.innerHTML = '<div style="padding:0.7rem 0.8rem; background:rgba(180,140,80,0.05); border:1px dashed rgba(180,140,80,0.25); border-radius:6px; font-family:\'IBM Plex Mono\',monospace; font-size:0.72rem; color:var(--slate-light); line-height:1.5">No ewes currently in-lamb. Log a serving event from the action grid above to populate this pipeline.</div>';
+    return;
+  }
+  
+  el.innerHTML = pipeline.map(row => {
+    const cow = row;  // alias for clarity
+    const dueIn = row.days_to_lambing;
+    const dueLabel = dueIn > 0 ? 'in ' + dueIn + 'd' : dueIn === 0 ? 'today' : Math.abs(dueIn) + 'd overdue';
+    const dueColor = dueIn < 0 ? '#b8714d' : dueIn <= 14 ? 'var(--brass-dark)' : 'var(--slate)';
+    const ramTxt = row.ram_ref || row.semen_source || '—';
+    return `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:0.55rem 0; border-top:1px solid var(--rule);">
+        <div style="min-width:0; flex:1">
+          <div style="font-family:'Fraunces',serif; font-size:0.95rem; color:var(--ink)">🐑 ${row.tag_id}${row.name ? ' · <span style="font-style:italic; color:var(--forest)">' + row.name + '</span>' : ''}</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--slate); margin-top:0.1rem">Served ${formatNandiShortDate(row.served_date)} · ${ramTxt}</div>
+        </div>
+        <div style="text-align:right; min-width:0">
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.78rem; color:${dueColor}; font-weight:500">${dueLabel}</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.65rem; color:var(--slate-light); margin-top:0.1rem">${formatNandiShortDate(row.expected_lambing)}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* Health status renderer. Reads STATE.sheepEvents to find the most recent
+   vaccination / deworming / dipping / shearing event flock-wide, mirroring 
+   cow dashboard health section. Each row shows the most recent occurrence 
+   with a [+ Log] button to add a new event of that type. */
+function renderSheepDashHealth() {
+  const el = document.getElementById('sheep-dash-health');
+  if (!el) return;
+  
+  const events = STATE.sheepEvents || [];
+  const lastByType = {};
+  events.forEach(e => {
+    if (!e || !e.event_type || !e.event_date) return;
+    const t = e.event_type;
+    if (!lastByType[t] || lastByType[t].event_date < e.event_date) {
+      lastByType[t] = e;
+    }
+  });
+  
+  function statusLine(typeKey, label, emoji) {
+    const ev = lastByType[typeKey];
+    if (!ev) {
+      return `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.55rem 0; border-top:1px solid var(--rule);">
+          <div>
+            <div style="font-family:'Fraunces',serif; font-size:0.95rem; color:var(--ink)">${emoji} ${label}</div>
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--slate-light); margin-top:0.1rem">no records yet</div>
+          </div>
+          <button type="button" onclick="openSheepEventForm('${typeKey}', null)" style="background:transparent; border:1px dashed var(--rule); color:var(--slate); border-radius:4px; padding:0.3rem 0.6rem; font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.08em; cursor:pointer">+ Log</button>
+        </div>
+      `;
+    }
+    const sheep = (STATE.sheep || []).find(s => s.tag_id === ev.tag_id);
+    const tagLabel = sheep ? sheep.tag_id : ev.tag_id;
+    return `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:0.55rem 0; border-top:1px solid var(--rule);">
+        <div>
+          <div style="font-family:'Fraunces',serif; font-size:0.95rem; color:var(--ink)">${emoji} ${label}</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--forest); margin-top:0.1rem">${tagLabel} · ${formatNandiShortDate(ev.event_date)}${ev.drug_or_vaccine ? ' · ' + ev.drug_or_vaccine : ''}</div>
+        </div>
+        <button type="button" onclick="openSheepEventForm('${typeKey}', null)" style="background:transparent; border:1px solid var(--brass); color:var(--brass-dark); border-radius:4px; padding:0.3rem 0.6rem; font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.08em; cursor:pointer">+ Log</button>
+      </div>
+    `;
+  }
+  
+  el.innerHTML = 
+    statusLine('vaccinated', 'Vaccination', '💉') +
+    statusLine('dewormed',   'Deworming',   '🪱') +
+    statusLine('dipped',     'Dipping',     '💦') +
+    statusLine('sheared',    'Shearing',    '✂️');
+}
+
+/* Recent activity feed. Last 8 sheep events flock-wide. Reads from 
+   STATE.sheepEvents. */
+function renderSheepDashActivity(aliveSheep) {
+  const el = document.getElementById('sheep-dash-activity');
+  if (!el) return;
+  
+  const events = (STATE.sheepEvents || [])
+    .filter(e => e && e.event_date && e.tag_id)
+    .sort((a, b) => (b.event_date || '').localeCompare(a.event_date || '') ||
+                    (b.timestamp || '').localeCompare(a.timestamp || ''))
+    .slice(0, 8);
+  
+  if (events.length === 0) {
+    el.innerHTML = '<div style="padding:0.7rem 0.8rem; background:rgba(180,140,80,0.05); border:1px dashed rgba(180,140,80,0.25); border-radius:6px; font-family:\'IBM Plex Mono\',monospace; font-size:0.72rem; color:var(--slate-light); line-height:1.5">No events yet. Log a deworming, vaccination, or serving to populate the feed.</div>';
+    return;
+  }
+  
+  const eventEmojis = {
+    vaccinated: '💉', dewormed: '🪱', dipped: '💦', sheared: '✂️',
+    served: '💕', lambed: '🐑', weighed: '⚖️', treated: '🩺',
+    sold: '💵', gifted_away: '🎁', died: '⚰️'
+  };
+  
+  el.innerHTML = events.map(ev => {
+    const emoji = eventEmojis[ev.event_type] || '📌';
+    const detail = [ev.drug_or_vaccine, ev.weight_kg ? ev.weight_kg + 'kg' : '', ev.cause_or_condition]
+      .filter(Boolean).join(' · ');
+    return `
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; padding:0.45rem 0; border-top:1px solid var(--rule); gap:0.5rem">
+        <div style="min-width:0; flex:1">
+          <div style="font-family:'Fraunces',serif; font-size:0.92rem; color:var(--ink)">${emoji} ${ev.tag_id} · <span style="color:var(--forest); font-style:italic">${ev.event_type}</span></div>
+          ${detail ? `<div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--slate); margin-top:0.1rem">${detail}</div>` : ''}
+        </div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--slate-light); white-space:nowrap">${formatNandiShortDate(ev.event_date)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* Event-type picker — opened from "📝 + Log event" on dashboard. Shows the 
+   sheep event types as choice buttons; on pick, opens sheep-event-section 
+   pre-set to that type. Mirrors openCowEventPicker. */
+async function openSheepEventPicker(presetTagId) {
+  const types = [
+    { type: 'dewormed',   label: '🪱 Deworming',     primary: true  },
+    { type: 'vaccinated', label: '💉 Vaccination',   primary: false },
+    { type: 'dipped',     label: '💦 Dipping',       primary: false },
+    { type: 'sheared',    label: '✂️ Shearing',      primary: false },
+    { type: 'weighed',    label: '⚖️ Weighing',      primary: false },
+    { type: 'served',     label: '💕 Served',        primary: false },
+    { type: 'lambed',     label: '🐑 Lambing',       primary: false },
+    { type: 'treated',    label: '🩺 Treatment',     primary: false },
+    { type: 'sold',       label: '💵 Sale',          primary: false },
+    { type: 'gifted_away',label: '🎁 Gifted',        primary: false },
+    { type: 'died',       label: '⚰️ Death',         primary: false }
+  ];
+  const buttons = types.map(t => ({ label: t.label, value: t.type, primary: t.primary }));
+  
+  let choice = null;
+  if (typeof showChoiceModal === 'function') {
+    choice = await showChoiceModal(
+      '📝 Log sheep event',
+      'Pick the event type. Deworming is the most common at Sinonin — tap that to get started.',
+      buttons
+    );
+  } else {
+    choice = prompt('Event type:', 'dewormed');
+  }
+  
+  if (!choice) return;
+  openSheepEventForm(choice, presetTagId || null);
+}
+
 /* Main render: list view with filters applied. */
 function renderSheepRegistry() {
   ensureSheepFiltersPopulated();
@@ -17387,12 +17923,21 @@ function renderSheepRegistry() {
 
 /* Open the form in 'add' or 'edit' mode. tagId is the tag to edit (null for add). */
 function openSheepForm(mode, tagId) {
+  // v6.10.6 — Hide the new sheep-dashboard-section + event section too 
+  // so the form is the only visible sub-view. setSheepView would also 
+  // work but openSheepForm is called from many entry points; keep the 
+  // direct toggles here for stability.
+  const dashSec = document.getElementById('sheep-dashboard-section');
   const listSec = document.getElementById('sheep-list-section');
   const formSec = document.getElementById('sheep-form-section');
+  const evSec   = document.getElementById('sheep-event-section');
   const profSec = document.getElementById('sheep-profile-section');
+  if (dashSec) dashSec.style.display = 'none';
   if (listSec) listSec.style.display = 'none';
+  if (evSec)   evSec.style.display   = 'none';
   if (profSec) profSec.style.display = 'none';
   if (formSec) formSec.style.display = '';
+  if (typeof _sheepSubView !== 'undefined') _sheepSubView = 'form';
   
   const titleEl = document.getElementById('sheep-form-title');
   const modeEl = document.getElementById('sheep-form-mode');
@@ -17610,6 +18155,14 @@ async function onSheepDelete() {
 }
 
 function closeSheepForm() {
+  // v6.10.6 — Route through setSheepView so we land on the dashboard 
+  // (the new default) rather than directly showing the list section.
+  // The dashboard's renderer surfaces the new entry immediately.
+  if (typeof setSheepView === 'function') {
+    setSheepView('dashboard');
+    return;
+  }
+  // Fallback for safety (shouldn't fire since setSheepView is defined above)
   const listSec = document.getElementById('sheep-list-section');
   const formSec = document.getElementById('sheep-form-section');
   if (formSec) formSec.style.display = 'none';
@@ -17725,12 +18278,18 @@ async function openEditTagFlow(oldTag) {
 function openSheepProfile(tagId) {
   const sheep = (STATE.sheep || []).find(s => s.tag_id === tagId);
   if (!sheep) return;
+  // v6.10.6 — hide dashboard + event sections too
+  const dashSec = document.getElementById('sheep-dashboard-section');
   const listSec = document.getElementById('sheep-list-section');
   const formSec = document.getElementById('sheep-form-section');
+  const evSec   = document.getElementById('sheep-event-section');
   const profSec = document.getElementById('sheep-profile-section');
+  if (dashSec) dashSec.style.display = 'none';
   if (listSec) listSec.style.display = 'none';
   if (formSec) formSec.style.display = 'none';
+  if (evSec)   evSec.style.display   = 'none';
   if (profSec) profSec.style.display = '';
+  if (typeof _sheepSubView !== 'undefined') _sheepSubView = 'profile';
   
   const statusEl = document.getElementById('sheep-profile-status');
   if (statusEl) {
@@ -17794,6 +18353,14 @@ function openSheepProfile(tagId) {
 }
 
 function closeSheepProfile() {
+  // v6.10.6 — Route through setSheepView so we land on the dashboard.
+  // The profile's edits are reflected in the dashboard's recent activity 
+  // immediately on render.
+  if (typeof setSheepView === 'function') {
+    setSheepView('dashboard');
+    return;
+  }
+  // Fallback
   const listSec = document.getElementById('sheep-list-section');
   const profSec = document.getElementById('sheep-profile-section');
   if (profSec) profSec.style.display = 'none';
@@ -17862,14 +18429,18 @@ let _seCurrentType = null;
 let _seCurrentTagId = null;
 
 function openSheepEventForm(type, presetTagId) {
+  // v6.10.6 — hide dashboard section too
+  const dashSec = document.getElementById('sheep-dashboard-section');
   const listSec = document.getElementById('sheep-list-section');
   const formSec = document.getElementById('sheep-form-section');
   const profSec = document.getElementById('sheep-profile-section');
   const evSec   = document.getElementById('sheep-event-section');
+  if (dashSec) dashSec.style.display = 'none';
   if (listSec) listSec.style.display = 'none';
   if (formSec) formSec.style.display = 'none';
   if (profSec) profSec.style.display = 'none';
   if (evSec) evSec.style.display = '';
+  if (typeof _sheepSubView !== 'undefined') _sheepSubView = 'event';
   
   _seCurrentType = type;
   _seCurrentTagId = presetTagId;
@@ -18025,6 +18596,12 @@ function hideSheepEventFeedback() {
 }
 
 function closeSheepEventForm() {
+  // v6.10.6 — Route through setSheepView so we land on the dashboard.
+  if (typeof setSheepView === 'function') {
+    setSheepView('dashboard');
+    return;
+  }
+  // Fallback
   const listSec = document.getElementById('sheep-list-section');
   const evSec = document.getElementById('sheep-event-section');
   if (evSec) evSec.style.display = 'none';
