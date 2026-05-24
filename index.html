@@ -3103,7 +3103,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.6</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.7</span>
 </header>
 
 <main>
@@ -4489,6 +4489,16 @@
           <span>Register new sheep</span>
         </button>
 
+        <!-- v6.10.7 — Bulk CSV import for sheep. Essential for tenants 
+             arriving with existing herds (Levy Kachilei's ~500 head Dorpers 
+             at Kaimosi FTC). Opens a paste-modal: tenant pastes CSV rows
+             with the Dorper_Sheep header columns; preview shows what will 
+             be added; confirm queues each row for sync. -->
+        <button type="button" onclick="openSheepCsvImport()" style="display:flex; align-items:center; justify-content:center; gap:0.5rem; width:100%; padding:0.7rem 0.75rem; background:transparent; color:var(--brass-dark); border:1px dashed var(--brass); border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:0.75rem; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; margin-bottom:1rem;">
+          <span style="font-size:1rem; line-height:1">📋</span>
+          <span>Import CSV (bulk add)</span>
+        </button>
+
         <!-- v6.5.0 Step 3+4 — Quick Add events row. Six event types most 
              common in daily/weekly Dorper Farm operations. Each opens the 
              unified event form with the appropriate type pre-selected. 
@@ -4955,7 +4965,15 @@
         <h3 style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.4rem; color:var(--forest); margin:0.4rem 0 0.2rem; letter-spacing:-0.01em;">Dairy</h3>
         <p style="color:var(--slate-light); font-size:0.85rem; line-height:1.5; margin:0.2rem 0 1rem;">Cow registry · multi-owner · breed-aware · semen-source tracked</p>
 
-        <button type="button" onclick="openCowForm('add')" class="export-btn" style="background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark); margin-bottom:1rem; width:100%">+ Add cow</button>
+        <button type="button" onclick="openCowForm('add')" class="export-btn" style="background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark); margin-bottom:0.5rem; width:100%">+ Add cow</button>
+
+        <!-- v6.10.7 — Bulk CSV import for cows. Essential for tenants 
+             arriving with existing herds (Levy Kachilei's ~500 head dairy 
+             at Kaimosi FTC). Same pattern as sheep CSV import. -->
+        <button type="button" onclick="openCowCsvImport()" style="display:flex; align-items:center; justify-content:center; gap:0.5rem; width:100%; padding:0.6rem 0.75rem; background:transparent; color:var(--brass-dark); border:1px dashed var(--brass); border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:0.72rem; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; margin-bottom:1rem;">
+          <span style="font-size:1rem; line-height:1">📋</span>
+          <span>Import CSV (bulk add)</span>
+        </button>
 
         <!-- Filter bar — owner / breed / sex / status -->
         <div id="cow-filter-bar" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:0.9rem;">
@@ -5563,7 +5581,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.6</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.7</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5662,7 +5680,7 @@
   <div class="modal-card" role="dialog" aria-labelledby="auth-modal-title" aria-modal="true">
     <div class="modal-header">
       <h2 id="auth-modal-title">Authenticate</h2>
-      <p class="modal-subtitle">Kiruogindet araap Cheison</p>
+      <p class="modal-subtitle" id="admin-modal-subtitle">Kiruogindet araap Cheison</p>
     </div>
     <div class="modal-body">
       <div class="field">
@@ -5859,8 +5877,14 @@ let PLUCKERS = JSON.parse(JSON.stringify(DEFAULT_PLUCKERS));
    owners as well. Scaling." Prefix codes mix role-based (S=Sinonin entity, 
    M=Mother, W=Wife) with name-based (H/E/F/C/V) — sealed § 6.x: meaning 
    lives in the human-readable name beside the prefix; the data model 
-   treats all prefixes as opaque single letters. */
-const HOUSEHOLD_MEMBERS = [
+   treats all prefixes as opaque single letters. 
+   
+   v6.10.7 — Promoted from const to let so tenant config can replace the 
+   contents on cloud hydration. The DEFAULT below is Sinonin's roster — 
+   serves as fallback for the brief window before Control_Panel data 
+   arrives from doGet. After hydration, refreshOwnerPrefixesFromConfig() 
+   rebuilds this array from tcfg('OWNER_PREFIXES'). */
+let HOUSEHOLD_MEMBERS = [
   { prefix: 'S', name: 'Sinonin' },  // group entity (the operation itself)
   { prefix: 'M', name: 'Mother'  },  // Cheison's mother (role-prefix)
   { prefix: 'F', name: 'Felix'   },  // eldest son · new 22 May 2026
@@ -5872,7 +5896,155 @@ const HOUSEHOLD_MEMBERS = [
 ];
 // Back-compat alias — every existing sheep code path references DORPER_OWNERS.
 // Both names point to the same array; updates to HOUSEHOLD_MEMBERS propagate.
-const DORPER_OWNERS = HOUSEHOLD_MEMBERS;
+let DORPER_OWNERS = HOUSEHOLD_MEMBERS;
+
+/* ============================================================
+   v6.10.7 — TENANT CONFIG (CONTROL_PANEL) INFRASTRUCTURE
+   ============================================================
+   Sealed § 6.x (24 May 2026 Verden): Adopters who give us their data,
+   their farm, their reputation deserve a platform that has worked
+   through its weaknesses already. Hardcoded "Sinonin" + workforce names
+   + Nandi-language admin gatekeeper would read as foreign to Levy at
+   Kaimosi FTC or Lagat in Nandi County government. Every tenant-
+   specific display string now flows through Control_Panel.
+   
+   Architecture: PWA fetches Control_Panel via doGet → stores in
+   STATE.controlPanel → tcfg(key, fallback) reads from STATE → display
+   helpers (farmName, farmOwnerTitle, currencySymbol, etc.) provide
+   typed accessors → applyControlPanelToUI() updates static DOM after
+   hydration → workforce + owner-prefix arrays mutate in place so
+   existing references throughout the codebase pick up the new values.
+   ============================================================ */
+
+/* Read a tenant config value from STATE.controlPanel with safe fallback.
+   Returns the fallback if STATE isn't initialized yet, if the key
+   doesn't exist, or if the value is empty. Apps Script strips
+   sensitive keys (ADMIN_PASSPHRASE, etc.) before transmission, so the
+   PWA can safely call tcfg() for any non-secret config key.
+   
+   The default fallback values are Sinonin's existing strings — this
+   means Sinonin's PWA works correctly even BEFORE the first cloud
+   hydration arrives (so the first-paint isn't broken). After
+   hydration, tenant-specific values replace these. */
+function tcfg(key, fallback) {
+  try {
+    if (typeof STATE === 'undefined' || !STATE) return fallback;
+    if (!STATE.controlPanel) return fallback;
+    const v = STATE.controlPanel[key];
+    if (v === undefined || v === null || v === '') return fallback;
+    return v;
+  } catch (e) {
+    return fallback;
+  }
+}
+
+/* Display string helpers. Each returns a tenant-config value with the
+   appropriate type/format, falling back to Sinonin's current values.
+   Use these throughout the PWA instead of hardcoded strings. */
+function farmName()        { return tcfg('FARM_NAME',        'Sinonin Group'); }
+function farmOwner()       { return tcfg('FARM_OWNER',       'Cheison'); }
+function farmOwnerTitle()  { return tcfg('FARM_OWNER_TITLE', 'Kiruogindet araap ' + farmOwner()); }
+function farmLocation()    { return tcfg('FARM_LOCATION',    'Nandi, Kenya'); }
+function currencySymbol()  { return tcfg('CURRENCY_SYMBOL',  'Ksh'); }
+function adminRejectMsg()  { return tcfg('ADMIN_REJECT_MSG', farmOwnerTitle() + ' does not allow you to see Settings'); }
+function cowGestationDays()   { return parseInt(tcfg('GESTATION_COW_DAYS',   '280'), 10) || 280; }
+function sheepGestationDays() { return parseInt(tcfg('GESTATION_SHEEP_DAYS', '150'), 10) || 150; }
+function lactationDays()      { return parseInt(tcfg('LACTATION_DAYS',       '305'), 10) || 305; }
+
+/* Resolve an owner name from a single-letter tag prefix using
+   Control_Panel's OWNER_PREFIXES if present, else falling back to
+   HOUSEHOLD_MEMBERS. Format: "C:Cheison,E:Elias,M:Mother,..." */
+function ownerForPrefix(prefix) {
+  if (!prefix) return null;
+  const p = String(prefix).trim().toUpperCase();
+  const cfgStr = tcfg('OWNER_PREFIXES', '');
+  if (cfgStr && typeof cfgStr === 'string') {
+    const pairs = cfgStr.split(',').map(function (s) { return s.trim(); });
+    for (var i = 0; i < pairs.length; i++) {
+      const parts = pairs[i].split(':');
+      if (parts.length >= 2) {
+        const k = parts[0].trim().toUpperCase();
+        const n = parts.slice(1).join(':').trim();
+        if (k === p && n) return n;
+      }
+    }
+  }
+  // Fallback: HOUSEHOLD_MEMBERS lookup
+  const found = HOUSEHOLD_MEMBERS.find(function (m) { return m.prefix === p; });
+  return found ? found.name : null;
+}
+
+/* Rebuild HOUSEHOLD_MEMBERS (and DORPER_OWNERS by reference) from
+   Control_Panel's OWNER_PREFIXES. Called after cloud hydration. 
+   Mutates the array in place so all existing references keep working. */
+function refreshOwnerPrefixesFromConfig() {
+  const cfgStr = tcfg('OWNER_PREFIXES', '');
+  if (!cfgStr || typeof cfgStr !== 'string') return;
+  const pairs = cfgStr.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  const newRoster = [];
+  pairs.forEach(function (pair) {
+    const parts = pair.split(':');
+    if (parts.length < 2) return;
+    const prefix = parts[0].trim().toUpperCase();
+    const name = parts.slice(1).join(':').trim();
+    if (prefix && name) newRoster.push({ prefix: prefix, name: name });
+  });
+  if (newRoster.length === 0) return;
+  // Mutate in place so all existing references see the update
+  HOUSEHOLD_MEMBERS.length = 0;
+  newRoster.forEach(function (m) { HOUSEHOLD_MEMBERS.push(m); });
+}
+
+/* Get the tenant's daily-ops workforce roster (operator names).
+   Used by feed-log Fed_By, milk Operator, egg-collection Collector
+   dropdowns. Returns array of strings. */
+function workforceRoster() {
+  const cfgStr = tcfg('WORKFORCE_ROSTER', 'Elias, Ezron, Faith, Frank, Stanley, Victor');
+  if (!cfgStr || typeof cfgStr !== 'string') return [];
+  return cfgStr.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+}
+
+/* Apply tenant config to static DOM surfaces. Called after the first
+   cloud hydration that includes data.controlPanel. Updates page title,
+   <h1>, version-label tooltip, and any other static surfaces. */
+function applyControlPanelToUI() {
+  try {
+    // Page title + <h1>
+    const fn = farmName();
+    if (document.title) document.title = fn + ' Management App';
+    const h1s = document.querySelectorAll('h1');
+    h1s.forEach(function (h1) {
+      if (h1.textContent && h1.textContent.indexOf('Management App') !== -1) {
+        h1.textContent = fn + ' Management App';
+      }
+    });
+    // Version-label tooltip
+    const vl = document.getElementById('version-label');
+    if (vl) vl.title = fn + ' Management App version';
+    // Admin modal subtitle (was "Kiruogindet araap Cheison" hardcoded)
+    const adminSub = document.getElementById('admin-modal-subtitle');
+    if (adminSub) adminSub.textContent = farmOwnerTitle();
+    // Tea motto (if tenant has tea chain)
+    const teaMotto = document.querySelector('.motto');
+    if (teaMotto && teaMotto.textContent && teaMotto.textContent.indexOf('Tea') !== -1) {
+      const customMotto = tcfg('TEA_MOTTO', '');
+      if (customMotto) teaMotto.textContent = customMotto;
+    }
+    // Refresh owner prefixes + workforce-dependent surfaces
+    refreshOwnerPrefixesFromConfig();
+    // Re-render any visible sections that read these values
+    if (typeof renderSheepRegistry === 'function' && document.getElementById('sheep-list-section') 
+        && document.getElementById('sheep-list-section').style.display !== 'none') {
+      renderSheepRegistry();
+    }
+    if (typeof renderCowRegistry === 'function' && document.getElementById('cow-list-section') 
+        && document.getElementById('cow-list-section').style.display !== 'none') {
+      renderCowRegistry();
+    }
+  } catch (e) {
+    console.warn('[v6.10.7] applyControlPanelToUI failed:', e);
+  }
+}
 
 const DORPER_BREEDS = [
   'Dorper',
@@ -6051,6 +6223,10 @@ const K_COW_FEED_LOG = 'sinonin_cow_feed_log_v1';
 // (date, session, tag_id). Drives lactation curves, champion logic,
 // home card lactating-state surfaces.
 const K_COW_MILK_LOG = 'sinonin_cow_milk_log_v1';
+// v6.10.7 — Tenant config storage. Cached so the PWA shows tenant-
+// specific values immediately on subsequent loads, before the first
+// cloud hydration completes. Refreshed on every cloud-pull.
+const K_CONTROL_PANEL = 'sinonin_control_panel_v1';
 
 // v6.10.5 Stage 3 — Milk module constants.
 //
@@ -6136,7 +6312,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.6';
+const APP_VERSION = 'v6.10.7';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -6674,7 +6850,7 @@ async function webauthnRegister() {
         },
         user: {
           id: userIdBytes,
-          name: 'Kiruogindet araap Cheison',
+          name: `${farmOwnerTitle()}`,
           displayName: 'Kiruogindet'
         },
         pubKeyCredParams: [
@@ -7231,10 +7407,10 @@ async function authModalSubmitView() {
     } else {
       authModalState.attemptCount++;
       if (hint) {
-        hint.textContent = 'Kiruogindet araap Cheison does not allow you to see Settings';
+        hint.textContent = `${farmOwnerTitle()} does not allow you to see Settings`;
         hint.classList.add('error');
       }
-      showToast('Kiruogindet araap Cheison does not allow you to see Settings', 5000);
+      showToast(`${farmOwnerTitle()} does not allow you to see Settings`, 5000);
       if (passInput) {
         passInput.value = '';
         passInput.focus();
@@ -7305,10 +7481,10 @@ async function authModalSubmitGrant() {
     } else {
       authModalState.attemptCount++;
       if (hint) {
-        hint.textContent = 'Kiruogindet araap Cheison does not allow you to see Settings';
+        hint.textContent = `${farmOwnerTitle()} does not allow you to see Settings`;
         hint.classList.add('error');
       }
-      showToast('Kiruogindet araap Cheison does not allow you to see Settings', 5000);
+      showToast(`${farmOwnerTitle()} does not allow you to see Settings`, 5000);
       if (passInput) {
         passInput.value = '';
         passInput.focus();
@@ -9359,6 +9535,22 @@ async function applyCloudResponse(data) {
     STATE.cowMilkLog = cloudMilk.concat(localOnly);
     await storageSet(K_COW_MILK_LOG, STATE.cowMilkLog);
   }
+  /* v6.10.7 — Control_Panel tenant config sync. The Apps Script (v5.0.47+)
+     returns a `controlPanel` object containing public tenant config keys
+     (FARM_NAME, WORKFORCE_ROSTER, OWNER_PREFIXES, CURRENCY_SYMBOL, etc.)
+     with all sensitive keys (ADMIN_PASSPHRASE, gate state) stripped 
+     server-side. Storing in STATE.controlPanel makes tcfg() resolve to
+     tenant-specific values; calling applyControlPanelToUI() updates the
+     static DOM surfaces (page title, h1, version-label tooltip) and 
+     refreshes owner-prefix arrays so existing references throughout the
+     codebase pick up the new mapping. */
+  if (data.controlPanel && typeof data.controlPanel === 'object') {
+    STATE.controlPanel = data.controlPanel;
+    await storageSet(K_CONTROL_PANEL, STATE.controlPanel);
+    if (typeof applyControlPanelToUI === 'function') {
+      applyControlPanelToUI();
+    }
+  }
   /* v6.0 SHIP 2 / v6.2.2 — Egg Collection sync (cloud-replace-local) */
   if (Array.isArray(data.eggCollection)) {
     STATE.eggCollection = data.eggCollection.map(cloudToLocalEggCollection);
@@ -9923,7 +10115,7 @@ async function submitQuick() {
         // v5.0 Phase 1: if the gate explicitly rejected with writes-locked,
         // show the operator a clear message — they need to ping Cheison, not retry silently
         if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-          showToast('🔒 Writes locked — ping Kiruogindet araap Cheison · entry queued', 6000);
+          showToast(`🔒 Writes locked — ping ${farmOwnerTitle()} · entry queued`, 6000);
         }
       }
     } else {
@@ -10264,7 +10456,7 @@ async function submitExpense() {
       if (!wasDup) {
         await queueForSync(expense, 'expense');
         if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-          showToast('🔒 Writes locked — ping Kiruogindet araap Cheison · expense queued', 6000);
+          showToast(`🔒 Writes locked — ping ${farmOwnerTitle()} · expense queued`, 6000);
         }
       }
     } else {
@@ -10441,7 +10633,7 @@ async function submitBatchExpenses() {
   // v5.0 Phase 2.2 — gate-rejection feedback (any of the queued items locked)
   if (queuedCount > 0 && lastWriteResult && lastWriteResult.reason === 'writes-locked') {
     setTimeout(() => {
-      showToast(`🔒 Writes locked — ${queuedCount} expense${queuedCount === 1 ? '' : 's'} queued · ping Kiruogindet araap Cheison`, 6000);
+      showToast(`🔒 Writes locked — ${queuedCount} expense${queuedCount === 1 ? '' : 's'} queued · ping ${farmOwnerTitle()}`, 6000);
     }, 800);
   }
   updateSyncIndicator();
@@ -11207,7 +11399,7 @@ async function submitActual() {
       await queueForSync(actual, 'actual');
       // v5.0 Phase 2.1: gate-rejection feedback
       if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-        showToast('🔒 Writes locked — ping Kiruogindet araap Cheison · actual queued', 6000);
+        showToast(`🔒 Writes locked — ping ${farmOwnerTitle()} · actual queued`, 6000);
       }
     }
   } else {
@@ -11431,7 +11623,7 @@ async function submitBanked() {
     if (!wasDup) {
       await queueForSync(row, 'banked');
       if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-        showToast('🔒 Writes locked — ping Kiruogindet araap Cheison · income queued', 6000);
+        showToast(`🔒 Writes locked — ping ${farmOwnerTitle()} · income queued`, 6000);
       }
     }
   } else {
@@ -11709,7 +11901,7 @@ async function submitPoultry() {
     if (!wasDup) {
       await queueForSync(row, 'poultry');
       if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-        showToast('🔒 Writes locked — ping Kiruogindet araap Cheison · sale queued', 6000);
+        showToast(`🔒 Writes locked — ping ${farmOwnerTitle()} · sale queued`, 6000);
       }
     }
   } else {
@@ -12056,7 +12248,7 @@ async function submitEggCollection() {
     if (!wasDup) {
       await queueForSync(row, 'egg-collection');
       if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-        showToast('🔒 Writes locked — ping Kiruogindet araap Cheison · collection queued', 6000);
+        showToast(`🔒 Writes locked — ping ${farmOwnerTitle()} · collection queued`, 6000);
       }
     }
   } else {
@@ -12292,7 +12484,7 @@ async function submitBirdCensus() {
     if (!wasDup) {
       await queueForSync(row, 'bird-census');
       if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-        showToast('🔒 Writes locked — ping Kiruogindet araap Cheison · census queued', 6000);
+        showToast(`🔒 Writes locked — ping ${farmOwnerTitle()} · census queued`, 6000);
       }
     }
   } else {
@@ -12639,7 +12831,7 @@ async function submitIncubationStart() {
       if (json.writesLocked) {
         STATE.incubation = STATE.incubation.filter(b => b.batch_id !== id);
         await storageSet(K_INCUBATION, STATE.incubation);
-        showToast('🔒 Writes locked — ping Kiruogindet araap Cheison', 6000);
+        showToast(`🔒 Writes locked — ping ${farmOwnerTitle()}`, 6000);
         return;
       }
       if (json.idempotent) {
@@ -12778,7 +12970,7 @@ async function submitIncubationHatch() {
       } else {
         const json = await r.json();
         if (json && json.idempotent) showToast('Already saved (network retry)', 3000);
-        else if (json && json.writesLocked) showToast('🔒 Writes locked — ping Kiruogindet araap Cheison', 6000);
+        else if (json && json.writesLocked) showToast(`🔒 Writes locked — ping ${farmOwnerTitle()}`, 6000);
         else if (json && json.ok === false) showToast(`Server rejected: ${json.reason || 'unknown'}`, 5000);
       }
     } catch (e) {
@@ -13238,7 +13430,7 @@ function handleLitterBarTap() {
       showToast('🪶 Litter recorded ' + existing.date + ' · contact admin to correct');
     } else {
       alert('Litter change already recorded on ' + existing.date + 
-            '\n\nContact admin to correct (Kiruogindet araap Cheison).');
+            `\n\nContact admin to correct (${farmOwnerTitle()}).`);
     }
     return;
   }
@@ -17548,7 +17740,12 @@ function setSheepView(sub) {
 }
 
 /* Sheep gestation period (Dorper). Different from cow's 280-day cycle. */
-const SHEEP_GESTATION_DAYS = 150;
+/* Sheep gestation period (Dorper). v6.10.7 — Now reads from Control_Panel
+   via sheepGestationDays() helper. Default 150 days for Dorpers; tenants
+   with different breeds can adjust via GESTATION_SHEEP_DAYS key.
+   The original const kept as a backward-compat alias — but the dynamic
+   getter is preferred for new code. */
+const SHEEP_GESTATION_DAYS = 150;  // back-compat fallback only
 
 /* Flock state aggregator. Returns counts of ewes, rams, in-lamb (served 
    but not yet lambed), and recent lambs (under 6 months old). */
@@ -17591,13 +17788,15 @@ function computeFlockState(aliveSheep) {
       }
     }
     if (mostRecentServed && mostRecentServed.event_date) {
+      // v6.10.7 — tenant-config-driven gestation period
+      const gest = sheepGestationDays();
       const servedDate = new Date(mostRecentServed.event_date);
-      const expectedLambing = new Date(servedDate.getTime() + SHEEP_GESTATION_DAYS * 86400000);
+      const expectedLambing = new Date(servedDate.getTime() + gest * 86400000);
       const today = new Date();
       const daysSinceServed = Math.floor((today - servedDate) / 86400000);
       // Only count as "in-lamb" if less than full gestation has passed
       // (otherwise the ewe should have lambed; data may be missing)
-      if (daysSinceServed >= 0 && daysSinceServed <= SHEEP_GESTATION_DAYS + 30) {
+      if (daysSinceServed >= 0 && daysSinceServed <= gest + 30) {
         inLamb++;
         inLambPipeline.push({
           tag_id: ewe.tag_id,
@@ -17608,7 +17807,7 @@ function computeFlockState(aliveSheep) {
           semen_source: mostRecentServed.semen_source || null,
           expected_lambing: expectedLambing.toISOString().slice(0, 10),
           days_since_served: daysSinceServed,
-          days_to_lambing: SHEEP_GESTATION_DAYS - daysSinceServed
+          days_to_lambing: gest - daysSinceServed
         });
       }
     }
@@ -17848,6 +18047,346 @@ async function openSheepEventPicker(presetTagId) {
   
   if (!choice) return;
   openSheepEventForm(choice, presetTagId || null);
+}
+
+/* ============================================================
+   v6.10.7 — CSV IMPORT (cows + sheep)
+   ============================================================
+   Mass adoption requires bulk onboarding. Levy at Kaimosi FTC has 
+   ~500 head dairy + ~500 Dorpers. Manual one-at-a-time registration 
+   is a non-starter at that scale; a tenant who has to type 500 ear-
+   tags walks away. This module accepts CSV paste, parses with header
+   detection, validates per-row (tag uniqueness, owner prefix, required
+   fields), shows a preview, and on confirm queues each row through 
+   the existing add-sheep / add-cow writers + sync queue.
+   
+   Architecture:
+     · openSheepCsvImport() / openCowCsvImport() build a modal on demand
+     · parseCsv(text) handles quoted fields, commas, escapes
+     · validateImportRow(kind, row) returns { ok, errors, normalized }
+     · commitImportRows(kind, rows) writes through existing pipelines
+   
+   Sealed § 6.x: a 500-row paste is a 30-second operation when the
+   tool meets the operator's reality; a 500-row manual entry is what
+   makes the tool a relic. Levy's adoption hinges on this surface.
+   ============================================================ */
+
+/* Generic state shared by both flows during a single import session. */
+let _csvImportState = null;
+
+/* Open the sheep CSV import modal. */
+function openSheepCsvImport() {
+  _openCsvImportModal('sheep');
+}
+
+/* Open the cow CSV import modal. */
+function openCowCsvImport() {
+  _openCsvImportModal('cow');
+}
+
+/* Build + show the import modal. kind is 'sheep' or 'cow'. */
+function _openCsvImportModal(kind) {
+  // Remove any existing overlay
+  const existing = document.getElementById('csv-import-overlay');
+  if (existing) existing.remove();
+  
+  _csvImportState = { kind: kind, parsed: null };
+  
+  const isSheep = kind === 'sheep';
+  const heading = isSheep ? '📋 Import sheep CSV' : '📋 Import cow CSV';
+  const requiredCols = isSheep
+    ? 'tag_id, sex (F/M), owner'
+    : 'Tag ID, Sex (F/M), Owner';
+  const optionalCols = isSheep
+    ? 'breed, colour, acquisition, dob, dam_tag, sire_tag, date_acquired, source_farm, status, notes'
+    : 'Name, Breed, Source, Source Farm, Date Acquired, Dam Tag, Status, Notes';
+  const exampleRow = isSheep
+    ? 'S-501,F,Sinonin,Dorper,white,born,2024-03-15,,,,Born on farm'
+    : 'K-001,F,Kaimosi FTC,Bella,Friesian,acquired,Kibos AI Centre,2023-06-12,,alive,Lead milker';
+  
+  const overlay = document.createElement('div');
+  overlay.id = 'csv-import-overlay';
+  overlay.style.cssText = 'position:fixed; inset:0; background:rgba(20,32,28,0.7); z-index:2000; display:flex; align-items:center; justify-content:center; padding:1rem;';
+  overlay.innerHTML = `
+    <div style="background:var(--ivory-warm); border-radius:10px; padding:1.5rem 1.2rem; max-width:600px; width:100%; max-height:90vh; overflow-y:auto; box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+      <h2 style="margin:0 0 0.5rem; font-family:'Fraunces',serif; font-style:italic; font-size:1.4rem; color:var(--forest);">${heading}</h2>
+      <p style="margin:0 0 1rem; font-size:0.85rem; color:var(--slate); line-height:1.5;">Paste rows below. <strong>First line = headers.</strong> Required: <code style="background:rgba(180,140,80,0.15); padding:0.1rem 0.3rem; border-radius:3px;">${requiredCols}</code>. Optional: ${optionalCols}.</p>
+      <details style="margin-bottom:0.8rem; font-size:0.8rem;">
+        <summary style="cursor:pointer; color:var(--brass-dark); font-family:'IBM Plex Mono',monospace; letter-spacing:0.1em; text-transform:uppercase;">Show example</summary>
+        <pre style="background:var(--ivory); border:1px solid var(--rule); padding:0.6rem; border-radius:4px; font-size:0.7rem; overflow-x:auto; margin:0.4rem 0 0;">${isSheep ? 'tag_id,sex,owner,breed,colour,acquisition,dob,dam_tag,sire_tag,date_acquired,source_farm,notes\n' + exampleRow : 'Tag ID,Sex,Owner,Name,Breed,Source,Source Farm,Date Acquired,Dam Tag,Status,Notes\n' + exampleRow}</pre>
+      </details>
+      <textarea id="csv-import-textarea" placeholder="Paste your CSV here…" style="width:100%; min-height:160px; padding:0.7rem; font-family:'IBM Plex Mono',monospace; font-size:0.8rem; border:1px solid var(--rule); border-radius:6px; background:var(--ivory); resize:vertical;"></textarea>
+      <div id="csv-import-preview" style="margin-top:0.8rem;"></div>
+      <div style="display:flex; gap:0.5rem; margin-top:1rem; justify-content:flex-end;">
+        <button type="button" onclick="closeCsvImport()" style="padding:0.6rem 1.2rem; background:transparent; color:var(--slate); border:1px solid var(--rule); border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer;">Cancel</button>
+        <button type="button" id="csv-parse-btn" onclick="parseCsvImport()" style="padding:0.6rem 1.2rem; background:var(--brass-dark); color:var(--ivory); border:1px solid var(--brass-dark); border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:0.75rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer;">Parse &amp; Preview</button>
+        <button type="button" id="csv-commit-btn" onclick="commitCsvImport()" style="display:none; padding:0.6rem 1.2rem; background:var(--forest-dark); color:var(--ivory); border:1px solid var(--forest-dark); border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:0.75rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer;">Import rows</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+/* Close the CSV import modal. */
+function closeCsvImport() {
+  const overlay = document.getElementById('csv-import-overlay');
+  if (overlay) overlay.remove();
+  _csvImportState = null;
+}
+
+/* Parse the textarea contents, validate each row, show preview. */
+function parseCsvImport() {
+  const ta = document.getElementById('csv-import-textarea');
+  const previewEl = document.getElementById('csv-import-preview');
+  const commitBtn = document.getElementById('csv-commit-btn');
+  if (!ta || !previewEl || !_csvImportState) return;
+  
+  const text = ta.value.trim();
+  if (!text) {
+    previewEl.innerHTML = '<div style="color:#b8714d; padding:0.5rem 0; font-size:0.85rem;">Paste CSV content first.</div>';
+    return;
+  }
+  
+  let rows;
+  try {
+    rows = _parseCsvText(text);
+  } catch (e) {
+    previewEl.innerHTML = '<div style="color:#b8714d; padding:0.5rem 0; font-size:0.85rem;">Parse error: ' + e.message + '</div>';
+    return;
+  }
+  
+  if (rows.length < 2) {
+    previewEl.innerHTML = '<div style="color:#b8714d; padding:0.5rem 0; font-size:0.85rem;">Need at least 2 lines (1 header row + 1 data row).</div>';
+    return;
+  }
+  
+  const headers = rows[0].map(function (h) { return String(h).trim(); });
+  const dataRows = rows.slice(1).filter(function (r) {
+    return r.some(function (cell) { return String(cell).trim() !== ''; });
+  });
+  
+  const valid = [];
+  const errors = [];
+  dataRows.forEach(function (row, idx) {
+    const obj = {};
+    headers.forEach(function (h, i) { obj[h] = String(row[i] || '').trim(); });
+    const v = _validateImportRow(_csvImportState.kind, obj, valid);
+    if (v.ok) {
+      valid.push(v.normalized);
+    } else {
+      errors.push({ row: idx + 2, msg: v.errors.join(', '), data: obj });
+    }
+  });
+  
+  _csvImportState.parsed = { headers: headers, valid: valid, errors: errors };
+  
+  // Render preview
+  const okHtml = valid.length > 0 ? `
+    <div style="background:rgba(46,103,76,0.08); border:1px solid rgba(46,103,76,0.25); border-radius:6px; padding:0.6rem; margin-bottom:0.5rem;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:0.75rem; color:var(--forest-dark); font-weight:600;">✅ ${valid.length} row${valid.length === 1 ? '' : 's'} ready to import</div>
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--slate); margin-top:0.3rem;">First few: ${valid.slice(0, 5).map(function (r) { return r.tag_id || r.tagId || '?'; }).join(', ')}${valid.length > 5 ? ', …' : ''}</div>
+    </div>
+  ` : '<div style="background:rgba(160,80,40,0.08); border:1px solid rgba(160,80,40,0.25); border-radius:6px; padding:0.6rem; margin-bottom:0.5rem; font-size:0.85rem; color:#8b3a1b;">No valid rows. See errors below.</div>';
+  
+  const errHtml = errors.length > 0 ? `
+    <details style="background:rgba(160,80,40,0.05); border:1px solid rgba(160,80,40,0.2); border-radius:6px; padding:0.5rem; margin-bottom:0.5rem;" open>
+      <summary style="cursor:pointer; font-family:'IBM Plex Mono',monospace; font-size:0.75rem; color:#8b3a1b; font-weight:600;">⚠ ${errors.length} row${errors.length === 1 ? '' : 's'} skipped</summary>
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:0.68rem; line-height:1.6; color:var(--slate); margin-top:0.4rem; max-height:160px; overflow-y:auto;">
+        ${errors.slice(0, 20).map(function (e) { return 'Row ' + e.row + ': ' + e.msg; }).join('<br>')}
+        ${errors.length > 20 ? '<br>… and ' + (errors.length - 20) + ' more' : ''}
+      </div>
+    </details>
+  ` : '';
+  
+  previewEl.innerHTML = okHtml + errHtml;
+  if (commitBtn) commitBtn.style.display = valid.length > 0 ? '' : 'none';
+}
+
+/* Commit the validated rows: write each through the cloud-sync queue + 
+   update local STATE so the registry refreshes immediately. */
+async function commitCsvImport() {
+  if (!_csvImportState || !_csvImportState.parsed) return;
+  const { kind, parsed } = _csvImportState;
+  const rows = parsed.valid;
+  if (rows.length === 0) return;
+  
+  const commitBtn = document.getElementById('csv-commit-btn');
+  if (commitBtn) {
+    commitBtn.disabled = true;
+    commitBtn.textContent = 'Importing…';
+  }
+  
+  let success = 0;
+  let failed = 0;
+  
+  for (var i = 0; i < rows.length; i++) {
+    try {
+      const row = rows[i];
+      if (kind === 'sheep') {
+        await _importSheepRow(row);
+      } else {
+        await _importCowRow(row);
+      }
+      success++;
+    } catch (e) {
+      failed++;
+      console.warn('[CSV import] row failed:', e);
+    }
+  }
+  
+  closeCsvImport();
+  showToast('📋 Imported ' + success + (failed > 0 ? ' · ' + failed + ' failed' : '') + ' · syncing…', 5000);
+  
+  // Refresh the relevant registry
+  if (kind === 'sheep' && typeof renderSheepRegistry === 'function') renderSheepRegistry();
+  if (kind === 'cow' && typeof renderCowRegistry === 'function') renderCowRegistry();
+  
+  // Trigger queue flush — same call shape submitSheepForm/submitCowForm use
+  if (typeof flushQueue === 'function') {
+    flushQueue({ manual: true }).catch(function () {});
+  }
+}
+
+/* Parse CSV text into an array of arrays. Handles quoted fields with
+   embedded commas. Newlines outside quotes terminate rows. */
+function _parseCsvText(text) {
+  const rows = [];
+  let field = '';
+  let row = [];
+  let inQuotes = false;
+  for (var i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; }
+      else if (ch === '"') { inQuotes = false; }
+      else { field += ch; }
+    } else {
+      if (ch === '"') { inQuotes = true; }
+      else if (ch === ',') { row.push(field); field = ''; }
+      else if (ch === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (ch === '\r') { /* skip */ }
+      else { field += ch; }
+    }
+  }
+  if (field !== '' || row.length > 0) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+/* Validate a single import row. kind = 'sheep' | 'cow'. Returns 
+   { ok: boolean, errors: [string], normalized: object }. 
+   The normalized object is in the shape the importer expects. */
+function _validateImportRow(kind, raw, alreadyValid) {
+  const errors = [];
+  const normalized = {};
+  
+  if (kind === 'sheep') {
+    // Required: tag_id (case-insensitive header match), sex, owner
+    const tag = (raw.tag_id || raw.Tag_ID || raw['Tag ID'] || raw.tagId || '').trim();
+    if (!tag) errors.push('missing tag_id');
+    else if ((STATE.sheep || []).some(function (s) { return (s.tag_id || '').toUpperCase() === tag.toUpperCase(); })) {
+      errors.push('tag ' + tag + ' already in registry');
+    }
+    else if (alreadyValid.some(function (s) { return (s.tag_id || '').toUpperCase() === tag.toUpperCase(); })) {
+      errors.push('tag ' + tag + ' duplicated in CSV');
+    }
+    const sex = (raw.sex || raw.Sex || '').trim().toUpperCase();
+    if (sex !== 'F' && sex !== 'M') errors.push('sex must be F or M (got "' + sex + '")');
+    
+    // Owner: explicit name OR derive from prefix
+    let owner = (raw.owner || raw.Owner || '').trim();
+    if (!owner && tag) {
+      const prefix = tag.charAt(0);
+      const derived = (typeof ownerForPrefix === 'function') ? ownerForPrefix(prefix) : null;
+      if (derived) owner = derived;
+    }
+    if (!owner) errors.push('owner not specified and cannot derive from tag prefix');
+    
+    normalized.tag_id = tag;
+    normalized.sex = sex;
+    normalized.owner = owner;
+    normalized.breed = (raw.breed || raw.Breed || '').trim();
+    normalized.colour = (raw.colour || raw.color || raw.Colour || raw.Color || '').trim();
+    normalized.acquisition = (raw.acquisition || raw.Acquisition || 'born').trim();
+    normalized.dob = (raw.dob || raw.DOB || '').trim();
+    normalized.dam_tag = (raw.dam_tag || raw['Dam Tag'] || '').trim();
+    normalized.sire_tag = (raw.sire_tag || raw['Sire Tag'] || '').trim();
+    normalized.date_acquired = (raw.date_acquired || raw['Date Acquired'] || '').trim();
+    normalized.source_farm = (raw.source_farm || raw['Source Farm'] || '').trim();
+    normalized.status = (raw.status || raw.Status || 'alive').trim();
+    normalized.notes = (raw.notes || raw.Notes || '').trim();
+  } else if (kind === 'cow') {
+    const tag = (raw['Tag ID'] || raw.tag_id || raw.Tag_ID || raw.tagId || '').trim();
+    if (!tag) errors.push('missing Tag ID');
+    else if ((STATE.cows || []).some(function (c) { return (c.tag_id || '').toUpperCase() === tag.toUpperCase(); })) {
+      errors.push('tag ' + tag + ' already in registry');
+    }
+    else if (alreadyValid.some(function (c) { return (c.tag_id || '').toUpperCase() === tag.toUpperCase(); })) {
+      errors.push('tag ' + tag + ' duplicated in CSV');
+    }
+    const sex = (raw.Sex || raw.sex || '').trim().toUpperCase();
+    if (sex !== 'F' && sex !== 'M') errors.push('Sex must be F or M (got "' + sex + '")');
+    
+    let owner = (raw.Owner || raw.owner || '').trim();
+    if (!owner && tag) {
+      const prefix = tag.charAt(0);
+      const derived = (typeof ownerForPrefix === 'function') ? ownerForPrefix(prefix) : null;
+      if (derived) owner = derived;
+    }
+    if (!owner) errors.push('Owner not specified and cannot derive from tag prefix');
+    
+    normalized.tag_id = tag;
+    normalized.sex = sex;
+    normalized.owner = owner;
+    normalized.name = (raw.Name || raw.name || '').trim();
+    normalized.breed = (raw.Breed || raw.breed || '').trim();
+    normalized.source = (raw.Source || raw.source || 'acquired').trim();
+    normalized.source_farm = (raw['Source Farm'] || raw.source_farm || '').trim();
+    normalized.date_acquired = (raw['Date Acquired'] || raw.date_acquired || '').trim();
+    normalized.dam_tag = (raw['Dam Tag'] || raw.dam_tag || '').trim();
+    normalized.status = (raw.Status || raw.status || 'alive').trim();
+    normalized.notes = (raw.Notes || raw.notes || '').trim();
+  }
+  
+  return { ok: errors.length === 0, errors: errors, normalized: normalized };
+}
+
+/* Write a single sheep row into STATE + sync queue.
+   Mirrors submitSheepForm's persistence pattern exactly. */
+async function _importSheepRow(row) {
+  const now = new Date().toISOString();
+  const record = Object.assign({}, row, {
+    created_at: now,
+    updated_at: now,
+    // status defaults to 'alive' unless explicitly different
+    status: row.status || 'alive',
+    date_status_changed: null
+  });
+  if (!Array.isArray(STATE.sheep)) STATE.sheep = [];
+  STATE.sheep.push(record);
+  await storageSet(K_SHEEP, STATE.sheep);
+  // Queue cloud sync — Apps Script upserts by tag_id (handles dupes server-side too)
+  if (typeof queueForSync === 'function') {
+    await queueForSync(record, 'sheep');
+  }
+}
+
+/* Write a single cow row into STATE + sync queue.
+   Mirrors submitCowForm's persistence pattern (queue path only, not 
+   immediate push — bulk imports of 500+ rows shouldn't hammer 
+   Apps Script; the queue flushes them at sustainable cadence). */
+async function _importCowRow(row) {
+  const now = new Date().toISOString();
+  const record = Object.assign({}, row, {
+    timestamp: now,
+    status: row.status || 'alive'
+  });
+  if (!Array.isArray(STATE.cows)) STATE.cows = [];
+  STATE.cows.push(record);
+  await storageSet(K_COWS, STATE.cows);
+  // Queue cloud sync — Apps Script upserts by Tag ID
+  if (typeof queueForSync === 'function') {
+    await queueForSync(record, 'cow');
+  }
 }
 
 /* Main render: list view with filters applied. */
@@ -19581,11 +20120,16 @@ function renderCowDashMilkStrip() {
    names who's on the ground; at smallholder scale the same hands cross
    value chains (Faith collects eggs AND feeds cows). */
 async function onCowFeedTap() {
-  const operators = ['Elias', 'Ezron', 'Faith', 'Frank', 'Stanley', 'Victor', 'Other'];
+  // v6.10.7 — Workforce roster now reads from Control_Panel via workforceRoster()
+  // tenant-config helper. Defaults to Sinonin's ground roster if Control_Panel
+  // hasn't hydrated yet. Levy/Ben/Lagat will see their own operators.
+  const roster = workforceRoster();
+  const operators = roster.concat(['Other']);
+  const defaultOperator = roster[0] || 'Elias';
   const buttons = operators.map((name, i) => ({
     label: name,
     value: name,
-    primary: name === 'Elias'  // Elias is the default — farm manager
+    primary: name === defaultOperator  // first operator in roster is the default
   }));
   
   let choice = null;
@@ -19596,7 +20140,7 @@ async function onCowFeedTap() {
       buttons
     );
   } else {
-    choice = prompt('Fed by (Elias / Ezron / Faith / Frank / Stanley / Victor / other):', 'Elias');
+    choice = prompt('Fed by (' + roster.join(' / ') + ' / other):', defaultOperator);
   }
   
   if (!choice) return;
@@ -20258,11 +20802,12 @@ function openCowMilkForm(presetTagId, presetSession) {
     if (recipSel.value !== 'Other') other.value = '';
   };
   
-  // Populate operator dropdown (same roster as feed-log)
+  // Populate operator dropdown (same roster as feed-log) — v6.10.7 tenant-config-driven
   const opSel = document.getElementById('cm-operator');
-  if (opSel.options.length <= 1) {
+  if (opSel) {
+    // Always rebuild — workforce roster may have changed since last open
     opSel.innerHTML = '<option value="">— pick one —</option>';
-    ['Elias', 'Ezron', 'Faith', 'Frank', 'Stanley', 'Victor'].forEach(function (n) {
+    workforceRoster().forEach(function (n) {
       const opt = document.createElement('option');
       opt.value = n;
       opt.textContent = n;
@@ -20883,7 +21428,7 @@ async function addPlucker() {
   if (!synced) {
     await queueForSync(rosterPayload, 'roster');
     if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-      showToast('🔒 Writes locked — ping Kiruogindet araap Cheison · plucker queued', 6000);
+      showToast(`🔒 Writes locked — ping ${farmOwnerTitle()} · plucker queued`, 6000);
     }
   }
   updateSyncIndicator();
@@ -21598,6 +22143,17 @@ function showUpdateBanner() {
   // v6.10.5 Stage 3 — Hydrate per-session milk log (drives milk dashboard,
   // lactation curves, champion logic, home-card lactating state).
   STATE.cowMilkLog = await storageGet(K_COW_MILK_LOG, []);
+  // v6.10.7 — Restore cached tenant config so the UI shows tenant-
+  // specific values (farm name in title, etc.) immediately on app load,
+  // before the first cloud-pull hydrates with fresh data. On first ever
+  // run, STATE.controlPanel is {} and fallbacks fire — page shows 
+  // Sinonin's defaults until cloud sync replaces them with the tenant's
+  // own values.
+  STATE.controlPanel = await storageGet(K_CONTROL_PANEL, {});
+  if (STATE.controlPanel && Object.keys(STATE.controlPanel).length > 0
+      && typeof applyControlPanelToUI === 'function') {
+    applyControlPanelToUI();
+  }
   // v6.5.7 — Bird mortality event log
   STATE.mortality = await storageGet(K_MORTALITY, []);
   // v6.0 SHIP 1 — Egg Collection state
