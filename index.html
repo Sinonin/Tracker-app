@@ -3103,7 +3103,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.9</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.10</span>
 </header>
 
 <main>
@@ -5581,7 +5581,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.9</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.10</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6312,7 +6312,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.9';
+const APP_VERSION = 'v6.10.10';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -9333,6 +9333,17 @@ function cloudToLocalPoultry(r) {
     amount: Number(r.amount) || 0,
     payment_method: r.payment_method || r.paymentMethod || '',
     buyer: r.buyer || '',
+    // v6.10.10 — Preserve cohort_id end-to-end. Previously stripped here, 
+    // meaning STATE.poultry rows had no cohort attribution even though 
+    // Apps Script v5.0.38+ returns it. The v6.10.9 inBaseline guard then 
+    // treated every tagged sale as untagged and skipped it, leaving the 
+    // Cockerels live count at baseline (66) instead of baseline−sales (64).
+    // Sinonin smoke test (25 May 2026 evening, IS_ADMIN refresh): Screenshot 
+    // showed 336/66 instead of 336/64 because the 22 May + 20 May 
+    // COH-CGF-UZ13082025 sales weren't matchable cohort-side.
+    // Apps Script side surfaces both cohort_id (snake_case) and 
+    // cohortId (camelCase) for safety.
+    cohort_id: String(r.cohort_id || r.cohortId || '').trim(),
     _source: 'cloud'
   };
 }
@@ -11763,10 +11774,14 @@ function populatePoultryCohortDropdown() {
 
   // v6.10.8 — Egg sale path: source = Egg_Collection batches, not cohorts.
   if (product === 'Eggs') {
+    // v6.10.10 — Limit to last 10 days (not 30 batches). Eggs older than
+    // ~10 days rarely sold (freshness window). Sealed Cheison 25 May 2026:
+    // "Batches loading back to 24.04.2026 which doesn't make sense since 
+    // we said to count back 10 days!"
+    const cutoff = new Date(Date.now() - 10 * 86400000).toISOString().slice(0, 10);
     const batches = (STATE.eggCollection || [])
-      .filter(e => e && e.egg_batch_id && e.date)
-      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))  // newest first
-      .slice(0, 30);   // last 30 collection days — covers any practical sale window
+      .filter(e => e && e.egg_batch_id && e.date && e.date >= cutoff)
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));  // newest first
     
     let html = '<option value="" selected>— no batch attribution —</option>';
     if (batches.length > 0) {
@@ -11777,7 +11792,7 @@ function populatePoultryCohortDropdown() {
         return '<option value="' + b.egg_batch_id + '">' + b.egg_batch_id + ' · ' + b.date + totalLabel + coll + '</option>';
       }).join('');
     } else {
-      html += '<option value="" disabled>(no egg batches logged yet — log Egg Collection first)</option>';
+      html += '<option value="" disabled>(no egg batches in last 10 days — log Egg Collection)</option>';
     }
     cohortEl.innerHTML = html;
     return;
