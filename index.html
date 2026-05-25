@@ -3058,7 +3058,7 @@
 
 <header class="brand">
   <h1>Sinonin Group Management App</h1>
-  <div class="tagline">Tea · Poultry · Dorper · Coffee · Maize</div>
+  <div class="tagline" id="hero-tagline">Tea · Poultry · Dorper · Coffee · Maize</div>
   <span class="header-screen-title" id="screen-title">Overview</span>
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode (unlock requires admin)">
@@ -3103,7 +3103,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.11</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.12</span>
 </header>
 
 <main>
@@ -3134,7 +3134,7 @@
         <span class="esh-icon">🌿</span>
         <span class="esh-text" id="esh-text">No activity yet today</span>
       </div>
-      <div class="motto">Sinonin Tea · The Tea of Champions</div>
+      <div class="motto" id="hero-motto">Sinonin Tea · The Tea of Champions</div>
 
       <!-- v6.3.12 — FOUR horizon cards, Cheison's CEO cockpit:
              1. Farm performance     (Group revenue: tea + poultry + others)
@@ -5581,9 +5581,9 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.11</span></div>
-      <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
-      <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.12</span></div>
+      <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
+      <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
 
     <div class="section">
@@ -5951,6 +5951,26 @@ function cowGestationDays()   { return parseInt(tcfg('GESTATION_COW_DAYS',   '28
 function sheepGestationDays() { return parseInt(tcfg('GESTATION_SHEEP_DAYS', '150'), 10) || 150; }
 function lactationDays()      { return parseInt(tcfg('LACTATION_DAYS',       '305'), 10) || 305; }
 
+/* v6.10.12 — Brand string helpers. These let each tenant set their own
+   header strapline, About description, and motto via Control_Panel.
+   Sealed Cheison 25 May 2026 Verden (Birei Farm onboarding): "Change
+   the header to read 'Dairy · Dorper · Maize · Coffee · Poultry · Sugar
+   Cane'. We remove Tea. He does none of that." Hardcoded enterprise
+   strings were a multi-tenant tax we no longer have to pay. */
+function strapline() {
+  return tcfg('STRAPLINE', 'Tea · Poultry · Dorper · Coffee · Maize');
+}
+function aboutText() {
+  return tcfg('ABOUT_TEXT',
+    farmName() + ' Management App · Built for the farm in ' + farmLocation() + '.');
+}
+function brandMotto() {
+  // BRAND_MOTTO is the v6.10.12 forward-compatible key. TEA_MOTTO is the
+  // legacy Sinonin-specific name (v6.10.7); kept as fallback so Sinonin's
+  // existing value still surfaces without re-keying Control_Panel.
+  return tcfg('BRAND_MOTTO', tcfg('TEA_MOTTO', ''));
+}
+
 /* Resolve an owner name from a single-letter tag prefix using
    Control_Panel's OWNER_PREFIXES if present, else falling back to
    HOUSEHOLD_MEMBERS. Format: "C:Cheison,E:Elias,M:Mother,..." */
@@ -6024,12 +6044,38 @@ function applyControlPanelToUI() {
     // Admin modal subtitle (was "Kiruogindet araap Cheison" hardcoded)
     const adminSub = document.getElementById('admin-modal-subtitle');
     if (adminSub) adminSub.textContent = farmOwnerTitle();
-    // Tea motto (if tenant has tea chain)
-    const teaMotto = document.querySelector('.motto');
-    if (teaMotto && teaMotto.textContent && teaMotto.textContent.indexOf('Tea') !== -1) {
-      const customMotto = tcfg('TEA_MOTTO', '');
-      if (customMotto) teaMotto.textContent = customMotto;
+
+    // v6.10.12 — Brand strings (strapline, about description, motto)
+    // applied via specific element IDs added in v6.10.12. Each falls back
+    // to the hardcoded Sinonin string if Control_Panel hasn't set the key,
+    // so Sinonin keeps working unchanged when nothing is configured.
+    const sl = strapline();
+    const heroTagline = document.getElementById('hero-tagline');
+    if (heroTagline && sl) heroTagline.textContent = sl;
+
+    const aboutText_ = aboutText();
+    const aboutDesc = document.getElementById('about-description');
+    if (aboutDesc && aboutText_) aboutDesc.textContent = aboutText_;
+
+    const motto = brandMotto();
+    const heroMotto  = document.getElementById('hero-motto');
+    const aboutMotto = document.getElementById('about-motto');
+    if (motto) {
+      if (heroMotto)  heroMotto.textContent  = motto;
+      if (aboutMotto) aboutMotto.textContent = motto;
+    } else {
+      // Empty motto config → hide both motto strips so non-tea tenants
+      // (Birei: dairy-headlined, no motto chosen yet) don't show stale text.
+      if (heroMotto)  heroMotto.style.display  = 'none';
+      if (aboutMotto) aboutMotto.style.display = 'none';
     }
+
+    // Logo alt text: read tenant farm name so screen readers + crawlers
+    // see the right brand. The src (logo.png) is tenant-replaceable as a
+    // file in each tenant's repo (no DOM change needed for the image itself).
+    const brandLogo = document.getElementById('brand-logo');
+    if (brandLogo) brandLogo.alt = fn;
+
     // Refresh owner prefixes + workforce-dependent surfaces
     refreshOwnerPrefixesFromConfig();
     // Re-render any visible sections that read these values
@@ -6042,7 +6088,7 @@ function applyControlPanelToUI() {
       renderCowRegistry();
     }
   } catch (e) {
-    console.warn('[v6.10.7] applyControlPanelToUI failed:', e);
+    console.warn('[v6.10.12] applyControlPanelToUI failed:', e);
   }
 }
 
@@ -6287,7 +6333,21 @@ const K_COHORTS = 'sinonin_cohorts_v1';      // v6.0.0 — D2: Bird cohort popul
 const K_LITTER_CHANGES = 'sinonin_litter_changes_v1'; // v6.1.4 — Deep litter change records (house, date)
 const K_WEBAUTHN_CRED = 'sinonin_webauthn_cred_v1';  // v5.9.0 — Stored WebAuthn credential ID (base64)
 
-const CLOUD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyQNUy0HX_fC3M9poCgk86dM0bTiGkOpYDvFvSsNvkTjSuTKeA2X79D4UWAD6drHFAazA/exec';
+// ============================================================
+// 🌍 TENANT CONFIG — SWAP THIS ONE LINE WHEN FORKING FOR A NEW TENANT
+// ============================================================
+// Both CLOUD_ENDPOINT (legacy v4 read path) and APPS_SCRIPT_GATE_URL
+// (v5 write gate) point at the same Apps Script deployment for a given
+// tenant. Keeping them as a single source of truth so future forks
+// can never accidentally point at a previous tenant's data.
+// Sealed § 6.x (25 May 2026 Verden, Birei Farm fork): "Multi-tenant
+// code paths have HIDDEN replication points wherever the original
+// architecture predates the multi-tenant intent." Found by Cheison
+// after his Birei deploy initially pulled Sinonin's data because
+// CLOUD_ENDPOINT was overlooked.
+const TENANT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyQNUy0HX_fC3M9poCgk86dM0bTiGkOpYDvFvSsNvkTjSuTKeA2X79D4UWAD6drHFAazA/exec';
+
+const CLOUD_ENDPOINT = TENANT_APPS_SCRIPT_URL;
 
 /* ============================================================
    v5.0 PHASE 1 — APPS SCRIPT GATE CONFIG
@@ -6295,8 +6355,9 @@ const CLOUD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyQNUy0HX_fC3M9p
    The gate is the v5.0 architecture: writes route through Apps Script,
    which checks a cloud flag in Control_Panel before forwarding to the Sheet.
 
-   APPS_SCRIPT_GATE_URL: deploy URL of sinonin-ledger-endpoint-v5.gs
-   (different from CLOUD_ENDPOINT above — that's the v4 read endpoint).
+   APPS_SCRIPT_GATE_URL: deploy URL of the tenant's Apps Script.
+   In v6.10.12 this derives from TENANT_APPS_SCRIPT_URL above so a
+   tenant fork only needs to swap ONE line (not two).
 
    USE_APPS_SCRIPT_GATE: kill switch. When false, ALL writes use the legacy
    Form path regardless of gate URL. Flip to false from code if Apps Script
@@ -6305,14 +6366,14 @@ const CLOUD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyQNUy0HX_fC3M9p
    PHASE 1 SCOPE: Greenleaf entries only. The other five write paths
    (Actuals, Expenses, Banked, Poultry, Roster) still use Forms in Phase 1.
    They migrate in Phase 2. */
-const APPS_SCRIPT_GATE_URL = 'https://script.google.com/macros/s/AKfycbyQNUy0HX_fC3M9poCgk86dM0bTiGkOpYDvFvSsNvkTjSuTKeA2X79D4UWAD6drHFAazA/exec';
+const APPS_SCRIPT_GATE_URL = TENANT_APPS_SCRIPT_URL;
 const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass gate entirely
 
 /* v5.0.12 — Single source-of-truth for app version. Used by every pushXxxToGate
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.11';
+const APP_VERSION = 'v6.10.12';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
