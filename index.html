@@ -3103,7 +3103,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.8</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.9</span>
 </header>
 
 <main>
@@ -5581,7 +5581,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.8</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.9</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6312,7 +6312,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.8';
+const APP_VERSION = 'v6.10.9';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -15415,6 +15415,19 @@ function computeStageLive(stage, house, today) {
     // stagesPassed (legacy) fallback. Mirrors Apps Script v5.0.38.
     // v6.10.8 — For baseline cohorts, only POST-census sales count
     // (pre-census sales were already reflected in the census number).
+    // v6.10.9 — For baseline cohorts, ALSO require the sale to be 
+    // explicitly tagged with this cohort_id. Untagged sales matched by
+    // stagesPassed would double-count: with 2 Cockerels cohorts both in
+    // baseline, every untagged Cockerels sale would deduct from each
+    // cohort, blowing baseline past zero. Sinonin smoke test (25 May 2026):
+    // 100+ untagged Chicks 1-7d sales across 4-22 May matched BOTH 
+    // COH-KP16APR264 (inBaseline, at Chicks 7-28d) AND COH-KP27APR264 
+    // (not inBaseline) via stagesPassed, deducting the same sales twice
+    // and pushing Layers + Cockerels live counts to 0. With this guard,
+    // baseline cohorts honestly deduct ONLY sales we KNOW belong to them
+    // (cohort_id-tagged). Untagged historical sales remain in baseline's
+    // implicit accounting — same as pre-v6.10.8 behavior for those, which 
+    // is honest given we can't attribute them with confidence.
     let soldForCohort = 0;
     (STATE.poultry || []).forEach(s => {
       if (s.product === 'Eggs') return;
@@ -15422,6 +15435,7 @@ function computeStageLive(stage, house, today) {
       if (saleCohortId) {
         if (saleCohortId !== c.cohort_id) return;
       } else {
+        if (inBaseline) return;  // v6.10.9 — guard against double-count
         if (!stagesPassed[s.stage]) return;
       }
       if (!s.date || s.date < c.date_origin) return;
@@ -15435,6 +15449,7 @@ function computeStageLive(stage, house, today) {
       if (mortCohortId) {
         if (mortCohortId !== c.cohort_id) return;
       } else {
+        if (inBaseline) return;  // v6.10.9 — same guard for mortality
         if (!stagesPassed[m.stage]) return;
       }
       if (!m.date || m.date < c.date_origin) return;
