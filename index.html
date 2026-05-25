@@ -92,26 +92,35 @@
   }
   header.brand .tagline {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.68rem;
-    letter-spacing: 0.22em;
+    font-size: 0.66rem;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--brass-light);
     margin-top: 0.45rem;
+    /* v6.10.14 — allow 2-line wrap for longer straplines (Birei's 6-segment 
+       "Dairy · Dorper · Maize · Coffee · Poultry · Sugar Cane" overflows the 
+       header at narrow widths if kept single-line). Sinonin's 5-segment 
+       strapline still fits on one line at every breakpoint; longer ones wrap 
+       cleanly. Sealed § 6.x (25 May 2026 Verden, Cheison): "There is a text 
+       bleed on the header because of text font size." */
+    white-space: normal;
+    line-height: 1.45;
   }
   /* v5.0.9 — Tagline responsive shrink (Option A, decided 29 Apr 2026 after
      v5.0.8 phone testing). Five business units kept identical at every breakpoint;
      only font-size and letter-spacing shrink so the line fits in the constrained
-     phone width without wrapping to two lines. Identity preserved; aesthetic adapts. */
+     phone width without wrapping to two lines. Identity preserved; aesthetic adapts.
+     v6.10.14 — base size + spacing reduced + wrap allowed (see above). */
   @media (max-width: 480px) {
     header.brand .tagline {
-      font-size: 0.6rem;
-      letter-spacing: 0.16em;
+      font-size: 0.58rem;
+      letter-spacing: 0.13em;
     }
   }
   @media (max-width: 380px) {
     header.brand .tagline {
-      font-size: 0.54rem;
-      letter-spacing: 0.12em;
+      font-size: 0.52rem;
+      letter-spacing: 0.10em;
     }
   }
   header.brand .leaf {
@@ -3103,7 +3112,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.13</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.14</span>
 </header>
 
 <main>
@@ -3145,7 +3154,7 @@
            Same data we already track — just layered properly. -->
 
       <!-- ── 1. FARM PERFORMANCE ── -->
-      <div class="hero-metric-card hmc-farm">
+      <div class="hero-metric-card hmc-farm" data-card-id="farm">
         <div class="hmc-head">
           <span class="hmc-lbl">Farm performance</span>
           <span class="hmc-period" id="hero-farm-period">May to date</span>
@@ -3172,7 +3181,7 @@
       </div>
 
       <!-- ── 2. TEA PERFORMANCE ── -->
-      <div class="hero-metric-card hmc-tea" data-product="tea">
+      <div class="hero-metric-card hmc-tea" data-product="tea" data-card-id="tea">
         <div class="hmc-head">
           <span class="hmc-lbl">Tea performance</span>
           <span class="hmc-period" id="hero-tea-period">May to date</span>
@@ -3199,7 +3208,7 @@
       </div>
 
       <!-- ── 3. POULTRY PERFORMANCE ── -->
-      <div class="hero-metric-card hmc-poultry">
+      <div class="hero-metric-card hmc-poultry" data-product="poultry" data-card-id="poultry">
         <div class="hmc-head">
           <span class="hmc-lbl">Poultry performance</span>
           <span class="hmc-period" id="hero-poultry-period">May to date</span>
@@ -3234,7 +3243,7 @@
            operational story: "all in-calf · next due —" today; "🏆 Koroit"
            when milking is routine. Sealed § 6.x: card shape borrows from
            value-chain pattern; content adapts to the value chain's reality. -->
-      <div class="hero-metric-card hmc-dairy" data-product="dairy">
+      <div class="hero-metric-card hmc-dairy" data-product="dairy" data-card-id="dairy">
         <div class="hmc-head">
           <span class="hmc-lbl"><span data-label="dairy">Dairy</span> performance</span>
           <span class="hmc-period" id="hero-dairy-period">herd status</span>
@@ -3268,7 +3277,7 @@
            the operational story: "X ewes · Y in-lamb · next due —" or
            the most recent lambing's tag. Color tone: woolly cream + 
            moss-grey, slightly cooler than Dairy's warm cream. -->
-      <div class="hero-metric-card hmc-dorper" data-product="dorper">
+      <div class="hero-metric-card hmc-dorper" data-product="dorper" data-card-id="dorper">
         <div class="hmc-head">
           <span class="hmc-lbl"><span data-label="dorper">Dorper</span> flock</span>
           <span class="hmc-period" id="hero-dorper-period">flock status</span>
@@ -3296,7 +3305,7 @@
       </div>
 
       <!-- ── 4. SIREET EQUITY (kept from v6.3.12, headline=lifetime) ── -->
-      <div class="hero-metric-card hero-metric-card-equity hmc-sireet" data-product="tea">
+      <div class="hero-metric-card hero-metric-card-equity hmc-sireet" data-product="tea" data-card-id="sireet">
         <div class="hmc-head">
           <span class="hmc-lbl">Sireet equity</span>
           <span class="hmc-period">5 Ksh/kg · cumulative</span>
@@ -3324,6 +3333,44 @@
             <div class="hmc-h-val" id="hero-sireet-all">0</div>
             <div class="hmc-h-sub" id="hero-sireet-all-kg">0 kg</div>
           </div>
+        </div>
+      </div>
+
+      <!-- ── 5. COFFEE PLACEHOLDER ── (v6.10.14 — opt-in via DASHBOARD_ORDER)
+           Hidden by default so Sinonin (which doesn't farm coffee) sees no
+           change. Tenants who farm coffee enable by including "coffee" in 
+           DASHBOARD_ORDER. Card shape mirrors the dairy/dorper pattern; 
+           horizons + headline will be wired when the coffee data path is 
+           live (Phase 4). For now a quiet "Coming soon" placeholder so 
+           Levy sees his enterprise represented even before the data plumbing. -->
+      <div class="hero-metric-card hmc-coffee" data-product="coffee" data-card-id="coffee" style="display:none">
+        <div class="hmc-head">
+          <span class="hmc-lbl">Coffee performance</span>
+          <span class="hmc-period">enterprise placeholder</span>
+        </div>
+        <div class="hmc-val">—</div>
+        <div class="hmc-sub-head">data path coming soon</div>
+        <div class="hmc-horizons">
+          <div class="hmc-horizon"><div class="hmc-h-lbl">Today</div><div class="hmc-h-val">—</div></div>
+          <div class="hmc-horizon"><div class="hmc-h-lbl">MTD</div><div class="hmc-h-val">—</div></div>
+          <div class="hmc-horizon"><div class="hmc-h-lbl">YTD</div><div class="hmc-h-val">—</div></div>
+          <div class="hmc-horizon"><div class="hmc-h-lbl">Life</div><div class="hmc-h-val">—</div></div>
+        </div>
+      </div>
+
+      <!-- ── 6. SUGAR CANE PLACEHOLDER ── (v6.10.14 — opt-in via DASHBOARD_ORDER) -->
+      <div class="hero-metric-card hmc-sugarcane" data-product="sugarcane" data-card-id="sugarcane" style="display:none">
+        <div class="hmc-head">
+          <span class="hmc-lbl">Sugar Cane performance</span>
+          <span class="hmc-period">enterprise placeholder</span>
+        </div>
+        <div class="hmc-val">—</div>
+        <div class="hmc-sub-head">data path coming soon</div>
+        <div class="hmc-horizons">
+          <div class="hmc-horizon"><div class="hmc-h-lbl">Today</div><div class="hmc-h-val">—</div></div>
+          <div class="hmc-horizon"><div class="hmc-h-lbl">MTD</div><div class="hmc-h-val">—</div></div>
+          <div class="hmc-horizon"><div class="hmc-h-lbl">YTD</div><div class="hmc-h-val">—</div></div>
+          <div class="hmc-horizon"><div class="hmc-h-lbl">Life</div><div class="hmc-h-val">—</div></div>
         </div>
       </div>
 
@@ -5581,7 +5628,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.13</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.14</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6000,6 +6047,26 @@ function hiddenProducts() {
 function dairyLabel()  { return tcfg('DAIRY_LABEL',  'Dairy'); }
 function dorperLabel() { return tcfg('DORPER_LABEL', 'Dorper'); }
 
+/* v6.10.14 — DASHBOARD_ORDER: explicit ordering of hero cards on Home tab.
+   Comma-separated list of card IDs. Cards matching the order list are 
+   reordered + shown (overriding default display:none on placeholder cards). 
+   Cards NOT in the list keep their default position + visibility.
+   Available card IDs: farm, tea, poultry, dairy, dorper, sireet, coffee, sugarcane.
+   Default empty → no reordering, source-order preserved.
+   Examples:
+     Sinonin (tea-led, default order):  (empty, no change)
+     Birei (dairy-led, 6-enterprise):   farm,dairy,dorper,poultry,coffee,sugarcane
+   Sealed § 6.x (25 May 2026 Verden, Cheison): "Dairy needs to come second
+   to Farm Performance, followed by Dorper, Poultry, Coffee and lastly 
+   sugarcane on the Home tab hero cards."  */
+function dashboardOrder() {
+  const raw = tcfg('DASHBOARD_ORDER', '');
+  if (!raw || typeof raw !== 'string') return [];
+  return raw.split(',')
+    .map(function (s) { return s.trim().toLowerCase().replace(/\s+/g, ''); })
+    .filter(Boolean);
+}
+
 /* Resolve an owner name from a single-letter tag prefix using
    Control_Panel's OWNER_PREFIXES if present, else falling back to
    HOUSEHOLD_MEMBERS. Format: "C:Cheison,E:Elias,M:Mother,..." */
@@ -6110,6 +6177,36 @@ function applyControlPanelToUI() {
     // without this cache, first-install operators see "Loading Ledger"
     // generic, but returning operators see "Loading Birei Farm Ledger").
     try { localStorage.setItem('cachedFarmName', fn); } catch (e) {}
+
+    // v6.10.14 — DASHBOARD_ORDER first: shows + reorders cards. Runs BEFORE
+    // HIDDEN_PRODUCTS so that if a tenant somehow puts the same product in
+    // both keys, the hide wins (more conservative). Birei sees: farm, 
+    // dairy, dorper, poultry, coffee, sugarcane in that left-to-right order.
+    const orderList = dashboardOrder();
+    if (orderList.length) {
+      const heroDiv = document.querySelector('.hero');
+      if (heroDiv) {
+        // anchor = first non-card element AFTER the cards (the legacy 
+        // hero-income span, always present). All cards are inserted before
+        // this anchor in DASHBOARD_ORDER. Greeting + motto stay at top.
+        const anchor = document.getElementById('hero-income');
+        if (anchor) {
+          const cardMap = {};
+          heroDiv.querySelectorAll('[data-card-id]').forEach(function (c) {
+            cardMap[c.dataset.cardId.toLowerCase()] = c;
+          });
+          orderList.forEach(function (id) {
+            const card = cardMap[id];
+            if (card) {
+              // Show (overrides inline style="display:none" on placeholders)
+              card.style.display = '';
+              // Move into ordered position
+              heroDiv.insertBefore(card, anchor);
+            }
+          });
+        }
+      }
+    }
 
     // v6.10.13 — HIDDEN_PRODUCTS: hide every element whose data-product is
     // in the hidden list. Idempotent — re-running this on subsequent
@@ -6444,7 +6541,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.13';
+const APP_VERSION = 'v6.10.14';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
