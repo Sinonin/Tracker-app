@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.10.13 — HIDDEN_PRODUCTS · DAIRY_LABEL · DORPER_LABEL · splash uses cached FARM_NAME (25 May 2026 Verden, Birei tenant-isation)
 // v6.10.12 — TENANT_APPS_SCRIPT_URL consolidation · STRAPLINE/ABOUT_TEXT/BRAND_MOTTO via Control_Panel (25 May 2026 Verden, Birei brand)
 // v6.10.11 — Product-aware stage dropdown · prevents Chicken+Normal-eggs nonsense (25 May 2026 Verden)
 // v6.10.10 — Cohort_id preserved in cloudToLocalPoultry · egg-batch dropdown 10-day window (25 May 2026 Verden evening)
@@ -59,7 +60,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v219';
+const CACHE = 'sinonin-greenleaf-v220';
 
 const SHELL_FILES = [
   './',

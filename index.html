@@ -3103,7 +3103,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.12</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.13</span>
 </header>
 
 <main>
@@ -3172,7 +3172,7 @@
       </div>
 
       <!-- ── 2. TEA PERFORMANCE ── -->
-      <div class="hero-metric-card hmc-tea">
+      <div class="hero-metric-card hmc-tea" data-product="tea">
         <div class="hmc-head">
           <span class="hmc-lbl">Tea performance</span>
           <span class="hmc-period" id="hero-tea-period">May to date</span>
@@ -3234,9 +3234,9 @@
            operational story: "all in-calf · next due —" today; "🏆 Koroit"
            when milking is routine. Sealed § 6.x: card shape borrows from
            value-chain pattern; content adapts to the value chain's reality. -->
-      <div class="hero-metric-card hmc-dairy">
+      <div class="hero-metric-card hmc-dairy" data-product="dairy">
         <div class="hmc-head">
-          <span class="hmc-lbl">Dairy performance</span>
+          <span class="hmc-lbl"><span data-label="dairy">Dairy</span> performance</span>
           <span class="hmc-period" id="hero-dairy-period">herd status</span>
         </div>
         <div class="hmc-val" id="hero-dairy-val">0 L</div>
@@ -3268,9 +3268,9 @@
            the operational story: "X ewes · Y in-lamb · next due —" or
            the most recent lambing's tag. Color tone: woolly cream + 
            moss-grey, slightly cooler than Dairy's warm cream. -->
-      <div class="hero-metric-card hmc-dorper">
+      <div class="hero-metric-card hmc-dorper" data-product="dorper">
         <div class="hmc-head">
-          <span class="hmc-lbl">Dorper flock</span>
+          <span class="hmc-lbl"><span data-label="dorper">Dorper</span> flock</span>
           <span class="hmc-period" id="hero-dorper-period">flock status</span>
         </div>
         <div class="hmc-val" id="hero-dorper-val">0</div>
@@ -3296,7 +3296,7 @@
       </div>
 
       <!-- ── 4. SIREET EQUITY (kept from v6.3.12, headline=lifetime) ── -->
-      <div class="hero-metric-card hero-metric-card-equity hmc-sireet">
+      <div class="hero-metric-card hero-metric-card-equity hmc-sireet" data-product="tea">
         <div class="hmc-head">
           <span class="hmc-lbl">Sireet equity</span>
           <span class="hmc-period">5 Ksh/kg · cumulative</span>
@@ -3361,7 +3361,7 @@
        and Add CTA. Cards relocated from Home per "Home is for decisions, 
        not data" + "App, not Chrome browser" principles. Tea tab now opens 
        to a status view; Add Tea is a CTA at the bottom. -->
-  <section class="panel" id="panel-tea">
+  <section class="panel" id="panel-tea" data-product="tea">
     <!-- v6.3.12 — Quick Add cards at TOP of panel (Cheison 07 May 2026: 
          "move the Add button to the top"). Each card routes to panel-add 
          with biz AND kind pre-set, so operator goes straight to the form 
@@ -4234,12 +4234,12 @@
       <button data-p="all" id="period-btn-all">All Time <span class="period-lock" id="period-lock-icon" style="display:none">🔒</span></button>
     </div>
 
-    <div class="section">
+    <div class="section" data-product="tea">
       <div class="section-head"><h3>Block economics</h3><span class="meta" id="insights-period-label">week</span></div>
       <div id="econ-blocks"></div>
     </div>
 
-    <div class="section" id="sireet-shares-section">
+    <div class="section" id="sireet-shares-section" data-product="tea">
       <div class="section-head"><h3>Sireet shares</h3><span class="meta" id="sireet-rate-meta">5 Ksh/kg</span></div>
       <div class="sireet-grid">
         <div class="sireet-card">
@@ -4297,13 +4297,13 @@
       <div class="records-more" id="tbl-expenses-expand" style="display:none"></div>
     </div>
 
-    <div class="section">
+    <div class="section" data-product="tea">
       <div class="section-head"><h3>Factory mix <button class="info-tip" type="button" aria-label="What does this mean?" data-tooltip="Factory-confirmed kg from SMS slips and weighing-shed receipts.">ⓘ</button></h3><span class="meta">by kilograms</span></div>
       <table class="mini-table" id="tbl-factory"></table>
       <div class="records-more" id="tbl-factory-expand" style="display:none"></div>
     </div>
 
-    <div class="section">
+    <div class="section" data-product="tea">
       <div class="section-head"><h3>Plucker rankings <button class="info-tip" type="button" aria-label="What does this mean?" data-tooltip="Field-side kg per plucker — paid in whole kg, so total is always lower than Factory mix.">ⓘ</button></h3><span class="meta">top performers</span></div>
       <table class="mini-table" id="tbl-plucker"></table>
       <div class="records-more" id="tbl-plucker-expand" style="display:none"></div>
@@ -4413,7 +4413,7 @@
           <button type="button" onclick="setOtherView('hub')" style="background:transparent; border:none; color:var(--brass); font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; padding:0;">← Other</button>
           <span class="meta" id="sheep-dash-summary">0 sheep</span>
         </div>
-        <h3 style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.4rem; color:var(--forest); margin:0.4rem 0 0.2rem; letter-spacing:-0.01em;">🐑 Dorper</h3>
+        <h3 data-label="dorper" style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.4rem; color:var(--forest); margin:0.4rem 0 0.2rem; letter-spacing:-0.01em;">🐑 Dorper</h3>
         <p style="color:var(--slate-light); font-size:0.85rem; line-height:1.5; margin:0.2rem 0 1rem;">Flock status · lambing pipeline · health · activity</p>
 
         <!-- ACTION GRID — operator-first, top placement -->
@@ -4476,7 +4476,7 @@
           <button type="button" onclick="setSheepView('dashboard')" style="background:transparent; border:none; color:var(--brass); font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; padding:0;">← Dashboard</button>
           <span class="meta" id="sheep-flock-meta">0 sheep</span>
         </div>
-        <h3 style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.4rem; color:var(--forest); margin:0.4rem 0 0.2rem; letter-spacing:-0.01em;">Dorper Farm</h3>
+        <h3 style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.4rem; color:var(--forest); margin:0.4rem 0 0.2rem; letter-spacing:-0.01em;"><span data-label="dorper">Dorper</span> Farm</h3>
         <p style="color:var(--slate-light); font-size:0.85rem; line-height:1.5; margin:0.2rem 0 1rem;">Sheep registry · multi-owner · breed-aware</p>
 
         <!-- v6.5.2 — In-app sync diagnostic. Shows last 5 push attempts 
@@ -4872,7 +4872,7 @@
           <button type="button" onclick="setOtherView('hub')" style="background:transparent; border:none; color:var(--brass); font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; padding:0;">← Other</button>
           <span class="meta" id="cow-dash-summary">0 cows</span>
         </div>
-        <h3 style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.4rem; color:var(--forest); margin:0.4rem 0 0.2rem; letter-spacing:-0.01em;">🐄 Dairy</h3>
+        <h3 data-label="dairy" style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.4rem; color:var(--forest); margin:0.4rem 0 0.2rem; letter-spacing:-0.01em;">🐄 Dairy</h3>
         <p style="color:var(--slate-light); font-size:0.85rem; line-height:1.5; margin:0.2rem 0 1rem;">Herd status · calving pipeline · health · activity</p>
 
         <!-- v6.10.5 Stage 3 + tweak — ACTION GRID lifted to top per Cheison
@@ -4962,7 +4962,7 @@
           <button type="button" onclick="setCowView('dashboard')" style="background:transparent; border:none; color:var(--brass); font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; padding:0;">← Dashboard</button>
           <span class="meta" id="cow-herd-meta">0 cows</span>
         </div>
-        <h3 style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.4rem; color:var(--forest); margin:0.4rem 0 0.2rem; letter-spacing:-0.01em;">Dairy</h3>
+        <h3 data-label="dairy" style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.4rem; color:var(--forest); margin:0.4rem 0 0.2rem; letter-spacing:-0.01em;">Dairy</h3>
         <p style="color:var(--slate-light); font-size:0.85rem; line-height:1.5; margin:0.2rem 0 1rem;">Cow registry · multi-owner · breed-aware · semen-source tracked</p>
 
         <button type="button" onclick="openCowForm('add')" class="export-btn" style="background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark); margin-bottom:0.5rem; width:100%">+ Add cow</button>
@@ -5503,7 +5503,7 @@
       <div id="hf-feedback" style="display:none;margin-top:0.7rem;padding:0.6rem 0.8rem;border-radius:6px;font-family:'Fraunces',serif;font-size:0.9rem"></div>
     </div>
 
-    <div class="section">
+    <div class="section" data-product="tea">
       <div class="section-head"><h3>Global parameters</h3><span class="meta">every entry</span></div>
       <div class="setting-row">
         <div><div class="k">Tea Cess (Ksh/kg)</div><div class="desc">County deduction, every factory</div></div>
@@ -5514,7 +5514,7 @@
            Factory rate cards is the single source of truth. -->
     </div>
 
-    <div class="section" id="factory-rates-section">
+    <div class="section" id="factory-rates-section" data-product="tea">
       <div class="section-head factory-rates-head" id="factory-rates-head" style="cursor:pointer;user-select:none;-webkit-user-select:none">
         <h3>Factory rate cards <span class="chevron" id="factory-chevron" style="font-size:0.7em;opacity:0.6;margin-left:0.4rem;transition:transform 0.2s ease">▸</span></h3>
         <span class="meta">tap to edit</span>
@@ -5529,7 +5529,7 @@
       </div>
     </div>
 
-    <div class="section" id="plucker-roster-section">
+    <div class="section" id="plucker-roster-section" data-product="tea">
       <div class="section-head plucker-roster-head" id="plucker-roster-head" style="cursor:pointer;user-select:none;-webkit-user-select:none">
         <h3>Plucker roster <span class="chevron" id="plucker-chevron" style="font-size:0.7em;opacity:0.6;margin-left:0.4rem;transition:transform 0.2s ease">▸</span></h3>
         <span class="meta" id="plucker-count">0 active</span>
@@ -5581,7 +5581,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.12</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.13</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5608,7 +5608,7 @@
       <svg viewBox="0 0 24 24"><path d="M3 12L12 4l9 8"/><path d="M5 10v10h14V10"/></svg>
       <span>Home</span>
     </button>
-    <button data-view="tea" aria-label="Tea">
+    <button data-view="tea" data-product="tea" aria-label="Tea">
       <!-- Leaf icon -->
       <svg viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19.5 2c.5 5 .26 7.55-.5 10.5C18.34 18 14 22 11 20Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/></svg>
       <span>Tea</span>
@@ -5971,6 +5971,35 @@ function brandMotto() {
   return tcfg('BRAND_MOTTO', tcfg('TEA_MOTTO', ''));
 }
 
+/* v6.10.13 — Product visibility + section labels per tenant.
+   Sealed § 6.x (25 May 2026 Verden, Cheison walking back from the diff
+   between Sinonin and Birei): "Deprecate Tea for Levy. Give prominence to
+   Cows. Rename Dairy. We deliver a choice to customise, not write a
+   million apps for a million users."
+
+   HIDDEN_PRODUCTS: comma-separated list of products NOT farmed by this
+   tenant. Elements tagged with matching data-product get display:none.
+   Examples:
+     Sinonin Control_Panel:  HIDDEN_PRODUCTS = (empty)   → all visible
+     Birei Control_Panel:    HIDDEN_PRODUCTS = Tea       → tea UI hidden
+     Hypothetical no-poultry farm: HIDDEN_PRODUCTS = Tea,Poultry
+   Case-insensitive on the values; whitespace tolerated. */
+function hiddenProducts() {
+  const raw = tcfg('HIDDEN_PRODUCTS', '');
+  if (!raw || typeof raw !== 'string') return [];
+  return raw.split(',')
+    .map(function (s) { return s.trim().toLowerCase(); })
+    .filter(Boolean);
+}
+
+/* DAIRY_LABEL / DORPER_LABEL: allow tenants to rename the headline term
+   for these enterprises. Levy may want "Cattle" or "Kachilei Holsteins"
+   instead of "Dairy"; another farm might prefer "Sheep" over "Dorper".
+   Elements tagged data-label="dairy" / data-label="dorper" get textContent
+   updated. Default values keep Sinonin's existing language unchanged. */
+function dairyLabel()  { return tcfg('DAIRY_LABEL',  'Dairy'); }
+function dorperLabel() { return tcfg('DORPER_LABEL', 'Dorper'); }
+
 /* Resolve an owner name from a single-letter tag prefix using
    Control_Panel's OWNER_PREFIXES if present, else falling back to
    HOUSEHOLD_MEMBERS. Format: "C:Cheison,E:Elias,M:Mother,..." */
@@ -6075,6 +6104,48 @@ function applyControlPanelToUI() {
     // file in each tenant's repo (no DOM change needed for the image itself).
     const brandLogo = document.getElementById('brand-logo');
     if (brandLogo) brandLogo.alt = fn;
+
+    // v6.10.13 — Cache farm name to localStorage so the splash on the NEXT
+    // app open can read it (splash renders before Control_Panel hydrates;
+    // without this cache, first-install operators see "Loading Ledger"
+    // generic, but returning operators see "Loading Birei Farm Ledger").
+    try { localStorage.setItem('cachedFarmName', fn); } catch (e) {}
+
+    // v6.10.13 — HIDDEN_PRODUCTS: hide every element whose data-product is
+    // in the hidden list. Idempotent — re-running this on subsequent
+    // controlPanel updates re-hides correctly. We don't UN-hide here on
+    // empty list; un-hiding would clobber legitimate display=none on
+    // sections that hide for other reasons (poultry insights, etc).
+    // To re-show after removing from HIDDEN_PRODUCTS: hard-refresh.
+    const hidden = hiddenProducts();
+    hidden.forEach(function (product) {
+      const els = document.querySelectorAll('[data-product="' + product + '"]');
+      els.forEach(function (el) { el.style.display = 'none'; });
+    });
+
+    // v6.10.13 — DAIRY_LABEL / DORPER_LABEL: replace user-visible "Dairy"
+    // and "Dorper" strings with tenant-chosen labels. Falls back to the
+    // default ("Dairy", "Dorper") if not set, so Sinonin sees no change.
+    const dL = dairyLabel();
+    document.querySelectorAll('[data-label="dairy"]').forEach(function (el) {
+      // Preserve any leading emoji (e.g. "🐄 Dairy") if present in source text
+      const src = el.textContent || '';
+      const emojiMatch = src.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})\s*/u);
+      const prefix = emojiMatch ? emojiMatch[0] : '';
+      el.textContent = prefix + dL;
+    });
+    const dorL = dorperLabel();
+    document.querySelectorAll('[data-label="dorper"]').forEach(function (el) {
+      const src = el.textContent || '';
+      const emojiMatch = src.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})\s*/u);
+      const prefix = emojiMatch ? emojiMatch[0] : '';
+      el.textContent = prefix + dorL;
+    });
+
+    // v6.10.13 — splash title (if splash is still on screen during a
+    // subsequent control panel update): set from farmName
+    const splashTitle = document.getElementById('splash-title');
+    if (splashTitle) splashTitle.textContent = 'Loading ' + fn + ' Ledger';
 
     // Refresh owner prefixes + workforce-dependent surfaces
     refreshOwnerPrefixesFromConfig();
@@ -6373,7 +6444,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.12';
+const APP_VERSION = 'v6.10.13';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -6906,7 +6977,7 @@ async function webauthnRegister() {
       publicKey: {
         challenge: _randChallenge(),
         rp: {
-          name: 'Sinonin Group Management App',
+          name: farmName() + ' Management App',  // v6.10.13 — was 'Sinonin Group Management App'
           id: window.location.hostname  // e.g., sinonin.vercel.app
         },
         user: {
@@ -9898,13 +9969,22 @@ async function runCloudSync(opts) {
 }
 
 // First-install splash: blocks the app until the initial cloud sync completes.
+// v6.10.13 — splash text now reads cached FARM_NAME from localStorage if a
+// previous session has stored one. First install (no cache) falls back to
+// the neutral "Loading Ledger". Sealed § 6.x (25 May 2026 Verden, Cheison):
+// "We deliver a choice to customise, not write one million apps for one
+// million users." Every tenant-specific user-visible string must come from
+// data, not code.
 function showFirstInstallSplash() {
+  let cachedFarm = '';
+  try { cachedFarm = localStorage.getItem('cachedFarmName') || ''; } catch (e) {}
+  const title = cachedFarm ? `Loading ${cachedFarm} Ledger` : 'Loading Ledger';
   const splash = document.createElement('div');
   splash.id = 'first-install-splash';
   splash.innerHTML = `
     <div class="splash-inner">
       <div class="splash-logo"></div>
-      <div class="splash-title">Loading Sinonin Ledger</div>
+      <div class="splash-title" id="splash-title">${title}</div>
       <div class="splash-sub">Fetching your farm's full history — this may take a moment on first install.</div>
       <div class="splash-spinner"></div>
     </div>
