@@ -3103,7 +3103,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.10</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.11</span>
 </header>
 
 <main>
@@ -5581,7 +5581,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.10</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.11</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6312,7 +6312,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.10';
+const APP_VERSION = 'v6.10.11';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -9877,7 +9877,9 @@ function populateDropdowns() {
 
   // Poultry Sales: product and unit dropdowns
   document.getElementById('y-product').innerHTML = '<option value="">— Product —</option>' + POULTRY_PRODUCTS.map(p => `<option value="${p}">${p}</option>`).join('');
-  document.getElementById('y-stage').innerHTML = '<option value="">— Stage —</option>' + POULTRY_STAGES.map(s => `<option value="${s}">${s}</option>`).join('');
+  // v6.10.11 — Stage list is product-aware; populate via helper that
+  // respects current product selection (empty on first load).
+  if (typeof populatePoultryStageDropdown === 'function') populatePoultryStageDropdown();
   document.getElementById('y-unit').innerHTML = '<option value="">— Unit —</option>' + POULTRY_UNITS.map(u => `<option value="${u}">${u}</option>`).join('');
   // v6.9.21 — Payment dropdown is now stage-aware (populator function 
   // below). "Gift" option appears only for Broken eggs / Small-Abnormal
@@ -11685,6 +11687,39 @@ const POULTRY_STAGES = [
   'Deformities',
   'Quarantine'  // v6.0.0-rev2 — new stage; isolated birds (treatment, post-disease, biosecurity holding)
 ];
+
+// v6.10.11 — Product-aware stage list. Sealed Cheison 25 May 2026 Verden:
+// "Let us say I switch from eggs to chicks, or chicken. The stage is stuck
+// to 'Normal'. Somehow the stage should be able to recognise that the choice
+// is not eggs and therefore pick product related stages." Implementation:
+// scope the y-stage dropdown to stages valid for the selected product, and
+// reset the stage if the operator's prior choice doesn't apply to the new
+// product. Prevents nonsense data like product=Chicken + stage=Normal eggs.
+const STAGES_BY_PRODUCT = {
+  'Eggs':    ['Normal eggs', 'Broken eggs', 'Small/Abnormal Eggs'],
+  'Chicks':  ['Chicks 1\u20137 days', 'Chicks 7\u201328 days'],
+  'Chicken': ['Growers', 'Layers', 'Cockerels', 'Retired birds', 'Deformities', 'Quarantine'],
+  'Other':   POULTRY_STAGES   // fallback: all stages for unusual transactions
+};
+
+function populatePoultryStageDropdown() {
+  const productEl = document.getElementById('y-product');
+  const stageEl = document.getElementById('y-stage');
+  if (!stageEl) return;
+  const product = productEl ? productEl.value : '';
+  
+  // Preserve current selection if still valid for the new product
+  const currentStage = stageEl.value;
+  
+  if (!product) {
+    stageEl.innerHTML = '<option value="">— Pick a product first —</option>';
+    return;
+  }
+  const stages = STAGES_BY_PRODUCT[product] || POULTRY_STAGES;
+  const stagesValid = (stages.indexOf(currentStage) !== -1);
+  stageEl.innerHTML = '<option value="">— Stage —</option>' + 
+    stages.map(s => `<option value="${s}"${(stagesValid && s === currentStage) ? ' selected' : ''}>${s}</option>`).join('');
+}
 const POULTRY_UNITS = ['No. of eggs', 'Trays', 'Birds', 'Bags', 'Kg', 'Other'];
 const POULTRY_PAYMENT_METHODS = ['TILL', 'MPESA', 'PayBill', 'Cash', 'Bank'];
 
@@ -22487,6 +22522,10 @@ function showUpdateBanner() {
   const yProductEl = document.getElementById('y-product');
   if (yProductEl) {
     yProductEl.addEventListener('change', () => {
+      // v6.10.11 — Product change refreshes stage dropdown to product-
+      // appropriate stages. Preserves current stage selection if it 
+      // remains valid for the new product (otherwise clears to prompt).
+      if (typeof populatePoultryStageDropdown === 'function') populatePoultryStageDropdown();
       if (typeof populatePoultryCohortDropdown === 'function') populatePoultryCohortDropdown();
       if (typeof populatePoultryPaymentDropdown === 'function') populatePoultryPaymentDropdown();
     });
