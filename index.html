@@ -3103,7 +3103,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.7</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.8</span>
 </header>
 
 <main>
@@ -3925,7 +3925,7 @@
            to the OLDEST (FIFO — older birds sell first). Empty stage = stage
            prompt. Empty for non-bird sales (Eggs etc) — backend treats blank
            as legacy fallback. -->
-      <div class="field"><label>Cohort</label>
+      <div class="field"><label id="y-cohort-label">Cohort</label>
         <select id="y-cohort"><option value="">— Pick a stage first —</option></select>
       </div>
       <div class="pair">
@@ -5581,7 +5581,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.7</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.8</span></div>
       <div style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6312,7 +6312,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.7';
+const APP_VERSION = 'v6.10.8';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -9354,6 +9354,14 @@ function cloudToLocalEggCollection(r) {
     normal: (Number(r.normal) || 0) || (gfN + udN),
     small_abnormal: (Number(r.small_abnormal) || 0) || (gfS + udS),
     broken: (Number(r.broken) || 0) || (gfB + udB),
+    collector: String(r.collector || '').trim(),
+    // v6.10.8 — Preserve Egg_Batch_ID end-to-end. Previously stripped here,
+    // forcing the egg-sale cohort dropdown to default to LAYER cohorts.
+    // Now: egg sales attribute to the EGG BATCH (the collection day's
+    // identifier) — the right unit of analysis for yield-per-batch reporting.
+    // Sealed Cheison 25 May 2026 Verden: "the eggs sales cohort defaults to
+    // the layers not the eggs Cohort_ID." Egg_Batch_ID IS the eggs Cohort_ID.
+    egg_batch_id: String(r.egg_batch_id || '').trim(),
     notes: r.notes || '',
     _source: 'cloud'
   };
@@ -11729,14 +11737,17 @@ function populatePoultryPaymentDropdown() {
    so the operator's default is the right answer for typical sales.
    Empty stage shows prompt; empty result set shows informative message.
 
-   v6.9.21 — Special case for product=Eggs. Egg sales come in stages
-   "Normal eggs" / "Small eggs" etc. — none of which match a Layer cohort's
-   `c.stage = 'Layers'`. Override: when product is Eggs, show the active
-   Layer cohorts and prepend a "no attribution" option (Cheison 22 May 2026:
-   "offer cohort ID as optional under egg sales"). Optional means: empty
-   submission allowed, no auto-select. Lets the operator tag eggs to a 
-   specific Layer cohort if they want yield-per-cohort analytics later,
-   without forcing the choice. */
+   v6.9.21 — Special case for product=Eggs (deprecated by v6.10.8).
+   
+   v6.10.8 — Rebuilt egg-sale path. Eggs are produced BY layers but tracked
+   BY the COLLECTION DAY (Egg_Batch_ID from Egg_Collection). When you sell
+   eggs on 23 May from the 22 May collection, the right attribution is the
+   22 May batch — not the layer cohort that produced them. Sealed Cheison
+   25 May 2026 Verden: "the eggs sales cohort defaults to the layers not 
+   the eggs Cohort_ID." This implements: egg sales pick from recent 
+   Egg_Batch_IDs (newest first, last 30 collection days), with "no batch 
+   attribution" as the default. Non-egg sales unchanged (Layer/Cockerels/
+   etc. cohorts as before). */
 function populatePoultryCohortDropdown() {
   const cohortEl = document.getElementById('y-cohort');
   if (!cohortEl) return;
@@ -11745,35 +11756,53 @@ function populatePoultryCohortDropdown() {
   const stage = stageEl ? stageEl.value : '';
   const product = productEl ? productEl.value : '';
 
-  // v6.9.21 — For Eggs, override the stage filter to surface Layer cohorts.
-  const isEggSale = product === 'Eggs';
-  const effectiveStage = isEggSale ? 'Layers' : stage;
+  // v6.10.8 — Dynamic label: "Batch" reads honestly for egg sales (the
+  // operator picks an egg-collection batch), "Cohort" for bird sales.
+  const labelEl = document.getElementById('y-cohort-label');
+  if (labelEl) labelEl.textContent = (product === 'Eggs') ? 'Batch' : 'Cohort';
 
-  if (!effectiveStage) {
+  // v6.10.8 — Egg sale path: source = Egg_Collection batches, not cohorts.
+  if (product === 'Eggs') {
+    const batches = (STATE.eggCollection || [])
+      .filter(e => e && e.egg_batch_id && e.date)
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))  // newest first
+      .slice(0, 30);   // last 30 collection days — covers any practical sale window
+    
+    let html = '<option value="" selected>— no batch attribution —</option>';
+    if (batches.length > 0) {
+      html += batches.map(b => {
+        const total = (Number(b.normal) || 0) + (Number(b.small_abnormal) || 0) + (Number(b.broken) || 0);
+        const totalLabel = total > 0 ? ' · ' + total + ' eggs' : '';
+        const coll = b.collector ? ' · ' + b.collector : '';
+        return '<option value="' + b.egg_batch_id + '">' + b.egg_batch_id + ' · ' + b.date + totalLabel + coll + '</option>';
+      }).join('');
+    } else {
+      html += '<option value="" disabled>(no egg batches logged yet — log Egg Collection first)</option>';
+    }
+    cohortEl.innerHTML = html;
+    return;
+  }
+
+  // Non-egg sales: existing cohort logic. effectiveStage = the picked stage.
+  if (!stage) {
     cohortEl.innerHTML = '<option value="">— Pick a stage first —</option>';
     return;
   }
   const eligible = (Array.isArray(STATE.cohorts) ? STATE.cohorts : [])
-    .filter(c => c && (c.stage || '') === effectiveStage)
+    .filter(c => c && (c.stage || '') === stage)
     .filter(c => Number(c.current_count || 0) > 0)
     .sort((a, b) => String(a.date_origin || '').localeCompare(String(b.date_origin || '')));
   if (eligible.length === 0) {
-    const msg = isEggSale ? '— No active Layer cohorts —' : '— No active cohorts at this stage —';
-    cohortEl.innerHTML = `<option value="">${msg}</option>`;
+    cohortEl.innerHTML = '<option value="">— No active cohorts at this stage —</option>';
     return;
   }
 
-  // For Eggs, prepend an explicit "no attribution" option AND don't auto-
-  // select any cohort (optional). For other products, auto-select oldest.
-  let html = '';
-  if (isEggSale) {
-    html = '<option value="" selected>— no cohort attribution —</option>';
-  }
-  html += eligible.map((c, idx) => {
+  // For non-egg products, auto-select oldest cohort (FIFO).
+  const html = eligible.map((c, idx) => {
     const house = c.house ? ' · ' + c.house : '';
     const count = ' · ' + (Number(c.current_count) || 0) + ' birds';
     const age = c.date_origin ? ' · ' + c.date_origin : '';
-    const sel = (!isEggSale && idx === 0) ? ' selected' : '';
+    const sel = (idx === 0) ? ' selected' : '';
     return `<option value="${c.cohort_id}"${sel}>${c.cohort_id}${house}${count}${age}</option>`;
   }).join('');
   cohortEl.innerHTML = html;
@@ -15332,6 +15361,16 @@ function computeStageLive(stage, house, today) {
   }
 
   let cohortLiveTotal = 0;
+  // v6.10.8 — Track post-census deductions from baseline cohorts separately
+  // so the UI sub-line can render "−N sold" / "−N died" with honest counts.
+  // Previously these were silently dropped (Issue 1 / Cheison 25 May 2026 
+  // bug report): a 22 May cockerel sale tagged to COH-CGF-UZ13082025 was 
+  // accepted by Apps Script and updated Cohort_Population.Current_Count, 
+  // but the PWA's displayed live count for Cockerels never decremented 
+  // because that cohort was already at Cockerels stage at last census 
+  // (inBaseline branch returned early, skipping all sale/mortality matching).
+  let baselineSalesPostCensus = 0;
+  let baselineMortPostCensus = 0;
   // v6.9.8 — Track the latest cohort origin date among cohorts CURRENTLY 
   // in this stage. Used by the staleness chip: a cohort event (hatch, 
   // stage transition, or backfilled creation) is itself a measurement —
@@ -15349,11 +15388,13 @@ function computeStageLive(stage, house, today) {
     const stageNow = effectiveCohortStage(c, today);
     if (stageNow !== stage) return;
 
-    // Skip if cohort was already in this stage at last census (in baseline)
-    if (c.date_origin <= censusDate) {
-      const stageThen = effectiveCohortStage(c, censusDate);
-      if (stageThen === stage) return;
-    }
+    // v6.10.8 — Determine if cohort was already counted in census baseline
+    // (origin <= census date AND was in this stage at census date). Replaces
+    // the prior `return` that silently dropped the cohort's post-census 
+    // transactions. Now: inBaseline branches deduct only post-census events;
+    // non-baseline (new) cohorts contribute their full live count as before.
+    const inBaseline = (c.date_origin <= censusDate) && 
+                       (effectiveCohortStage(c, censusDate) === stage);
 
     // Compute age and stagesPassed
     const origin = new Date(c.date_origin + 'T00:00:00Z');
@@ -15372,6 +15413,8 @@ function computeStageLive(stage, house, today) {
 
     // v6.9.10 — Dual-key sale matching: cohort_id (Phase 2) first, 
     // stagesPassed (legacy) fallback. Mirrors Apps Script v5.0.38.
+    // v6.10.8 — For baseline cohorts, only POST-census sales count
+    // (pre-census sales were already reflected in the census number).
     let soldForCohort = 0;
     (STATE.poultry || []).forEach(s => {
       if (s.product === 'Eggs') return;
@@ -15382,6 +15425,7 @@ function computeStageLive(stage, house, today) {
         if (!stagesPassed[s.stage]) return;
       }
       if (!s.date || s.date < c.date_origin) return;
+      if (inBaseline && s.date <= censusDate) return;
       soldForCohort += Number(s.quantity) || 0;
     });
 
@@ -15396,20 +15440,32 @@ function computeStageLive(stage, house, today) {
       if (!m.date || m.date < c.date_origin) return;
       // If house filter is active, only count mortality for that house
       if (house && m.house !== house) return;
+      if (inBaseline && m.date <= censusDate) return;
       mortForCohort += Number(m.count) || 0;
     });
 
-    const cohortLive = Math.max(0, initial - soldForCohort - mortForCohort);
-    cohortLiveTotal += cohortLive;
-    // v6.9.8 — Capture origin date only for cohorts with live birds (a
-    // fully-sold cohort that's left this stage shouldn't anchor freshness).
-    if (cohortLive > 0 && c.date_origin > latestCohortDate) {
-      latestCohortDate = c.date_origin;
+    if (inBaseline) {
+      // v6.10.8 BUG FIX — Cohort was counted in census baseline; deduct
+      // ONLY its post-census sales/mortality. Previously this branch
+      // returned early and post-census events were lost from the live
+      // count even though Apps Script accepted and persisted them.
+      baselineSalesPostCensus += soldForCohort;
+      baselineMortPostCensus += mortForCohort;
+    } else {
+      // New cohort (or transitioned into stage after census): add full
+      // live count contribution.
+      const cohortLive = Math.max(0, initial - soldForCohort - mortForCohort);
+      cohortLiveTotal += cohortLive;
+      // v6.9.8 — Capture origin date only for cohorts with live birds (a
+      // fully-sold cohort that's left this stage shouldn't anchor freshness).
+      if (cohortLive > 0 && c.date_origin > latestCohortDate) {
+        latestCohortDate = c.date_origin;
+      }
     }
   });
 
-  const live = Math.max(0, baseline + cohortLiveTotal);
-  const hasAdjustments = cohortLiveTotal > 0;
+  const live = Math.max(0, baseline + cohortLiveTotal - baselineSalesPostCensus - baselineMortPostCensus);
+  const hasAdjustments = (cohortLiveTotal > 0) || (baselineSalesPostCensus > 0) || (baselineMortPostCensus > 0);
   // v6.9.8 — effectiveFreshnessDate = max(censusDate, latestCohortDate). 
   // The chip renderer reads this; the "since X" text uses it too.
   const effectiveFreshnessDate = (latestCohortDate && latestCohortDate > censusDate) 
@@ -15421,9 +15477,12 @@ function computeStageLive(stage, house, today) {
     censusDate: censusDate, 
     latestCohortDate: latestCohortDate || '',
     effectiveFreshnessDate: effectiveFreshnessDate,
-    cohortDelta: cohortLiveTotal,  // now LIVE per-cohort, not raw initial
-    mortalityDelta: 0,              // rolled into cohortDelta
-    salesDelta: 0,                  // rolled into cohortDelta
+    cohortDelta: cohortLiveTotal,
+    // v6.10.8 — Now surfaces non-zero deltas for baseline-cohort
+    // post-census sales/mortality, so the UI sub-line renders
+    // "live · −N sold · −N died since [censusDate]" honestly.
+    mortalityDelta: baselineMortPostCensus,
+    salesDelta: baselineSalesPostCensus,
     hasAdjustments: hasAdjustments 
   };
 }
