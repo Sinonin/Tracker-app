@@ -3141,14 +3141,33 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode (unlock requires admin)">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <!-- v6.10.20 — Admin button RETURNED to bottom-nav after Cheison observed
-       that tenants with sparse navigation (Birei, Kibois — many products
-       hidden) looked "almost naked" without it. The v6.10.5 header placement
-       was reverted; admin button now lives at the right edge of the bottom 
-       nav for all tenants. Sinonin's bottom nav becomes denser but Cheison
-       confirmed "crowded but OK". Sealed § (Cheison 26 May 2026 Verden):
-       a sparse navigation tray feels broken; admin in the tray reads as a 
-       legitimate function rather than a hidden surface. -->
+  <!-- v6.10.22 — Admin button RESTORED to header. The v6.10.20 move to 
+       bottom-nav was reverted after Cheison observed Sinonin's bottom row 
+       was "tearing down" with the eighth button. Sealed § (Cheison 26 May 
+       2026 Verden, late afternoon): a dense bottom nav (7-button limit on 
+       phone) is the constraint; sparse-nav tenants (Birei, Kibois) can be 
+       addressed by growing their product tabs rather than borrowing 
+       real-estate that Sinonin needs for daily ops. Multi-state padlock 
+       SVG preserved; same id (#nav-settings) so all existing lock-state 
+       JS keeps working unchanged. -->
+  <button data-view="admin" id="nav-settings" data-lock-state="locked" aria-label="Admin" title="Admin" type="button">
+    <svg class="nav-lock-svg" viewBox="0 0 24 24" aria-hidden="true">
+      <g class="nav-lock-icon-locked">
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" fill="none"/>
+        <rect x="5" y="11" width="14" height="10" rx="2"/>
+        <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
+      </g>
+      <g class="nav-lock-icon-admin">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>
+      </g>
+      <g class="nav-lock-icon-open">
+        <path d="M7 11V7a5 5 0 0 1 9.5-2" fill="none"/>
+        <rect x="5" y="11" width="14" height="10" rx="2"/>
+        <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
+      </g>
+    </svg>
+  </button>
   <button id="header-refresh-btn" class="header-refresh" type="button" aria-label="Refresh data" title="Refresh from cloud">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
       <polyline points="23 4 23 10 17 10"></polyline>
@@ -3162,7 +3181,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.21</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.22</span>
 </header>
 
 <main>
@@ -5817,7 +5836,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.21</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.22</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5902,30 +5921,10 @@
       <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg>
       <span>Insights</span>
     </button>
-    <!-- v6.10.20 — Admin button RETURNED to bottom-nav (right edge). The v6.10.5
-         move to the header left Birei/Kibois bottom-navs visually sparse once
-         HIDDEN_PRODUCTS removed product tabs. Multi-state padlock SVG preserved.
-         CSS at nav.bottom-nav #nav-settings[data-lock-state=…] still handles
-         the locked/admin/open visual states correctly since we kept the same id. -->
-    <button data-view="admin" id="nav-settings" data-lock-state="locked" aria-label="Admin" title="Admin" type="button">
-      <svg class="nav-lock-svg" viewBox="0 0 24 24" aria-hidden="true">
-        <g class="nav-lock-icon-locked">
-          <path d="M7 11V7a5 5 0 0 1 10 0v4" fill="none"/>
-          <rect x="5" y="11" width="14" height="10" rx="2"/>
-          <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
-        </g>
-        <g class="nav-lock-icon-admin">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>
-        </g>
-        <g class="nav-lock-icon-open">
-          <path d="M7 11V7a5 5 0 0 1 9.5-2" fill="none"/>
-          <rect x="5" y="11" width="14" height="10" rx="2"/>
-          <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
-        </g>
-      </svg>
-      <span>Admin</span>
-    </button>
+    <!-- v6.10.22 — Admin button removed from bottom-nav (reverted from v6.10.20).
+         The eighth button was tearing down Sinonin's bottom row visually. 
+         Admin now lives only in header (id="nav-settings" there). See header 
+         block for the placement + comment. -->
   </nav>
 </div>
 
@@ -6778,7 +6777,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.21';
+const APP_VERSION = 'v6.10.22';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -23280,11 +23279,12 @@ function showUpdateBanner() {
   // when relocating an element across DOM contexts, the wiring that lived
   // in the old context must follow it — visibility without behavior is 
   // worse than absence.
-  // v6.10.20 — Admin button returned to bottom-nav (from header). The
-  // bottom-nav's existing button-binding loop wires switchView automatically
-  // via data-view="admin", so no separate handler is needed. The header
-  // querySelector below is kept as a no-op safety net in case any future
-  // refactor restores a header admin button — defensive but harmless.
+  // v6.10.22 — Header admin button (back from bottom-nav). The bottom-nav 
+  // forEach above only covers nav.bottom-nav buttons, so the header admin
+  // button needs its own click listener. Same data-view='admin' contract;
+  // same switchView() target. Sealed § 6.x: when relocating an element 
+  // across DOM contexts, the wiring that lived in the old context must 
+  // follow it — visibility without behavior is worse than absence.
   const headerAdminBtn = document.querySelector('header.brand #nav-settings');
   if (headerAdminBtn) {
     headerAdminBtn.addEventListener('click', () => switchView('admin'));
