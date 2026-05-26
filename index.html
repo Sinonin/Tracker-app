@@ -980,6 +980,74 @@
     margin-top: 0.15rem;
   }
 
+  /* v6.10.18 — Cow milk batch grid: one row per alive cow, three litres inputs (AM/PM/Night).
+     Header row + cow rows. Inputs are compact so all four columns fit on a phone. */
+  .cmb-grid-header,
+  .cmb-row {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr 1fr 1fr;
+    gap: 0.4rem;
+    align-items: center;
+    padding: 0.5rem 0.25rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  .cmb-grid-header {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--brass-dark);
+    background: rgba(184, 147, 90, 0.06);
+    border-bottom: 1px solid var(--brass);
+    padding: 0.55rem 0.25rem;
+  }
+  .cmb-grid-header > div {
+    text-align: center;
+  }
+  .cmb-grid-header > div:first-child {
+    text-align: left;
+  }
+  .cmb-cow-name {
+    font-family: 'Fraunces', serif;
+    font-size: 0.92rem;
+    color: var(--forest);
+    line-height: 1.3;
+  }
+  .cmb-cow-meta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--slate-light);
+    letter-spacing: 0.05em;
+    margin-top: 0.1rem;
+  }
+  .cmb-litre-input {
+    width: 100%;
+    padding: 0.45rem 0.3rem;
+    font-family: 'Fraunces', serif;
+    font-size: 0.95rem;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    text-align: center;
+    box-sizing: border-box;
+  }
+  .cmb-litre-input:focus {
+    outline: none;
+    border-color: var(--forest);
+    background: var(--ivory-card);
+  }
+  .cmb-litre-input.filled {
+    background: rgba(74, 107, 78, 0.08);
+    border-color: var(--success);
+  }
+  .cmb-empty-state {
+    padding: 1.5rem 1rem;
+    text-align: center;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    color: var(--slate-light);
+    font-size: 0.9rem;
+  }
+
   .toast {
     position: fixed;
     bottom: 9rem; left: 50%;
@@ -3113,7 +3181,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.17</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.19</span>
 </header>
 
 <main>
@@ -5354,6 +5422,16 @@
         </div>
         <h3 style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.3rem; color:var(--forest); margin:0.4rem 0 1rem; letter-spacing:-0.01em;">Log milking</h3>
 
+        <!-- v6.10.18 — Mode toggle. Quick = single entry (one cow, one session). 
+             Batch = grid (all alive cows × AM/PM/Night), one POST per non-empty cell.
+             Mirrors the Plucker greenleaf-kind Quick/Batch pattern. -->
+        <div class="mode-toggle" style="margin-bottom:1rem">
+          <button class="active" id="cm-mode-quick" type="button">Quick Entry</button>
+          <button id="cm-mode-batch" type="button">Batch Entry</button>
+        </div>
+
+        <!-- ===== QUICK MODE (existing single-entry form) ===== -->
+        <div id="cm-quick-mode">
         <div class="field">
           <label>Date</label>
           <input type="date" id="cm-date">
@@ -5414,6 +5492,53 @@
           <button type="button" onclick="closeCowMilkForm()" class="export-btn" style="flex:1">Cancel</button>
           <button type="button" onclick="submitCowMilkForm()" class="export-btn" style="flex:1; background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark)">🥛 Save milking</button>
         </div>
+        </div><!-- /cm-quick-mode -->
+
+        <!-- ===== BATCH MODE (v6.10.18 — grid: alive cows × AM/PM/Night) =====
+             Header carries Date / Channel / Operator (and Gifted-to when 
+             channel=Gifted) which apply to ALL non-empty cells. Each non-blank
+             litres input becomes one Cow_Milk_Log row on Save All.
+             For Levy and Isaac's daily milking shifts — record the whole day 
+             after the last session, no per-session app interaction needed. -->
+        <div id="cm-batch-mode" style="display:none">
+          <div class="pair">
+            <div class="field"><label>Date</label><input type="date" id="cmb-date"></div>
+            <div class="field">
+              <label>Channel</label>
+              <select id="cmb-channel"><option value="">— pick channel —</option></select>
+            </div>
+          </div>
+
+          <!-- Conditional: gift recipient (applies to whole batch) -->
+          <div class="field" id="cmb-recipient-field" style="display:none">
+            <label>Gifted to <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(applies to all rows)</span></label>
+            <select id="cmb-recipient"><option value="">— pick recipient —</option></select>
+            <input type="text" id="cmb-recipient-other" placeholder="Specify (when 'Other')" autocomplete="off" style="margin-top:0.4rem; display:none; width:100%; padding:0.5rem; font-family:'Fraunces',serif; font-size:0.92rem; border:1px solid var(--rule); border-radius:4px;">
+          </div>
+
+          <!-- Conditional: buyer (free text) for Farm-Gate / Processed -->
+          <div class="field" id="cmb-buyer-field" style="display:none">
+            <label id="cmb-buyer-label">Buyer / customer <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional, applies to all rows)</span></label>
+            <input type="text" id="cmb-buyer" placeholder="Name or destination" autocomplete="off">
+          </div>
+
+          <div class="field">
+            <label>Operator <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(who milked?)</span></label>
+            <select id="cmb-operator"></select>
+          </div>
+
+          <div class="batch-summary" style="margin-top:0.9rem">
+            <div><div class="sum-lbl">Entries</div><div class="sum-val" id="cmb-count">0</div></div>
+            <div><div class="sum-lbl">Total litres</div><div class="sum-val" id="cmb-total">0</div></div>
+          </div>
+
+          <button type="button" id="cmb-submit" class="submit" style="margin-top:0.6rem" disabled>Save All Milkings</button>
+
+          <div class="batch-instructions" style="margin-top:1.1rem">Enter litres for each session a cow was milked today. Leave blank for sessions a cow was skipped.</div>
+
+          <div id="cmb-grid" style="margin-top:0.8rem"></div>
+        </div><!-- /cm-batch-mode -->
+
         <div id="cm-feedback" style="display:none;margin-top:0.7rem;padding:0.6rem 0.8rem;border-radius:6px;font-family:'Fraunces',serif;font-size:0.9rem"></div>
       </div>
 
@@ -5691,7 +5816,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.17</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.19</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6544,6 +6669,18 @@ const K_EXPENSES_SOURCE_VERSION      = 'sinonin_expenses_source_version_v1';
 const K_BANKED_SOURCE_VERSION        = 'sinonin_banked_source_version_v1';
 const K_POULTRY_SOURCE_VERSION       = 'sinonin_poultry_source_version_v1';
 const K_EGG_COLLECTION_SOURCE_VERSION = 'sinonin_egg_collection_source_version_v1';
+// v6.10.19 — Pluckers join the cloud-replace-local migration family. The
+// roster merge at the cloud-hydration site previously preserved local-only
+// pluckers (IDs not in cloud) as a safety net for queued-but-not-pushed
+// new pluckers. That preservation caused cross-tenant contamination:
+// Birei/Kibois bootstrapped with Sinonin's 45 hardcoded DEFAULT_PLUCKERS,
+// the roster merge saw cloud=[] (empty Plucker_Roster sheets) and preserved
+// all 45 names as "local-only" — persisting to K_PLUCKERS forever. Empty
+// Sheets couldn't override the cached pollution. v6.10.19 wipes K_PLUCKERS
+// on first boot AND switches the merge to cloud-authoritative (matching the
+// v6.2.2 family). Newly-added local pluckers may briefly disappear after a
+// cloud merge until pushed, but the sync queue ensures eventual consistency.
+const K_PLUCKERS_SOURCE_VERSION      = 'sinonin_pluckers_source_version_v1';
 const K_INCUBATION = 'sinonin_incubation_v1';     // v6.0 SHIP 5 — Incubation batches
 const K_VACCINATIONS = 'sinonin_vaccinations_v1';  // v6.0.0 — D4: Vaccination records
 const K_VACC_SCHEDULE = 'sinonin_vacc_schedule_v1'; // v6.0.0 — D4: Vaccination schedule (config)
@@ -6592,7 +6729,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.17';
+const APP_VERSION = 'v6.10.19';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -9975,11 +10112,16 @@ async function applyCloudResponse(data) {
     await storageSet(K_LITTER_CHANGES, STATE.litterChanges);
   }
   if (Array.isArray(data.roster)) {
-    // Roster merge — cloud is authoritative for IDs that appear in cloud,
-    // local is authoritative for IDs that exist only locally (e.g. queued
-    // but not yet pushed). For IDs in both, cloud's most-recent submission
-    // wins because Apps Script already deduplicated to last-write-wins.
-    const cloudIds = new Set(data.roster.map(r => r.id));
+    // v6.10.19 — Cloud-authoritative merge. Removed the local-only preservation
+    // loop that previously preserved IDs not in the cloud — that was the root
+    // cause of Sinonin's hardcoded DEFAULT_PLUCKERS leaking into Birei/Kibois
+    // and persisting in K_PLUCKERS forever. Sealed § (Cheison 26 May 2026 Verden):
+    // "Cloud is the source of truth for the roster. A newly added plucker that
+    // hasn't yet pushed will briefly disappear after a cloud merge, then
+    // reappear after the next push completes — eventual consistency, not
+    // mid-flight preservation. The sync queue holds the unsent write; nothing
+    // is lost." Matches the v6.2.2 cloud-replace-local pattern already in
+    // effect for entries, actuals, expenses, banked, poultry, egg-collection.
     const merged = data.roster.map(r => ({
       id: r.id,
       name: r.name || '',
@@ -9988,11 +10130,6 @@ async function applyCloudResponse(data) {
       notes: r.notes || '',
       active: true
     }));
-    // Preserve any local-only pluckers (IDs not in cloud yet — newly added,
-    // probably queued for push)
-    PLUCKERS.forEach(local => {
-      if (!cloudIds.has(local.id)) merged.push(local);
-    });
     merged.sort((a, b) => a.id - b.id);
     PLUCKERS = merged;
     await storageSet(K_PLUCKERS, PLUCKERS);
@@ -21239,6 +21376,15 @@ function openCowMilkForm(presetTagId, presetSession) {
     otherOpt.textContent = 'Other (specify in notes)';
     opSel.appendChild(otherOpt);
   }
+
+  // v6.10.18 — Reset to Quick mode on every open + bind mode toggle.
+  // Batch mode initializes lazily on first switch so it doesn't rebuild
+  // the grid for operators who only ever use Quick.
+  _cmSetMode('quick');
+  const qBtn = document.getElementById('cm-mode-quick');
+  const bBtn = document.getElementById('cm-mode-batch');
+  if (qBtn) qBtn.onclick = function () { _cmSetMode('quick'); };
+  if (bBtn) bBtn.onclick = function () { _cmSetMode('batch'); };
 }
 
 function closeCowMilkForm() {
@@ -21254,6 +21400,293 @@ function _cmShowFeedback(message, kind) {
     : 'background:rgba(140,195,145,0.18); color:var(--forest-dark); border:1px solid rgba(140,195,145,0.45);';
   fb.style.cssText = 'display:block;margin-top:0.7rem;padding:0.6rem 0.8rem;border-radius:6px;font-family:"Fraunces",serif;font-size:0.9rem;' + colorStyle;
   fb.textContent = message;
+}
+
+/* ============================================================
+   v6.10.18 — COW MILK BATCH ENTRY
+   ============================================================
+   Mirrors Plucker Greenleaf Batch pattern. Operators record a whole
+   day's milkings at once after the last session, instead of three
+   separate Quick entries per cow per session.
+   
+   Header carries Date / Channel / Operator (and Gift recipient when
+   channel=Gifted, or Buyer for Farm-Gate/Processed) — applies to all
+   non-empty rows. Grid is one row per alive female cow with three
+   numeric inputs (AM/PM/Night). Blank cell = no milking that session.
+   Save All emits one submitMilkLog call per non-empty cell; the same
+   dedup-by-(date,session,tag) guard from the Quick path keeps the 
+   batch idempotent if resubmitted.
+   
+   Sealed § (Cheison 26 May 2026 Verden): "Levy and Isaac's hands pay
+   on verbal totals — 'total kgs is 200 today'. The app's value is the
+   structure: WHO plucked HOW MANY. Same shape for milking: WHICH cow
+   yielded HOW MANY litres in WHICH session, not just 'today's milk'."
+   ============================================================ */
+
+function _cmSetMode(mode) {
+  const quickBtn = document.getElementById('cm-mode-quick');
+  const batchBtn = document.getElementById('cm-mode-batch');
+  const quickPanel = document.getElementById('cm-quick-mode');
+  const batchPanel = document.getElementById('cm-batch-mode');
+  if (!quickBtn || !batchBtn || !quickPanel || !batchPanel) return;
+  
+  // Clear any stale feedback when switching modes
+  const fb = document.getElementById('cm-feedback');
+  if (fb) fb.style.display = 'none';
+  
+  if (mode === 'batch') {
+    quickBtn.classList.remove('active');
+    batchBtn.classList.add('active');
+    quickPanel.style.display = 'none';
+    batchPanel.style.display = '';
+    _cmInitBatchMode();
+  } else {
+    batchBtn.classList.remove('active');
+    quickBtn.classList.add('active');
+    quickPanel.style.display = '';
+    batchPanel.style.display = 'none';
+  }
+}
+
+function _cmInitBatchMode() {
+  // Date default = today
+  document.getElementById('cmb-date').value = new Date().toISOString().slice(0, 10);
+  
+  // Reset channel + reveal-fields + buyer text
+  document.getElementById('cmb-channel').value = '';
+  document.getElementById('cmb-recipient-field').style.display = 'none';
+  document.getElementById('cmb-buyer-field').style.display = 'none';
+  document.getElementById('cmb-recipient-other').style.display = 'none';
+  document.getElementById('cmb-recipient-other').value = '';
+  document.getElementById('cmb-buyer').value = '';
+  
+  // Populate channel dropdown (mirrors cm-channel — same MILK_CHANNELS list)
+  const chanSel = document.getElementById('cmb-channel');
+  if (chanSel.options.length <= 1) {
+    MILK_CHANNELS.forEach(function (ch) {
+      const opt = document.createElement('option');
+      opt.value = ch.value;
+      opt.textContent = ch.label;
+      chanSel.appendChild(opt);
+    });
+  }
+  chanSel.onchange = function () {
+    const val = chanSel.value;
+    const recipField = document.getElementById('cmb-recipient-field');
+    const buyerField = document.getElementById('cmb-buyer-field');
+    const buyerLabel = document.getElementById('cmb-buyer-label');
+    if (val === 'Gifted') {
+      recipField.style.display = '';
+      buyerField.style.display = 'none';
+    } else if (val === 'Farm-Gate') {
+      recipField.style.display = 'none';
+      buyerField.style.display = '';
+      if (buyerLabel) buyerLabel.innerHTML = 'Buyer <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(applies to all rows)</span>';
+    } else if (val === 'Processed') {
+      recipField.style.display = 'none';
+      buyerField.style.display = '';
+      if (buyerLabel) buyerLabel.innerHTML = 'Product <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(e.g. yoghurt, mursik, ghee)</span>';
+    } else {
+      recipField.style.display = 'none';
+      buyerField.style.display = 'none';
+    }
+  };
+  
+  // Populate recipient dropdown (mirrors cm-recipient)
+  const recipSel = document.getElementById('cmb-recipient');
+  if (recipSel.options.length <= 1) {
+    MILK_RECIPIENTS.forEach(function (r) {
+      const opt = document.createElement('option');
+      opt.value = r;
+      opt.textContent = r;
+      recipSel.appendChild(opt);
+    });
+  }
+  recipSel.onchange = function () {
+    const other = document.getElementById('cmb-recipient-other');
+    other.style.display = (recipSel.value === 'Other') ? '' : 'none';
+    if (recipSel.value !== 'Other') other.value = '';
+  };
+  
+  // Populate operator dropdown — same tenant-config workforce roster
+  const opSel = document.getElementById('cmb-operator');
+  if (opSel) {
+    opSel.innerHTML = '<option value="">— pick one —</option>';
+    workforceRoster().forEach(function (n) {
+      const opt = document.createElement('option');
+      opt.value = n;
+      opt.textContent = n;
+      opSel.appendChild(opt);
+    });
+    const otherOpt = document.createElement('option');
+    otherOpt.value = 'Other';
+    otherOpt.textContent = 'Other (specify in notes)';
+    opSel.appendChild(otherOpt);
+  }
+  
+  // Render grid + reset summary
+  _cmbRenderGrid();
+  _cmbUpdateSummary();
+  
+  // Wire submit button
+  const submitBtn = document.getElementById('cmb-submit');
+  if (submitBtn) submitBtn.onclick = function () { submitCowMilkBatch(); };
+}
+
+function _cmbRenderGrid() {
+  const grid = document.getElementById('cmb-grid');
+  if (!grid) return;
+  
+  const aliveCows = (STATE.cows || []).filter(function (c) {
+    return c.status === 'alive' && c.sex === 'F';
+  });
+  
+  if (aliveCows.length === 0) {
+    grid.innerHTML = '<div class="cmb-empty-state">No alive female cows on the registry yet. Add a cow first, then batch-log her milkings.</div>';
+    return;
+  }
+  
+  // Header row
+  let html = '<div class="cmb-grid-header">'
+    + '<div>Cow</div>'
+    + '<div>☀️ AM</div>'
+    + '<div>🌇 PM</div>'
+    + '<div>🌙 Night</div>'
+    + '</div>';
+  
+  // One row per alive cow with three litre inputs
+  aliveCows.forEach(function (c) {
+    const nameDisplay = c.name ? c.name : c.tag_id;
+    const meta = c.tag_id + (c.breed ? ' · ' + c.breed : '');
+    html += '<div class="cmb-row" data-tag="' + c.tag_id + '">'
+      + '<div>'
+      +   '<div class="cmb-cow-name">' + nameDisplay + '</div>'
+      +   '<div class="cmb-cow-meta">' + meta + '</div>'
+      + '</div>'
+      + '<input type="number" class="cmb-litre-input" data-session="AM" min="0" step="0.1" placeholder="—" inputmode="decimal">'
+      + '<input type="number" class="cmb-litre-input" data-session="PM" min="0" step="0.1" placeholder="—" inputmode="decimal">'
+      + '<input type="number" class="cmb-litre-input" data-session="Night" min="0" step="0.1" placeholder="—" inputmode="decimal">'
+      + '</div>';
+  });
+  
+  grid.innerHTML = html;
+  
+  // Wire input events for live summary + visual filled-state feedback
+  grid.querySelectorAll('.cmb-litre-input').forEach(function (inp) {
+    inp.addEventListener('input', function () {
+      const v = Number(inp.value);
+      if (v > 0) inp.classList.add('filled');
+      else inp.classList.remove('filled');
+      _cmbUpdateSummary();
+    });
+  });
+}
+
+function _cmbUpdateSummary() {
+  const grid = document.getElementById('cmb-grid');
+  if (!grid) return;
+  let count = 0;
+  let total = 0;
+  grid.querySelectorAll('.cmb-litre-input').forEach(function (inp) {
+    const v = Number(inp.value);
+    if (v > 0) {
+      count++;
+      total += v;
+    }
+  });
+  const countEl = document.getElementById('cmb-count');
+  const totalEl = document.getElementById('cmb-total');
+  const submitBtn = document.getElementById('cmb-submit');
+  if (countEl) countEl.textContent = String(count);
+  if (totalEl) totalEl.textContent = total.toFixed(1) + ' L';
+  if (submitBtn) submitBtn.disabled = (count === 0);
+}
+
+async function submitCowMilkBatch() {
+  // Validate header
+  const date = document.getElementById('cmb-date').value;
+  const channel = document.getElementById('cmb-channel').value;
+  const operator = document.getElementById('cmb-operator').value;
+  
+  if (!date) { _cmShowFeedback('Date is required', 'error'); return; }
+  if (!channel) { _cmShowFeedback('Pick a channel', 'error'); return; }
+  
+  // Resolve recipient/buyer (applies to whole batch)
+  let recipientOrBuyer = '';
+  if (channel === 'Gifted') {
+    const recipSel = document.getElementById('cmb-recipient').value;
+    if (!recipSel) { _cmShowFeedback('Pick a gift recipient', 'error'); return; }
+    if (recipSel === 'Other') {
+      const otherTxt = (document.getElementById('cmb-recipient-other').value || '').trim();
+      if (!otherTxt) { _cmShowFeedback('Specify the recipient', 'error'); return; }
+      recipientOrBuyer = otherTxt;
+    } else {
+      recipientOrBuyer = recipSel;
+    }
+  } else if (channel === 'Farm-Gate' || channel === 'Processed') {
+    recipientOrBuyer = (document.getElementById('cmb-buyer').value || '').trim();
+  }
+  
+  // Collect non-empty cells
+  const grid = document.getElementById('cmb-grid');
+  const records = [];
+  grid.querySelectorAll('.cmb-row').forEach(function (rowEl) {
+    const tagId = rowEl.dataset.tag;
+    rowEl.querySelectorAll('.cmb-litre-input').forEach(function (inp) {
+      const litres = Number(inp.value);
+      if (!litres || litres <= 0) return;
+      records.push({
+        ts: new Date().toISOString(),
+        date: date,
+        session: inp.dataset.session,
+        tag_id: tagId,
+        litres: litres,
+        channel: channel,
+        recipient_or_buyer: recipientOrBuyer,
+        operator: operator || '',
+        notes: '',
+        timestamp: new Date().toISOString()
+      });
+    });
+  });
+  
+  if (records.length === 0) {
+    _cmShowFeedback('No litres entered — fill at least one cell before saving', 'error');
+    return;
+  }
+  
+  const submitBtn = document.getElementById('cmb-submit');
+  if (submitBtn) submitBtn.disabled = true;
+  
+  _cmShowFeedback('Saving ' + records.length + ' milking' + (records.length === 1 ? '' : 's') + '...', 'success');
+  
+  // Submit one at a time — submitMilkLog handles dedup + sync queue per record.
+  // Sequential rather than Promise.all so the sync queue doesn't get a 
+  // burst that overwhelms slow connections; per-row queuing on failure
+  // is graceful.
+  let saved = 0;
+  let queued = 0;
+  for (const rec of records) {
+    const ok = await submitMilkLog(rec);
+    if (ok) saved++;
+    else queued++;
+  }
+  
+  // Final feedback
+  let msg;
+  if (queued === 0) {
+    msg = '🥛 Saved ' + saved + ' milking' + (saved === 1 ? '' : 's') + ' for ' + date;
+  } else if (saved === 0) {
+    msg = 'Queued ' + queued + ' milking' + (queued === 1 ? '' : 's') + ' locally — will sync when online';
+  } else {
+    msg = 'Saved ' + saved + ', queued ' + queued + ' for sync · ' + date;
+  }
+  _cmShowFeedback(msg, 'success');
+  
+  // Brief pause so feedback shows, then return to dashboard
+  setTimeout(function () {
+    closeCowMilkForm();
+  }, 1400);
 }
 
 async function submitCowMilkForm() {
@@ -22630,6 +23063,27 @@ function showUpdateBanner() {
     console.log('[v6.2.1] Wiped stale local birdCensus cache (' + beforeCount +
                 ' rows). Cloud fetch will repopulate. Migration v0 → v' +
                 BIRD_CENSUS_SOURCE_VERSION + '.');
+  }
+
+  // v6.10.19 — One-time wipe of K_PLUCKERS to clear stale Sinonin names that
+  // leaked into Birei/Kibois via the v6.10.15-and-earlier cloud-merge logic
+  // that preserved local-only IDs (which DEFAULT_PLUCKERS' 45 Sinonin names
+  // populated). Cloud fetch then repopulates from each tenant's own
+  // Plucker_Roster sheet. Sinonin (populated sheet) gets its roster back;
+  // Birei/Kibois (empty sheets) get the clean empty state they expect.
+  // PLUCKERS is the module-level variable (not STATE.something) so this
+  // sits as its own block rather than fitting into the generic migrations
+  // loop above. Pattern mirrors BIRD_CENSUS_SOURCE_VERSION (v6.2.1).
+  const PLUCKERS_SOURCE_VERSION = 1;
+  const storedPlVer = await storageGet(K_PLUCKERS_SOURCE_VERSION, 0);
+  if (storedPlVer < PLUCKERS_SOURCE_VERSION) {
+    const beforeCount = (PLUCKERS || []).length;
+    PLUCKERS = [];
+    await storageSet(K_PLUCKERS, PLUCKERS);
+    await storageSet(K_PLUCKERS_SOURCE_VERSION, PLUCKERS_SOURCE_VERSION);
+    console.log('[v6.10.19] Wiped stale local PLUCKERS cache (' + beforeCount +
+                ' rows). Cloud fetch will repopulate from this tenant\'s Plucker_Roster ' +
+                'sheet. Migration v0 → v' + PLUCKERS_SOURCE_VERSION + '.');
   }
   // v6.0 SHIP 5 — Incubation batches
   STATE.incubation = await storageGet(K_INCUBATION, []);
