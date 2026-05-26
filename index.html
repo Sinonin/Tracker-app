@@ -3456,7 +3456,7 @@
            When ac-list is empty AND hatches exist, renderActionCards 
            suppresses the 'All caught up' empty-state placeholder so the 
            widget surfaces immediately. -->
-      <div id="home-urgent-hatch-progress" style="display:none"></div>
+      <div id="home-urgent-hatch-progress" data-product="poultry" style="display:none"></div>
     </div>
 
   </section>
@@ -5847,23 +5847,38 @@
 </div>
 
 <script>
-const BLOCKS = ['Sinonin', 'Cheptabach', 'Bitonin', 'Kipkenda', 'Kipkorom', 'Sangalo'];
+/* v6.10.16 — Tea blocks no longer hardcoded. Each tenant lists their blocks 
+   in Control_Panel under TEA_BLOCKS (comma-separated). Sinonin's Sheet must 
+   carry: TEA_BLOCKS = "Sinonin,Cheptabach,Bitonin,Kipkenda,Kipkorom,Sangalo" 
+   post-deploy. Empty for tenants without tea ops (Kibois until Isaac sets 
+   his blocks; Birei never). Helper reads at call-site so Sheet edits take 
+   effect after next cloud hydration without a code change. */
+const BLOCKS = [];
+function teaBlocks() {
+  const cfgStr = tcfg('TEA_BLOCKS', '');
+  if (!cfgStr || typeof cfgStr !== 'string') return [];
+  return cfgStr.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+}
 
-/* Business units — appear in Allocation dropdown for expenses (and Records
-   block filter) alongside the tea blocks. Each one is a separate revenue or
-   cost centre under the Sinonin Group umbrella. Chelabaal is the
-   retirement-home-and-orchard project near Eldoret International Airport.
-   v6.10.2 — 'Dairy' added so cow-related expenses (feed, veterinary,
-   AI service, hooftrim, dewormer) can be allocated cleanly. Mirrors the
-   pattern already used for 'Dorper sheep'. */
-const BUSINESS_UNITS = ['Kipkenda Poultry', 'Olomotit Coffee', 'Maize', 'Dorper sheep', 'Dairy', 'Chelabaal'];
+/* v6.10.16 — Business units no longer hardcoded. Each tenant lists their 
+   business units in Control_Panel under BUSINESS_UNITS (comma-separated). 
+   Sinonin's Sheet must carry: BUSINESS_UNITS = "Kipkenda Poultry,Olomotit 
+   Coffee,Maize,Dorper sheep,Dairy,Chelabaal" post-deploy. Used in Allocation 
+   + Records-filter dropdowns alongside the tea blocks. */
+const BUSINESS_UNITS = [];
+function businessUnits() {
+  const cfgStr = tcfg('BUSINESS_UNITS', '');
+  if (!cfgStr || typeof cfgStr !== 'string') return [];
+  return cfgStr.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+}
 
-const DEFAULT_FACTORIES = [
-  { name: "Sireet",    priceKg: 25,   transport: 3.90, shares: 5, wageKg: 9.5,  bonusKg: 0.5, greenleaf: 13 },
-  { name: "Sang'alo",  priceKg: 23,   transport: 0,    shares: 0, wageKg: 8,    bonusKg: 0,   greenleaf: 0  },
-  { name: "Kapchorwa", priceKg: 24,   transport: 3,    shares: 0, wageKg: 10,   bonusKg: 0,   greenleaf: 0  },
-  { name: "Chebut",    priceKg: 26,   transport: 5,    shares: 0, wageKg: 7,    bonusKg: 0,   greenleaf: 15 }
-];
+/* v6.10.16 — Factories no longer seeded with Sinonin-specific rate cards. 
+   STATE.factories hydrates from localStorage (existing installs) or starts 
+   empty (fresh installs). Tenants add their own factories via Settings UI. 
+   FACTORY_RATE_HISTORY below still carries Sinonin's historical rates for 
+   net-per-kg calculations on Sinonin's past Actuals — it remains as data, 
+   not config; will move to a Sheet in a future tranche. */
+const DEFAULT_FACTORIES = [];
 
 /* Factory rate history — applied per Actuals row based on its date.
    Each era runs from `from` (inclusive) until the next era begins.
@@ -5910,52 +5925,12 @@ function netPerKg(factory, dateStr) {
   return Math.max(0, r.priceKg - r.transport - r.shares);
 }
 
-const DEFAULT_PLUCKERS = [
-  { id: 4,  name: "Elias Kimaru Kemboi",  bonus: true,  active: true, primaryBlock: "All farms",  notes: "Farm Manager" },
-  { id: 5,  name: "Cheptabach",            bonus: true,  active: true, primaryBlock: "Cheptabach", notes: "" },
-  { id: 6,  name: "Gladys Yego",           bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 7,  name: "Victor Kiprono",        bonus: true,  active: true, primaryBlock: "All farms",  notes: "" },
-  { id: 8,  name: "Faith Chepchirchir",    bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 9,  name: "Hillary Kimutai",       bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 10, name: "Sheila Jesang",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 11, name: "Colleta Jerono",        bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 12, name: "Zacchariah Kipleting",  bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 16, name: "Abram Kipruto",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 17, name: "Stanley Kosgei",        bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 19, name: "Eunice Koech",          bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 25, name: "Winnie Jepkemei",       bonus: false, active: true, primaryBlock: "Sangalo",    notes: "" },
-  { id: 29, name: "Nancy Cherop",          bonus: false, active: true, primaryBlock: "Sangalo",    notes: "" },
-  { id: 30, name: "Caren Jepngetich",      bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 31, name: "Josphat Kipkemboi",     bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 32, name: "Frankline Kirwa",       bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 33, name: "Contractors",           bonus: false, active: true, primaryBlock: "All farms",  notes: "Day-and-disappear" },
-  { id: 34, name: "Meshark Too",           bonus: false, active: true, primaryBlock: "All farms",  notes: "" },
-  { id: 35, name: "Ezron Rudisha",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 36, name: "Geofrey Malakwen",      bonus: false, active: true, primaryBlock: "All farms",  notes: "" },
-  { id: 37, name: "Nahashon Kipchirchir",  bonus: false, active: true, primaryBlock: "All farms",  notes: "" },
-  { id: 38, name: "Lydia Jelagat",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 40, name: "Juliet Jepkemboi",      bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 41, name: "Sharon Cherotich",      bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 42, name: "Mercy Chepleting",      bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 44, name: "Mercy Jepkurui",        bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 45, name: "Winnie Jepkoech",       bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 46, name: "Caren Lagat",           bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 47, name: "Kipkorom",              bonus: true,  active: true, primaryBlock: "Kipkorom",   notes: "" },
-  { id: 48, name: "Sylivia Chelimo",       bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 49, name: "Violah Chepchumba",     bonus: true,  active: true, primaryBlock: "All farms",  notes: "" },
-  { id: 50, name: "Rosepela Cherotich",    bonus: true,  active: true, primaryBlock: "Sangalo",    notes: "" },
-  { id: 51, name: "Boaz Kiplimo",          bonus: true,  active: true, primaryBlock: "Sangalo",    notes: "" },
-  { id: 52, name: "Irine Chepkoech",       bonus: true,  active: true, primaryBlock: "Sangalo",    notes: "" },
-  { id: 53, name: "Faith Jepngetich",      bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 54, name: "Caren Jebitok",         bonus: true,  active: true, primaryBlock: "Sangalo",    notes: "" },
-  { id: 55, name: "Sharon Cheptoo",        bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 56, name: "Collins Kimeli",        bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 57, name: "Violah Chelimo",        bonus: true,  active: true, primaryBlock: "Sangalo",    notes: "" },
-  { id: 58, name: "Eugene Kipkemboi",      bonus: false, active: true, primaryBlock: "Sangalo",    notes: "Work-n-Pay" },
-  { id: 59, name: "Patroba Cheptoo",       bonus: false, active: true, primaryBlock: "Sangalo",    notes: "Work-n-Pay" },
-  { id: 60, name: "Vivian Chumba",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 61, name: "Josphat Kibet",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" }
-];
+/* v6.10.16 — Pluckers no longer seeded with Sinonin's 45-name roster. 
+   STATE.pluckerRoster (and PLUCKERS array) hydrate from the tenant's 
+   Plucker_Roster sheet via cloudFetch + readRoster Apps Script function. 
+   Fresh installs start empty; tenants add their pluckers via the Settings 
+   tab Plucker roster UI which writes back to the Sheet. */
+const DEFAULT_PLUCKERS = [];
 
 let PLUCKERS = JSON.parse(JSON.stringify(DEFAULT_PLUCKERS));
 
@@ -10159,8 +10134,8 @@ function hideFirstInstallSplash() {
 }
 
 function populateDropdowns() {
-  const blockOpts = BLOCKS.map(b => `<option value="${b}">${b}</option>`).join('');
-  const businessUnitOpts = BUSINESS_UNITS.map(b => `<option value="${b}">${b}</option>`).join('');
+  const blockOpts = teaBlocks().map(b => `<option value="${b}">${b}</option>`).join('');
+  const businessUnitOpts = businessUnits().map(b => `<option value="${b}">${b}</option>`).join('');
   // Tea-only dropdowns: only tea blocks (Greenleaf entry, Actuals)
   document.getElementById('q-block').innerHTML = '<option value="">— Block —</option>' + blockOpts;
   document.getElementById('b-block').innerHTML = '<option value="">— Block —</option>' + blockOpts;
@@ -10821,8 +10796,8 @@ function xbAddRow() {
     catOpts += `<optgroup label="${tier}">${names.map(n => `<option value="${n}">${n}</option>`).join('')}</optgroup>`;
   });
   // Build allocation options: Whole farm + grouped tea blocks + grouped business units
-  const teaBlockOpts = BLOCKS.map(b => `<option value="${b}">${b}</option>`).join('');
-  const businessUnitOpts = BUSINESS_UNITS.map(b => `<option value="${b}">${b}</option>`).join('');
+  const teaBlockOpts = teaBlocks().map(b => `<option value="${b}">${b}</option>`).join('');
+  const businessUnitOpts = businessUnits().map(b => `<option value="${b}">${b}</option>`).join('');
   const blockOpts =
     `<option value="Whole farm" selected>Whole farm</option>` +
     `<optgroup label="Tea blocks">${teaBlockOpts}</optgroup>` +
@@ -16278,7 +16253,7 @@ function renderHome() {
   // Tea expenses MTD: any expense whose Allocation is a tea block, OR whose Tier is "Tea farm operations" / "Tea farm payroll"
   const teaTiers = ['Tea farm operations', 'Tea farm payroll'];
   const teaExpensesMonth = expensesMonth
-    .filter(x => BLOCKS.includes(x.block) || teaTiers.includes(x.tier))
+    .filter(x => teaBlocks().includes(x.block) || teaTiers.includes(x.tier))
     .reduce((s, x) => s + (x.amount || 0), 0);
 
   // v6.9.15 — Top card displays TODAY's kg (read from actuals), not MTD.
@@ -16905,13 +16880,13 @@ function renderHome() {
 
   // Zone 3 — Tea block bars (unchanged from prior behaviour)
   const byBlock = {};
-  BLOCKS.forEach(b => byBlock[b] = 0);
+  teaBlocks().forEach(b => byBlock[b] = 0);
   let consolidatedKg = 0;
   actualsMonth.forEach(a => {
     const b = a.block || 'All blocks';
     if (b === 'All blocks' || b === 'All blocks (consolidated)') {
       consolidatedKg += Number(a.kg) || 0;
-    } else if (BLOCKS.includes(b)) {
+    } else if (teaBlocks().includes(b)) {
       byBlock[b] += Number(a.kg) || 0;
     }
   });
@@ -17571,7 +17546,7 @@ function renderInsights() {
   // allocated by block, margin = cash − expenses. Pluckers excluded from this
   // section; they live in Plucker rankings below.
   const byBlock = {};
-  BLOCKS.forEach(b => byBlock[b] = { kg: 0, cashNow: 0, expenses: 0 });
+  teaBlocks().forEach(b => byBlock[b] = { kg: 0, cashNow: 0, expenses: 0 });
   byBlock['Consolidated'] = { kg: 0, cashNow: 0, expenses: 0 };
 
   actuals.forEach(a => {
