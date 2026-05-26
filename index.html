@@ -23,6 +23,7 @@
     --brass: #B8935A;
     --brass-light: #D4B582;
     --brass-dim: #8C6E3F;
+    --brass-dark: #6E5630;
     --ink: #1A1A1A;
     --slate: #4A4A4A;
     --slate-light: #8A8580;
@@ -3112,7 +3113,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.15</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.16</span>
 </header>
 
 <main>
@@ -3305,7 +3306,7 @@
       </div>
 
       <!-- ── 4. SIREET EQUITY (kept from v6.3.12, headline=lifetime) ── -->
-      <div class="hero-metric-card hero-metric-card-equity hmc-sireet" data-product="tea" data-card-id="sireet">
+      <div class="hero-metric-card hero-metric-card-equity hmc-sireet" data-product="sireet equity" data-card-id="sireet">
         <div class="hmc-head">
           <span class="hmc-lbl">Sireet equity</span>
           <span class="hmc-period">5 Ksh/kg · cumulative</span>
@@ -3362,6 +3363,62 @@
       <div class="hero-metric-card hmc-sugarcane" data-product="sugarcane" data-card-id="sugarcane" style="display:none">
         <div class="hmc-head">
           <span class="hmc-lbl">Sugar Cane performance</span>
+          <span class="hmc-period">enterprise placeholder</span>
+        </div>
+        <div class="hmc-val">—</div>
+        <div class="hmc-sub-head">data path coming soon</div>
+        <div class="hmc-horizons">
+          <div class="hmc-horizon"><div class="hmc-h-lbl">Today</div><div class="hmc-h-val">—</div></div>
+          <div class="hmc-horizon"><div class="hmc-h-lbl">MTD</div><div class="hmc-h-val">—</div></div>
+          <div class="hmc-horizon"><div class="hmc-h-lbl">YTD</div><div class="hmc-h-val">—</div></div>
+          <div class="hmc-horizon"><div class="hmc-h-lbl">Life</div><div class="hmc-h-val">—</div></div>
+        </div>
+      </div>
+
+      <!-- ── 7. GOATS PLACEHOLDER ── (v6.10.16 — opt-in via DASHBOARD_ORDER) 
+           Built for Kibois Breeders (Isaac Kipchoge Kosgei) who breeds Galla 
+           goats alongside Dorper sheep. Hidden by default so Sinonin/Birei 
+           (no goats yet) see no change. Tenants enable by including "goats" 
+           in DASHBOARD_ORDER. Card shape mirrors coffee/sugarcane; horizons 
+           and headline will be wired when the goats data path is live. -->
+      <div class="hero-metric-card hmc-goats" data-product="goats" data-card-id="goats" style="display:none">
+        <div class="hmc-head">
+          <span class="hmc-lbl">Goats performance</span>
+          <span class="hmc-period">enterprise placeholder</span>
+        </div>
+        <div class="hmc-val">—</div>
+        <div class="hmc-sub-head">data path coming soon</div>
+        <div class="hmc-horizons">
+          <div class="hmc-horizon"><div class="hmc-h-lbl">Today</div><div class="hmc-h-val">—</div></div>
+          <div class="hmc-horizon"><div class="hmc-h-lbl">MTD</div><div class="hmc-h-val">—</div></div>
+          <div class="hmc-horizon"><div class="hmc-h-lbl">YTD</div><div class="hmc-h-val">—</div></div>
+          <div class="hmc-horizon"><div class="hmc-h-lbl">Life</div><div class="hmc-h-val">—</div></div>
+        </div>
+      </div>
+
+      <!-- ── 8. POTATOES PLACEHOLDER ── (v6.10.16 — opt-in via DASHBOARD_ORDER) 
+           Built for Kibois Breeders. North Rift cash crop. -->
+      <div class="hero-metric-card hmc-potatoes" data-product="potatoes" data-card-id="potatoes" style="display:none">
+        <div class="hmc-head">
+          <span class="hmc-lbl">Potatoes performance</span>
+          <span class="hmc-period">enterprise placeholder</span>
+        </div>
+        <div class="hmc-val">—</div>
+        <div class="hmc-sub-head">data path coming soon</div>
+        <div class="hmc-horizons">
+          <div class="hmc-horizon"><div class="hmc-h-lbl">Today</div><div class="hmc-h-val">—</div></div>
+          <div class="hmc-horizon"><div class="hmc-h-lbl">MTD</div><div class="hmc-h-val">—</div></div>
+          <div class="hmc-horizon"><div class="hmc-h-lbl">YTD</div><div class="hmc-h-val">—</div></div>
+          <div class="hmc-horizon"><div class="hmc-h-lbl">Life</div><div class="hmc-h-val">—</div></div>
+        </div>
+      </div>
+
+      <!-- ── 9. TRAINING PLACEHOLDER ── (v6.10.16 — opt-in via DASHBOARD_ORDER) 
+           Built for Kibois Breeders' farmer-training programme. Also serves 
+           ATC Kaimosi's training enterprise when that tenant comes online. -->
+      <div class="hero-metric-card hmc-training" data-product="training" data-card-id="training" style="display:none">
+        <div class="hmc-head">
+          <span class="hmc-lbl">Training performance</span>
           <span class="hmc-period">enterprise placeholder</span>
         </div>
         <div class="hmc-val">—</div>
@@ -4471,8 +4528,8 @@
 
         <!-- ACTION GRID — operator-first, top placement -->
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:1.2rem;">
-          <button type="button" onclick="openSheepEventForm('lambed', null)" class="export-btn" style="background:var(--forest); color:var(--ivory); border-color:var(--forest); padding:0.7rem 0.5rem; font-size:0.92rem">🐑 + Log lambing</button>
-          <button type="button" onclick="openSheepEventPicker(null)" class="export-btn" style="background:var(--brass-dark); color:var(--ivory); border-color:var(--brass-dark); padding:0.7rem 0.5rem; font-size:0.92rem">📝 + Log event</button>
+          <button type="button" onclick="openSheepEventForm('lambed', null)" class="export-btn" style="background:var(--forest); color:var(--ivory); border-color:var(--forest); padding:0.7rem 0.5rem; font-size:0.78rem">🐑 + Log lambing</button>
+          <button type="button" onclick="openSheepEventPicker(null)" class="export-btn" style="background:var(--brass-dark); color:var(--ivory); border-color:var(--brass-dark); padding:0.7rem 0.5rem; font-size:0.78rem">📝 + Log event</button>
           <button type="button" onclick="openSheepForm('add', null)" class="export-btn" style="background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark); padding:0.55rem 0.5rem;">+ Add sheep</button>
           <button type="button" onclick="setSheepView('list')" class="export-btn" style="background:transparent; color:var(--brass-dark); border:1px solid var(--brass); padding:0.55rem 0.5rem;">View registry</button>
         </div>
@@ -4938,8 +4995,8 @@
              serves the operator's action. They should be laid out 
              differently because their primary users are different. -->
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:1.2rem;">
-          <button type="button" onclick="setCowView('milk'); openCowMilkForm(null, null)" class="export-btn" style="background:var(--forest); color:var(--ivory); border-color:var(--forest); padding:0.7rem 0.5rem; font-size:0.92rem">🥛 + Log milking</button>
-          <button type="button" onclick="openCowEventPicker(null)" class="export-btn" style="background:var(--brass-dark); color:var(--ivory); border-color:var(--brass-dark); padding:0.7rem 0.5rem; font-size:0.92rem">📝 + Log event</button>
+          <button type="button" onclick="setCowView('milk'); openCowMilkForm(null, null)" class="export-btn" style="background:var(--forest); color:var(--ivory); border-color:var(--forest); padding:0.7rem 0.5rem; font-size:0.78rem">🥛 + Log milking</button>
+          <button type="button" onclick="openCowEventPicker(null)" class="export-btn" style="background:var(--brass-dark); color:var(--ivory); border-color:var(--brass-dark); padding:0.7rem 0.5rem; font-size:0.78rem">📝 + Log event</button>
           <button type="button" onclick="setCowView('form'); openCowForm('add')" class="export-btn" style="background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark); padding:0.55rem 0.5rem;">+ Add cow</button>
           <button type="button" onclick="setCowView('list')" class="export-btn" style="background:transparent; color:var(--brass-dark); border:1px solid var(--brass); padding:0.55rem 0.5rem;">View registry</button>
         </div>
@@ -5634,7 +5691,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.15</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.16</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5666,7 +5723,7 @@
       <svg viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19.5 2c.5 5 .26 7.55-.5 10.5C18.34 18 14 22 11 20Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/></svg>
       <span>Tea</span>
     </button>
-    <button data-view="poultry" aria-label="Poultry">
+    <button data-view="poultry" data-product="poultry" aria-label="Poultry">
       <!-- Feather icon -->
       <svg viewBox="0 0 24 24"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><path d="M16 8L2 22"/><path d="M17.5 15H9"/></svg>
       <span>Poultry</span>
@@ -6057,11 +6114,13 @@ function dorperLabel() { return tcfg('DORPER_LABEL', 'Dorper'); }
    Comma-separated list of card IDs. Cards matching the order list are 
    reordered + shown (overriding default display:none on placeholder cards). 
    Cards NOT in the list keep their default position + visibility.
-   Available card IDs: farm, tea, poultry, dairy, dorper, sireet, coffee, sugarcane.
+   Available card IDs (v6.10.16): farm, tea, poultry, dairy, dorper, sireet,
+   coffee, sugarcane, goats, potatoes, training.
    Default empty → no reordering, source-order preserved.
    Examples:
      Sinonin (tea-led, default order):  (empty, no change)
      Birei (dairy-led, 6-enterprise):   farm,dairy,dorper,poultry,coffee,sugarcane
+     Kibois (breeder-led, 7-enterprise): farm,dorper,dairy,goats,tea,potatoes,training
    Sealed § 6.x (25 May 2026 Verden, Cheison): "Dairy needs to come second
    to Farm Performance, followed by Dorper, Poultry, Coffee and lastly 
    sugarcane on the Home tab hero cards."  */
@@ -6547,7 +6606,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.15';
+const APP_VERSION = 'v6.10.16';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
