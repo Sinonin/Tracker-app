@@ -3113,7 +3113,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.16</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.17</span>
 </header>
 
 <main>
@@ -5691,7 +5691,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.16</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.17</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5872,13 +5872,24 @@ function businessUnits() {
   return cfgStr.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
 }
 
-/* v6.10.16 — Factories no longer seeded with Sinonin-specific rate cards. 
-   STATE.factories hydrates from localStorage (existing installs) or starts 
-   empty (fresh installs). Tenants add their own factories via Settings UI. 
-   FACTORY_RATE_HISTORY below still carries Sinonin's historical rates for 
-   net-per-kg calculations on Sinonin's past Actuals — it remains as data, 
-   not config; will move to a Sheet in a future tranche. */
-const DEFAULT_FACTORIES = [];
+/* v6.10.17 — DEFAULT_FACTORIES RESTORED. v6.10.16 emptied this assuming 
+   STATE.factories would rehydrate from localStorage on existing installs. 
+   But K_FACTORIES is only persisted when an operator EDITS factories in 
+   Settings UI — Sinonin never did, so the localStorage rehydrate returned 
+   nothing and STATE.factories went empty in production. Sinonin lost all 
+   four factories tonight (Sireet, Sang'alo, Kapchorwa, Chebut). Restoring 
+   the seed is the immediate fix. The longer-term migration — these belong 
+   in a Factory_Rates sheet per tenant — is a separate, careful tranche 
+   that needs verification before code defaults change again.
+   Sealed § (26 May 2026, Verden, Cheison): "Removing defaults requires 
+   verified alternate source. Test by clearing localStorage and reloading; 
+   if the data disappears, the default IS the source." */
+const DEFAULT_FACTORIES = [
+  { name: "Sireet",    priceKg: 25,   transport: 3.90, shares: 5, wageKg: 9.5,  bonusKg: 0.5, greenleaf: 13 },
+  { name: "Sang'alo",  priceKg: 23,   transport: 0,    shares: 0, wageKg: 8,    bonusKg: 0,   greenleaf: 0  },
+  { name: "Kapchorwa", priceKg: 24,   transport: 3,    shares: 0, wageKg: 10,   bonusKg: 0,   greenleaf: 0  },
+  { name: "Chebut",    priceKg: 26,   transport: 5,    shares: 0, wageKg: 7,    bonusKg: 0,   greenleaf: 15 }
+];
 
 /* Factory rate history — applied per Actuals row based on its date.
    Each era runs from `from` (inclusive) until the next era begins.
@@ -6581,7 +6592,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.16';
+const APP_VERSION = 'v6.10.17';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
