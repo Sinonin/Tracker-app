@@ -3112,7 +3112,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.14</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.15</span>
 </header>
 
 <main>
@@ -3636,10 +3636,16 @@
            Formula: collected − sold − incubated, all within EGG_STOCK_HORIZON_DAYS.
            All grades count (Cheison: "broken/small/abnormal/normal all in 
            — they're sellable as Grade B/C goods").
-           Horizon = 10 days. Pragmatic operational floor: eggs older than 
-           that have been moved out via tracked OR untracked channels (sold 
-           informally, consumed, gifted, discarded). Counting them as "in 
-           stock" would falsely inflate the figure.
+           Horizon = 15 days (v6.10.15, was 10). Pragmatic operational floor: 
+           eggs older than that have been moved out via tracked OR untracked
+           channels (sold informally, consumed, gifted, discarded). 
+           Hatching window: < 10 days. Catering window: 10–15 days. After
+           15 days: stale, no longer counted. Counting them as "in stock"
+           would falsely inflate the figure.
+           Sealed § 7.x (26 May 2026, Cheison Verden): "Elias has more 
+           eggs than 21 crates, counted because the settings allow ten days 
+           back. They strive to sell off what's older than that but some 
+           left over eggs are good for catering but not hatching." 
            Sealed § 6.x: inventory windows match shelf-life reality, not 
            accounting lifetime. -->
       <div id="poultry-eggs-stock-summary" style="margin-top:0.7rem;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--slate);letter-spacing:0.04em">
@@ -5628,7 +5634,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.14</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.15</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6541,7 +6547,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.14';
+const APP_VERSION = 'v6.10.15';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -12047,11 +12053,16 @@ function populatePoultryCohortDropdown() {
 
   // v6.10.8 — Egg sale path: source = Egg_Collection batches, not cohorts.
   if (product === 'Eggs') {
-    // v6.10.10 — Limit to last 10 days (not 30 batches). Eggs older than
-    // ~10 days rarely sold (freshness window). Sealed Cheison 25 May 2026:
-    // "Batches loading back to 24.04.2026 which doesn't make sense since 
-    // we said to count back 10 days!"
-    const cutoff = new Date(Date.now() - 10 * 86400000).toISOString().slice(0, 10);
+    // v6.10.15 — Window opened from 10 → 15 days. Sealed Cheison 26 May 2026:
+    // "Elias has more eggs than 21 crates, counted because the settings allow 
+    // ten days back. They strive to sell off what's older than that but some 
+    // left over eggs are good for catering but not hatching."
+    // Hatching-grade: < 7-10 days. Catering-grade: 10-15 days. After 15 days
+    // truly stale — still appearing in dropdown would be wrong attribution.
+    // v6.10.10 (sealed): "Batches loading back to 24.04.2026 which doesn't 
+    // make sense since we said to count back 10 days!" — 15 days is the 
+    // updated operational floor, not a regression.
+    const cutoff = new Date(Date.now() - 15 * 86400000).toISOString().slice(0, 10);
     const batches = (STATE.eggCollection || [])
       .filter(e => e && e.egg_batch_id && e.date && e.date >= cutoff)
       .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));  // newest first
@@ -12065,7 +12076,7 @@ function populatePoultryCohortDropdown() {
         return '<option value="' + b.egg_batch_id + '">' + b.egg_batch_id + ' · ' + b.date + totalLabel + coll + '</option>';
       }).join('');
     } else {
-      html += '<option value="" disabled>(no egg batches in last 10 days — log Egg Collection)</option>';
+      html += '<option value="" disabled>(no egg batches in last 15 days — log Egg Collection)</option>';
     }
     cohortEl.innerHTML = html;
     return;
@@ -16609,14 +16620,17 @@ function renderHome() {
 
   // v6.9.21 — Available eggs summary (eggs in stock).
   // Formula: collected − sold − incubated, all within the same horizon.
-  // Horizon = 10 days. Sealed Cheison 22 May 2026 Verden: eggs have shelf
-  // life and informal movement; anything older than 10 days has been moved
-  // out via tracked OR untracked channels (sold, consumed at home, gifted,
-  // discarded). The symmetric window keeps the math honest: we only count
-  // collections, sales, AND incubations that fall inside the window.
+  // Horizon = 15 days (v6.10.15, was 10). Sealed Cheison 22 May 2026 Verden: 
+  // eggs have shelf life and informal movement; anything older than the
+  // window has been moved out via tracked OR untracked channels (sold, 
+  // consumed at home, gifted, discarded). v6.10.15 (26 May 2026): window 
+  // opened from 10 → 15 days to include catering-grade eggs (10-15 days old, 
+  // good for catering but not hatching) — Elias was seeing 21 crates when
+  // he actually had more. The symmetric window keeps the math honest: we 
+  // only count collections, sales, AND incubations that fall inside the window.
   // All grades count (broken/small/abnormal/normal) — Cheison: "they're 
   // sellable as Grade B/C goods." Crate size = 30 eggs (Kenyan standard).
-  const EGG_STOCK_HORIZON_DAYS = 10;
+  const EGG_STOCK_HORIZON_DAYS = 15;
   const horizonCutoffDate = new Date();
   horizonCutoffDate.setDate(horizonCutoffDate.getDate() - EGG_STOCK_HORIZON_DAYS);
   const horizonCutoffStr = horizonCutoffDate.toISOString().slice(0, 10);

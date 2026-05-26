@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.10.15 — Egg horizon 10 → 15 days (catering window) — Elias inventory accuracy (26 May 2026 Verden)
 // v6.10.14 — DASHBOARD_ORDER per-tenant card sequencing · Coffee + Sugar Cane placeholders · strapline wrap (25 May 2026 Verden, Birei Dairy-led)
 // v6.10.13 — HIDDEN_PRODUCTS · DAIRY_LABEL · DORPER_LABEL · splash uses cached FARM_NAME (25 May 2026 Verden, Birei tenant-isation)
 // v6.10.12 — TENANT_APPS_SCRIPT_URL consolidation · STRAPLINE/ABOUT_TEXT/BRAND_MOTTO via Control_Panel (25 May 2026 Verden, Birei brand)
@@ -61,7 +62,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v221';
+const CACHE = 'sinonin-greenleaf-v222';
 
 const SHELL_FILES = [
   './',
