@@ -3181,7 +3181,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.23</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.24</span>
 </header>
 
 <main>
@@ -5836,7 +5836,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.23</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.24</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6273,6 +6273,54 @@ function dorperLabel() { return tcfg('DORPER_LABEL', 'Dorper'); }
 // prefer "Birei Poultry". Default keeps Sinonin's existing language. Applied
 // at UI-render time to elements tagged data-label="poultry".
 function poultryLabel() { return tcfg('POULTRY_LABEL', 'Kipkenda Poultry'); }
+
+// v6.10.24 — Tea cess per kg, sourced from Control_Panel TEA_CESS_KG with
+// fallback to STATE.settings.teaCessPerKg (operator-set via legacy Settings
+// UI) then DEFAULT_SETTINGS constant. Sheet-driven value wins — that's the
+// lean-architecture commitment. All factories deduct this cess; it's a
+// statutory levy applied uniformly. Cheison confirmed flat 0.22 KSh/kg
+// nationally so single Control_Panel value (not per-factory column) is right.
+function teaCessPerKg() {
+  const cp = tcfg('TEA_CESS_KG', null);
+  if (cp !== null && cp !== '') {
+    const n = Number(cp);
+    if (!isNaN(n) && n >= 0) return n;
+  }
+  if (STATE.settings && typeof STATE.settings.teaCessPerKg === 'number') {
+    return STATE.settings.teaCessPerKg;
+  }
+  return 0.22;
+}
+
+// v6.10.24 — Milk channel dropdown source. Prefers Sheet-driven 
+// STATE.milkFactories (Birei + Kibois populate); falls back to hardcoded 
+// MILK_CHANNELS when nothing's hydrated yet (Sinonin / first install / 
+// pre-cloud-sync). Filters to active rows only. Returns { value, label }
+// shape matching the existing dropdown population code.
+function milkChannelList() {
+  if (Array.isArray(STATE.milkFactories) && STATE.milkFactories.length > 0) {
+    return STATE.milkFactories
+      .filter(function (f) { return f.active !== false; })
+      .map(function (f) { return { value: f.name, label: f.name }; });
+  }
+  return MILK_CHANNELS;
+}
+
+// v6.10.24 — Case-insensitive substring match for milk channel type. Replaces
+// the strict equality checks (val === 'Gifted', val === 'Farm-Gate', 
+// val === 'Processed') which only matched the hardcoded MILK_CHANNELS exactly.
+// Now matches sheet-driven names too: "Gift / Donation" → 'gift', 
+// "Farm Gate" → 'farm-gate', "In-house Process" → 'processed'.
+// Returns: 'gift' | 'farm-gate' | 'processed' | null (= no special UI).
+// "Wasted" and commercial processors (Brookside, Kabiyet etc.) return null,
+// hiding both recipient and buyer fields — correct for those channels.
+function milkChannelType(val) {
+  const lower = String(val || '').toLowerCase();
+  if (lower.includes('gift') || lower.includes('donat')) return 'gift';
+  if (lower.includes('farm') && lower.includes('gate')) return 'farm-gate';
+  if (lower.includes('process')) return 'processed';
+  return null;
+}
 
 /* v6.10.14 — DASHBOARD_ORDER: explicit ordering of hero cards on Home tab.
    Comma-separated list of card IDs. Cards matching the order list are 
@@ -6818,7 +6866,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.23';
+const APP_VERSION = 'v6.10.24';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -6896,7 +6944,7 @@ function computeEntry(e) {
   const qty = Number(e.qty) || 0;
   const gross     = qty * factory.priceKg;
   const labour    = qty * factory.wageKg;
-  const cess      = qty * STATE.settings.teaCessPerKg;
+  const cess      = qty * teaCessPerKg();
   const transport = STATE.settings.transportActive ? qty * factory.transport : 0;
   const shares    = qty * factory.shares;
   const bonus     = (bonusEligible && factory.bonusKg > 0) ? qty * factory.bonusKg : 0;
@@ -10087,8 +10135,18 @@ async function applyCloudResponse(data) {
      be removed in v6.10.24's proper refactor. */
   if (Array.isArray(data.teaFactories)) {
     STATE.factories = data.teaFactories.map(function (f) {
+      const nameTrim = String(f.name || '').trim();
+      // v6.10.24 — Sireet's 5 KSh/kg equity stake isn't in the Tea_Factories
+      // sheet schema (intentionally; only Sireet has it). Default to 5 for
+      // Sireet, 0 for everyone else, unless the sheet someday ships a 
+      // SharesKg column with an explicit value. Keeps the Sireet equity 
+      // hero card working without requiring a Control_Panel key for now.
+      // Architecturally this would move to Control_Panel SIREET_EQUITY_KG=5
+      // in a future tranche.
+      const isSireet = nameTrim.toLowerCase() === 'sireet';
+      const sharesDefault = isSireet ? 5 : 0;
       return {
-        name:           String(f.name || '').trim(),
+        name:           nameTrim,
         priceKg:        Number(f.priceKg) || 0,
         transportKg:    Number(f.transportKg) || 0,
         xmasBonusKg:    Number(f.xmasBonusKg) || 0,
@@ -10101,7 +10159,7 @@ async function applyCloudResponse(data) {
         transport:      Number(f.transportKg) || 0,
         wageKg:         Number(f.pluckerRateKg) || 0,
         bonusKg:        Number(f.pluckerBonusKg) || 0,
-        shares:         Number(f.shares) || 0,    // Sireet equity, preserved
+        shares:         (f.shares !== undefined && f.shares !== '') ? Number(f.shares) : sharesDefault,
         greenleaf:      Number(f.greenleaf) || 0  // legacy
       };
     });
@@ -21457,29 +21515,41 @@ function openCowMilkForm(presetTagId, presetSession) {
   }
   if (presetTagId) tagSel.value = presetTagId;
   
-  // Populate channel dropdown
+  // Populate channel dropdown — v6.10.24: always rebuild from milkChannelList()
+  // so STATE.milkFactories changes (cloud sync arriving mid-session) take 
+  // effect immediately on next form open.
   const chanSel = document.getElementById('cm-channel');
-  if (chanSel.options.length <= 1) {
-    MILK_CHANNELS.forEach(function (ch) {
-      const opt = document.createElement('option');
-      opt.value = ch.value;
-      opt.textContent = ch.label;
-      chanSel.appendChild(opt);
-    });
+  const currentChanVal = chanSel.value;
+  chanSel.innerHTML = '<option value="">— pick channel —</option>';
+  milkChannelList().forEach(function (ch) {
+    const opt = document.createElement('option');
+    opt.value = ch.value;
+    opt.textContent = ch.label;
+    chanSel.appendChild(opt);
+  });
+  // Preserve previous selection if still in the list
+  if (currentChanVal && Array.from(chanSel.options).some(function (o) { return o.value === currentChanVal; })) {
+    chanSel.value = currentChanVal;
   }
   chanSel.onchange = function () {
     const val = chanSel.value;
     const recipField = document.getElementById('cm-recipient-field');
     const buyerField = document.getElementById('cm-buyer-field');
     const buyerLabel = document.getElementById('cm-buyer-label');
-    if (val === 'Gifted') {
+    // v6.10.24 — milkChannelType() returns case-insensitive substring-matched
+    // type, working with both hardcoded MILK_CHANNELS values ('Gifted', 
+    // 'Farm-Gate', 'Processed') and sheet-driven names ('Gift / Donation', 
+    // 'Farm Gate', 'In-house Process'). "Wasted" + commercial processors 
+    // fall through to null → both fields hidden, which is correct.
+    const type = milkChannelType(val);
+    if (type === 'gift') {
       recipField.style.display = '';
       buyerField.style.display = 'none';
-    } else if (val === 'Farm-Gate') {
+    } else if (type === 'farm-gate') {
       recipField.style.display = 'none';
       buyerField.style.display = '';
       if (buyerLabel) buyerLabel.innerHTML = 'Buyer <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(walk-in at farm gate)</span>';
-    } else if (val === 'Processed') {
+    } else if (type === 'processed') {
       recipField.style.display = 'none';
       buyerField.style.display = '';
       if (buyerLabel) buyerLabel.innerHTML = 'Product <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(e.g. yoghurt, mursik, ghee)</span>';
@@ -21605,29 +21675,31 @@ function _cmInitBatchMode() {
   document.getElementById('cmb-recipient-other').value = '';
   document.getElementById('cmb-buyer').value = '';
   
-  // Populate channel dropdown (mirrors cm-channel — same MILK_CHANNELS list)
+  // Populate channel dropdown — v6.10.24: rebuild from milkChannelList()
+  // every time so STATE.milkFactories cloud changes propagate.
   const chanSel = document.getElementById('cmb-channel');
-  if (chanSel.options.length <= 1) {
-    MILK_CHANNELS.forEach(function (ch) {
-      const opt = document.createElement('option');
-      opt.value = ch.value;
-      opt.textContent = ch.label;
-      chanSel.appendChild(opt);
-    });
-  }
+  chanSel.innerHTML = '<option value="">— pick channel —</option>';
+  milkChannelList().forEach(function (ch) {
+    const opt = document.createElement('option');
+    opt.value = ch.value;
+    opt.textContent = ch.label;
+    chanSel.appendChild(opt);
+  });
   chanSel.onchange = function () {
     const val = chanSel.value;
     const recipField = document.getElementById('cmb-recipient-field');
     const buyerField = document.getElementById('cmb-buyer-field');
     const buyerLabel = document.getElementById('cmb-buyer-label');
-    if (val === 'Gifted') {
+    // v6.10.24 — case-insensitive type match (see milkChannelType helper)
+    const type = milkChannelType(val);
+    if (type === 'gift') {
       recipField.style.display = '';
       buyerField.style.display = 'none';
-    } else if (val === 'Farm-Gate') {
+    } else if (type === 'farm-gate') {
       recipField.style.display = 'none';
       buyerField.style.display = '';
       if (buyerLabel) buyerLabel.innerHTML = 'Buyer <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(applies to all rows)</span>';
-    } else if (val === 'Processed') {
+    } else if (type === 'processed') {
       recipField.style.display = 'none';
       buyerField.style.display = '';
       if (buyerLabel) buyerLabel.innerHTML = 'Product <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(e.g. yoghurt, mursik, ghee)</span>';
@@ -21756,9 +21828,12 @@ async function submitCowMilkBatch() {
   if (!date) { _cmShowFeedback('Date is required', 'error'); return; }
   if (!channel) { _cmShowFeedback('Pick a channel', 'error'); return; }
   
-  // Resolve recipient/buyer (applies to whole batch)
+  // Resolve recipient/buyer (applies to whole batch). v6.10.24: 
+  // milkChannelType matches both legacy 'Gifted'/'Farm-Gate'/'Processed'
+  // and sheet-driven 'Gift / Donation'/'Farm Gate'/'In-house Process'.
   let recipientOrBuyer = '';
-  if (channel === 'Gifted') {
+  const chanType = milkChannelType(channel);
+  if (chanType === 'gift') {
     const recipSel = document.getElementById('cmb-recipient').value;
     if (!recipSel) { _cmShowFeedback('Pick a gift recipient', 'error'); return; }
     if (recipSel === 'Other') {
@@ -21768,7 +21843,7 @@ async function submitCowMilkBatch() {
     } else {
       recipientOrBuyer = recipSel;
     }
-  } else if (channel === 'Farm-Gate' || channel === 'Processed') {
+  } else if (chanType === 'farm-gate' || chanType === 'processed') {
     recipientOrBuyer = (document.getElementById('cmb-buyer').value || '').trim();
   }
   
@@ -21853,9 +21928,12 @@ async function submitCowMilkForm() {
   }
   if (!channel) { _cmShowFeedback('Pick a channel', 'error'); return; }
   
-  // Resolve recipient / buyer based on channel
+  // Resolve recipient / buyer based on channel. v6.10.24: milkChannelType
+  // handles both hardcoded ('Gifted'/'Farm-Gate'/'Processed') and sheet-driven
+  // ('Gift / Donation'/'Farm Gate'/'In-house Process') naming.
   let recipientOrBuyer = '';
-  if (channel === 'Gifted') {
+  const chanType = milkChannelType(channel);
+  if (chanType === 'gift') {
     const recipSel = document.getElementById('cm-recipient').value;
     if (!recipSel) { _cmShowFeedback('Pick a gift recipient', 'error'); return; }
     if (recipSel === 'Other') {
@@ -21865,7 +21943,7 @@ async function submitCowMilkForm() {
     } else {
       recipientOrBuyer = recipSel;
     }
-  } else if (channel === 'Farm-Gate' || channel === 'Processed') {
+  } else if (chanType === 'farm-gate' || chanType === 'processed') {
     recipientOrBuyer = (document.getElementById('cm-buyer').value || '').trim();
     // Optional for these channels — empty is fine
   }
