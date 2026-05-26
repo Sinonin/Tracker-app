@@ -3141,33 +3141,14 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode (unlock requires admin)">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <!-- v6.10.5 — Admin button RELOCATED from bottom-nav to header. Sits 
-       left of refresh wheel. Same id (#nav-settings) so all existing JS 
-       (state pulls, lock-state attribute updates, click routing to 
-       panel-settings) keeps working unchanged. Multi-state padlock SVG 
-       preserved. Hidden by CSS when data-lock-state="locked" (operator 
-       default; revealed via long-press escape hatch on version label). 
-       Sealed § 6.x candidate: surfaces used by the principal but not 
-       daily operators belong in the header — bottom nav real estate is 
-       for thumb-frequent ground-ops controls. -->
-  <button data-view="admin" id="nav-settings" data-lock-state="locked" aria-label="Admin" title="Admin" type="button">
-    <svg class="nav-lock-svg" viewBox="0 0 24 24" aria-hidden="true">
-      <g class="nav-lock-icon-locked">
-        <path d="M7 11V7a5 5 0 0 1 10 0v4" fill="none"/>
-        <rect x="5" y="11" width="14" height="10" rx="2"/>
-        <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
-      </g>
-      <g class="nav-lock-icon-admin">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>
-      </g>
-      <g class="nav-lock-icon-open">
-        <path d="M7 11V7a5 5 0 0 1 9.5-2" fill="none"/>
-        <rect x="5" y="11" width="14" height="10" rx="2"/>
-        <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
-      </g>
-    </svg>
-  </button>
+  <!-- v6.10.20 — Admin button RETURNED to bottom-nav after Cheison observed
+       that tenants with sparse navigation (Birei, Kibois — many products
+       hidden) looked "almost naked" without it. The v6.10.5 header placement
+       was reverted; admin button now lives at the right edge of the bottom 
+       nav for all tenants. Sinonin's bottom nav becomes denser but Cheison
+       confirmed "crowded but OK". Sealed § (Cheison 26 May 2026 Verden):
+       a sparse navigation tray feels broken; admin in the tray reads as a 
+       legitimate function rather than a hidden surface. -->
   <button id="header-refresh-btn" class="header-refresh" type="button" aria-label="Refresh data" title="Refresh from cloud">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
       <polyline points="23 4 23 10 17 10"></polyline>
@@ -3181,7 +3162,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.19</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.20</span>
 </header>
 
 <main>
@@ -3646,7 +3627,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>Kipkenda Poultry</h3><span class="meta" id="poultry-section-meta">this month</span></div>
+      <div class="section-head"><h3 data-label="poultry">Kipkenda Poultry</h3><span class="meta" id="poultry-section-meta">this month</span></div>
 
       <!-- v6.1.4 — Deep litter tracking bar (Cheison sealed 04 May 2026).
            Sits between section header and bird population panel.
@@ -4417,7 +4398,7 @@
       <div id="econ-blocks"></div>
     </div>
 
-    <div class="section" id="sireet-shares-section" data-product="tea">
+    <div class="section" id="sireet-shares-section" data-product="sireet equity">
       <div class="section-head"><h3>Sireet shares</h3><span class="meta" id="sireet-rate-meta">5 Ksh/kg</span></div>
       <div class="sireet-grid">
         <div class="sireet-card">
@@ -4489,7 +4470,7 @@
 
     <!-- v6.0 SHIP 5 — Kipkenda Poultry insights (LITE: 3 sparkline charts) -->
     <div class="section" id="insights-poultry-section" hidden>
-      <div class="section-head"><h3>Kipkenda Poultry</h3><span class="meta" id="insights-poultry-meta">last 30 days</span></div>
+      <div class="section-head"><h3 data-label="poultry">Kipkenda Poultry</h3><span class="meta" id="insights-poultry-meta">last 30 days</span></div>
 
       <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:0.5rem;border-bottom:1px solid var(--rule);padding-bottom:0.8rem">
         <div style="display:flex;justify-content:space-between;align-items:baseline">
@@ -5691,10 +5672,12 @@
          v5.8.5 — Renamed "🏠 Kipkenda Houses" → "Kipkenda Poultry" per Cheison.
          v5.8.5 — Collapsible: section-head pattern matches Plucker / Categories / Factories.
          Note: outer display:none is the admin-only gate (set by Admin section logic).
-         Collapse layers ON TOP — when admin opens it, body still starts collapsed. -->
-    <div class="section" id="settings-houses-section" style="display:none">
+         Collapse layers ON TOP — when admin opens it, body still starts collapsed.
+         v6.10.20 — data-product="poultry" so tenants with poultry hidden 
+         (Kibois) get this admin section hidden too. -->
+    <div class="section" id="settings-houses-section" data-product="poultry" style="display:none">
       <div class="section-head houses-section-head" id="houses-section-head" style="cursor:pointer;user-select:none;-webkit-user-select:none">
-        <h3>🐔 Kipkenda Poultry <span class="chevron" id="houses-chevron" style="font-size:0.7em;opacity:0.6;margin-left:0.4rem;transition:transform 0.2s ease">▸</span></h3>
+        <h3 data-label="poultry">🐔 Kipkenda Poultry <span class="chevron" id="houses-chevron" style="font-size:0.7em;opacity:0.6;margin-left:0.4rem;transition:transform 0.2s ease">▸</span></h3>
         <span class="meta" id="houses-count">0</span>
       </div>
       <div id="houses-section-body" style="display:none">
@@ -5816,7 +5799,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.19</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.20</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5892,7 +5875,7 @@
       <svg viewBox="0 0 24 24"><ellipse cx="12" cy="13" rx="6" ry="6.5"/><path d="M6 8c-1.5-1-3-1.5-3.5-0.5S4 11 6 11M18 8c1.5-1 3-1.5 3.5-0.5S20 11 18 11"/><circle cx="9.5" cy="12" r="0.8" fill="currentColor"/><circle cx="14.5" cy="12" r="0.8" fill="currentColor"/><ellipse cx="12" cy="16.5" rx="2" ry="1.3"/><circle cx="10.8" cy="16.3" r="0.3" fill="currentColor"/><circle cx="13.2" cy="16.3" r="0.3" fill="currentColor"/></svg>
       <span>Cows</span>
     </button>
-    <button data-view="other" aria-label="Other businesses">
+    <button data-view="other" data-product="other" aria-label="Other businesses">
       <!-- Circle dot icon -->
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>
       <span>Other</span>
@@ -5901,10 +5884,30 @@
       <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg>
       <span>Insights</span>
     </button>
-    <!-- v6.10.5 — Admin button RELOCATED to header (left of refresh wheel).
-         Was here; now occupies header real estate since it's used by Cheison 
-         specifically and shouldn't compete with daily-ops buttons for thumb 
-         space. See <header> for the new placement. -->
+    <!-- v6.10.20 — Admin button RETURNED to bottom-nav (right edge). The v6.10.5
+         move to the header left Birei/Kibois bottom-navs visually sparse once
+         HIDDEN_PRODUCTS removed product tabs. Multi-state padlock SVG preserved.
+         CSS at nav.bottom-nav #nav-settings[data-lock-state=…] still handles
+         the locked/admin/open visual states correctly since we kept the same id. -->
+    <button data-view="admin" id="nav-settings" data-lock-state="locked" aria-label="Admin" title="Admin" type="button">
+      <svg class="nav-lock-svg" viewBox="0 0 24 24" aria-hidden="true">
+        <g class="nav-lock-icon-locked">
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" fill="none"/>
+          <rect x="5" y="11" width="14" height="10" rx="2"/>
+          <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
+        </g>
+        <g class="nav-lock-icon-admin">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>
+        </g>
+        <g class="nav-lock-icon-open">
+          <path d="M7 11V7a5 5 0 0 1 9.5-2" fill="none"/>
+          <rect x="5" y="11" width="14" height="10" rx="2"/>
+          <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
+        </g>
+      </svg>
+      <span>Admin</span>
+    </button>
   </nav>
 </div>
 
@@ -6220,6 +6223,11 @@ function hiddenProducts() {
    updated. Default values keep Sinonin's existing language unchanged. */
 function dairyLabel()  { return tcfg('DAIRY_LABEL',  'Dairy'); }
 function dorperLabel() { return tcfg('DORPER_LABEL', 'Dorper'); }
+// v6.10.20 — POULTRY_LABEL: tenant rename of the poultry house identifier.
+// "Kipkenda Poultry" is Sinonin's specific house at Kipkenda; Levy may
+// prefer "Birei Poultry". Default keeps Sinonin's existing language. Applied
+// at UI-render time to elements tagged data-label="poultry".
+function poultryLabel() { return tcfg('POULTRY_LABEL', 'Kipkenda Poultry'); }
 
 /* v6.10.14 — DASHBOARD_ORDER: explicit ordering of hero cards on Home tab.
    Comma-separated list of card IDs. Cards matching the order list are 
@@ -6413,6 +6421,23 @@ function applyControlPanelToUI() {
       const emojiMatch = src.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})\s*/u);
       const prefix = emojiMatch ? emojiMatch[0] : '';
       el.textContent = prefix + dorL;
+    });
+
+    // v6.10.20 — POULTRY_LABEL: replace "Kipkenda Poultry" with tenant value.
+    // Levy prefers "Birei Poultry". Falls back to "Kipkenda Poultry" if not
+    // set so Sinonin sees no change. Same emoji-preservation pattern.
+    const polL = poultryLabel();
+    document.querySelectorAll('[data-label="poultry"]').forEach(function (el) {
+      const src = el.textContent || '';
+      const emojiMatch = src.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})\s*/u);
+      const prefix = emojiMatch ? emojiMatch[0] : '';
+      // Preserve any trailing chevron/suffix span by replacing only the leading text node
+      const firstChild = el.firstChild;
+      if (firstChild && firstChild.nodeType === Node.TEXT_NODE) {
+        firstChild.nodeValue = prefix + polL + ' ';
+      } else {
+        el.textContent = prefix + polL;
+      }
     });
 
     // v6.10.13 — splash title (if splash is still on screen during a
@@ -6681,6 +6706,12 @@ const K_EGG_COLLECTION_SOURCE_VERSION = 'sinonin_egg_collection_source_version_v
 // v6.2.2 family). Newly-added local pluckers may briefly disappear after a
 // cloud merge until pushed, but the sync queue ensures eventual consistency.
 const K_PLUCKERS_SOURCE_VERSION      = 'sinonin_pluckers_source_version_v1';
+// v6.10.20 — Incubation joins the cloud-replace-local migration family for
+// tenants without hatching operations (Birei). Was previously unmigrated so
+// stale batches from earlier app versions persisted in localStorage and
+// triggered a phantom "Hatching" notification on Birei's Home tab. Cloud
+// fetch repopulates from each tenant's own Incubation_Log sheet.
+const K_INCUBATION_SOURCE_VERSION    = 'sinonin_incubation_source_version_v1';
 const K_INCUBATION = 'sinonin_incubation_v1';     // v6.0 SHIP 5 — Incubation batches
 const K_VACCINATIONS = 'sinonin_vaccinations_v1';  // v6.0.0 — D4: Vaccination records
 const K_VACC_SCHEDULE = 'sinonin_vacc_schedule_v1'; // v6.0.0 — D4: Vaccination schedule (config)
@@ -6729,7 +6760,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.19';
+const APP_VERSION = 'v6.10.20';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -23029,7 +23060,12 @@ function showUpdateBanner() {
     { key: K_EXPENSES_SOURCE_VERSION,       cur: 1, stateField: 'expenses',       storage: K_EXPENSES,       label: 'expenses'          },
     { key: K_BANKED_SOURCE_VERSION,         cur: 1, stateField: 'banked',         storage: K_BANKED,         label: 'banked'            },
     { key: K_POULTRY_SOURCE_VERSION,        cur: 1, stateField: 'poultry',        storage: K_POULTRY,        label: 'poultry'           },
-    { key: K_EGG_COLLECTION_SOURCE_VERSION, cur: 1, stateField: 'eggCollection',  storage: K_EGG_COLLECTION, label: 'egg-collection'    }
+    { key: K_EGG_COLLECTION_SOURCE_VERSION, cur: 1, stateField: 'eggCollection',  storage: K_EGG_COLLECTION, label: 'egg-collection'    },
+    // v6.10.20 — Wipe stale K_INCUBATION cache so tenants without hatching
+    // operations (Birei) don't see ghost "Hatching" notifications from
+    // residual batches in localStorage. Cloud fetch repopulates from each
+    // tenant's Incubation_Log sheet (empty for Birei, populated for Sinonin).
+    { key: K_INCUBATION_SOURCE_VERSION,     cur: 1, stateField: 'incubation',    storage: K_INCUBATION,    label: 'incubation'        }
   ];
   for (const m of migrations) {
     const stored = await storageGet(m.key, 0);
@@ -23226,6 +23262,11 @@ function showUpdateBanner() {
   // when relocating an element across DOM contexts, the wiring that lived
   // in the old context must follow it — visibility without behavior is 
   // worse than absence.
+  // v6.10.20 — Admin button returned to bottom-nav (from header). The
+  // bottom-nav's existing button-binding loop wires switchView automatically
+  // via data-view="admin", so no separate handler is needed. The header
+  // querySelector below is kept as a no-op safety net in case any future
+  // refactor restores a header admin button — defensive but harmless.
   const headerAdminBtn = document.querySelector('header.brand #nav-settings');
   if (headerAdminBtn) {
     headerAdminBtn.addEventListener('click', () => switchView('admin'));
