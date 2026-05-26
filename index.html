@@ -3162,7 +3162,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.20</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.21</span>
 </header>
 
 <main>
@@ -3555,7 +3555,7 @@
         <div class="biz-card"><div class="lbl">Today</div><div class="val" id="tea-kg-month">0</div><div class="sub">kg from actuals</div></div>
         <div class="biz-card"><div class="lbl">Expected income</div><div class="val" id="tea-expected-month">Ksh 0</div><div class="sub">net after transport &amp; equity</div></div>
         <div class="biz-card"><div class="lbl">Tea expenses</div><div class="val" id="tea-expenses-month">Ksh 0</div><div class="sub" id="tea-expenses-sub">tea blocks &amp; tea ops</div></div>
-        <div class="biz-card"><div class="lbl">Sireet equity built</div><div class="val" id="tea-shares-month">Ksh 0</div><div class="sub">5 KES/kg accrued</div></div>
+        <div class="biz-card" data-product="sireet equity"><div class="lbl">Sireet equity built</div><div class="val" id="tea-shares-month">Ksh 0</div><div class="sub">5 KES/kg accrued</div></div>
       </div>
       <!-- v5.8.4 — All-factory totals row: kg & income aggregated across factories.
            Per Cheison: "Call from Actuals totals MTD and YTD."
@@ -4498,7 +4498,11 @@
     </div>
   </section>
 
-  <!-- OTHER · v6.3.12 placeholder — Sheep, Maize, Coffee (Lite scope, deferred to Phase 4) -->
+  <!-- OTHER · v6.3.12 placeholder — Sheep, Maize, Coffee (Lite scope, deferred to Phase 4)
+       v6.10.21 — Sugarcane joined the placeholder line-up. Maize and Coffee 
+       were always here; Birei loses sight of them when "Other" is in 
+       HIDDEN_PRODUCTS, so for Birei (Maize + Coffee + Sugarcane future) the 
+       Other button must STAY visible. -->
   <section class="panel" id="panel-other">
 
     <!-- v6.5.7 — HUB VIEW: tap-the-icon grid. The "Open →" affordance was 
@@ -4511,7 +4515,7 @@
         <span class="meta">tap to open</span>
       </div>
       <p style="color:var(--brass-light); opacity:0.85; line-height:1.6; margin:0.5rem 0 1.2rem; font-size:0.92rem">
-        Coffee and Maize sit here as future Sinonin Group enterprises. Sheep and Cows now live in their own top-level tabs alongside Tea and Poultry.
+        Maize, Coffee, and Sugarcane sit here as future enterprises. Sheep and Cows now live in their own top-level tabs alongside Tea and Poultry.
       </p>
 
       <div class="other-icon-grid" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:0.8rem">
@@ -4522,7 +4526,7 @@
              redundant entry point in the parent is a relic — it confuses 
              rather than reinforces. Remove with conviction. -->
 
-        <div class="other-tile other-tile-soon" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.6rem; aspect-ratio:1/1; background:rgba(180,140,80,0.05); border:0.5px solid rgba(180,140,80,0.18); border-radius:12px; padding:1rem 0.6rem;">
+        <div class="other-tile other-tile-soon" data-product="maize" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.6rem; aspect-ratio:1/1; background:rgba(180,140,80,0.05); border:0.5px solid rgba(180,140,80,0.18); border-radius:12px; padding:1rem 0.6rem;">
           <span style="font-size:2.6rem; line-height:1; opacity:0.55">🌽</span>
           <div style="text-align:center; min-width:0">
             <div style="color:var(--ivory); font-weight:500; font-size:0.95rem; line-height:1.2; opacity:0.65">Maize</div>
@@ -4530,7 +4534,7 @@
           </div>
         </div>
 
-        <div class="other-tile other-tile-soon" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.6rem; aspect-ratio:1/1; background:rgba(180,140,80,0.05); border:0.5px solid rgba(180,140,80,0.18); border-radius:12px; padding:1rem 0.6rem;">
+        <div class="other-tile other-tile-soon" data-product="coffee" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.6rem; aspect-ratio:1/1; background:rgba(180,140,80,0.05); border:0.5px solid rgba(180,140,80,0.18); border-radius:12px; padding:1rem 0.6rem;">
           <span style="font-size:2.6rem; line-height:1; opacity:0.55">☕</span>
           <div style="text-align:center; min-width:0">
             <div style="color:var(--ivory); font-weight:500; font-size:0.95rem; line-height:1.2; opacity:0.65">Coffee</div>
@@ -4538,10 +4542,24 @@
           </div>
         </div>
 
+        <!-- v6.10.21 — Sugarcane joins Maize and Coffee as a placeholder.
+             Birei lists sugarcane among his planned enterprises; the tile
+             reserves the slot so the operations module can be wired
+             incrementally when ready. Tagged data-product="sugarcane" 
+             parallel to Maize / Coffee so tenants who don't farm it can
+             hide via HIDDEN_PRODUCTS without disturbing the others. -->
+        <div class="other-tile other-tile-soon" data-product="sugarcane" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.6rem; aspect-ratio:1/1; background:rgba(180,140,80,0.05); border:0.5px solid rgba(180,140,80,0.18); border-radius:12px; padding:1rem 0.6rem;">
+          <span style="font-size:2.6rem; line-height:1; opacity:0.55">🎋</span>
+          <div style="text-align:center; min-width:0">
+            <div style="color:var(--ivory); font-weight:500; font-size:0.95rem; line-height:1.2; opacity:0.65">Sugarcane</div>
+            <div style="color:var(--brass-light); opacity:0.55; font-size:0.7rem; margin-top:3px; letter-spacing:0.05em">Soon</div>
+          </div>
+        </div>
+
       </div>
 
       <p style="color:var(--brass-light); opacity:0.55; font-size:0.78rem; line-height:1.5; margin:1.2rem 0 0; font-style:italic">
-        Tea, Poultry, Sheep, and Cows are the operational top-level surfaces. Coffee and Maize will join when the operations warrant them.
+        Tea, Poultry, Sheep, and Cows are the operational top-level surfaces. Maize, Coffee, and Sugarcane will join when the operations warrant them.
       </p>
     </div>
 
@@ -5799,7 +5817,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.20</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.21</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6760,7 +6778,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.20';
+const APP_VERSION = 'v6.10.21';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
