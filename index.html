@@ -3181,7 +3181,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.22</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.23</span>
 </header>
 
 <main>
@@ -5836,7 +5836,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.22</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.23</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6017,23 +6017,51 @@ function businessUnits() {
   return cfgStr.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
 }
 
-/* v6.10.17 — DEFAULT_FACTORIES RESTORED. v6.10.16 emptied this assuming 
-   STATE.factories would rehydrate from localStorage on existing installs. 
-   But K_FACTORIES is only persisted when an operator EDITS factories in 
-   Settings UI — Sinonin never did, so the localStorage rehydrate returned 
-   nothing and STATE.factories went empty in production. Sinonin lost all 
-   four factories tonight (Sireet, Sang'alo, Kapchorwa, Chebut). Restoring 
-   the seed is the immediate fix. The longer-term migration — these belong 
-   in a Factory_Rates sheet per tenant — is a separate, careful tranche 
-   that needs verification before code defaults change again.
-   Sealed § (26 May 2026, Verden, Cheison): "Removing defaults requires 
-   verified alternate source. Test by clearing localStorage and reloading; 
-   if the data disappears, the default IS the source." */
+/* v6.10.23 — DEFAULT_FACTORIES schema migrated to the v6.10.23-locked column
+   names (PriceKg, TransportKg, XmasBonusKg, MarBonusKg, PluckerRateKg,
+   PluckerBonusKg) which match the Sinonin Tea_Factories sheet. Backward-compat
+   aliases (transport, wageKg, bonusKg) preserved so existing rate-application
+   code at line 6845, 6962, 10416 etc. keeps working until the proper refactor
+   (v6.10.24 next session). New fields default to 0 — xmasBonusKg / marBonusKg
+   are operator-set as factories declare them each year. Sireet's equity (5
+   KSh/kg retained as shareholding) becomes Control_Panel SIREET_EQUITY_KG=5
+   in a future tranche; for now `shares` field is preserved on Sireet only.
+   
+   Rates corrected per Cheison 26 May 2026 Verden: Sireet transport 3.99 (was
+   3.90 — drift confirmed); Sireet PluckerBonusKg 0.5 (deferred to Christmas
+   quality motivator).
+   
+   v6.10.17 retained as comment for context: emptying DEFAULT_FACTORIES caused
+   Sinonin's catastrophic factory loss this morning. Schema migration is safe
+   ONLY because cloud hydration (next change) will overwrite STATE.factories
+   from Tea_Factories sheet on boot. Local seed is just the offline fallback
+   for first-install before cloud merges. */
 const DEFAULT_FACTORIES = [
-  { name: "Sireet",    priceKg: 25,   transport: 3.90, shares: 5, wageKg: 9.5,  bonusKg: 0.5, greenleaf: 13 },
-  { name: "Sang'alo",  priceKg: 23,   transport: 0,    shares: 0, wageKg: 8,    bonusKg: 0,   greenleaf: 0  },
-  { name: "Kapchorwa", priceKg: 24,   transport: 3,    shares: 0, wageKg: 10,   bonusKg: 0,   greenleaf: 0  },
-  { name: "Chebut",    priceKg: 26,   transport: 5,    shares: 0, wageKg: 7,    bonusKg: 0,   greenleaf: 15 }
+  // Sireet — TOP PRIORITY. transportKg=3.99 (factory-confirmed). pluckerBonusKg=0.5 (deferred to Christmas quality motivator). shares=5 (Sireet equity stake — last vestige of legacy field, moves to Control_Panel later).
+  { name: "Sireet",    priceKg: 25, transportKg: 3.99, xmasBonusKg: 0, marBonusKg: 0, pluckerRateKg: 9.5, pluckerBonusKg: 0.5, active: true, notes: "Top priority; quality-finicky",
+    transport: 3.99, wageKg: 9.5, bonusKg: 0.5, shares: 5, greenleaf: 0 },
+  { name: "Sang'alo",  priceKg: 23, transportKg: 0,    xmasBonusKg: 0, marBonusKg: 0, pluckerRateKg: 8,   pluckerBonusKg: 0,   active: true, notes: "Next door to Sinonin",
+    transport: 0, wageKg: 8, bonusKg: 0, shares: 0, greenleaf: 0 },
+  { name: "Kapchorwa", priceKg: 24, transportKg: 0,    xmasBonusKg: 0, marBonusKg: 0, pluckerRateKg: 10,  pluckerBonusKg: 0,   active: true, notes: "Option for Kipkorom",
+    transport: 0, wageKg: 10, bonusKg: 0, shares: 0, greenleaf: 0 },
+  { name: "Chebut",    priceKg: 26, transportKg: 5,    xmasBonusKg: 0, marBonusKg: 0, pluckerRateKg: 7,   pluckerBonusKg: 0,   active: false, notes: "",
+    transport: 5, wageKg: 7, bonusKg: 0, shares: 0, greenleaf: 0 }
+];
+
+/* v6.10.23 — DEFAULT_MILK_FACTORIES seeds the milk-side schema. Birei's app
+   uses this for the milk-channel dropdown; Sinonin has no milk ops so this
+   seed shows nothing for them. Cloud hydration from Milk_Factories sheet
+   overwrites this on boot. Default rates here are illustrative — operators
+   update via the sheet. */
+const DEFAULT_MILK_FACTORIES = [
+  { name: "Brookside",         priceLitre: 38,   transportLitre: 0, cessLitre: 0, bonusLitre: 0, paymentFrequency: "weekly",  active: true, notes: "" },
+  { name: "Kabiyet Co-Op",     priceLitre: 35,   transportLitre: 0, cessLitre: 0, bonusLitre: 0, paymentFrequency: "weekly",  active: true, notes: "" },
+  { name: "New-KCC",           priceLitre: 36,   transportLitre: 0, cessLitre: 0, bonusLitre: 0, paymentFrequency: "monthly", active: true, notes: "" },
+  { name: "Nandi Dairies",     priceLitre: 40,   transportLitre: 0, cessLitre: 0, bonusLitre: 0, paymentFrequency: "monthly", active: true, notes: "" },
+  { name: "Farm Gate",         priceLitre: 0,    transportLitre: 0, cessLitre: 0, bonusLitre: 0, paymentFrequency: "at-sale", active: true, notes: "cash on the spot" },
+  { name: "Gift / Donation",   priceLitre: 0,    transportLitre: 0, cessLitre: 0, bonusLitre: 0, paymentFrequency: "n/a",     active: true, notes: "" },
+  { name: "In-house Process",  priceLitre: 0,    transportLitre: 0, cessLitre: 0, bonusLitre: 0, paymentFrequency: "n/a",     active: true, notes: "yoghurt/mursik/ghee" },
+  { name: "Wasted",            priceLitre: 0,    transportLitre: 0, cessLitre: 0, bonusLitre: 0, paymentFrequency: "n/a",     active: true, notes: "spoilage tracking" }
 ];
 
 /* Factory rate history — applied per Actuals row based on its date.
@@ -6629,6 +6657,19 @@ const SCREEN_TITLES = {
 
 const K_ENTRIES = 'sinonin_entries_v1';
 const K_FACTORIES = 'sinonin_factories_v1';
+// v6.10.23 — Milk factories: per-tenant Milk_Factories sheet hydrates this.
+// Same shape as K_FACTORIES (cloud-replace-local pattern). Birei + Kibois 
+// use this for the milk-channel dropdown; Sinonin sees an empty list 
+// (no milk operations).
+const K_MILK_FACTORIES = 'sinonin_milk_factories_v1';
+// v6.10.23 — Tea + milk factories join the cloud-replace-local migration 
+// family. Tea factories were previously local-only (K_FACTORIES persisted 
+// only when operator edited via Settings UI); now Tea_Factories sheet is 
+// authoritative. SOURCE_VERSION wipes ensure tenants who never edited 
+// don't keep stale DEFAULT_FACTORIES from the old code in localStorage 
+// after deploy.
+const K_FACTORIES_SOURCE_VERSION      = 'sinonin_factories_source_version_v1';
+const K_MILK_FACTORIES_SOURCE_VERSION = 'sinonin_milk_factories_source_version_v1';
 const K_PLUCKERS = 'sinonin_pluckers_v1';
 const K_SETTINGS = 'sinonin_settings_v1';
 const K_EXPENSES = 'sinonin_expenses_v1';
@@ -6777,7 +6818,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.22';
+const APP_VERSION = 'v6.10.23';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -6832,6 +6873,8 @@ let STATE = {
   mortality: [],
   otherView: 'hub',
   factories: JSON.parse(JSON.stringify(DEFAULT_FACTORIES)),
+  // v6.10.23 — Milk factories (parallel array to tea factories).
+  milkFactories: JSON.parse(JSON.stringify(DEFAULT_MILK_FACTORIES)),
   settings: { ...DEFAULT_SETTINGS },
   view: 'home',
   mode: 'quick',
@@ -10034,6 +10077,60 @@ async function applyCloudResponse(data) {
     if (typeof applyControlPanelToUI === 'function') {
       applyControlPanelToUI();
     }
+  }
+
+  /* v6.10.23 — Tea factories cloud hydration. Apps Script v5.0.48's 
+     readTeaFactories() reads each tenant's Tea_Factories sheet and ships 
+     the rows here as data.teaFactories. Cloud-replace-local pattern, matching
+     v6.2.2 family. Backward-compat aliases (transport, wageKg, bonusKg) added
+     for legacy rate-application code that still uses old field names — will
+     be removed in v6.10.24's proper refactor. */
+  if (Array.isArray(data.teaFactories)) {
+    STATE.factories = data.teaFactories.map(function (f) {
+      return {
+        name:           String(f.name || '').trim(),
+        priceKg:        Number(f.priceKg) || 0,
+        transportKg:    Number(f.transportKg) || 0,
+        xmasBonusKg:    Number(f.xmasBonusKg) || 0,
+        marBonusKg:     Number(f.marBonusKg) || 0,
+        pluckerRateKg:  Number(f.pluckerRateKg) || 0,
+        pluckerBonusKg: Number(f.pluckerBonusKg) || 0,
+        active:         f.active !== false,
+        notes:          String(f.notes || ''),
+        // Backward-compat aliases — old code paths still use these
+        transport:      Number(f.transportKg) || 0,
+        wageKg:         Number(f.pluckerRateKg) || 0,
+        bonusKg:        Number(f.pluckerBonusKg) || 0,
+        shares:         Number(f.shares) || 0,    // Sireet equity, preserved
+        greenleaf:      Number(f.greenleaf) || 0  // legacy
+      };
+    });
+    await storageSet(K_FACTORIES, STATE.factories);
+    // Repopulate factory dropdowns if currently rendered
+    if (typeof repopulateFactoryDropdown === 'function') {
+      try { repopulateFactoryDropdown(); } catch (e) {}
+    }
+  }
+
+  /* v6.10.23 — Milk factories cloud hydration. Same shape as tea factories
+     but with milk-specific column names. Birei + Kibois populate; Sinonin's
+     empty Milk_Factories returns []. Drives the milk-channel dropdown that
+     used to be hardcoded MILK_CHANNELS — operators now manage destinations
+     in their own sheets. */
+  if (Array.isArray(data.milkFactories)) {
+    STATE.milkFactories = data.milkFactories.map(function (f) {
+      return {
+        name:             String(f.name || '').trim(),
+        priceLitre:       Number(f.priceLitre) || 0,
+        transportLitre:   Number(f.transportLitre) || 0,
+        cessLitre:        Number(f.cessLitre) || 0,
+        bonusLitre:       Number(f.bonusLitre) || 0,
+        paymentFrequency: String(f.paymentFrequency || ''),
+        active:           f.active !== false,
+        notes:            String(f.notes || '')
+      };
+    });
+    await storageSet(K_MILK_FACTORIES, STATE.milkFactories);
   }
   /* v6.0 SHIP 2 / v6.2.2 — Egg Collection sync (cloud-replace-local) */
   if (Array.isArray(data.eggCollection)) {
@@ -23138,6 +23235,18 @@ function showUpdateBanner() {
                 ' rows). Cloud fetch will repopulate from this tenant\'s Plucker_Roster ' +
                 'sheet. Migration v0 → v' + PLUCKERS_SOURCE_VERSION + '.');
   }
+
+  // v6.10.23 — Tea + milk factories DO NOT get a SOURCE_VERSION wipe, by 
+  // design. If PWA v6.10.23 deploys BEFORE Apps Script v5.0.48 (cloud doesn't
+  // yet ship data.teaFactories), wiping would leave STATE.factories empty 
+  // with no source to refill. The v6.10.16 morning catastrophe taught this 
+  // lesson. Backward-compat aliases in DEFAULT_FACTORIES + the cloud-hydrate 
+  // handler mean old localStorage works seamlessly until cloud arrives with 
+  // new-schema data, at which point hydration overwrites. No wipe, no loss.
+  //
+  // K_FACTORIES_SOURCE_VERSION / K_MILK_FACTORIES_SOURCE_VERSION constants 
+  // are reserved for v6.10.24 once Apps Script is verified shipping the data.
+
   // v6.0 SHIP 5 — Incubation batches
   STATE.incubation = await storageGet(K_INCUBATION, []);
 
@@ -23236,6 +23345,9 @@ function showUpdateBanner() {
   } catch (e) { /* non-fatal — first-install has empty queue */ }
   const storedFactories = await storageGet(K_FACTORIES, null);
   if (storedFactories && Array.isArray(storedFactories) && storedFactories.length > 0) STATE.factories = storedFactories;
+  // v6.10.23 — Milk factories from localStorage (cloud merge will refresh).
+  const storedMilkFactories = await storageGet(K_MILK_FACTORIES, null);
+  if (storedMilkFactories && Array.isArray(storedMilkFactories) && storedMilkFactories.length > 0) STATE.milkFactories = storedMilkFactories;
   const storedPluckers = await storageGet(K_PLUCKERS, null);
   if (storedPluckers && Array.isArray(storedPluckers) && storedPluckers.length > 0) {
     PLUCKERS = storedPluckers.map(p => ({ active: true, ...p }));
