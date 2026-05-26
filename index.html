@@ -637,37 +637,37 @@
 
   /* v5.1.0 — Three-state padlock for #nav-settings */
   /* Hide all three icon groups by default */
-  nav.bottom-nav #nav-settings .nav-lock-icon-locked,
-  nav.bottom-nav #nav-settings .nav-lock-icon-admin,
-  nav.bottom-nav #nav-settings .nav-lock-icon-open {
+  nav.bottom-nav #nav-settings-bottom .nav-lock-icon-locked,
+  nav.bottom-nav #nav-settings-bottom .nav-lock-icon-admin,
+  nav.bottom-nav #nav-settings-bottom .nav-lock-icon-open {
     display: none;
   }
   /* Show the right group based on state */
-  nav.bottom-nav #nav-settings[data-lock-state="locked"] .nav-lock-icon-locked,
-  nav.bottom-nav #nav-settings[data-lock-state="admin"]  .nav-lock-icon-admin,
-  nav.bottom-nav #nav-settings[data-lock-state="open"]   .nav-lock-icon-open {
+  nav.bottom-nav #nav-settings-bottom[data-lock-state="locked"] .nav-lock-icon-locked,
+  nav.bottom-nav #nav-settings-bottom[data-lock-state="admin"]  .nav-lock-icon-admin,
+  nav.bottom-nav #nav-settings-bottom[data-lock-state="open"]   .nav-lock-icon-open {
     display: inline;
   }
   /* Locked padlock — amber/copper (warning, not alarming) */
-  nav.bottom-nav #nav-settings[data-lock-state="locked"] svg {
+  nav.bottom-nav #nav-settings-bottom[data-lock-state="locked"] svg {
     stroke: #c97b3a;  /* amber-copper */
   }
-  nav.bottom-nav #nav-settings[data-lock-state="locked"].active svg {
+  nav.bottom-nav #nav-settings-bottom[data-lock-state="locked"].active svg {
     stroke: #d68a47;  /* slightly brighter when active */
   }
   /* Admin gear — neutral (Cheison authenticated, gate still closed) */
-  nav.bottom-nav #nav-settings[data-lock-state="admin"] svg {
+  nav.bottom-nav #nav-settings-bottom[data-lock-state="admin"] svg {
     stroke: var(--brass-light);
   }
   /* Open padlock — green (writes ON) */
-  nav.bottom-nav #nav-settings[data-lock-state="open"] svg {
+  nav.bottom-nav #nav-settings-bottom[data-lock-state="open"] svg {
     stroke: #6b9e5b;  /* sage/forest green — Sinonin palette */
   }
-  nav.bottom-nav #nav-settings[data-lock-state="open"].active svg {
+  nav.bottom-nav #nav-settings-bottom[data-lock-state="open"].active svg {
     stroke: #82b774;
   }
   /* Subtle pop animation when state changes */
-  nav.bottom-nav #nav-settings svg {
+  nav.bottom-nav #nav-settings-bottom svg {
     transition: stroke 0.3s ease;
   }
   /* Pop animation triggered by .lock-pulse class added briefly on state-change */
@@ -676,7 +676,7 @@
     35%  { transform: scale(1.18); }
     100% { transform: scale(1); }
   }
-  nav.bottom-nav #nav-settings.lock-pulse svg {
+  nav.bottom-nav #nav-settings-bottom.lock-pulse svg {
     animation: navLockPulse 0.45s ease-out;
   }
   .field { margin-bottom: 1.1rem; }
@@ -3150,7 +3150,7 @@
        real-estate that Sinonin needs for daily ops. Multi-state padlock 
        SVG preserved; same id (#nav-settings) so all existing lock-state 
        JS keeps working unchanged. -->
-  <button data-view="admin" id="nav-settings" data-lock-state="locked" aria-label="Admin" title="Admin" type="button">
+  <button data-view="admin" id="nav-settings" class="admin-nav-btn" data-lock-state="locked" aria-label="Admin" title="Admin" type="button">
     <svg class="nav-lock-svg" viewBox="0 0 24 24" aria-hidden="true">
       <g class="nav-lock-icon-locked">
         <path d="M7 11V7a5 5 0 0 1 10 0v4" fill="none"/>
@@ -3181,7 +3181,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.24</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.25</span>
 </header>
 
 <main>
@@ -5836,7 +5836,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.24</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.25</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5921,10 +5921,35 @@
       <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg>
       <span>Insights</span>
     </button>
-    <!-- v6.10.22 — Admin button removed from bottom-nav (reverted from v6.10.20).
-         The eighth button was tearing down Sinonin's bottom row visually. 
-         Admin now lives only in header (id="nav-settings" there). See header 
-         block for the placement + comment. -->
+    <!-- v6.10.25 — Admin button (bottom-nav version). Tenants whose 
+         Control_Panel has ADMIN_NAV_POSITION=bottom-nav (Birei, Kibois) 
+         see this version; the header version stays hidden. Sinonin (no
+         Control_Panel key, default 'header') sees only the header button.
+         Both buttons share class="admin-nav-btn" so lock-state JS targets
+         both via querySelectorAll — only ONE is visible at a time per 
+         tenant, but state updates work the same way regardless.
+         id="nav-settings-bottom" avoids duplicate-id with the header
+         button. CSS rules for nav.bottom-nav #nav-settings updated to
+         target #nav-settings-bottom instead. -->
+    <button data-view="admin" id="nav-settings-bottom" class="admin-nav-btn" data-lock-state="locked" aria-label="Admin" title="Admin" type="button" style="display:none">
+      <svg class="nav-lock-svg" viewBox="0 0 24 24" aria-hidden="true">
+        <g class="nav-lock-icon-locked">
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" fill="none"/>
+          <rect x="5" y="11" width="14" height="10" rx="2"/>
+          <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
+        </g>
+        <g class="nav-lock-icon-admin">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>
+        </g>
+        <g class="nav-lock-icon-open">
+          <path d="M7 11V7a5 5 0 0 1 9.5-2" fill="none"/>
+          <rect x="5" y="11" width="14" height="10" rx="2"/>
+          <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
+        </g>
+      </svg>
+      <span>Admin</span>
+    </button>
   </nav>
 </div>
 
@@ -6274,6 +6299,20 @@ function dorperLabel() { return tcfg('DORPER_LABEL', 'Dorper'); }
 // at UI-render time to elements tagged data-label="poultry".
 function poultryLabel() { return tcfg('POULTRY_LABEL', 'Kipkenda Poultry'); }
 
+// v6.10.25 — ADMIN_NAV_POSITION: tenant choice of where the admin button 
+// lives. Default 'header' keeps Sinonin's behavior (admin in top-right of
+// header, doesn't compete with daily-ops buttons in the dense 7-button
+// bottom nav). Birei + Kibois set 'bottom-nav' in their Control_Panel —
+// their bottom nav has 6 or fewer buttons after HIDDEN_PRODUCTS, so an
+// admin button fits there without crowding. Read by applyControlPanelToUI
+// which toggles visibility of the two admin buttons.
+// Sealed § (Cheison 26 May 2026 Verden): "Sinonin Navigation crowded BUT
+// OK with admin at top. Birei + Kibois — OK with admin in bottom-nav."
+function adminNavPosition() {
+  const v = tcfg('ADMIN_NAV_POSITION', 'header');
+  return String(v || 'header').toLowerCase().trim() === 'bottom-nav' ? 'bottom-nav' : 'header';
+}
+
 // v6.10.24 — Tea cess per kg, sourced from Control_Panel TEA_CESS_KG with
 // fallback to STATE.settings.teaCessPerKg (operator-set via legacy Settings
 // UI) then DEFAULT_SETTINGS constant. Sheet-driven value wins — that's the
@@ -6532,6 +6571,23 @@ function applyControlPanelToUI() {
         el.textContent = prefix + polL;
       }
     });
+
+    // v6.10.25 — ADMIN_NAV_POSITION: toggle visibility between the two admin
+    // buttons. Default 'header' (Sinonin); tenants who set 'bottom-nav' in
+    // Control_Panel (Birei, Kibois) see the bottom-nav button instead.
+    // Both buttons exist in the DOM at all times; only one is visible per
+    // tenant. Lock-state JS targets both via class="admin-nav-btn" so the
+    // state stays correct regardless of which is shown.
+    const adminPos = adminNavPosition();
+    const headerAdminBtn = document.getElementById('nav-settings');
+    const bottomAdminBtn = document.getElementById('nav-settings-bottom');
+    if (adminPos === 'bottom-nav') {
+      if (headerAdminBtn) headerAdminBtn.style.display = 'none';
+      if (bottomAdminBtn) bottomAdminBtn.style.display = '';
+    } else {
+      if (headerAdminBtn) headerAdminBtn.style.display = '';
+      if (bottomAdminBtn) bottomAdminBtn.style.display = 'none';
+    }
 
     // v6.10.13 — splash title (if splash is still on screen during a
     // subsequent control panel update): set from farmName
@@ -6866,7 +6922,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.24';
+const APP_VERSION = 'v6.10.25';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -7259,6 +7315,13 @@ function applyAdminVisibility() {
   //   - admin   → Cheison authenticated (view-only OR gate-closed); gear icon
   //   - open    → Cheison authenticated AND writes enabled; green padlock
   // v5.8.7 — Insights "All Time" button shows padlock icon when IS_ADMIN false.
+  // v6.10.25 — Admin lock state is mirrored on BOTH admin buttons (header
+  // + bottom-nav) via class="admin-nav-btn". Only ONE is visible per tenant
+  // per ADMIN_NAV_POSITION (handled in applyControlPanelToUI), but state
+  // updates apply to both so the visible one reflects correctly. The 
+  // previous `settingsNavBtn.style.display = ''` was REMOVED — it overrode
+  // tenant visibility, making BOTH buttons show in admin mode for Birei/
+  // Kibois. Display is now owned exclusively by applyControlPanelToUI.
   const settingsNavBtn = document.getElementById('nav-settings');
   const adminSection = document.getElementById('settings-admin-section');
   // v5.3.2 — gate banner removed; padlock color is the indicator now
@@ -7276,23 +7339,12 @@ function applyAdminVisibility() {
   }
 
   if (IS_ADMIN) {
-    if (settingsNavBtn) {
-      settingsNavBtn.style.display = '';
-      // Decide between 'admin' (gate closed) and 'open' (writes ON)
-      const writesOn = !!(ADMIN_STATE && ADMIN_STATE.writesEnabled);
-      const newState = writesOn ? 'open' : 'admin';
-      const oldState = settingsNavBtn.dataset.lockState;
-      if (oldState !== newState) {
-        settingsNavBtn.dataset.lockState = newState;
-        settingsNavBtn.setAttribute('aria-label',
-          writesOn ? 'Settings (writes open)' : 'Settings (admin)');
-        // Brief pulse animation on state change
-        settingsNavBtn.classList.remove('lock-pulse');
-        // force reflow to restart animation
-        void settingsNavBtn.offsetWidth;
-        settingsNavBtn.classList.add('lock-pulse');
-      }
-    }
+    // v6.10.25 — Use setAdminLockState() helper to update BOTH buttons
+    // (header + bottom-nav). Display NOT touched here — owned by 
+    // applyControlPanelToUI's ADMIN_NAV_POSITION logic.
+    const writesOn = !!(ADMIN_STATE && ADMIN_STATE.writesEnabled);
+    const newState = writesOn ? 'open' : 'admin';
+    setAdminLockState(newState, writesOn ? 'Settings (writes open)' : 'Settings (admin)');
     if (adminSection) adminSection.style.display = '';
     // v6.0 SHIP 3 — render houses admin section
     if (typeof renderHousesAdmin === 'function') renderHousesAdmin();
@@ -7300,11 +7352,9 @@ function applyAdminVisibility() {
   } else {
     // Operator mode: keep Settings nav VISIBLE but locked. The button now
     // intercepts taps and shows a toast / modal instead of opening Settings.
-    if (settingsNavBtn) {
-      settingsNavBtn.style.display = '';
-      settingsNavBtn.dataset.lockState = 'locked';
-      settingsNavBtn.setAttribute('aria-label', 'Settings (locked)');
-    }
+    // v6.10.25 — Helper updates BOTH buttons; display owned by 
+    // applyControlPanelToUI (tenant ADMIN_NAV_POSITION).
+    setAdminLockState('locked', 'Settings (locked)');
     if (adminSection) adminSection.style.display = 'none';
     // v6.0 SHIP 3 — hide houses admin section in operator mode
     const housesSec = document.getElementById('settings-houses-section');
@@ -7756,13 +7806,19 @@ function wireAdminEscapeHatch() {
      leaked the secret gesture to operators. Silent rejection now.
    ============================================================ */
 function wireLockIconAuth() {
-  const lockBtn = document.getElementById('nav-settings');
-  if (!lockBtn || lockBtn.dataset.authWired === '1') return;
-  lockBtn.dataset.authWired = '1';
+  // v6.10.25 — Wire triple-tap auth on BOTH admin buttons (header +
+  // bottom-nav) via class. Only ONE is visible per tenant per 
+  // ADMIN_NAV_POSITION but wiring both ensures whichever is visible has
+  // the gesture handler attached. Each button gets its own tapCount /
+  // tapTimer local state via the forEach closure.
+  const allLockBtns = document.querySelectorAll('.admin-nav-btn');
+  allLockBtns.forEach(function (lockBtn) {
+    if (!lockBtn || lockBtn.dataset.authWired === '1') return;
+    lockBtn.dataset.authWired = '1';
 
-  // Triple-tap detection state
-  let tapCount = 0;
-  let tapTimer = null;
+    // Triple-tap detection state (per-button local closure)
+    let tapCount = 0;
+    let tapTimer = null;
 
   // Capture-phase click handler so we run BEFORE the existing nav-routing code
   // that switches views. We can stop propagation for taps that should NOT
@@ -7843,6 +7899,29 @@ function wireLockIconAuth() {
       }, 700);
     }
   }, true); // useCapture=true — runs before bubbling click handlers
+  }); // end forEach over .admin-nav-btn — v6.10.25
+}
+
+// v6.10.25 — Set lock state on ALL admin buttons (header + bottom-nav).
+// Both have class="admin-nav-btn". Only ONE is visible per tenant per 
+// ADMIN_NAV_POSITION but state mirrors to both so the visible one shows
+// the right padlock indicator. Does NOT touch display — applyControlPanelToUI
+// owns visibility. Triggers pulse animation on state change.
+function setAdminLockState(state, ariaLabel) {
+  const btns = document.querySelectorAll('.admin-nav-btn');
+  btns.forEach(function (btn) {
+    const oldState = btn.dataset.lockState;
+    if (oldState !== state) {
+      btn.dataset.lockState = state;
+      if (ariaLabel) btn.setAttribute('aria-label', ariaLabel);
+      btn.classList.remove('lock-pulse');
+      void btn.offsetWidth;
+      btn.classList.add('lock-pulse');
+    } else if (ariaLabel) {
+      // Same state, refresh label only (no pulse)
+      btn.setAttribute('aria-label', ariaLabel);
+    }
+  });
 }
 
 /* ============================================================
