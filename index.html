@@ -691,14 +691,12 @@
     border-top: 2px solid var(--brass);
     padding: 0.4rem 0.2rem 0.55rem;
     display: grid;
-    /* v6.11.0 — 8 columns (was 7) to fit Sales button. Tight on narrow phones
-       but viable; Phase B cluster nav will compress back to 6 (Home/Crops/
-       Livestock/Sales/Insights/Admin). Sealed § 7.x: nav real-estate is 
-       always under pressure — Sales earned its slot by being the most 
-       frequent operator action and being inaccessible to non-tea tenants
-       in the previous architecture. */
-    grid-template-columns: repeat(8, 1fr);
-    gap: 0.06rem;
+    /* v6.11.5 — 6 columns. Cluster nav compresses Tea/Poultry/Sheep/Cows/Other 
+       into Crops + Livestock hubs. Original 7-col baseline restored + 1 for 
+       Sales (added in v6.11.0). Sealed § 7.x: "paint, not walls" — same 
+       structural data, cleaner thumb-target real estate. */
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.08rem;
   }
   nav.bottom-nav button {
     background: transparent; border: none;
@@ -3216,7 +3214,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.4</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.5</span>
 </header>
 
 <main>
@@ -3540,7 +3538,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>Sinonin Tea</h3><span class="meta" id="tea-section-meta">this month</span></div>
+      <div class="section-head"><h3>Tea</h3><span class="meta" id="tea-section-meta">this month</span></div>
       <div class="biz-grid">
         <!-- v6.9.15 — Top card repurposed to TODAY (read from actuals).
              Previously displayed Factory-confirmed kg (all factories, this 
@@ -4043,7 +4041,7 @@
         <div class="field"><label>Date</label><input type="date" id="i-date"></div>
         <div class="field"><label>Business</label><select id="i-business"></select></div>
       </div>
-      <div class="field"><label>Source</label><input type="text" id="i-source" placeholder="e.g. Sireet, PayBill, customer name" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
+      <div class="field"><label>Source</label><input type="text" id="i-source" placeholder="e.g. factory name, PayBill, customer name" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
       <div class="field"><label>Amount (Ksh)</label><input type="number" id="i-amount" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
       <div class="field"><label>For period (optional)</label><input type="text" id="i-period" placeholder="e.g. Feb 2026" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
       <div class="field"><label>Reference / notes (optional)</label><input type="text" id="i-reference" placeholder="e.g. TXN-9823, M-Pesa code" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
@@ -4144,14 +4142,16 @@
            Elias EK, Stanley SK. Each generates a code that becomes the 
            suffix of the auto-generated Egg_Batch_ID. -->
       <div class="field" style="margin-top:0.7rem"><label>Collector</label>
+        <!-- v6.11.5 — Dropdown options populated dynamically from Control_Panel 
+             EGG_COLLECTORS key (comma-list with optional ":CODE" suffixes for 
+             egg-batch-ID generation). Falls back to HOUSEHOLD_MEMBERS, then to 
+             a hardcoded default that matches the original Sinonin team — so 
+             Sinonin keeps working even if EGG_COLLECTORS row isn't set, while 
+             Birei / Kibois / other tenants set their own list.
+             Format: "Name:CODE,Name:CODE,..." e.g. "Faith:FC,Frankline:FK,Hillary:HC,Victor:VK,Elias:EK,Stanley:SK"
+             If no code is provided, first two letters of the name are used. -->
         <select id="ec-collector">
           <option value="">— Select collector —</option>
-          <option value="Faith"     data-code="FC">Faith</option>
-          <option value="Frankline" data-code="FK">Frankline</option>
-          <option value="Hillary"   data-code="HC">Hillary</option>
-          <option value="Victor"    data-code="VK">Victor</option>
-          <option value="Elias"     data-code="EK">Elias</option>
-          <option value="Stanley"   data-code="SK">Stanley</option>
         </select>
       </div>
       <!-- v6.9.13 — Egg_Batch_ID preview. Auto-generated from date + 
@@ -4383,6 +4383,73 @@
   </section>
 
   <!-- ╔══════════════════════════════════════════════════════════════════════╗
+       ║  PANEL-CROPS (v6.11.5 — Cluster hub for crop enterprises)            ║
+       ║                                                                      ║
+       ║  Tap a card to drill into the product's panel:                       ║
+       ║    🌿 Tea       → panel-tea (existing)                                ║
+       ║    ☕ Coffee    → panel-other (existing; future split to panel-coffee) ║
+       ║    🌽 Maize     → panel-other (existing; future split to panel-maize)  ║
+       ║    🍃 Chelabaal → panel-other (existing)                              ║
+       ║                                                                      ║
+       ║  Cards honor HIDDEN_PRODUCTS Control_Panel key via data-product attr ║
+       ║  — so Birei (HIDDEN_PRODUCTS includes tea) won't see the Tea card.   ║
+       ╚══════════════════════════════════════════════════════════════════════╝ -->
+  <section class="panel" id="panel-crops">
+    <div class="batch-instructions">Tap a crop to view its operations, actuals, expenses, and history.</div>
+    <div class="sales-card-grid" id="crops-card-grid">
+      <button class="sales-card" type="button" data-product="tea" data-cluster-target="tea">
+        <span class="sc-icon">🌿</span>
+        <span class="sc-label">Tea</span>
+      </button>
+      <button class="sales-card" type="button" data-product="coffee" data-cluster-target="other">
+        <span class="sc-icon">☕</span>
+        <span class="sc-label">Coffee</span>
+      </button>
+      <button class="sales-card" type="button" data-product="maize" data-cluster-target="other">
+        <span class="sc-icon">🌽</span>
+        <span class="sc-label">Maize</span>
+      </button>
+      <button class="sales-card" type="button" data-product="chelabaal" data-cluster-target="other">
+        <span class="sc-icon">🍃</span>
+        <span class="sc-label">Chelabaal</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ╔══════════════════════════════════════════════════════════════════════╗
+       ║  PANEL-LIVESTOCK (v6.11.5 — Cluster hub for livestock enterprises)   ║
+       ║                                                                      ║
+       ║  Tap a card to drill into the product's panel:                       ║
+       ║    🐔 Poultry → panel-poultry (existing)                              ║
+       ║    🐄 Dairy   → panel-cows (existing — Cows panel, label updated)    ║
+       ║    🐑 Dorper  → panel-sheep (existing — Sheep panel, label updated)  ║
+       ║    🐐 Goats   → panel-other for now; future panel-goats              ║
+       ║                                                                      ║
+       ║  HIDDEN_PRODUCTS controls visibility per tenant (Birei hides poultry).║
+       ╚══════════════════════════════════════════════════════════════════════╝ -->
+  <section class="panel" id="panel-livestock">
+    <div class="batch-instructions">Tap an animal to view its operations, registry, and event log.</div>
+    <div class="sales-card-grid" id="livestock-card-grid">
+      <button class="sales-card" type="button" data-product="poultry" data-cluster-target="poultry">
+        <span class="sc-icon">🐔</span>
+        <span class="sc-label">Poultry</span>
+      </button>
+      <button class="sales-card" type="button" data-product="dairy" data-cluster-target="cows">
+        <span class="sc-icon">🐄</span>
+        <span class="sc-label">Dairy</span>
+      </button>
+      <button class="sales-card" type="button" data-product="dorper" data-cluster-target="sheep">
+        <span class="sc-icon">🐑</span>
+        <span class="sc-label">Dorper</span>
+      </button>
+      <button class="sales-card" type="button" data-product="goats" data-cluster-target="other">
+        <span class="sc-icon">🐐</span>
+        <span class="sc-label">Goats</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ╔══════════════════════════════════════════════════════════════════════╗
        ║  PANEL-SALES (v6.11.0 — Unified POS-style revenue recording)        ║
        ║                                                                      ║
        ║  Three drill levels + form:                                          ║
@@ -4509,7 +4576,7 @@
           <div class="field"><label>For period (optional)</label><input type="text" id="s-period" placeholder="e.g. May 2026"></div>
         </div>
 
-        <div class="field"><label>Buyer / Source</label><input type="text" id="s-buyer" placeholder="e.g. Sireet, customer name, market" style="font-family:'Fraunces',serif"></div>
+        <div class="field"><label>Buyer / Source</label><input type="text" id="s-buyer" placeholder="e.g. factory, customer name, market" style="font-family:'Fraunces',serif"></div>
         <div class="field"><label>Reference (optional)</label><input type="text" id="s-reference" placeholder="e.g. M-Pesa code, TXN ID, KCB ref"></div>
         <div class="field"><label>Notes (optional)</label><input type="text" id="s-notes"></div>
 
@@ -4676,7 +4743,7 @@
         <span class="meta">tap to open</span>
       </div>
       <p style="color:var(--brass-light); opacity:0.85; line-height:1.6; margin:0.5rem 0 1.2rem; font-size:0.92rem">
-        Coffee and Maize sit here as future Sinonin Group enterprises. Sheep and Cows now live in their own top-level tabs alongside Tea and Poultry.
+        Coffee and Maize sit here as future group enterprises. Sheep and Cows now live in their own top-level tabs alongside Tea and Poultry.
       </p>
 
       <div class="other-icon-grid" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:0.8rem">
@@ -5905,7 +5972,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.4</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.5</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5932,69 +5999,34 @@
       <svg viewBox="0 0 24 24"><path d="M3 12L12 4l9 8"/><path d="M5 10v10h14V10"/></svg>
       <span>Home</span>
     </button>
-    <button data-view="tea" data-product="tea" aria-label="Tea">
-      <!-- Leaf icon -->
-      <svg viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19.5 2c.5 5 .26 7.55-.5 10.5C18.34 18 14 22 11 20Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/></svg>
-      <span>Tea</span>
-    </button>
-    <button data-view="poultry" aria-label="Poultry">
-      <!-- Feather icon -->
-      <svg viewBox="0 0 24 24"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><path d="M16 8L2 22"/><path d="M17.5 15H9"/></svg>
-      <span>Poultry</span>
-    </button>
-    <!-- v6.10.5 — SHEEP promoted from Other sub-view to top-level nav button.
-         Soft promotion: button routes to panel-other + setOtherView('sheep') so 
-         the HTML structure stays nested. Hard promotion (separate panel) is a 
-         future cleanup. Sealed § 6.x: when a sub-view is used daily by 
-         operators on the ground (Elias's 7-sheep dewormings yesterday), it 
-         earns top-level nav real estate. -->
-    <button data-view="sheep" aria-label="Sheep">
-      <!-- v6.10.6 — Sheep icon redesigned per Cheison 23 May 2026:
-           "looks like a ruler!" The previous geometry (pill body + 3 tiny 
-           circles on top + 4 short tick-mark legs) read as a measurement 
-           tool rather than an animal at small render size. This version 
-           uses a front-facing sheep face — two fleece puffs flanking a 
-           clearly defined head with two ears, a single eye dot, and a 
-           pair of front legs visible below the body. The dot inside the
-           head reads as the eye even at 21px. -->
+    <!-- v6.11.5 — CLUSTER NAV. 8-button product-nav (Tea/Poultry/Sheep/Cows/
+         Other) compressed into 2 cluster hubs (Crops/Livestock). Individual 
+         product panels (#panel-tea, #panel-poultry, #panel-sheep, #panel-cows, 
+         #panel-other) remain wired and reachable from cluster hub cards.
+         Sealed § 7.x (Cheison 27 May 2026 Verden): "We are not breaking down 
+         walls. We are merely applying paint." -->
+    <button data-view="crops" aria-label="Crops">
+      <!-- Sprout / leaves icon -->
       <svg viewBox="0 0 24 24">
-        <!-- Two fleece puffs flanking the head, top row -->
-        <circle cx="6.5" cy="10" r="2.5"/>
-        <circle cx="17.5" cy="10" r="2.5"/>
-        <!-- Head — slightly oval, between the puffs -->
-        <ellipse cx="12" cy="10.5" rx="3" ry="3.3"/>
-        <!-- Two ears poking sideways from the head -->
-        <ellipse cx="9" cy="10.5" rx="1.2" ry="0.7" transform="rotate(-25 9 10.5)"/>
-        <ellipse cx="15" cy="10.5" rx="1.2" ry="0.7" transform="rotate(25 15 10.5)"/>
-        <!-- Eye dot -->
-        <circle cx="12" cy="10.5" r="0.7" fill="currentColor"/>
-        <!-- Body — woolly cloud beneath -->
-        <path d="M5 15c0-1.5 1-2.5 2.5-2.5c0.5-1 1.7-1.2 2.7-0.5c0.7-1 2.5-1 3.5 0c1-0.7 2.2-0.5 2.7 0.5c1.5 0 2.5 1 2.5 2.5c0 1.5-1.5 2.5-3 2.5h-8c-1.5 0-3-1-3-2.5z"/>
-        <!-- Two front legs visible -->
-        <line x1="9" y1="17.5" x2="9" y2="20.5"/>
-        <line x1="15" y1="17.5" x2="15" y2="20.5"/>
+        <path d="M12 22V8"/>
+        <path d="M5 12C5 8 8 5 12 5C12 9 9 12 5 12Z"/>
+        <path d="M19 12C19 8 16 5 12 5C12 9 15 12 19 12Z"/>
       </svg>
-      <span>Sheep</span>
+      <span>Crops</span>
     </button>
-    <button data-view="cows" aria-label="Cows">
-      <!-- Cow head icon -->
-      <svg viewBox="0 0 24 24"><ellipse cx="12" cy="13" rx="6" ry="6.5"/><path d="M6 8c-1.5-1-3-1.5-3.5-0.5S4 11 6 11M18 8c1.5-1 3-1.5 3.5-0.5S20 11 18 11"/><circle cx="9.5" cy="12" r="0.8" fill="currentColor"/><circle cx="14.5" cy="12" r="0.8" fill="currentColor"/><ellipse cx="12" cy="16.5" rx="2" ry="1.3"/><circle cx="10.8" cy="16.3" r="0.3" fill="currentColor"/><circle cx="13.2" cy="16.3" r="0.3" fill="currentColor"/></svg>
-      <span>Cows</span>
-    </button>
-    <button data-view="other" aria-label="Other businesses">
-      <!-- Circle dot icon -->
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>
-      <span>Other</span>
+    <button data-view="livestock" aria-label="Livestock">
+      <!-- Animal silhouette -->
+      <svg viewBox="0 0 24 24">
+        <ellipse cx="12" cy="14" rx="7" ry="5"/>
+        <circle cx="6.5" cy="10" r="2"/>
+        <circle cx="17.5" cy="10" r="2"/>
+        <line x1="8" y1="19" x2="8" y2="22"/>
+        <line x1="16" y1="19" x2="16" y2="22"/>
+      </svg>
+      <span>Livestock</span>
     </button>
     <!-- v6.11.0 — SALES button. Unified revenue-recording surface across
-         all business units (Tea, Poultry, Dairy, Dorper, Coffee, Maize, 
-         Chelabaal, Other). POS-style cascade: business unit card → product 
-         drilldown → unified Sale form. Replaces the tea-gated "Banked 
-         Income" path which was inaccessible to Birei/Kibois (no tea). 
-         Sealed § 7.x (26 May 2026 Verden, Cheison): "We won't even need 
-         'Banked Income' as that suggests income against no sales. ... 
-         I would consider HOW (PAYBILL/TILL/CASH/KIND/BANK) and WHAT 
-         (Income/Revenue/Bonus) as separate." -->
+         all business units. POS-style cascade. Sealed § 7.x. -->
     <button data-view="sales" aria-label="Sales">
       <!-- Cash register / receipt icon -->
       <svg viewBox="0 0 24 24">
@@ -6008,10 +6040,17 @@
       <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg>
       <span>Insights</span>
     </button>
-    <!-- v6.10.5 — Admin button RELOCATED to header (left of refresh wheel).
-         Was here; now occupies header real estate since it's used by Cheison 
-         specifically and shouldn't compete with daily-ops buttons for thumb 
-         space. See <header> for the new placement. -->
+    <!-- v6.11.5 — Admin promoted to bottom nav as the 6th cluster. Header 
+         admin button (#nav-settings) remains wired for backward compatibility 
+         — both routes call switchView('admin') and land on the same panel. -->
+    <button data-view="admin" aria-label="Admin">
+      <!-- Gear icon -->
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+      <span>Admin</span>
+    </button>
   </nav>
 </div>
 
@@ -6313,6 +6352,69 @@ function brandMotto() {
   return tcfg('BRAND_MOTTO', tcfg('TEA_MOTTO', ''));
 }
 
+/* v6.11.5 — Egg collector roster, tenant-configurable.
+   Reads `EGG_COLLECTORS` Control_Panel key as comma-list with optional 
+   ":CODE" suffix for the 2-char code used in Egg_Batch_ID generation 
+   (KP{date}{XX} format). Falls back to `HOUSEHOLD_MEMBERS` (without 
+   codes — auto-derives from first two letters of name), then to the 
+   hardcoded Sinonin team if neither key is set.
+   
+   Format examples:
+     EGG_COLLECTORS = "Faith:FC,Frankline:FK,Hillary:HC,Victor:VK,Elias:EK,Stanley:SK"
+     EGG_COLLECTORS = "Faith,Elias,Hillary"     (auto-codes: FA, EL, HI)
+     HOUSEHOLD_MEMBERS as fallback.
+   
+   Sealed § 7.x (Cheison's de-Sinoninification catch, 27 May 2026): 
+   "hints read Elias, Victor, Cherop while owner prefix have M (Mother) 
+   E Elias H Heinz etc." Team roster becomes per-tenant declarative. */
+function eggCollectors() {
+  // Try EGG_COLLECTORS first (preferred — explicit, has codes)
+  let raw = tcfg('EGG_COLLECTORS', '');
+  let fromControlPanel = !!raw;
+  // Fallback to HOUSEHOLD_MEMBERS
+  if (!raw) raw = tcfg('HOUSEHOLD_MEMBERS', '');
+  // Final hardcoded fallback — preserves current Sinonin team if neither 
+  // key is set in Control_Panel (zero regression for existing deployment).
+  if (!raw) {
+    return [
+      { name: 'Faith',     code: 'FC' },
+      { name: 'Frankline', code: 'FK' },
+      { name: 'Hillary',   code: 'HC' },
+      { name: 'Victor',    code: 'VK' },
+      { name: 'Elias',     code: 'EK' },
+      { name: 'Stanley',   code: 'SK' }
+    ];
+  }
+  return String(raw).split(',').map(function (s) {
+    const parts = s.trim().split(':');
+    const name = parts[0].trim();
+    if (!name) return null;
+    const code = (parts[1] && parts[1].trim()) || name.slice(0, 2).toUpperCase();
+    return { name: name, code: code };
+  }).filter(Boolean);
+}
+
+/* Render the egg-collector <select> dynamically. Idempotent — safe to 
+   call multiple times (clears existing options each call). Wired into 
+   applyControlPanelToUI() so it refreshes whenever Control_Panel 
+   hydrates from a cloud-pull. */
+function renderEggCollectorDropdown() {
+  const sel = document.getElementById('ec-collector');
+  if (!sel) return;
+  const cur = sel.value;
+  const collectors = eggCollectors();
+  // Build options: empty placeholder + one per collector
+  let html = '<option value="">— Select collector —</option>';
+  collectors.forEach(function (c) {
+    html += '<option value="' + escapeHtml(c.name) + '" data-code="' + escapeHtml(c.code) + '">' + escapeHtml(c.name) + '</option>';
+  });
+  sel.innerHTML = html;
+  // Restore previous selection if still valid
+  if (cur && collectors.some(function (c) { return c.name === cur; })) {
+    sel.value = cur;
+  }
+}
+
 /* v6.10.13 — Product visibility + section labels per tenant.
    Sealed § 6.x (25 May 2026 Verden, Cheison walking back from the diff
    between Sinonin and Birei): "Deprecate Tea for Levy. Give prominence to
@@ -6360,6 +6462,59 @@ function dashboardOrder() {
   return raw.split(',')
     .map(function (s) { return s.trim().toLowerCase().replace(/\s+/g, ''); })
     .filter(Boolean);
+}
+
+/* ============================================================
+   v6.11.5 — CLUSTER HUB MODULE (B.2 — cluster nav refactor)
+   ============================================================
+   Crops + Livestock cluster hubs. Each is a card grid where taps 
+   delegate to switchView('tea'), ('poultry'), etc. Cluster hubs are 
+   pure navigation surfaces — the actual product panels (#panel-tea, 
+   #panel-poultry, #panel-sheep, #panel-cows, #panel-other) do the 
+   data work as before.
+   
+   Sealed § 7.x (Cheison 27 May 2026 Verden): "We are not breaking 
+   down walls. We are merely applying paint." Cluster nav compresses 
+   bottom-nav real estate (8 tabs → 6) while preserving every existing 
+   panel and code path. Operator tap-count to reach a panel increases 
+   by 1 (Crops → Tea card) — accepted cost for cleaner thumb targets 
+   and clearer mental model (CROPS vs LIVESTOCK vs SALES).
+   ============================================================ */
+
+/* Wire cluster cards once on init. Idempotent. */
+function _wireClusterCards() {
+  const wire = function (gridId) {
+    const grid = document.getElementById(gridId);
+    if (!grid) return;
+    grid.querySelectorAll('.sales-card[data-cluster-target]').forEach(function (btn) {
+      // Avoid double-wiring on multiple init calls
+      if (btn.dataset.clusterWired === '1') return;
+      btn.dataset.clusterWired = '1';
+      btn.addEventListener('click', function () {
+        const target = btn.dataset.clusterTarget;
+        if (target && typeof switchView === 'function') {
+          switchView(target);
+        }
+      });
+    });
+  };
+  wire('crops-card-grid');
+  wire('livestock-card-grid');
+}
+
+/* Render Crops hub. No-op currently (cards are static HTML); function 
+   exists for future-proofing (e.g., reading a CLUSTER_CROPS_ORDER 
+   Control_Panel key for tenant-defined order, or hiding entire cards 
+   when no relevant data exists). HIDDEN_PRODUCTS hiding already works 
+   automatically via the global data-product visibility CSS. */
+function renderCropsHub() {
+  // Currently static cards. Future v6.11.x can dynamically populate 
+  // from BUSINESS_UNITS (filtering for crop-category enterprises).
+  _wireClusterCards();
+}
+
+function renderLivestockHub() {
+  _wireClusterCards();
 }
 
 /* ============================================================
@@ -6921,7 +7076,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.4'
+    recorded_from: 'PWA v6.11.5'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -7190,6 +7345,13 @@ function applyControlPanelToUI() {
     const brandLogo = document.getElementById('brand-logo');
     if (brandLogo) brandLogo.alt = fn;
 
+    // v6.11.5 — Egg collector dropdown is now populated from Control_Panel 
+    // EGG_COLLECTORS key. Render here so options refresh whenever a fresh 
+    // cloud-pull updates the tenant's team roster.
+    if (typeof renderEggCollectorDropdown === 'function') {
+      renderEggCollectorDropdown();
+    }
+
     // v6.10.13 — Cache farm name to localStorage so the splash on the NEXT
     // app open can read it (splash renders before Control_Panel hydrates;
     // without this cache, first-install operators see "Loading Ledger"
@@ -7419,6 +7581,9 @@ const SCREEN_TITLES = {
   sheep: 'Dorper',
   cows: 'Dairy',
   other: 'Other',
+  // v6.11.5 — Cluster hub screen titles
+  crops: 'Crops',
+  livestock: 'Livestock',
   sales: 'Sales',  // v6.11.0 — unified revenue-recording POS cascade
   insights: 'Insights',
   admin: 'Admin',
@@ -7560,7 +7725,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.4';
+const APP_VERSION = 'v6.11.5';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -11266,6 +11431,14 @@ function switchView(v) {
   if (v === 'insights') renderInsights();
   if (v === 'admin' || v === 'settings') renderSettings();
   if (v === 'other') renderOther();
+  // v6.11.5 — Cluster hub renders. Crops/Livestock are simple card grids;
+  // taps on cards delegate to switchView('tea'), ('poultry'), etc. — the 
+  // existing product panels do the actual rendering. Cluster hubs are 
+  // pure navigation surfaces, not data-bearing views. HIDDEN_PRODUCTS 
+  // hiding is automatic via data-product attrs (the global hide-product 
+  // CSS already handles it).
+  if (v === 'crops' && typeof renderCropsHub === 'function') renderCropsHub();
+  if (v === 'livestock' && typeof renderLivestockHub === 'function') renderLivestockHub();
   // v6.11.0 — Sales tab: POS cascade. Reset to Level 1 (business-unit cards)
   // every time the tab is entered so the operator always starts at the top
   // of the cascade rather than landing on whichever drill state was open 
@@ -23106,7 +23279,7 @@ async function importBackupJSON(file) {
     return;
   }
   if (backup.schema !== 'sinonin-group-backup' || !backup.data) {
-    showToast('Not a Sinonin Group Management App backup file');
+    showToast('Not a ' + farmName() + ' Management App backup file');
     return;
   }
   const c = backup.summary || {};
@@ -23788,6 +23961,20 @@ function showUpdateBanner() {
   // boot; rendering reset happens on each switchView('sales') entry.
   if (typeof _wireSalesForm === 'function') {
     _wireSalesForm();
+  }
+  
+  // v6.11.5 — Egg collector dropdown initial render. Builds options from 
+  // hardcoded fallback at boot (before Control_Panel hydrates); 
+  // applyControlPanelToUI() re-renders with tenant config when cloud-pull 
+  // completes. This avoids an empty dropdown on first launch.
+  if (typeof renderEggCollectorDropdown === 'function') {
+    renderEggCollectorDropdown();
+  }
+  
+  // v6.11.5 — Cluster cards (Crops + Livestock hubs). Wires click handlers 
+  // once. Cards delegate to switchView('tea'), ('poultry'), etc.
+  if (typeof _wireClusterCards === 'function') {
+    _wireClusterCards();
   }
 
   // Poultry Sales
