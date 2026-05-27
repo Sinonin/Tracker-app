@@ -1,4 +1,6 @@
 // Sinonin Group Management App — Service Worker
+// v6.11.14 — Sireet ledger MERGE logic. v6.11.13 restore branch fired only when years[] was empty, but Cheison's K_SIREET_LEDGER had partial entries (2024+2025 from rolloverClosedYearsIfNeeded reading actuals during broken v6.11.10 boot) so restore was bypassed and Insights showed 2026-only. New logic: for Sinonin devices ALWAYS reconstruct from DEFAULT_SIREET_LEDGER as base, overlay any non-zero stored entries (operator/auto values for closed-out years). Saves back so subsequent boots have consistent ledger (Cheison 27 May 2026 Verden)
+// v6.11.13 — HOTFIX: Restore Sinonin Sireet Equity historical ledger lost by v6.11.10 boot-window gate. _isSinoninTenant() checks BOTH tcfg("FARM_NAME") AND localStorage.cachedFarmName (durable across K_* cache purges) so Sinonin device recognises itself even when controlPanel is briefly empty post-purge. Boot-load auto-restores DEFAULT_SIREET_LEDGER when device is Sinonin AND K_SIREET_LEDGER is empty/null, then SAVES BACK to storage so subsequent boots use the restored data (Cheison 27 May 2026 Verden)
 // v6.11.12 — Notifications-area poultry cleanup: home-urgent-hatch-progress widget tagged data-product="poultry" so HIDDEN_PRODUCTS catches it; renderActionCards skips HATCH + LITTER alert sources when poultry hidden; hasUpcomingHatches forced false when poultry hidden so banner header does not say "Coming up"; renderHomeUrgentHatchProgress early-returns + clears container when poultry hidden (Cheison 27 May 2026 Verden)
 // v6.11.11 — Cluster cards now derived from BUSINESS_UNITS Control_Panel value. panel-crops + panel-livestock card grids are empty in HTML; renderCropsHub/renderLivestockHub populate them from tcfg("BUSINESS_UNITS"), classified via _isLivestockUnit substring matcher (poultry/dairy/dorper/goats/sheep/cow/cattle/birds/chicken). Removes the last hardcoded leak (Chelabaal visible on Birei + Kibois despite their BUSINESS_UNITS not declaring it). Re-render hook added to applyControlPanelToUI (Cheison 27 May 2026 Verden)
 // v6.11.10 — Remaining hardcoded Sinonin defaults removed: DEFAULT_FACTORIES emptied (cloud Tea_Factories sheet authoritative); DEFAULT_SIREET_LEDGER fallback gated to FARM_NAME contains "Sinonin"; panel-poultry section gets data-product="poultry"; Sireet Equity card gets data-hide-key for granular HIDDEN_PRODUCTS matching (Cheison 27 May 2026 Verden)
@@ -75,7 +77,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v235';
+const CACHE = 'sinonin-greenleaf-v237';
 
 const SHELL_FILES = [
   './',

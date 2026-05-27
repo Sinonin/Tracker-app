@@ -3196,7 +3196,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.12</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.14</span>
 </header>
 
 <main>
@@ -5927,7 +5927,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.12</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.14</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -7112,7 +7112,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.12'
+    recorded_from: 'PWA v6.11.14'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -7805,7 +7805,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.12';
+const APP_VERSION = 'v6.11.14';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -8013,6 +8013,29 @@ function sireetYTD() {
   return { kg, ksh: kg * sireetRate() };
 }
 
+/* v6.11.13 — Sinonin-tenant detector that survives the boot window 
+   immediately after cache-stamp purge (when STATE.controlPanel is empty 
+   because K_CONTROL_PANEL was just wiped, but cloud-load hasn't yet 
+   re-hydrated FARM_NAME). The previous gate read only tcfg('FARM_NAME') 
+   and returned empty during that window — Sinonin Cheison's device fell 
+   through to { years: [] } and then rolloverClosedYearsIfNeeded saved 
+   that empty ledger to K_SIREET_LEDGER, locking in the loss. The 
+   localStorage.cachedFarmName key is written by applyControlPanelToUI 
+   (v6.10.13) on every CP apply and is NOT in the K_* tenant-data purge 
+   list, so it durably identifies the device's tenant across purges.
+   Returns true if either source contains "sinonin". */
+function _isSinoninTenant() {
+  try {
+    const fn1 = (tcfg('FARM_NAME', '') || '').toLowerCase();
+    if (fn1.indexOf('sinonin') !== -1) return true;
+  } catch (e) { /* tcfg not ready yet */ }
+  try {
+    const fn2 = (localStorage.getItem('cachedFarmName') || '').toLowerCase();
+    if (fn2.indexOf('sinonin') !== -1) return true;
+  } catch (e) { /* localStorage not available */ }
+  return false;
+}
+
 function sireetLifetime() {
   // v6.11.10 — DEFAULT_SIREET_LEDGER (Sinonin's historical 7-year aggregate 
   // of ~190k kg + ~Ksh 990k) was leaking onto other tenants whose 
@@ -8023,10 +8046,15 @@ function sireetLifetime() {
   // sheet per tenant would let any tea farm declare their cooperative 
   // shareholding history; until then, this FARM_NAME gate prevents the 
   // 198k Kgs leak Cheison observed on Kibois.
+  // v6.11.13 — Use _isSinoninTenant so the gate survives the boot window 
+  // when STATE.controlPanel was just purged but cloud-load hasn't yet 
+  // re-hydrated FARM_NAME. localStorage.cachedFarmName (set by 
+  // applyControlPanelToUI on every CP apply, not in the K_* purge list) 
+  // is the durable fallback that prevented Cheison's Sinonin device from 
+  // recognising itself in the brief post-purge window.
   let ledger = STATE.sireetLedger;
   if (!ledger) {
-    const fn = (tcfg('FARM_NAME', '') || '').toLowerCase();
-    ledger = (fn.indexOf('sinonin') !== -1) ? DEFAULT_SIREET_LEDGER : { years: [] };
+    ledger = _isSinoninTenant() ? DEFAULT_SIREET_LEDGER : { years: [] };
   }
   const historical = ledger.years.reduce(
     (s, y) => ({ kg: s.kg + (y.kg || 0), ksh: s.ksh + (y.ksh || 0) }),
@@ -24122,20 +24150,56 @@ function showUpdateBanner() {
   const storedSettings = await storageGet(K_SETTINGS, null);
   if (storedSettings) STATE.settings = { ...DEFAULT_SETTINGS, ...storedSettings };
   const storedLedger = await storageGet(K_SIREET_LEDGER, null);
-  if (storedLedger) {
-    STATE.sireetLedger = { asOf: storedLedger.asOf, years: [...(storedLedger.years || [])] };
-  } else {
-    // v6.11.10 — Gate DEFAULT_SIREET_LEDGER fallback to Sinonin tenant only.
-    // The hardcoded ledger contains Sinonin's specific 7-year history 
-    // (~190k kg), which was leaking onto other tenants after cache purge. 
-    // Non-Sinonin tenants get an empty ledger; their Sireet Equity card 
-    // (if visible at all) shows only liveThisYear from their actuals.
-    const fn = (tcfg('FARM_NAME', '') || '').toLowerCase();
-    if (fn.indexOf('sinonin') !== -1) {
-      STATE.sireetLedger = { asOf: DEFAULT_SIREET_LEDGER.asOf, years: [...DEFAULT_SIREET_LEDGER.years] };
-    } else {
-      STATE.sireetLedger = { asOf: null, years: [] };
+  // v6.11.14 — MERGE logic, replacing v6.11.13's simpler 3-branch gate.
+  // The v6.11.13 restore fired only when storedLedger.years.length === 0, 
+  // but Cheison's device had a PARTIAL ledger (2024 + 2025 from 
+  // rolloverClosedYearsIfNeeded reading actuals during the broken v6.11.10 
+  // boot) — non-empty years[] so the restore branch was bypassed, and 
+  // Insights showed only 2024-2026 (or 2026 only if those years had 0 kg).
+  // 
+  // The robust fix: for Sinonin devices, ALWAYS reconstruct from 
+  // DEFAULT_SIREET_LEDGER as the base and OVERLAY any stored entries 
+  // (preserves operator/auto values for the closed-out years where the PWA 
+  // has actuals data — those override the pre-PWA estimates in DEFAULT). 
+  // For non-Sinonin tenants: use stored if present, else empty.
+  const _sinoninTenant = _isSinoninTenant();
+  if (_sinoninTenant) {
+    // Start with full DEFAULT (Sinonin's 7-year historical baseline)
+    const merged = {
+      asOf: DEFAULT_SIREET_LEDGER.asOf,
+      years: DEFAULT_SIREET_LEDGER.years.map(y => ({ ...y }))
+    };
+    // Overlay stored entries (operator edits or PWA-derived actuals values)
+    if (storedLedger && Array.isArray(storedLedger.years)) {
+      for (const sy of storedLedger.years) {
+        if (!sy || typeof sy.year !== 'number') continue;
+        // Skip stored entries with 0 kg AND 0 ksh — these are placeholder 
+        // pushes from the broken rolloverClosedYearsIfNeeded path. Keep 
+        // DEFAULT's authoritative value for those years.
+        if ((Number(sy.kg) || 0) === 0 && (Number(sy.ksh) || 0) === 0) continue;
+        const idx = merged.years.findIndex(y => y.year === sy.year);
+        if (idx >= 0) {
+          merged.years[idx] = { year: sy.year, kg: sy.kg, ksh: sy.ksh };
+        } else {
+          merged.years.push({ year: sy.year, kg: sy.kg, ksh: sy.ksh });
+        }
+      }
+      // Preserve a more recent asOf if stored has one
+      if (typeof storedLedger.asOf === 'number' && storedLedger.asOf > merged.asOf) {
+        merged.asOf = storedLedger.asOf;
+      }
     }
+    merged.years.sort((a, b) => a.year - b.year);
+    STATE.sireetLedger = merged;
+    // Save back so subsequent boots have a consistent ledger
+    try {
+      await storageSet(K_SIREET_LEDGER, STATE.sireetLedger);
+      console.log('[v6.11.14] Sinonin Sireet ledger reconstructed: ' + merged.years.length + ' years (' + merged.years[0].year + '–' + merged.years[merged.years.length - 1].year + ').');
+    } catch (e) { /* non-fatal */ }
+  } else if (storedLedger && Array.isArray(storedLedger.years)) {
+    STATE.sireetLedger = { asOf: storedLedger.asOf, years: [...storedLedger.years] };
+  } else {
+    STATE.sireetLedger = { asOf: null, years: [] };
   }
   await rolloverClosedYearsIfNeeded();
 
