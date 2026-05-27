@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.11.4 — Gift payment method (amount=0 allowed) — Cheison's Broken Eggs gift gap (27 May 2026)
 // v6.11.3 — FIX: Tea dedup in salesBusinessUnits when Tea is declared in BUSINESS_UNITS (Cheison Kibois catch, 27 May 2026)
 // v6.11.2 — HOTFIX: define escapeHtml helper. v6.11.1 deploy crashed mid-Sales-render leaving empty-state message visible (Cheison browser-console catch, 27 May 2026 Verden)
 // v6.11.1 — syncSale protocol fix (action/payload/source, was broken kind/data) + grounded against real Apps Script writeXEntry pattern (27 May 2026, Cheison's appendBanked + Kiraka catches)
@@ -66,7 +67,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v226';
+const CACHE = 'sinonin-greenleaf-v227';
 
 const SHELL_FILES = [
   './',

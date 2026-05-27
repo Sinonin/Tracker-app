@@ -3216,7 +3216,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.3</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.4</span>
 </header>
 
 <main>
@@ -4456,6 +4456,12 @@
               <option value="TILL">M-Pesa TILL</option>
               <option value="BANK">Bank transfer</option>
               <option value="KIND">In-kind / Barter</option>
+              <!-- v6.11.4 — Gift method. Broken eggs given to poultry team 
+                   members free; sheep walked over to a neighbor; produce 
+                   gifted as goodwill — all real recordable events with 
+                   amount=0. Sealed § 7.x (Cheison 27 May 2026): "Broken 
+                   eggs are given to Poultry Team members free, no payment." -->
+              <option value="GIFT">Gift (no payment)</option>
             </select>
           </div>
         </div>
@@ -5899,7 +5905,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.3</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.4</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6784,15 +6790,28 @@ function renderSalesPanel() {
 function _updateSalesPreview() {
   const date = document.getElementById('s-date').value;
   const qty = parseFloat(document.getElementById('s-qty').value) || 0;
-  const amount = parseFloat(document.getElementById('s-amount').value) || 0;
   const method = document.getElementById('s-method').value;
+  
+  // v6.11.4 — Gift method auto-default. When operator selects Gift and 
+  // hasn't typed an amount yet, fill the amount field with 0. Avoids 
+  // forcing them to type 0 for the truthful "no payment" record (Cheison's
+  // catch — typing 1 to activate Record Sale lied to the books).
+  const amtEl = document.getElementById('s-amount');
+  if (method === 'GIFT' && amtEl.value === '') {
+    amtEl.value = '0';
+  }
+  const amount = parseFloat(amtEl.value) || 0;
+  
   const unitSel = document.getElementById('s-unit').value;
   const revtype = document.getElementById('s-revtype').value;
   const buyer = document.getElementById('s-buyer').value.trim();
 
-  // Validation: date + method + amount > 0 are required. Qty optional 
-  // (lump-sum sales possible — Sireet shares dividend, training fee, etc.)
-  const valid = !!date && !!method && amount > 0;
+  // Validation: date + method + amount required. Qty optional (lump-sum 
+  // sales possible — Sireet shares dividend, training fee, etc.).
+  // v6.11.4 — Gift method allows amount=0 (no payment is the truth). 
+  // Other methods require amount > 0 to guard against typo-empty submits.
+  const amountValid = (method === 'GIFT') ? amount >= 0 : amount > 0;
+  const valid = !!date && !!method && amountValid;
   document.getElementById('s-submit').disabled = !valid;
 
   // Quantity label update
@@ -6867,7 +6886,10 @@ async function submitSale() {
   const reference = document.getElementById('s-reference').value.trim();
   const notes = document.getElementById('s-notes').value.trim();
 
-  if (!date || !method || amount <= 0) return;
+  // v6.11.4 — Match _updateSalesPreview validation: Gift allows amount=0, 
+  // all other methods require amount > 0.
+  const amountValid = (method === 'GIFT') ? amount >= 0 : amount > 0;
+  if (!date || !method || !amountValid) return;
 
   // First-submit gibberish guard (same pattern as banked/poultry forms)
   if (typeof isSessionConfirmed === 'function' && !isSessionConfirmed('sale')) {
@@ -6899,7 +6921,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.3'
+    recorded_from: 'PWA v6.11.4'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -7538,7 +7560,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.3';
+const APP_VERSION = 'v6.11.4';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
