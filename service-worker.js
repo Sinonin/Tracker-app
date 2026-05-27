@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.11.9 — Tenant cache stamp purges cross-tenant data on tenant switch (closes Sinonin pluckers leaking onto Kibois). BUSINESS_OPTIONS → tenantBusinessUnits(); Kipkenda Poultry h3 labels dynamic via poultryUnitLabel(); data-product=poultry added to home poultry section so HIDDEN_PRODUCTS hides it (Cheison 27 May 2026 Verden)
 // v6.11.8 — Five-fix bundle: tcfg-based BLOCKS + BUSINESS_UNITS in legacy dropdowns; DEFAULT_PLUCKERS emptied (cloud is sole source per tenant); sheep/cow event log row card styling; Sales-cascade poultry routes to legacy cohort-aware form (Cheison 27 May 2026 Verden)
 // v6.11.7 — Admin entry-point consolidation: header Admin button removed; bottom-nav Admin button now carries the full padlock-state machine and is the sole Admin entry point (Cheison 27 May 2026 Verden)
 // v6.11.6 — Admin auth unification: bottom-nav Admin button delegates click to header Admin button so triple-tap + passphrase gate applies to BOTH entry points (Cheison 27 May 2026)
@@ -71,7 +72,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v231';
+const CACHE = 'sinonin-greenleaf-v232';
 
 const SHELL_FILES = [
   './',
