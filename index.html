@@ -3183,24 +3183,6 @@
        Sealed § 6.x candidate: surfaces used by the principal but not 
        daily operators belong in the header — bottom nav real estate is 
        for thumb-frequent ground-ops controls. -->
-  <button data-view="admin" id="nav-settings" data-lock-state="locked" aria-label="Admin" title="Admin" type="button">
-    <svg class="nav-lock-svg" viewBox="0 0 24 24" aria-hidden="true">
-      <g class="nav-lock-icon-locked">
-        <path d="M7 11V7a5 5 0 0 1 10 0v4" fill="none"/>
-        <rect x="5" y="11" width="14" height="10" rx="2"/>
-        <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
-      </g>
-      <g class="nav-lock-icon-admin">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>
-      </g>
-      <g class="nav-lock-icon-open">
-        <path d="M7 11V7a5 5 0 0 1 9.5-2" fill="none"/>
-        <rect x="5" y="11" width="14" height="10" rx="2"/>
-        <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
-      </g>
-    </svg>
-  </button>
   <button id="header-refresh-btn" class="header-refresh" type="button" aria-label="Refresh data" title="Refresh from cloud">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
       <polyline points="23 4 23 10 17 10"></polyline>
@@ -3214,7 +3196,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.6</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.7</span>
 </header>
 
 <main>
@@ -5972,7 +5954,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.6</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.7</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6040,14 +6022,29 @@
       <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg>
       <span>Insights</span>
     </button>
-    <!-- v6.11.5 — Admin promoted to bottom nav as the 6th cluster. Header 
-         admin button (#nav-settings) remains wired for backward compatibility 
-         — both routes call switchView('admin') and land on the same panel. -->
-    <button data-view="admin" aria-label="Admin">
-      <!-- Gear icon -->
-      <svg viewBox="0 0 24 24">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    <!-- v6.11.7 — Admin lives in bottom-nav as sole entry point. Carries the 
+         full data-lock-state machine (locked/admin/open) wired by 
+         wireLockIconAuth() — triple-tap auth gate for operators, single-tap 
+         pass-through for authenticated admins. The previously-redundant 
+         header Admin button has been removed (Cheison 27 May 2026 Verden):
+         "two instances of Admin is one too many." Sealed § 7.x: one Admin 
+         entry, one gate, one cluster slot. -->
+    <button data-view="admin" id="nav-settings" data-lock-state="locked" aria-label="Admin" title="Admin">
+      <svg class="nav-lock-svg" viewBox="0 0 24 24" aria-hidden="true">
+        <g class="nav-lock-icon-locked">
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" fill="none"/>
+          <rect x="5" y="11" width="14" height="10" rx="2"/>
+          <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
+        </g>
+        <g class="nav-lock-icon-admin">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>
+        </g>
+        <g class="nav-lock-icon-open">
+          <path d="M7 11V7a5 5 0 0 1 9.5-2" fill="none"/>
+          <rect x="5" y="11" width="14" height="10" rx="2"/>
+          <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
+        </g>
       </svg>
       <span>Admin</span>
     </button>
@@ -7076,7 +7073,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.6'
+    recorded_from: 'PWA v6.11.7'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -7725,7 +7722,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.6';
+const APP_VERSION = 'v6.11.7';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -23922,40 +23919,16 @@ function showUpdateBanner() {
   populateDropdowns();
   renderBatchList();
 
+  // v6.11.7 — Bottom-nav Admin button IS #nav-settings (relocated from 
+  // header). wireLockIconAuth() attaches its capture-phase handler to it 
+  // directly. For state="locked", capture-phase intercepts via 
+  // stopPropagation so this bubble-phase listener never sees the click 
+  // and switchView is not called. For state="admin"/"open", first tap 
+  // bubbles through and switchView('admin') opens the panel. Single 
+  // gate, no delegation needed.
   document.querySelectorAll('nav.bottom-nav button').forEach(b => {
-    b.addEventListener('click', (ev) => {
-      // v6.11.6 — Bottom-nav Admin defers to header Admin's lock-icon-auth.
-      // The header button (#nav-settings) carries the full data-lock-state
-      // machine wired by wireLockIconAuth() — triple-tap auth gate for
-      // operators, single-tap pass-through for authenticated admins. By
-      // delegating the click rather than calling switchView directly, we
-      // get unified behavior across both entry points with zero auth-logic
-      // duplication. Sealed § 7.x (Cheison 27 May 2026 Verden): two
-      // visible Admin instances should never have two different security
-      // postures. Same gate, two doors.
-      if (b.dataset.view === 'admin') {
-        ev.preventDefault();
-        ev.stopPropagation();
-        const headerAdmin = document.getElementById('nav-settings');
-        if (headerAdmin) headerAdmin.click();
-        return;
-      }
-      switchView(b.dataset.view);
-    });
+    b.addEventListener('click', () => switchView(b.dataset.view));
   });
-  
-  // v6.10.5 STAGE 2b HOTFIX — The Admin button was relocated from bottom-nav 
-  // to the header (left of refresh wheel). The forEach above only covers 
-  // nav.bottom-nav buttons, so the header Admin button was left without a 
-  // click listener — visible but inert. Wiring it here explicitly. Same 
-  // data-view='admin' contract; same switchView() target. Sealed § 6.x: 
-  // when relocating an element across DOM contexts, the wiring that lived
-  // in the old context must follow it — visibility without behavior is 
-  // worse than absence.
-  const headerAdminBtn = document.querySelector('header.brand #nav-settings');
-  if (headerAdminBtn) {
-    headerAdminBtn.addEventListener('click', () => switchView('admin'));
-  }
 
   // Business toggle (Tea / Poultry / Admin)
   document.querySelectorAll('.biz-toggle button').forEach(b => {
