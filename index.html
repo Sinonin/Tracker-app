@@ -23,7 +23,6 @@
     --brass: #B8935A;
     --brass-light: #D4B582;
     --brass-dim: #8C6E3F;
-    --brass-dark: #6E5630;
     --ink: #1A1A1A;
     --slate: #4A4A4A;
     --slate-light: #8A8580;
@@ -589,13 +588,117 @@
     flex-direction: column;
   }
 
+  /* ============================================================
+     v6.11.0 — SALES POS CASCADE CSS
+     ============================================================
+     POS-style card-grid drill for the Sales tab. Three drill levels share
+     the .sales-card-grid + .sales-card pattern; only the labels and 
+     icons change. Aesthetic kept aligned with the existing quick-add card
+     (brass-gradient, forest text) for visual coherence — Sales feels like
+     a richer, more deliberate cousin of the daily-ops quick-add tiles.
+     ============================================================ */
+  .sales-level {
+    margin-bottom: 1rem;
+  }
+  .sales-card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.6rem;
+    margin-bottom: 0.4rem;
+  }
+  /* Larger touch targets than quick-add — these are commitment taps */
+  .sales-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 1.15rem 0.55rem;
+    background: linear-gradient(135deg, rgba(212, 175, 100, 0.95), rgba(184, 154, 94, 0.95));
+    border: none;
+    border-radius: 8px;
+    color: var(--forest);
+    cursor: pointer;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.14);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 90px;
+    font-family: inherit;
+  }
+  .sales-card:hover, .sales-card:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  }
+  .sales-card .sc-icon {
+    font-size: 1.7rem;
+    line-height: 1;
+  }
+  .sales-card .sc-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1.25;
+    color: var(--forest);
+  }
+  /* Breadcrumb above L2/L3/L4 — shows where in the cascade we are */
+  .sales-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-bottom: 0.9rem;
+    padding: 0.5rem 0.1rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  .sales-back {
+    background: transparent;
+    border: 1px solid var(--brass);
+    color: var(--brass);
+    padding: 0.3rem 0.7rem;
+    border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .sales-back:hover {
+    background: rgba(212, 175, 100, 0.1);
+  }
+  .sales-crumb-current {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    color: var(--forest);
+    font-size: 1rem;
+  }
+  .sales-card-empty {
+    grid-column: 1 / -1;
+    padding: 1.2rem;
+    text-align: center;
+    color: var(--slate-light);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    border: 1px dashed var(--rule);
+    border-radius: 6px;
+  }
+
+
   nav.bottom-nav {
     background: var(--forest-dark);
     border-top: 2px solid var(--brass);
     padding: 0.4rem 0.2rem 0.55rem;
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 0.08rem;
+    /* v6.11.0 — 8 columns (was 7) to fit Sales button. Tight on narrow phones
+       but viable; Phase B cluster nav will compress back to 6 (Home/Crops/
+       Livestock/Sales/Insights/Admin). Sealed § 7.x: nav real-estate is 
+       always under pressure — Sales earned its slot by being the most 
+       frequent operator action and being inaccessible to non-tea tenants
+       in the previous architecture. */
+    grid-template-columns: repeat(8, 1fr);
+    gap: 0.06rem;
   }
   nav.bottom-nav button {
     background: transparent; border: none;
@@ -637,37 +740,37 @@
 
   /* v5.1.0 — Three-state padlock for #nav-settings */
   /* Hide all three icon groups by default */
-  nav.bottom-nav #nav-settings-bottom .nav-lock-icon-locked,
-  nav.bottom-nav #nav-settings-bottom .nav-lock-icon-admin,
-  nav.bottom-nav #nav-settings-bottom .nav-lock-icon-open {
+  nav.bottom-nav #nav-settings .nav-lock-icon-locked,
+  nav.bottom-nav #nav-settings .nav-lock-icon-admin,
+  nav.bottom-nav #nav-settings .nav-lock-icon-open {
     display: none;
   }
   /* Show the right group based on state */
-  nav.bottom-nav #nav-settings-bottom[data-lock-state="locked"] .nav-lock-icon-locked,
-  nav.bottom-nav #nav-settings-bottom[data-lock-state="admin"]  .nav-lock-icon-admin,
-  nav.bottom-nav #nav-settings-bottom[data-lock-state="open"]   .nav-lock-icon-open {
+  nav.bottom-nav #nav-settings[data-lock-state="locked"] .nav-lock-icon-locked,
+  nav.bottom-nav #nav-settings[data-lock-state="admin"]  .nav-lock-icon-admin,
+  nav.bottom-nav #nav-settings[data-lock-state="open"]   .nav-lock-icon-open {
     display: inline;
   }
   /* Locked padlock — amber/copper (warning, not alarming) */
-  nav.bottom-nav #nav-settings-bottom[data-lock-state="locked"] svg {
+  nav.bottom-nav #nav-settings[data-lock-state="locked"] svg {
     stroke: #c97b3a;  /* amber-copper */
   }
-  nav.bottom-nav #nav-settings-bottom[data-lock-state="locked"].active svg {
+  nav.bottom-nav #nav-settings[data-lock-state="locked"].active svg {
     stroke: #d68a47;  /* slightly brighter when active */
   }
   /* Admin gear — neutral (Cheison authenticated, gate still closed) */
-  nav.bottom-nav #nav-settings-bottom[data-lock-state="admin"] svg {
+  nav.bottom-nav #nav-settings[data-lock-state="admin"] svg {
     stroke: var(--brass-light);
   }
   /* Open padlock — green (writes ON) */
-  nav.bottom-nav #nav-settings-bottom[data-lock-state="open"] svg {
+  nav.bottom-nav #nav-settings[data-lock-state="open"] svg {
     stroke: #6b9e5b;  /* sage/forest green — Sinonin palette */
   }
-  nav.bottom-nav #nav-settings-bottom[data-lock-state="open"].active svg {
+  nav.bottom-nav #nav-settings[data-lock-state="open"].active svg {
     stroke: #82b774;
   }
   /* Subtle pop animation when state changes */
-  nav.bottom-nav #nav-settings-bottom svg {
+  nav.bottom-nav #nav-settings svg {
     transition: stroke 0.3s ease;
   }
   /* Pop animation triggered by .lock-pulse class added briefly on state-change */
@@ -676,7 +779,7 @@
     35%  { transform: scale(1.18); }
     100% { transform: scale(1); }
   }
-  nav.bottom-nav #nav-settings-bottom.lock-pulse svg {
+  nav.bottom-nav #nav-settings.lock-pulse svg {
     animation: navLockPulse 0.45s ease-out;
   }
   .field { margin-bottom: 1.1rem; }
@@ -978,74 +1081,6 @@
     font-size: 1.15rem;
     font-weight: 500;
     margin-top: 0.15rem;
-  }
-
-  /* v6.10.18 — Cow milk batch grid: one row per alive cow, three litres inputs (AM/PM/Night).
-     Header row + cow rows. Inputs are compact so all four columns fit on a phone. */
-  .cmb-grid-header,
-  .cmb-row {
-    display: grid;
-    grid-template-columns: 1.6fr 1fr 1fr 1fr;
-    gap: 0.4rem;
-    align-items: center;
-    padding: 0.5rem 0.25rem;
-    border-bottom: 1px solid var(--rule);
-  }
-  .cmb-grid-header {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.62rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--brass-dark);
-    background: rgba(184, 147, 90, 0.06);
-    border-bottom: 1px solid var(--brass);
-    padding: 0.55rem 0.25rem;
-  }
-  .cmb-grid-header > div {
-    text-align: center;
-  }
-  .cmb-grid-header > div:first-child {
-    text-align: left;
-  }
-  .cmb-cow-name {
-    font-family: 'Fraunces', serif;
-    font-size: 0.92rem;
-    color: var(--forest);
-    line-height: 1.3;
-  }
-  .cmb-cow-meta {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.62rem;
-    color: var(--slate-light);
-    letter-spacing: 0.05em;
-    margin-top: 0.1rem;
-  }
-  .cmb-litre-input {
-    width: 100%;
-    padding: 0.45rem 0.3rem;
-    font-family: 'Fraunces', serif;
-    font-size: 0.95rem;
-    border: 1px solid var(--rule);
-    border-radius: 4px;
-    text-align: center;
-    box-sizing: border-box;
-  }
-  .cmb-litre-input:focus {
-    outline: none;
-    border-color: var(--forest);
-    background: var(--ivory-card);
-  }
-  .cmb-litre-input.filled {
-    background: rgba(74, 107, 78, 0.08);
-    border-color: var(--success);
-  }
-  .cmb-empty-state {
-    padding: 1.5rem 1rem;
-    text-align: center;
-    font-family: 'Fraunces', serif;
-    font-style: italic;
-    color: var(--slate-light);
-    font-size: 0.9rem;
   }
 
   .toast {
@@ -3141,16 +3176,16 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode (unlock requires admin)">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <!-- v6.10.22 — Admin button RESTORED to header. The v6.10.20 move to 
-       bottom-nav was reverted after Cheison observed Sinonin's bottom row 
-       was "tearing down" with the eighth button. Sealed § (Cheison 26 May 
-       2026 Verden, late afternoon): a dense bottom nav (7-button limit on 
-       phone) is the constraint; sparse-nav tenants (Birei, Kibois) can be 
-       addressed by growing their product tabs rather than borrowing 
-       real-estate that Sinonin needs for daily ops. Multi-state padlock 
-       SVG preserved; same id (#nav-settings) so all existing lock-state 
-       JS keeps working unchanged. -->
-  <button data-view="admin" id="nav-settings" class="admin-nav-btn" data-lock-state="locked" aria-label="Admin" title="Admin" type="button">
+  <!-- v6.10.5 — Admin button RELOCATED from bottom-nav to header. Sits 
+       left of refresh wheel. Same id (#nav-settings) so all existing JS 
+       (state pulls, lock-state attribute updates, click routing to 
+       panel-settings) keeps working unchanged. Multi-state padlock SVG 
+       preserved. Hidden by CSS when data-lock-state="locked" (operator 
+       default; revealed via long-press escape hatch on version label). 
+       Sealed § 6.x candidate: surfaces used by the principal but not 
+       daily operators belong in the header — bottom nav real estate is 
+       for thumb-frequent ground-ops controls. -->
+  <button data-view="admin" id="nav-settings" data-lock-state="locked" aria-label="Admin" title="Admin" type="button">
     <svg class="nav-lock-svg" viewBox="0 0 24 24" aria-hidden="true">
       <g class="nav-lock-icon-locked">
         <path d="M7 11V7a5 5 0 0 1 10 0v4" fill="none"/>
@@ -3181,7 +3216,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.10.25</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.1</span>
 </header>
 
 <main>
@@ -3374,7 +3409,7 @@
       </div>
 
       <!-- ── 4. SIREET EQUITY (kept from v6.3.12, headline=lifetime) ── -->
-      <div class="hero-metric-card hero-metric-card-equity hmc-sireet" data-product="sireet equity" data-card-id="sireet">
+      <div class="hero-metric-card hero-metric-card-equity hmc-sireet" data-product="tea" data-card-id="sireet">
         <div class="hmc-head">
           <span class="hmc-lbl">Sireet equity</span>
           <span class="hmc-period">5 Ksh/kg · cumulative</span>
@@ -3443,62 +3478,6 @@
         </div>
       </div>
 
-      <!-- ── 7. GOATS PLACEHOLDER ── (v6.10.16 — opt-in via DASHBOARD_ORDER) 
-           Built for Kibois Breeders (Isaac Kipchoge Kosgei) who breeds Galla 
-           goats alongside Dorper sheep. Hidden by default so Sinonin/Birei 
-           (no goats yet) see no change. Tenants enable by including "goats" 
-           in DASHBOARD_ORDER. Card shape mirrors coffee/sugarcane; horizons 
-           and headline will be wired when the goats data path is live. -->
-      <div class="hero-metric-card hmc-goats" data-product="goats" data-card-id="goats" style="display:none">
-        <div class="hmc-head">
-          <span class="hmc-lbl">Goats performance</span>
-          <span class="hmc-period">enterprise placeholder</span>
-        </div>
-        <div class="hmc-val">—</div>
-        <div class="hmc-sub-head">data path coming soon</div>
-        <div class="hmc-horizons">
-          <div class="hmc-horizon"><div class="hmc-h-lbl">Today</div><div class="hmc-h-val">—</div></div>
-          <div class="hmc-horizon"><div class="hmc-h-lbl">MTD</div><div class="hmc-h-val">—</div></div>
-          <div class="hmc-horizon"><div class="hmc-h-lbl">YTD</div><div class="hmc-h-val">—</div></div>
-          <div class="hmc-horizon"><div class="hmc-h-lbl">Life</div><div class="hmc-h-val">—</div></div>
-        </div>
-      </div>
-
-      <!-- ── 8. POTATOES PLACEHOLDER ── (v6.10.16 — opt-in via DASHBOARD_ORDER) 
-           Built for Kibois Breeders. North Rift cash crop. -->
-      <div class="hero-metric-card hmc-potatoes" data-product="potatoes" data-card-id="potatoes" style="display:none">
-        <div class="hmc-head">
-          <span class="hmc-lbl">Potatoes performance</span>
-          <span class="hmc-period">enterprise placeholder</span>
-        </div>
-        <div class="hmc-val">—</div>
-        <div class="hmc-sub-head">data path coming soon</div>
-        <div class="hmc-horizons">
-          <div class="hmc-horizon"><div class="hmc-h-lbl">Today</div><div class="hmc-h-val">—</div></div>
-          <div class="hmc-horizon"><div class="hmc-h-lbl">MTD</div><div class="hmc-h-val">—</div></div>
-          <div class="hmc-horizon"><div class="hmc-h-lbl">YTD</div><div class="hmc-h-val">—</div></div>
-          <div class="hmc-horizon"><div class="hmc-h-lbl">Life</div><div class="hmc-h-val">—</div></div>
-        </div>
-      </div>
-
-      <!-- ── 9. TRAINING PLACEHOLDER ── (v6.10.16 — opt-in via DASHBOARD_ORDER) 
-           Built for Kibois Breeders' farmer-training programme. Also serves 
-           ATC Kaimosi's training enterprise when that tenant comes online. -->
-      <div class="hero-metric-card hmc-training" data-product="training" data-card-id="training" style="display:none">
-        <div class="hmc-head">
-          <span class="hmc-lbl">Training performance</span>
-          <span class="hmc-period">enterprise placeholder</span>
-        </div>
-        <div class="hmc-val">—</div>
-        <div class="hmc-sub-head">data path coming soon</div>
-        <div class="hmc-horizons">
-          <div class="hmc-horizon"><div class="hmc-h-lbl">Today</div><div class="hmc-h-val">—</div></div>
-          <div class="hmc-horizon"><div class="hmc-h-lbl">MTD</div><div class="hmc-h-val">—</div></div>
-          <div class="hmc-horizon"><div class="hmc-h-lbl">YTD</div><div class="hmc-h-val">—</div></div>
-          <div class="hmc-horizon"><div class="hmc-h-lbl">Life</div><div class="hmc-h-val">—</div></div>
-        </div>
-      </div>
-
       <!-- Hidden legacy IDs preserved for any code path that still reads them. -->
       <span id="hero-income" style="display:none">0</span>
       <span id="hero-expenses" style="display:none">0</span>
@@ -3524,7 +3503,7 @@
            When ac-list is empty AND hatches exist, renderActionCards 
            suppresses the 'All caught up' empty-state placeholder so the 
            widget surfaces immediately. -->
-      <div id="home-urgent-hatch-progress" data-product="poultry" style="display:none"></div>
+      <div id="home-urgent-hatch-progress" style="display:none"></div>
     </div>
 
   </section>
@@ -3574,7 +3553,7 @@
         <div class="biz-card"><div class="lbl">Today</div><div class="val" id="tea-kg-month">0</div><div class="sub">kg from actuals</div></div>
         <div class="biz-card"><div class="lbl">Expected income</div><div class="val" id="tea-expected-month">Ksh 0</div><div class="sub">net after transport &amp; equity</div></div>
         <div class="biz-card"><div class="lbl">Tea expenses</div><div class="val" id="tea-expenses-month">Ksh 0</div><div class="sub" id="tea-expenses-sub">tea blocks &amp; tea ops</div></div>
-        <div class="biz-card" data-product="sireet equity"><div class="lbl">Sireet equity built</div><div class="val" id="tea-shares-month">Ksh 0</div><div class="sub">5 KES/kg accrued</div></div>
+        <div class="biz-card"><div class="lbl">Sireet equity built</div><div class="val" id="tea-shares-month">Ksh 0</div><div class="sub">5 KES/kg accrued</div></div>
       </div>
       <!-- v5.8.4 — All-factory totals row: kg & income aggregated across factories.
            Per Cheison: "Call from Actuals totals MTD and YTD."
@@ -3646,7 +3625,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3 data-label="poultry">Kipkenda Poultry</h3><span class="meta" id="poultry-section-meta">this month</span></div>
+      <div class="section-head"><h3>Kipkenda Poultry</h3><span class="meta" id="poultry-section-meta">this month</span></div>
 
       <!-- v6.1.4 — Deep litter tracking bar (Cheison sealed 04 May 2026).
            Sits between section header and bird population panel.
@@ -4403,6 +4382,167 @@
     </div>
   </section>
 
+  <!-- ╔══════════════════════════════════════════════════════════════════════╗
+       ║  PANEL-SALES (v6.11.0 — Unified POS-style revenue recording)        ║
+       ║                                                                      ║
+       ║  Three drill levels + form:                                          ║
+       ║    L1: Business-unit cards (Tea, Poultry, Dairy, ...)                ║
+       ║    L2: Product cards within unit (Greenleaf, Eggs, Milk, ...)        ║
+       ║    L3: Variant cards (Factory for Greenleaf, Stage for Eggs)         ║
+       ║    L4: Unified Sale form                                             ║
+       ║                                                                      ║
+       ║  Each tap COMMITS one dimension; the form lands with progressive     ║
+       ║  pre-fill. Sealed § 7.x (26 May 2026 Verden, Cheison):               ║
+       ║  "Sales is clicked by Faith, Victor, Elias, Isaac, Levy or Kaimosi   ║
+       ║   Team (later). It lands on the cards with different products, more  ║
+       ║   like a sales software at Aldo or EDEKA or a Restaurant."           ║
+       ║                                                                      ║
+       ║  All recorded sales land in a new unified `Sales` Apps Script sheet  ║
+       ║  with revenue_type (Income/Revenue/Bonus) and payment_method         ║
+       ║  (PAYBILL/TILL/CASH/KIND/BANK) as first-class dimensions.            ║
+       ║                                                                      ║
+       ║  COEXISTENCE — Phase A: Banked Income + Poultry Sales paths still   ║
+       ║  work in parallel. Phase D (later) migrates them. Zero-risk cutover. ║
+       ╚══════════════════════════════════════════════════════════════════════╝ -->
+  <section class="panel" id="panel-sales">
+
+    <!-- L1: BUSINESS UNIT CARDS -->
+    <div id="sales-level-1" class="sales-level">
+      <div class="batch-instructions">Tap the business unit to record a sale. Tea sold to Sireet, eggs at the gate, a milk run, a sheep sold — all land here.</div>
+      <div id="sales-unit-cards" class="sales-card-grid"></div>
+    </div>
+
+    <!-- L2: PRODUCT CARDS WITHIN UNIT (revealed after L1 tap) -->
+    <div id="sales-level-2" class="sales-level" style="display:none">
+      <div class="sales-breadcrumb">
+        <button class="sales-back" type="button" id="sales-back-to-1">‹ Back</button>
+        <span class="sales-crumb-current" id="sales-crumb-unit">—</span>
+      </div>
+      <div id="sales-product-cards" class="sales-card-grid"></div>
+    </div>
+
+    <!-- L3: VARIANT CARDS (revealed only when product has variants) -->
+    <div id="sales-level-3" class="sales-level" style="display:none">
+      <div class="sales-breadcrumb">
+        <button class="sales-back" type="button" id="sales-back-to-2">‹ Back</button>
+        <span class="sales-crumb-current">
+          <span id="sales-crumb-unit-2">—</span> · <span id="sales-crumb-product">—</span>
+        </span>
+      </div>
+      <div id="sales-variant-cards" class="sales-card-grid"></div>
+    </div>
+
+    <!-- L4: UNIFIED SALE FORM -->
+    <div id="sales-level-4" class="sales-level" style="display:none">
+      <div class="sales-breadcrumb">
+        <button class="sales-back" type="button" id="sales-back-to-prev">‹ Back</button>
+        <span class="sales-crumb-current" id="sales-form-crumb">—</span>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <h3 id="sales-form-title">Record sale</h3>
+          <span class="meta" id="sales-form-meta"></span>
+        </div>
+
+        <div class="pair">
+          <div class="field"><label>Date</label><input type="date" id="s-date"></div>
+          <div class="field">
+            <label>Payment method</label>
+            <select id="s-method">
+              <option value="">— Method —</option>
+              <option value="CASH">Cash</option>
+              <option value="PAYBILL">M-Pesa PAYBILL</option>
+              <option value="TILL">M-Pesa TILL</option>
+              <option value="BANK">Bank transfer</option>
+              <option value="KIND">In-kind / Barter</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Quantity row — labeled dynamically based on product context -->
+        <div class="pair">
+          <div class="field"><label id="s-qty-label">Quantity</label><input type="number" id="s-qty" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+          <div class="field">
+            <label>Unit</label>
+            <select id="s-unit">
+              <option value="">— Unit —</option>
+              <option value="kg">kg</option>
+              <option value="litres">litres</option>
+              <option value="trays">trays (30 eggs)</option>
+              <option value="number">number / count</option>
+              <option value="bags">bags</option>
+              <option value="hours">hours</option>
+              <option value="nights">nights</option>
+              <option value="lumpsum">lump sum (no qty)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field"><label>Amount received (Ksh)</label><input type="number" id="s-amount" inputmode="decimal" step="0.01" min="0" placeholder="0" style="font-family:'Fraunces',serif;font-size:1.1rem"></div>
+
+        <!-- Auto-prefill / variance row — shown when expected math is known (e.g. tea) -->
+        <div id="s-expected-row" class="calc-card" style="display:none;margin-top:0.4rem;padding:0.6rem 0.8rem">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <span class="lbl" style="font-size:0.78rem">Expected net (auto)</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:0.9rem" id="s-expected-val">Ksh —</span>
+          </div>
+          <div id="s-variance-line" style="display:none;margin-top:0.3rem;font-size:0.75rem;color:var(--brass)"></div>
+          <div id="s-deduction-detail" style="margin-top:0.4rem;font-size:0.7rem;color:var(--slate-light);line-height:1.5;font-family:'IBM Plex Mono',monospace"></div>
+        </div>
+
+        <div class="pair">
+          <div class="field">
+            <label>Revenue type</label>
+            <select id="s-revtype">
+              <option value="Income">Income (sale)</option>
+              <option value="Revenue">Revenue (bulk settlement)</option>
+              <option value="Bonus">Bonus (dividend / windfall)</option>
+            </select>
+          </div>
+          <div class="field"><label>For period (optional)</label><input type="text" id="s-period" placeholder="e.g. May 2026"></div>
+        </div>
+
+        <div class="field"><label>Buyer / Source</label><input type="text" id="s-buyer" placeholder="e.g. Sireet, customer name, market" style="font-family:'Fraunces',serif"></div>
+        <div class="field"><label>Reference (optional)</label><input type="text" id="s-reference" placeholder="e.g. M-Pesa code, TXN ID, KCB ref"></div>
+        <div class="field"><label>Notes (optional)</label><input type="text" id="s-notes"></div>
+
+        <button class="submit" id="s-submit" disabled>Record sale</button>
+
+        <!-- v6.11.0 — Receipt/invoice fields seated in the data model but not 
+             surfaced in form UI yet. Future eTIMS / eRechnung wiring writes 
+             to hidden inputs; existing Sheet schema already has columns. 
+             Sealed § 7.x (Cheison 26 May 2026): "But in the long run (not 
+             immediate), at the end of a sale, we generate an eRechnung for 
+             the sale." -->
+        <input type="hidden" id="s-receipt-type" value="">
+        <input type="hidden" id="s-receipt-id" value="">
+        <input type="hidden" id="s-receipt-issued" value="false">
+
+        <!-- Sale preview card -->
+        <div class="calc-card" id="s-preview" style="display:none;margin-top:0.9rem">
+          <div class="lbl">Sale preview</div>
+          <div class="primary"><span class="unit">Ksh</span><span id="s-preview-amt">0</span></div>
+          <div class="breakdown">
+            <div class="k">Business</div><div class="v" id="s-preview-biz">—</div>
+            <div class="k">Product</div><div class="v" id="s-preview-product">—</div>
+            <div class="k">Quantity</div><div class="v" id="s-preview-qty">—</div>
+            <div class="k">Method</div><div class="v" id="s-preview-method">—</div>
+            <div class="k">Type</div><div class="v" id="s-preview-revtype">—</div>
+            <div class="k">Buyer</div><div class="v" id="s-preview-buyer">—</div>
+            <div class="k">Date</div><div class="v" id="s-preview-date">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section" id="s-recent-section" style="display:none;margin-top:1.2rem">
+        <div class="section-head"><h3>Recent sales (this drill path)</h3><span class="meta" id="s-recent-count">0</span></div>
+        <div id="s-recent-list"></div>
+      </div>
+    </div>
+
+  </section>
+
   <!-- INSIGHTS -->
   <section class="panel" id="panel-insights">
     <div class="period-toggle">
@@ -4417,7 +4557,7 @@
       <div id="econ-blocks"></div>
     </div>
 
-    <div class="section" id="sireet-shares-section" data-product="sireet equity">
+    <div class="section" id="sireet-shares-section" data-product="tea">
       <div class="section-head"><h3>Sireet shares</h3><span class="meta" id="sireet-rate-meta">5 Ksh/kg</span></div>
       <div class="sireet-grid">
         <div class="sireet-card">
@@ -4489,7 +4629,7 @@
 
     <!-- v6.0 SHIP 5 — Kipkenda Poultry insights (LITE: 3 sparkline charts) -->
     <div class="section" id="insights-poultry-section" hidden>
-      <div class="section-head"><h3 data-label="poultry">Kipkenda Poultry</h3><span class="meta" id="insights-poultry-meta">last 30 days</span></div>
+      <div class="section-head"><h3>Kipkenda Poultry</h3><span class="meta" id="insights-poultry-meta">last 30 days</span></div>
 
       <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:0.5rem;border-bottom:1px solid var(--rule);padding-bottom:0.8rem">
         <div style="display:flex;justify-content:space-between;align-items:baseline">
@@ -4517,11 +4657,7 @@
     </div>
   </section>
 
-  <!-- OTHER · v6.3.12 placeholder — Sheep, Maize, Coffee (Lite scope, deferred to Phase 4)
-       v6.10.21 — Sugarcane joined the placeholder line-up. Maize and Coffee 
-       were always here; Birei loses sight of them when "Other" is in 
-       HIDDEN_PRODUCTS, so for Birei (Maize + Coffee + Sugarcane future) the 
-       Other button must STAY visible. -->
+  <!-- OTHER · v6.3.12 placeholder — Sheep, Maize, Coffee (Lite scope, deferred to Phase 4) -->
   <section class="panel" id="panel-other">
 
     <!-- v6.5.7 — HUB VIEW: tap-the-icon grid. The "Open →" affordance was 
@@ -4534,7 +4670,7 @@
         <span class="meta">tap to open</span>
       </div>
       <p style="color:var(--brass-light); opacity:0.85; line-height:1.6; margin:0.5rem 0 1.2rem; font-size:0.92rem">
-        Maize, Coffee, and Sugarcane sit here as future enterprises. Sheep and Cows now live in their own top-level tabs alongside Tea and Poultry.
+        Coffee and Maize sit here as future Sinonin Group enterprises. Sheep and Cows now live in their own top-level tabs alongside Tea and Poultry.
       </p>
 
       <div class="other-icon-grid" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:0.8rem">
@@ -4545,7 +4681,7 @@
              redundant entry point in the parent is a relic — it confuses 
              rather than reinforces. Remove with conviction. -->
 
-        <div class="other-tile other-tile-soon" data-product="maize" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.6rem; aspect-ratio:1/1; background:rgba(180,140,80,0.05); border:0.5px solid rgba(180,140,80,0.18); border-radius:12px; padding:1rem 0.6rem;">
+        <div class="other-tile other-tile-soon" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.6rem; aspect-ratio:1/1; background:rgba(180,140,80,0.05); border:0.5px solid rgba(180,140,80,0.18); border-radius:12px; padding:1rem 0.6rem;">
           <span style="font-size:2.6rem; line-height:1; opacity:0.55">🌽</span>
           <div style="text-align:center; min-width:0">
             <div style="color:var(--ivory); font-weight:500; font-size:0.95rem; line-height:1.2; opacity:0.65">Maize</div>
@@ -4553,7 +4689,7 @@
           </div>
         </div>
 
-        <div class="other-tile other-tile-soon" data-product="coffee" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.6rem; aspect-ratio:1/1; background:rgba(180,140,80,0.05); border:0.5px solid rgba(180,140,80,0.18); border-radius:12px; padding:1rem 0.6rem;">
+        <div class="other-tile other-tile-soon" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.6rem; aspect-ratio:1/1; background:rgba(180,140,80,0.05); border:0.5px solid rgba(180,140,80,0.18); border-radius:12px; padding:1rem 0.6rem;">
           <span style="font-size:2.6rem; line-height:1; opacity:0.55">☕</span>
           <div style="text-align:center; min-width:0">
             <div style="color:var(--ivory); font-weight:500; font-size:0.95rem; line-height:1.2; opacity:0.65">Coffee</div>
@@ -4561,24 +4697,10 @@
           </div>
         </div>
 
-        <!-- v6.10.21 — Sugarcane joins Maize and Coffee as a placeholder.
-             Birei lists sugarcane among his planned enterprises; the tile
-             reserves the slot so the operations module can be wired
-             incrementally when ready. Tagged data-product="sugarcane" 
-             parallel to Maize / Coffee so tenants who don't farm it can
-             hide via HIDDEN_PRODUCTS without disturbing the others. -->
-        <div class="other-tile other-tile-soon" data-product="sugarcane" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.6rem; aspect-ratio:1/1; background:rgba(180,140,80,0.05); border:0.5px solid rgba(180,140,80,0.18); border-radius:12px; padding:1rem 0.6rem;">
-          <span style="font-size:2.6rem; line-height:1; opacity:0.55">🎋</span>
-          <div style="text-align:center; min-width:0">
-            <div style="color:var(--ivory); font-weight:500; font-size:0.95rem; line-height:1.2; opacity:0.65">Sugarcane</div>
-            <div style="color:var(--brass-light); opacity:0.55; font-size:0.7rem; margin-top:3px; letter-spacing:0.05em">Soon</div>
-          </div>
-        </div>
-
       </div>
 
       <p style="color:var(--brass-light); opacity:0.55; font-size:0.78rem; line-height:1.5; margin:1.2rem 0 0; font-style:italic">
-        Tea, Poultry, Sheep, and Cows are the operational top-level surfaces. Maize, Coffee, and Sugarcane will join when the operations warrant them.
+        Tea, Poultry, Sheep, and Cows are the operational top-level surfaces. Coffee and Maize will join when the operations warrant them.
       </p>
     </div>
 
@@ -4614,8 +4736,8 @@
 
         <!-- ACTION GRID — operator-first, top placement -->
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:1.2rem;">
-          <button type="button" onclick="openSheepEventForm('lambed', null)" class="export-btn" style="background:var(--forest); color:var(--ivory); border-color:var(--forest); padding:0.7rem 0.5rem; font-size:0.78rem">🐑 + Log lambing</button>
-          <button type="button" onclick="openSheepEventPicker(null)" class="export-btn" style="background:var(--brass-dark); color:var(--ivory); border-color:var(--brass-dark); padding:0.7rem 0.5rem; font-size:0.78rem">📝 + Log event</button>
+          <button type="button" onclick="openSheepEventForm('lambed', null)" class="export-btn" style="background:var(--forest); color:var(--ivory); border-color:var(--forest); padding:0.7rem 0.5rem; font-size:0.92rem">🐑 + Log lambing</button>
+          <button type="button" onclick="openSheepEventPicker(null)" class="export-btn" style="background:var(--brass-dark); color:var(--ivory); border-color:var(--brass-dark); padding:0.7rem 0.5rem; font-size:0.92rem">📝 + Log event</button>
           <button type="button" onclick="openSheepForm('add', null)" class="export-btn" style="background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark); padding:0.55rem 0.5rem;">+ Add sheep</button>
           <button type="button" onclick="setSheepView('list')" class="export-btn" style="background:transparent; color:var(--brass-dark); border:1px solid var(--brass); padding:0.55rem 0.5rem;">View registry</button>
         </div>
@@ -5081,8 +5203,8 @@
              serves the operator's action. They should be laid out 
              differently because their primary users are different. -->
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:1.2rem;">
-          <button type="button" onclick="setCowView('milk'); openCowMilkForm(null, null)" class="export-btn" style="background:var(--forest); color:var(--ivory); border-color:var(--forest); padding:0.7rem 0.5rem; font-size:0.78rem">🥛 + Log milking</button>
-          <button type="button" onclick="openCowEventPicker(null)" class="export-btn" style="background:var(--brass-dark); color:var(--ivory); border-color:var(--brass-dark); padding:0.7rem 0.5rem; font-size:0.78rem">📝 + Log event</button>
+          <button type="button" onclick="setCowView('milk'); openCowMilkForm(null, null)" class="export-btn" style="background:var(--forest); color:var(--ivory); border-color:var(--forest); padding:0.7rem 0.5rem; font-size:0.92rem">🥛 + Log milking</button>
+          <button type="button" onclick="openCowEventPicker(null)" class="export-btn" style="background:var(--brass-dark); color:var(--ivory); border-color:var(--brass-dark); padding:0.7rem 0.5rem; font-size:0.92rem">📝 + Log event</button>
           <button type="button" onclick="setCowView('form'); openCowForm('add')" class="export-btn" style="background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark); padding:0.55rem 0.5rem;">+ Add cow</button>
           <button type="button" onclick="setCowView('list')" class="export-btn" style="background:transparent; color:var(--brass-dark); border:1px solid var(--brass); padding:0.55rem 0.5rem;">View registry</button>
         </div>
@@ -5440,16 +5562,6 @@
         </div>
         <h3 style="font-family:'Fraunces',serif; font-style:italic; font-weight:400; font-size:1.3rem; color:var(--forest); margin:0.4rem 0 1rem; letter-spacing:-0.01em;">Log milking</h3>
 
-        <!-- v6.10.18 — Mode toggle. Quick = single entry (one cow, one session). 
-             Batch = grid (all alive cows × AM/PM/Night), one POST per non-empty cell.
-             Mirrors the Plucker greenleaf-kind Quick/Batch pattern. -->
-        <div class="mode-toggle" style="margin-bottom:1rem">
-          <button class="active" id="cm-mode-quick" type="button">Quick Entry</button>
-          <button id="cm-mode-batch" type="button">Batch Entry</button>
-        </div>
-
-        <!-- ===== QUICK MODE (existing single-entry form) ===== -->
-        <div id="cm-quick-mode">
         <div class="field">
           <label>Date</label>
           <input type="date" id="cm-date">
@@ -5510,53 +5622,6 @@
           <button type="button" onclick="closeCowMilkForm()" class="export-btn" style="flex:1">Cancel</button>
           <button type="button" onclick="submitCowMilkForm()" class="export-btn" style="flex:1; background:var(--forest-dark); color:var(--ivory); border-color:var(--forest-dark)">🥛 Save milking</button>
         </div>
-        </div><!-- /cm-quick-mode -->
-
-        <!-- ===== BATCH MODE (v6.10.18 — grid: alive cows × AM/PM/Night) =====
-             Header carries Date / Channel / Operator (and Gifted-to when 
-             channel=Gifted) which apply to ALL non-empty cells. Each non-blank
-             litres input becomes one Cow_Milk_Log row on Save All.
-             For Levy and Isaac's daily milking shifts — record the whole day 
-             after the last session, no per-session app interaction needed. -->
-        <div id="cm-batch-mode" style="display:none">
-          <div class="pair">
-            <div class="field"><label>Date</label><input type="date" id="cmb-date"></div>
-            <div class="field">
-              <label>Channel</label>
-              <select id="cmb-channel"><option value="">— pick channel —</option></select>
-            </div>
-          </div>
-
-          <!-- Conditional: gift recipient (applies to whole batch) -->
-          <div class="field" id="cmb-recipient-field" style="display:none">
-            <label>Gifted to <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(applies to all rows)</span></label>
-            <select id="cmb-recipient"><option value="">— pick recipient —</option></select>
-            <input type="text" id="cmb-recipient-other" placeholder="Specify (when 'Other')" autocomplete="off" style="margin-top:0.4rem; display:none; width:100%; padding:0.5rem; font-family:'Fraunces',serif; font-size:0.92rem; border:1px solid var(--rule); border-radius:4px;">
-          </div>
-
-          <!-- Conditional: buyer (free text) for Farm-Gate / Processed -->
-          <div class="field" id="cmb-buyer-field" style="display:none">
-            <label id="cmb-buyer-label">Buyer / customer <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(optional, applies to all rows)</span></label>
-            <input type="text" id="cmb-buyer" placeholder="Name or destination" autocomplete="off">
-          </div>
-
-          <div class="field">
-            <label>Operator <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(who milked?)</span></label>
-            <select id="cmb-operator"></select>
-          </div>
-
-          <div class="batch-summary" style="margin-top:0.9rem">
-            <div><div class="sum-lbl">Entries</div><div class="sum-val" id="cmb-count">0</div></div>
-            <div><div class="sum-lbl">Total litres</div><div class="sum-val" id="cmb-total">0</div></div>
-          </div>
-
-          <button type="button" id="cmb-submit" class="submit" style="margin-top:0.6rem" disabled>Save All Milkings</button>
-
-          <div class="batch-instructions" style="margin-top:1.1rem">Enter litres for each session a cow was milked today. Leave blank for sessions a cow was skipped.</div>
-
-          <div id="cmb-grid" style="margin-top:0.8rem"></div>
-        </div><!-- /cm-batch-mode -->
-
         <div id="cm-feedback" style="display:none;margin-top:0.7rem;padding:0.6rem 0.8rem;border-radius:6px;font-family:'Fraunces',serif;font-size:0.9rem"></div>
       </div>
 
@@ -5709,12 +5774,10 @@
          v5.8.5 — Renamed "🏠 Kipkenda Houses" → "Kipkenda Poultry" per Cheison.
          v5.8.5 — Collapsible: section-head pattern matches Plucker / Categories / Factories.
          Note: outer display:none is the admin-only gate (set by Admin section logic).
-         Collapse layers ON TOP — when admin opens it, body still starts collapsed.
-         v6.10.20 — data-product="poultry" so tenants with poultry hidden 
-         (Kibois) get this admin section hidden too. -->
-    <div class="section" id="settings-houses-section" data-product="poultry" style="display:none">
+         Collapse layers ON TOP — when admin opens it, body still starts collapsed. -->
+    <div class="section" id="settings-houses-section" style="display:none">
       <div class="section-head houses-section-head" id="houses-section-head" style="cursor:pointer;user-select:none;-webkit-user-select:none">
-        <h3 data-label="poultry">🐔 Kipkenda Poultry <span class="chevron" id="houses-chevron" style="font-size:0.7em;opacity:0.6;margin-left:0.4rem;transition:transform 0.2s ease">▸</span></h3>
+        <h3>🐔 Kipkenda Poultry <span class="chevron" id="houses-chevron" style="font-size:0.7em;opacity:0.6;margin-left:0.4rem;transition:transform 0.2s ease">▸</span></h3>
         <span class="meta" id="houses-count">0</span>
       </div>
       <div id="houses-section-body" style="display:none">
@@ -5836,7 +5899,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.10.25</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.1</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -5868,7 +5931,7 @@
       <svg viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19.5 2c.5 5 .26 7.55-.5 10.5C18.34 18 14 22 11 20Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/></svg>
       <span>Tea</span>
     </button>
-    <button data-view="poultry" data-product="poultry" aria-label="Poultry">
+    <button data-view="poultry" aria-label="Poultry">
       <!-- Feather icon -->
       <svg viewBox="0 0 24 24"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><path d="M16 8L2 22"/><path d="M17.5 15H9"/></svg>
       <span>Poultry</span>
@@ -5912,44 +5975,37 @@
       <svg viewBox="0 0 24 24"><ellipse cx="12" cy="13" rx="6" ry="6.5"/><path d="M6 8c-1.5-1-3-1.5-3.5-0.5S4 11 6 11M18 8c1.5-1 3-1.5 3.5-0.5S20 11 18 11"/><circle cx="9.5" cy="12" r="0.8" fill="currentColor"/><circle cx="14.5" cy="12" r="0.8" fill="currentColor"/><ellipse cx="12" cy="16.5" rx="2" ry="1.3"/><circle cx="10.8" cy="16.3" r="0.3" fill="currentColor"/><circle cx="13.2" cy="16.3" r="0.3" fill="currentColor"/></svg>
       <span>Cows</span>
     </button>
-    <button data-view="other" data-product="other" aria-label="Other businesses">
+    <button data-view="other" aria-label="Other businesses">
       <!-- Circle dot icon -->
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>
       <span>Other</span>
+    </button>
+    <!-- v6.11.0 — SALES button. Unified revenue-recording surface across
+         all business units (Tea, Poultry, Dairy, Dorper, Coffee, Maize, 
+         Chelabaal, Other). POS-style cascade: business unit card → product 
+         drilldown → unified Sale form. Replaces the tea-gated "Banked 
+         Income" path which was inaccessible to Birei/Kibois (no tea). 
+         Sealed § 7.x (26 May 2026 Verden, Cheison): "We won't even need 
+         'Banked Income' as that suggests income against no sales. ... 
+         I would consider HOW (PAYBILL/TILL/CASH/KIND/BANK) and WHAT 
+         (Income/Revenue/Bonus) as separate." -->
+    <button data-view="sales" aria-label="Sales">
+      <!-- Cash register / receipt icon -->
+      <svg viewBox="0 0 24 24">
+        <path d="M3 7h18l-1 13H4z"/>
+        <path d="M8 7V5a4 4 0 0 1 8 0v2"/>
+        <path d="M9 12h6M9 16h4"/>
+      </svg>
+      <span>Sales</span>
     </button>
     <button data-view="insights" aria-label="Insights">
       <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg>
       <span>Insights</span>
     </button>
-    <!-- v6.10.25 — Admin button (bottom-nav version). Tenants whose 
-         Control_Panel has ADMIN_NAV_POSITION=bottom-nav (Birei, Kibois) 
-         see this version; the header version stays hidden. Sinonin (no
-         Control_Panel key, default 'header') sees only the header button.
-         Both buttons share class="admin-nav-btn" so lock-state JS targets
-         both via querySelectorAll — only ONE is visible at a time per 
-         tenant, but state updates work the same way regardless.
-         id="nav-settings-bottom" avoids duplicate-id with the header
-         button. CSS rules for nav.bottom-nav #nav-settings updated to
-         target #nav-settings-bottom instead. -->
-    <button data-view="admin" id="nav-settings-bottom" class="admin-nav-btn" data-lock-state="locked" aria-label="Admin" title="Admin" type="button" style="display:none">
-      <svg class="nav-lock-svg" viewBox="0 0 24 24" aria-hidden="true">
-        <g class="nav-lock-icon-locked">
-          <path d="M7 11V7a5 5 0 0 1 10 0v4" fill="none"/>
-          <rect x="5" y="11" width="14" height="10" rx="2"/>
-          <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
-        </g>
-        <g class="nav-lock-icon-admin">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>
-        </g>
-        <g class="nav-lock-icon-open">
-          <path d="M7 11V7a5 5 0 0 1 9.5-2" fill="none"/>
-          <rect x="5" y="11" width="14" height="10" rx="2"/>
-          <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
-        </g>
-      </svg>
-      <span>Admin</span>
-    </button>
+    <!-- v6.10.5 — Admin button RELOCATED to header (left of refresh wheel).
+         Was here; now occupies header real estate since it's used by Cheison 
+         specifically and shouldn't compete with daily-ops buttons for thumb 
+         space. See <header> for the new placement. -->
   </nav>
 </div>
 
@@ -6017,76 +6073,22 @@
 </div>
 
 <script>
-/* v6.10.16 — Tea blocks no longer hardcoded. Each tenant lists their blocks 
-   in Control_Panel under TEA_BLOCKS (comma-separated). Sinonin's Sheet must 
-   carry: TEA_BLOCKS = "Sinonin,Cheptabach,Bitonin,Kipkenda,Kipkorom,Sangalo" 
-   post-deploy. Empty for tenants without tea ops (Kibois until Isaac sets 
-   his blocks; Birei never). Helper reads at call-site so Sheet edits take 
-   effect after next cloud hydration without a code change. */
-const BLOCKS = [];
-function teaBlocks() {
-  const cfgStr = tcfg('TEA_BLOCKS', '');
-  if (!cfgStr || typeof cfgStr !== 'string') return [];
-  return cfgStr.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
-}
+const BLOCKS = ['Sinonin', 'Cheptabach', 'Bitonin', 'Kipkenda', 'Kipkorom', 'Sangalo'];
 
-/* v6.10.16 — Business units no longer hardcoded. Each tenant lists their 
-   business units in Control_Panel under BUSINESS_UNITS (comma-separated). 
-   Sinonin's Sheet must carry: BUSINESS_UNITS = "Kipkenda Poultry,Olomotit 
-   Coffee,Maize,Dorper sheep,Dairy,Chelabaal" post-deploy. Used in Allocation 
-   + Records-filter dropdowns alongside the tea blocks. */
-const BUSINESS_UNITS = [];
-function businessUnits() {
-  const cfgStr = tcfg('BUSINESS_UNITS', '');
-  if (!cfgStr || typeof cfgStr !== 'string') return [];
-  return cfgStr.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
-}
+/* Business units — appear in Allocation dropdown for expenses (and Records
+   block filter) alongside the tea blocks. Each one is a separate revenue or
+   cost centre under the Sinonin Group umbrella. Chelabaal is the
+   retirement-home-and-orchard project near Eldoret International Airport.
+   v6.10.2 — 'Dairy' added so cow-related expenses (feed, veterinary,
+   AI service, hooftrim, dewormer) can be allocated cleanly. Mirrors the
+   pattern already used for 'Dorper sheep'. */
+const BUSINESS_UNITS = ['Kipkenda Poultry', 'Olomotit Coffee', 'Maize', 'Dorper sheep', 'Dairy', 'Chelabaal'];
 
-/* v6.10.23 — DEFAULT_FACTORIES schema migrated to the v6.10.23-locked column
-   names (PriceKg, TransportKg, XmasBonusKg, MarBonusKg, PluckerRateKg,
-   PluckerBonusKg) which match the Sinonin Tea_Factories sheet. Backward-compat
-   aliases (transport, wageKg, bonusKg) preserved so existing rate-application
-   code at line 6845, 6962, 10416 etc. keeps working until the proper refactor
-   (v6.10.24 next session). New fields default to 0 — xmasBonusKg / marBonusKg
-   are operator-set as factories declare them each year. Sireet's equity (5
-   KSh/kg retained as shareholding) becomes Control_Panel SIREET_EQUITY_KG=5
-   in a future tranche; for now `shares` field is preserved on Sireet only.
-   
-   Rates corrected per Cheison 26 May 2026 Verden: Sireet transport 3.99 (was
-   3.90 — drift confirmed); Sireet PluckerBonusKg 0.5 (deferred to Christmas
-   quality motivator).
-   
-   v6.10.17 retained as comment for context: emptying DEFAULT_FACTORIES caused
-   Sinonin's catastrophic factory loss this morning. Schema migration is safe
-   ONLY because cloud hydration (next change) will overwrite STATE.factories
-   from Tea_Factories sheet on boot. Local seed is just the offline fallback
-   for first-install before cloud merges. */
 const DEFAULT_FACTORIES = [
-  // Sireet — TOP PRIORITY. transportKg=3.99 (factory-confirmed). pluckerBonusKg=0.5 (deferred to Christmas quality motivator). shares=5 (Sireet equity stake — last vestige of legacy field, moves to Control_Panel later).
-  { name: "Sireet",    priceKg: 25, transportKg: 3.99, xmasBonusKg: 0, marBonusKg: 0, pluckerRateKg: 9.5, pluckerBonusKg: 0.5, active: true, notes: "Top priority; quality-finicky",
-    transport: 3.99, wageKg: 9.5, bonusKg: 0.5, shares: 5, greenleaf: 0 },
-  { name: "Sang'alo",  priceKg: 23, transportKg: 0,    xmasBonusKg: 0, marBonusKg: 0, pluckerRateKg: 8,   pluckerBonusKg: 0,   active: true, notes: "Next door to Sinonin",
-    transport: 0, wageKg: 8, bonusKg: 0, shares: 0, greenleaf: 0 },
-  { name: "Kapchorwa", priceKg: 24, transportKg: 0,    xmasBonusKg: 0, marBonusKg: 0, pluckerRateKg: 10,  pluckerBonusKg: 0,   active: true, notes: "Option for Kipkorom",
-    transport: 0, wageKg: 10, bonusKg: 0, shares: 0, greenleaf: 0 },
-  { name: "Chebut",    priceKg: 26, transportKg: 5,    xmasBonusKg: 0, marBonusKg: 0, pluckerRateKg: 7,   pluckerBonusKg: 0,   active: false, notes: "",
-    transport: 5, wageKg: 7, bonusKg: 0, shares: 0, greenleaf: 0 }
-];
-
-/* v6.10.23 — DEFAULT_MILK_FACTORIES seeds the milk-side schema. Birei's app
-   uses this for the milk-channel dropdown; Sinonin has no milk ops so this
-   seed shows nothing for them. Cloud hydration from Milk_Factories sheet
-   overwrites this on boot. Default rates here are illustrative — operators
-   update via the sheet. */
-const DEFAULT_MILK_FACTORIES = [
-  { name: "Brookside",         priceLitre: 38,   transportLitre: 0, cessLitre: 0, bonusLitre: 0, paymentFrequency: "weekly",  active: true, notes: "" },
-  { name: "Kabiyet Co-Op",     priceLitre: 35,   transportLitre: 0, cessLitre: 0, bonusLitre: 0, paymentFrequency: "weekly",  active: true, notes: "" },
-  { name: "New-KCC",           priceLitre: 36,   transportLitre: 0, cessLitre: 0, bonusLitre: 0, paymentFrequency: "monthly", active: true, notes: "" },
-  { name: "Nandi Dairies",     priceLitre: 40,   transportLitre: 0, cessLitre: 0, bonusLitre: 0, paymentFrequency: "monthly", active: true, notes: "" },
-  { name: "Farm Gate",         priceLitre: 0,    transportLitre: 0, cessLitre: 0, bonusLitre: 0, paymentFrequency: "at-sale", active: true, notes: "cash on the spot" },
-  { name: "Gift / Donation",   priceLitre: 0,    transportLitre: 0, cessLitre: 0, bonusLitre: 0, paymentFrequency: "n/a",     active: true, notes: "" },
-  { name: "In-house Process",  priceLitre: 0,    transportLitre: 0, cessLitre: 0, bonusLitre: 0, paymentFrequency: "n/a",     active: true, notes: "yoghurt/mursik/ghee" },
-  { name: "Wasted",            priceLitre: 0,    transportLitre: 0, cessLitre: 0, bonusLitre: 0, paymentFrequency: "n/a",     active: true, notes: "spoilage tracking" }
+  { name: "Sireet",    priceKg: 25,   transport: 3.90, shares: 5, wageKg: 9.5,  bonusKg: 0.5, greenleaf: 13 },
+  { name: "Sang'alo",  priceKg: 23,   transport: 0,    shares: 0, wageKg: 8,    bonusKg: 0,   greenleaf: 0  },
+  { name: "Kapchorwa", priceKg: 24,   transport: 3,    shares: 0, wageKg: 10,   bonusKg: 0,   greenleaf: 0  },
+  { name: "Chebut",    priceKg: 26,   transport: 5,    shares: 0, wageKg: 7,    bonusKg: 0,   greenleaf: 15 }
 ];
 
 /* Factory rate history — applied per Actuals row based on its date.
@@ -6134,12 +6136,52 @@ function netPerKg(factory, dateStr) {
   return Math.max(0, r.priceKg - r.transport - r.shares);
 }
 
-/* v6.10.16 — Pluckers no longer seeded with Sinonin's 45-name roster. 
-   STATE.pluckerRoster (and PLUCKERS array) hydrate from the tenant's 
-   Plucker_Roster sheet via cloudFetch + readRoster Apps Script function. 
-   Fresh installs start empty; tenants add their pluckers via the Settings 
-   tab Plucker roster UI which writes back to the Sheet. */
-const DEFAULT_PLUCKERS = [];
+const DEFAULT_PLUCKERS = [
+  { id: 4,  name: "Elias Kimaru Kemboi",  bonus: true,  active: true, primaryBlock: "All farms",  notes: "Farm Manager" },
+  { id: 5,  name: "Cheptabach",            bonus: true,  active: true, primaryBlock: "Cheptabach", notes: "" },
+  { id: 6,  name: "Gladys Yego",           bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 7,  name: "Victor Kiprono",        bonus: true,  active: true, primaryBlock: "All farms",  notes: "" },
+  { id: 8,  name: "Faith Chepchirchir",    bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 9,  name: "Hillary Kimutai",       bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 10, name: "Sheila Jesang",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 11, name: "Colleta Jerono",        bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 12, name: "Zacchariah Kipleting",  bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 16, name: "Abram Kipruto",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 17, name: "Stanley Kosgei",        bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 19, name: "Eunice Koech",          bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 25, name: "Winnie Jepkemei",       bonus: false, active: true, primaryBlock: "Sangalo",    notes: "" },
+  { id: 29, name: "Nancy Cherop",          bonus: false, active: true, primaryBlock: "Sangalo",    notes: "" },
+  { id: 30, name: "Caren Jepngetich",      bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 31, name: "Josphat Kipkemboi",     bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 32, name: "Frankline Kirwa",       bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 33, name: "Contractors",           bonus: false, active: true, primaryBlock: "All farms",  notes: "Day-and-disappear" },
+  { id: 34, name: "Meshark Too",           bonus: false, active: true, primaryBlock: "All farms",  notes: "" },
+  { id: 35, name: "Ezron Rudisha",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 36, name: "Geofrey Malakwen",      bonus: false, active: true, primaryBlock: "All farms",  notes: "" },
+  { id: 37, name: "Nahashon Kipchirchir",  bonus: false, active: true, primaryBlock: "All farms",  notes: "" },
+  { id: 38, name: "Lydia Jelagat",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 40, name: "Juliet Jepkemboi",      bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 41, name: "Sharon Cherotich",      bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 42, name: "Mercy Chepleting",      bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 44, name: "Mercy Jepkurui",        bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 45, name: "Winnie Jepkoech",       bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 46, name: "Caren Lagat",           bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 47, name: "Kipkorom",              bonus: true,  active: true, primaryBlock: "Kipkorom",   notes: "" },
+  { id: 48, name: "Sylivia Chelimo",       bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 49, name: "Violah Chepchumba",     bonus: true,  active: true, primaryBlock: "All farms",  notes: "" },
+  { id: 50, name: "Rosepela Cherotich",    bonus: true,  active: true, primaryBlock: "Sangalo",    notes: "" },
+  { id: 51, name: "Boaz Kiplimo",          bonus: true,  active: true, primaryBlock: "Sangalo",    notes: "" },
+  { id: 52, name: "Irine Chepkoech",       bonus: true,  active: true, primaryBlock: "Sangalo",    notes: "" },
+  { id: 53, name: "Faith Jepngetich",      bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 54, name: "Caren Jebitok",         bonus: true,  active: true, primaryBlock: "Sangalo",    notes: "" },
+  { id: 55, name: "Sharon Cheptoo",        bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 56, name: "Collins Kimeli",        bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 57, name: "Violah Chelimo",        bonus: true,  active: true, primaryBlock: "Sangalo",    notes: "" },
+  { id: 58, name: "Eugene Kipkemboi",      bonus: false, active: true, primaryBlock: "Sangalo",    notes: "Work-n-Pay" },
+  { id: 59, name: "Patroba Cheptoo",       bonus: false, active: true, primaryBlock: "Sangalo",    notes: "Work-n-Pay" },
+  { id: 60, name: "Vivian Chumba",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
+  { id: 61, name: "Josphat Kibet",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" }
+];
 
 let PLUCKERS = JSON.parse(JSON.stringify(DEFAULT_PLUCKERS));
 
@@ -6293,85 +6335,16 @@ function hiddenProducts() {
    updated. Default values keep Sinonin's existing language unchanged. */
 function dairyLabel()  { return tcfg('DAIRY_LABEL',  'Dairy'); }
 function dorperLabel() { return tcfg('DORPER_LABEL', 'Dorper'); }
-// v6.10.20 — POULTRY_LABEL: tenant rename of the poultry house identifier.
-// "Kipkenda Poultry" is Sinonin's specific house at Kipkenda; Levy may
-// prefer "Birei Poultry". Default keeps Sinonin's existing language. Applied
-// at UI-render time to elements tagged data-label="poultry".
-function poultryLabel() { return tcfg('POULTRY_LABEL', 'Kipkenda Poultry'); }
-
-// v6.10.25 — ADMIN_NAV_POSITION: tenant choice of where the admin button 
-// lives. Default 'header' keeps Sinonin's behavior (admin in top-right of
-// header, doesn't compete with daily-ops buttons in the dense 7-button
-// bottom nav). Birei + Kibois set 'bottom-nav' in their Control_Panel —
-// their bottom nav has 6 or fewer buttons after HIDDEN_PRODUCTS, so an
-// admin button fits there without crowding. Read by applyControlPanelToUI
-// which toggles visibility of the two admin buttons.
-// Sealed § (Cheison 26 May 2026 Verden): "Sinonin Navigation crowded BUT
-// OK with admin at top. Birei + Kibois — OK with admin in bottom-nav."
-function adminNavPosition() {
-  const v = tcfg('ADMIN_NAV_POSITION', 'header');
-  return String(v || 'header').toLowerCase().trim() === 'bottom-nav' ? 'bottom-nav' : 'header';
-}
-
-// v6.10.24 — Tea cess per kg, sourced from Control_Panel TEA_CESS_KG with
-// fallback to STATE.settings.teaCessPerKg (operator-set via legacy Settings
-// UI) then DEFAULT_SETTINGS constant. Sheet-driven value wins — that's the
-// lean-architecture commitment. All factories deduct this cess; it's a
-// statutory levy applied uniformly. Cheison confirmed flat 0.22 KSh/kg
-// nationally so single Control_Panel value (not per-factory column) is right.
-function teaCessPerKg() {
-  const cp = tcfg('TEA_CESS_KG', null);
-  if (cp !== null && cp !== '') {
-    const n = Number(cp);
-    if (!isNaN(n) && n >= 0) return n;
-  }
-  if (STATE.settings && typeof STATE.settings.teaCessPerKg === 'number') {
-    return STATE.settings.teaCessPerKg;
-  }
-  return 0.22;
-}
-
-// v6.10.24 — Milk channel dropdown source. Prefers Sheet-driven 
-// STATE.milkFactories (Birei + Kibois populate); falls back to hardcoded 
-// MILK_CHANNELS when nothing's hydrated yet (Sinonin / first install / 
-// pre-cloud-sync). Filters to active rows only. Returns { value, label }
-// shape matching the existing dropdown population code.
-function milkChannelList() {
-  if (Array.isArray(STATE.milkFactories) && STATE.milkFactories.length > 0) {
-    return STATE.milkFactories
-      .filter(function (f) { return f.active !== false; })
-      .map(function (f) { return { value: f.name, label: f.name }; });
-  }
-  return MILK_CHANNELS;
-}
-
-// v6.10.24 — Case-insensitive substring match for milk channel type. Replaces
-// the strict equality checks (val === 'Gifted', val === 'Farm-Gate', 
-// val === 'Processed') which only matched the hardcoded MILK_CHANNELS exactly.
-// Now matches sheet-driven names too: "Gift / Donation" → 'gift', 
-// "Farm Gate" → 'farm-gate', "In-house Process" → 'processed'.
-// Returns: 'gift' | 'farm-gate' | 'processed' | null (= no special UI).
-// "Wasted" and commercial processors (Brookside, Kabiyet etc.) return null,
-// hiding both recipient and buyer fields — correct for those channels.
-function milkChannelType(val) {
-  const lower = String(val || '').toLowerCase();
-  if (lower.includes('gift') || lower.includes('donat')) return 'gift';
-  if (lower.includes('farm') && lower.includes('gate')) return 'farm-gate';
-  if (lower.includes('process')) return 'processed';
-  return null;
-}
 
 /* v6.10.14 — DASHBOARD_ORDER: explicit ordering of hero cards on Home tab.
    Comma-separated list of card IDs. Cards matching the order list are 
    reordered + shown (overriding default display:none on placeholder cards). 
    Cards NOT in the list keep their default position + visibility.
-   Available card IDs (v6.10.16): farm, tea, poultry, dairy, dorper, sireet,
-   coffee, sugarcane, goats, potatoes, training.
+   Available card IDs: farm, tea, poultry, dairy, dorper, sireet, coffee, sugarcane.
    Default empty → no reordering, source-order preserved.
    Examples:
      Sinonin (tea-led, default order):  (empty, no change)
      Birei (dairy-led, 6-enterprise):   farm,dairy,dorper,poultry,coffee,sugarcane
-     Kibois (breeder-led, 7-enterprise): farm,dorper,dairy,goats,tea,potatoes,training
    Sealed § 6.x (25 May 2026 Verden, Cheison): "Dairy needs to come second
    to Farm Performance, followed by Dorper, Poultry, Coffee and lastly 
    sugarcane on the Home tab hero cards."  */
@@ -6382,6 +6355,656 @@ function dashboardOrder() {
     .map(function (s) { return s.trim().toLowerCase().replace(/\s+/g, ''); })
     .filter(Boolean);
 }
+
+/* ============================================================
+   v6.11.0 — UNIFIED SALES MODULE
+   ============================================================
+   POS-style cascade for recording revenue across all business units.
+   Replaces tea-gated "Banked Income" + product-specific "Poultry Sales"
+   paths with a single unified Sale entity. Sealed § 7.x (Cheison 26 May 
+   2026 Verden): "Sales is clicked by Faith, Victor, Elias, Isaac, Levy 
+   or Kaimosi Team (later). It lands on the cards with different products,
+   more like a sales software at Aldo or EDEKA or a Restaurant."
+   
+   Configuration model — per-tenant Control_Panel keys (Approach 1 from
+   the 26 May architecture discussion):
+   
+     BUSINESS_UNITS        Level 1 card list (already defined).
+                           e.g. Sinonin: "Kipkenda Poultry,Olomotit 
+                           Coffee,Maize,Dorper Sheep,Dairy,Chelabaal"
+                           Tea handled specially (see teaUnitLabel below).
+     
+     PRODUCTS_<UNIT>       Level 2 card list per business unit.
+                           UNIT slug = unit name uppercased, spaces removed.
+                           e.g. PRODUCTS_TEA = "Greenleaf,Seedlings,Other"
+                                PRODUCTS_POULTRY = "Eggs,Chicks,Chicken,Mature"
+                                PRODUCTS_DAIRY = "Milk,Cow,Heifer,Calf"
+     
+     VARIANTS_<UNIT>_<PRODUCT>   Level 3 card list (optional).
+                                 e.g. VARIANTS_TEA_GREENLEAF = "Sireet,Sang'alo,Kapchorwa,Chebut"
+                                      VARIANTS_POULTRY_EGGS = "Normal,Broken,Small/Abnormal"
+                                      VARIANTS_POULTRY_CHICKS = "1-7 days,8-28 days"
+                                 If empty/missing: skip L3, go straight to form.
+   
+   PWA gracefully degrades when keys are missing:
+   - No BUSINESS_UNITS → empty grid with friendly message
+   - No PRODUCTS_X → empty grid at L2 with friendly message
+   - No VARIANTS_X_Y → skip L3 entirely, jump to L4 form
+   ============================================================ */
+
+/* Slugify a label for Control_Panel key suffixes: "Sireet shares" → "SIREETSHARES" */
+function _salesSlug(s) {
+  return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+/* Tea is special: it's not in BUSINESS_UNITS for tenants that use tea blocks 
+   (Sinonin has granular tea blocks for allocation; tea revenue aggregates as 
+   one unit for Banked path). We expose a "Tea" L1 card automatically IF 
+   PRODUCTS_TEA is configured in Control_Panel — that's the tenant signaling 
+   they want Tea as a sales destination, regardless of whether tea is listed 
+   in BUSINESS_UNITS. */
+function _hasTeaSalesPath() {
+  return !!tcfg('PRODUCTS_TEA', '').trim();
+}
+
+/* Read business units for the SALES Level-1 card grid. Combines:
+   - "Tea" prepended IF PRODUCTS_TEA configured (tenant wants tea as sales dest)
+   - Each business unit from BUSINESS_UNITS Control_Panel key
+   Returns array of {label, slug, icon} objects. */
+function salesBusinessUnits() {
+  const out = [];
+  // Tea first — by convention, when present
+  if (_hasTeaSalesPath()) {
+    out.push({ label: 'Tea', slug: 'TEA', icon: '🌿' });
+  }
+  // Then the configured units. Keep original labels for display; slug 
+  // for Control_Panel lookups.
+  const raw = tcfg('BUSINESS_UNITS', '');
+  if (raw && typeof raw === 'string') {
+    raw.split(',').forEach(function (s) {
+      const label = s.trim();
+      if (!label) return;
+      out.push({
+        label: label,
+        slug: _salesSlug(label),
+        icon: _iconForUnit(label)
+      });
+    });
+  }
+  return out;
+}
+
+/* Map common unit labels to an emoji icon. Falls through to generic. */
+function _iconForUnit(label) {
+  const l = String(label || '').toLowerCase();
+  if (l.indexOf('poultry') !== -1) return '🐔';
+  if (l.indexOf('dairy') !== -1) return '🐄';
+  if (l.indexOf('dorper') !== -1 || l.indexOf('sheep') !== -1) return '🐑';
+  if (l.indexOf('goat') !== -1) return '🐐';
+  if (l.indexOf('coffee') !== -1) return '☕';
+  if (l.indexOf('maize') !== -1) return '🌽';
+  if (l.indexOf('tea') !== -1) return '🌿';
+  if (l.indexOf('chelabaal') !== -1) return '🍃';
+  if (l.indexOf('sugar') !== -1) return '🎋';
+  if (l.indexOf('potato') !== -1) return '🥔';
+  if (l.indexOf('vegetable') !== -1) return '🥬';
+  if (l.indexOf('mushroom') !== -1) return '🍄';
+  if (l.indexOf('training') !== -1) return '📚';
+  if (l.indexOf('hospitality') !== -1 || l.indexOf('room') !== -1) return '🏨';
+  if (l.indexOf('machinery') !== -1 || l.indexOf('hire') !== -1) return '🚜';
+  return '💰';
+}
+
+function _iconForProduct(unitLabel, productLabel) {
+  const u = String(unitLabel || '').toLowerCase();
+  const p = String(productLabel || '').toLowerCase();
+  // Tea-specific products
+  if (u.indexOf('tea') !== -1) {
+    if (p.indexOf('greenleaf') !== -1) return '🍃';
+    if (p.indexOf('seedling') !== -1) return '🌱';
+    return '🌿';
+  }
+  // Poultry-specific
+  if (u.indexOf('poultry') !== -1) {
+    if (p.indexOf('egg') !== -1) return '🥚';
+    if (p.indexOf('chick') !== -1) return '🐤';
+    if (p.indexOf('chicken') !== -1 || p.indexOf('mature') !== -1) return '🐔';
+    if (p.indexOf('feather') !== -1) return '🪶';
+    return '🐣';
+  }
+  // Dairy
+  if (u.indexOf('dairy') !== -1) {
+    if (p.indexOf('milk') !== -1) return '🥛';
+    if (p.indexOf('cow') !== -1) return '🐄';
+    if (p.indexOf('heifer') !== -1 || p.indexOf('calf') !== -1) return '🐂';
+    return '🐄';
+  }
+  return '▸';
+}
+
+/* Read products list for a given business unit slug from Control_Panel.
+   e.g. for Tea → reads PRODUCTS_TEA. Returns array of {label, slug, icon}. */
+function salesProductsFor(unitSlug, unitLabel) {
+  const key = 'PRODUCTS_' + unitSlug;
+  const raw = tcfg(key, '');
+  if (!raw || typeof raw !== 'string') return [];
+  return raw.split(',').map(function (s) {
+    const label = s.trim();
+    if (!label) return null;
+    return {
+      label: label,
+      slug: _salesSlug(label),
+      icon: _iconForProduct(unitLabel, label)
+    };
+  }).filter(Boolean);
+}
+
+/* Read variants list for a unit+product pair. e.g. for Tea/Greenleaf reads
+   VARIANTS_TEA_GREENLEAF. Empty/missing means no L3 — skip straight to form. */
+function salesVariantsFor(unitSlug, productSlug) {
+  const key = 'VARIANTS_' + unitSlug + '_' + productSlug;
+  const raw = tcfg(key, '');
+  if (!raw || typeof raw !== 'string') return [];
+  return raw.split(',').map(function (s) {
+    const label = s.trim();
+    if (!label) return null;
+    return { label: label, slug: _salesSlug(label) };
+  }).filter(Boolean);
+}
+
+/* Default unit suggestion for the form's Unit dropdown, based on context. */
+function _defaultUnitForContext(unitLabel, productLabel) {
+  const u = String(unitLabel || '').toLowerCase();
+  const p = String(productLabel || '').toLowerCase();
+  if (u.indexOf('tea') !== -1 && p.indexOf('greenleaf') !== -1) return 'kg';
+  if (u.indexOf('tea') !== -1 && p.indexOf('seedling') !== -1) return 'number';
+  if (u.indexOf('poultry') !== -1 && p.indexOf('egg') !== -1) return 'trays';
+  if (u.indexOf('poultry') !== -1 && (p.indexOf('chick') !== -1 || p.indexOf('chicken') !== -1)) return 'number';
+  if (u.indexOf('dairy') !== -1 && p.indexOf('milk') !== -1) return 'litres';
+  if (u.indexOf('dairy') !== -1 && (p.indexOf('cow') !== -1 || p.indexOf('heifer') !== -1 || p.indexOf('calf') !== -1)) return 'number';
+  if (u.indexOf('dorper') !== -1 || u.indexOf('sheep') !== -1 || u.indexOf('goat') !== -1) return 'number';
+  if (u.indexOf('coffee') !== -1) return 'kg';
+  if (u.indexOf('maize') !== -1) return 'bags';
+  if (u.indexOf('training') !== -1) return 'lumpsum';
+  if (u.indexOf('hospitality') !== -1 || u.indexOf('room') !== -1) return 'nights';
+  if (u.indexOf('machinery') !== -1 || u.indexOf('hire') !== -1) return 'hours';
+  return 'number';
+}
+
+/* Default revenue type given context. Tea greenleaf to a factory = Revenue
+   (bulk settlement); everything else defaults to Income (transactional sale). */
+function _defaultRevTypeForContext(unitLabel, productLabel) {
+  const u = String(unitLabel || '').toLowerCase();
+  const p = String(productLabel || '').toLowerCase();
+  if (u.indexOf('tea') !== -1 && p.indexOf('greenleaf') !== -1) return 'Revenue';
+  if (u.indexOf('dairy') !== -1 && p.indexOf('milk') !== -1) return 'Revenue'; // typically bulk to KCC
+  return 'Income';
+}
+
+/* Cascade state — tracks where the operator is in the drill. */
+const SALES_CASCADE = {
+  level: 1,             // 1, 2, 3, or 4
+  unit: null,           // { label, slug, icon }
+  product: null,        // { label, slug, icon }
+  variant: null         // { label, slug } | null if product has no variants
+};
+
+function resetSalesCascade() {
+  SALES_CASCADE.level = 1;
+  SALES_CASCADE.unit = null;
+  SALES_CASCADE.product = null;
+  SALES_CASCADE.variant = null;
+  _showSalesLevel(1);
+  _renderSalesLevel1();
+}
+
+function _showSalesLevel(n) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('sales-level-' + i);
+    if (el) el.style.display = (i === n) ? '' : 'none';
+  }
+  SALES_CASCADE.level = n;
+}
+
+function _renderSalesLevel1() {
+  const grid = document.getElementById('sales-unit-cards');
+  if (!grid) return;
+  const units = salesBusinessUnits();
+  if (!units.length) {
+    grid.innerHTML = '<div class="sales-card-empty">No business units configured yet. Set BUSINESS_UNITS in Control_Panel to enable sales recording.</div>';
+    return;
+  }
+  grid.innerHTML = units.map(function (u) {
+    return '<button class="sales-card" type="button" data-unit-slug="' + u.slug + '" data-unit-label="' + escapeHtml(u.label) + '">'
+      + '<span class="sc-icon">' + u.icon + '</span>'
+      + '<span class="sc-label">' + escapeHtml(u.label) + '</span>'
+      + '</button>';
+  }).join('');
+  // Wire taps
+  grid.querySelectorAll('.sales-card').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      SALES_CASCADE.unit = {
+        slug: btn.dataset.unitSlug,
+        label: btn.dataset.unitLabel,
+        icon: _iconForUnit(btn.dataset.unitLabel)
+      };
+      _enterSalesLevel2();
+    });
+  });
+}
+
+function _enterSalesLevel2() {
+  document.getElementById('sales-crumb-unit').textContent = SALES_CASCADE.unit.icon + ' ' + SALES_CASCADE.unit.label;
+  const grid = document.getElementById('sales-product-cards');
+  const products = salesProductsFor(SALES_CASCADE.unit.slug, SALES_CASCADE.unit.label);
+  if (!products.length) {
+    grid.innerHTML = '<div class="sales-card-empty">No products configured for <em>' + escapeHtml(SALES_CASCADE.unit.label) + '</em>. Set PRODUCTS_' + SALES_CASCADE.unit.slug + ' in Control_Panel.</div>';
+  } else {
+    grid.innerHTML = products.map(function (p) {
+      return '<button class="sales-card" type="button" data-product-slug="' + p.slug + '" data-product-label="' + escapeHtml(p.label) + '">'
+        + '<span class="sc-icon">' + p.icon + '</span>'
+        + '<span class="sc-label">' + escapeHtml(p.label) + '</span>'
+        + '</button>';
+    }).join('');
+    grid.querySelectorAll('.sales-card').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        SALES_CASCADE.product = {
+          slug: btn.dataset.productSlug,
+          label: btn.dataset.productLabel,
+          icon: _iconForProduct(SALES_CASCADE.unit.label, btn.dataset.productLabel)
+        };
+        // If this product has variants, go to L3; else jump straight to L4 form
+        const variants = salesVariantsFor(SALES_CASCADE.unit.slug, SALES_CASCADE.product.slug);
+        if (variants.length) {
+          _enterSalesLevel3(variants);
+        } else {
+          SALES_CASCADE.variant = null;
+          _enterSalesLevel4();
+        }
+      });
+    });
+  }
+  _showSalesLevel(2);
+}
+
+function _enterSalesLevel3(variants) {
+  document.getElementById('sales-crumb-unit-2').textContent = SALES_CASCADE.unit.icon + ' ' + SALES_CASCADE.unit.label;
+  document.getElementById('sales-crumb-product').textContent = SALES_CASCADE.product.icon + ' ' + SALES_CASCADE.product.label;
+  const grid = document.getElementById('sales-variant-cards');
+  grid.innerHTML = variants.map(function (v) {
+    return '<button class="sales-card" type="button" data-variant-slug="' + v.slug + '" data-variant-label="' + escapeHtml(v.label) + '">'
+      + '<span class="sc-icon">▸</span>'
+      + '<span class="sc-label">' + escapeHtml(v.label) + '</span>'
+      + '</button>';
+  }).join('');
+  grid.querySelectorAll('.sales-card').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      SALES_CASCADE.variant = {
+        slug: btn.dataset.variantSlug,
+        label: btn.dataset.variantLabel
+      };
+      _enterSalesLevel4();
+    });
+  });
+  _showSalesLevel(3);
+}
+
+function _enterSalesLevel4() {
+  const c = SALES_CASCADE;
+  // Build breadcrumb
+  let crumb = c.unit.icon + ' ' + c.unit.label + ' · ' + c.product.label;
+  if (c.variant) crumb += ' · ' + c.variant.label;
+  document.getElementById('sales-form-crumb').textContent = crumb;
+  document.getElementById('sales-form-title').textContent = 'Record ' + c.product.label + ' sale';
+  document.getElementById('sales-form-meta').textContent = c.unit.label + (c.variant ? ' · ' + c.variant.label : '');
+
+  // Reset form fields to defaults for this context
+  document.getElementById('s-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('s-qty').value = '';
+  document.getElementById('s-amount').value = '';
+  document.getElementById('s-period').value = '';
+  document.getElementById('s-buyer').value = c.variant ? c.variant.label : '';  // variant often IS the buyer (Sireet, KCC)
+  document.getElementById('s-reference').value = '';
+  document.getElementById('s-notes').value = '';
+  document.getElementById('s-method').value = '';
+
+  // Unit default for this context
+  document.getElementById('s-unit').value = _defaultUnitForContext(c.unit.label, c.product.label);
+
+  // Revenue type default
+  document.getElementById('s-revtype').value = _defaultRevTypeForContext(c.unit.label, c.product.label);
+
+  // Quantity label hint (e.g. "Quantity (kg)" for tea)
+  const unitVal = document.getElementById('s-unit').value;
+  document.getElementById('s-qty-label').textContent = 'Quantity' + (unitVal && unitVal !== 'lumpsum' ? ' (' + unitVal + ')' : '');
+
+  // Hide variance row by default — only Tea Greenleaf path uses it
+  document.getElementById('s-expected-row').style.display = 'none';
+  // Hide preview until valid
+  document.getElementById('s-preview').style.display = 'none';
+  document.getElementById('s-submit').disabled = true;
+
+  _renderRecentSalesForContext();
+  _showSalesLevel(4);
+}
+
+/* Back button handlers */
+function _wireSalesBackButtons() {
+  const back1 = document.getElementById('sales-back-to-1');
+  if (back1) back1.addEventListener('click', function () {
+    SALES_CASCADE.unit = null;
+    SALES_CASCADE.product = null;
+    SALES_CASCADE.variant = null;
+    _showSalesLevel(1);
+  });
+  const back2 = document.getElementById('sales-back-to-2');
+  if (back2) back2.addEventListener('click', function () {
+    SALES_CASCADE.product = null;
+    SALES_CASCADE.variant = null;
+    _enterSalesLevel2();
+  });
+  const back3 = document.getElementById('sales-back-to-prev');
+  if (back3) back3.addEventListener('click', function () {
+    SALES_CASCADE.variant = null;
+    // Go back to L3 if product had variants, else L2
+    const variants = salesVariantsFor(SALES_CASCADE.unit.slug, SALES_CASCADE.product.slug);
+    if (variants.length) {
+      _enterSalesLevel3(variants);
+    } else {
+      SALES_CASCADE.product = null;
+      _enterSalesLevel2();
+    }
+  });
+}
+
+/* Public render — called by switchView when entering sales tab */
+function renderSalesPanel() {
+  // Idempotent: just re-render Level 1 (BUSINESS_UNITS may have changed)
+  _renderSalesLevel1();
+}
+
+/* Live preview + validation on form fields */
+function _updateSalesPreview() {
+  const date = document.getElementById('s-date').value;
+  const qty = parseFloat(document.getElementById('s-qty').value) || 0;
+  const amount = parseFloat(document.getElementById('s-amount').value) || 0;
+  const method = document.getElementById('s-method').value;
+  const unitSel = document.getElementById('s-unit').value;
+  const revtype = document.getElementById('s-revtype').value;
+  const buyer = document.getElementById('s-buyer').value.trim();
+
+  // Validation: date + method + amount > 0 are required. Qty optional 
+  // (lump-sum sales possible — Sireet shares dividend, training fee, etc.)
+  const valid = !!date && !!method && amount > 0;
+  document.getElementById('s-submit').disabled = !valid;
+
+  // Quantity label update
+  document.getElementById('s-qty-label').textContent = 'Quantity' + (unitSel && unitSel !== 'lumpsum' ? ' (' + unitSel + ')' : '');
+
+  // Preview card
+  const prev = document.getElementById('s-preview');
+  if (!valid) { prev.style.display = 'none'; return; }
+  prev.style.display = '';
+  document.getElementById('s-preview-amt').textContent = moneyRound(amount);
+  document.getElementById('s-preview-biz').textContent = SALES_CASCADE.unit ? SALES_CASCADE.unit.label : '—';
+  document.getElementById('s-preview-product').textContent = SALES_CASCADE.product
+    ? SALES_CASCADE.product.label + (SALES_CASCADE.variant ? ' · ' + SALES_CASCADE.variant.label : '')
+    : '—';
+  document.getElementById('s-preview-qty').textContent = qty > 0
+    ? qty.toLocaleString('en-KE') + (unitSel && unitSel !== 'lumpsum' ? ' ' + unitSel : '')
+    : (unitSel === 'lumpsum' ? 'lump sum' : '—');
+  document.getElementById('s-preview-method').textContent = method;
+  document.getElementById('s-preview-revtype').textContent = revtype;
+  document.getElementById('s-preview-buyer').textContent = buyer || '—';
+  document.getElementById('s-preview-date').textContent = date;
+}
+
+/* Show recent sales for this drill path (helps operator see what's already 
+   recorded for context — avoids duplicates). */
+function _renderRecentSalesForContext() {
+  const section = document.getElementById('s-recent-section');
+  const list = document.getElementById('s-recent-list');
+  const countEl = document.getElementById('s-recent-count');
+  if (!section || !list || !countEl) return;
+  const c = SALES_CASCADE;
+  const all = (STATE.sales || []).filter(function (r) {
+    if (!r) return false;
+    if (c.unit && r.business_unit !== c.unit.label) return false;
+    if (c.product && r.product !== c.product.label) return false;
+    if (c.variant && r.variant !== c.variant.label) return false;
+    return true;
+  }).sort(function (a, b) { return String(b.ts || '').localeCompare(String(a.ts || '')); }).slice(0, 5);
+  if (all.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+  countEl.textContent = all.length + ' shown';
+  list.innerHTML = all.map(function (r) {
+    const qty = (r.quantity && r.unit) ? (r.quantity + ' ' + r.unit) : '';
+    return '<div class="record-row">'
+      + '<div>'
+      +   '<div class="name">' + escapeHtml(r.product || '') + (r.variant ? ' · ' + escapeHtml(r.variant) : '') + '</div>'
+      +   '<div class="meta">' + escapeHtml(r.date || '') + ' · ' + escapeHtml(r.payment_method || '') + (qty ? ' · ' + escapeHtml(qty) : '') + (r.buyer ? ' · ' + escapeHtml(r.buyer) : '') + '</div>'
+      + '</div>'
+      + '<div class="qty"></div>'
+      + '<div class="val">Ksh ' + moneyRound(Number(r.amount) || 0) + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+/* Submit handler — builds the sale row and routes it through the writes 
+   gate. Uses the same syncBanked-style pattern: optimistic local insert, 
+   queue if writes locked, dedup via id. */
+async function submitSale() {
+  const c = SALES_CASCADE;
+  if (!c.unit || !c.product) return;
+  const date = document.getElementById('s-date').value;
+  const qty = parseFloat(document.getElementById('s-qty').value) || 0;
+  const amount = parseFloat(document.getElementById('s-amount').value) || 0;
+  const method = document.getElementById('s-method').value;
+  const unitSel = document.getElementById('s-unit').value;
+  const revtype = document.getElementById('s-revtype').value || 'Income';
+  const buyer = document.getElementById('s-buyer').value.trim();
+  const period = document.getElementById('s-period').value.trim();
+  const reference = document.getElementById('s-reference').value.trim();
+  const notes = document.getElementById('s-notes').value.trim();
+
+  if (!date || !method || amount <= 0) return;
+
+  // First-submit gibberish guard (same pattern as banked/poultry forms)
+  if (typeof isSessionConfirmed === 'function' && !isSessionConfirmed('sale')) {
+    const summaryHtml = '<div><strong>' + escapeHtml(c.unit.label) + ' · ' + escapeHtml(c.product.label) + (c.variant ? ' · ' + escapeHtml(c.variant.label) : '') + '</strong></div>'
+      + '<div style="margin-top:0.3rem">Ksh ' + moneyRound(amount) + ' · ' + escapeHtml(method) + (qty > 0 ? ' · ' + qty + ' ' + escapeHtml(unitSel) : '') + '</div>'
+      + '<div style="opacity:0.8;margin-top:0.3rem">' + escapeHtml(date) + (buyer ? ' · ' + escapeHtml(buyer) : '') + '</div>';
+    const ok = await confirmFirstSubmit('sale', summaryHtml);
+    if (!ok) { showToast('Cancelled', 1800); return; }
+    markSessionConfirmed('sale');
+  }
+
+  const row = {
+    id: 'S' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+    ts: new Date().toISOString(),
+    date: date,
+    business_unit: c.unit.label,
+    product: c.product.label,
+    variant: c.variant ? c.variant.label : '',
+    quantity: qty || null,
+    unit: unitSel || '',
+    amount: amount,
+    payment_method: method,
+    revenue_type: revtype,
+    buyer: buyer,
+    period: period,
+    reference: reference,
+    notes: notes,
+    // Receipt fields — seated for future eTIMS / eRechnung. Empty for now.
+    receipt_type: '',
+    receipt_id: '',
+    receipt_issued: false,
+    recorded_from: 'PWA v6.11.1'
+  };
+  STATE.sales = STATE.sales || [];
+  STATE.sales.push(row);
+  await storageSet(K_SALES, STATE.sales);
+
+  // Reset form fields (keep context — operator may want to record another in same drill)
+  document.getElementById('s-qty').value = '';
+  document.getElementById('s-amount').value = '';
+  document.getElementById('s-period').value = '';
+  document.getElementById('s-reference').value = '';
+  document.getElementById('s-notes').value = '';
+  _updateSalesPreview();
+  _renderRecentSalesForContext();
+
+  showToast('Sale recorded · ' + c.product.label + ' · Ksh ' + moneyRound(amount), 3000);
+
+  // Route to cloud via gate (same write-gate pattern as banked/poultry).
+  // syncSale is a thin wrapper that builds the gated request and calls 
+  // the unified Sales endpoint on Apps Script.
+  if (typeof syncSale === 'function') {
+    const synced = await syncSale(row);
+    if (!synced) {
+      const wasDup = (typeof handleDuplicateRejection === 'function')
+        ? await handleDuplicateRejection(row, 'sale', 'sale', K_SALES)
+        : false;
+      if (!wasDup) {
+        if (typeof queueForSync === 'function') await queueForSync(row, 'sale');
+        if (typeof lastWriteResult !== 'undefined' && lastWriteResult && lastWriteResult.reason === 'writes-locked') {
+          showToast('🔒 Writes locked — sale queued. Contact admin to enable writes.', 6000);
+        }
+      }
+    }
+  }
+  if (typeof updateSyncIndicator === 'function') updateSyncIndicator();
+}
+
+/* Wire form input listeners + back buttons + submit. Idempotent. */
+function _wireSalesForm() {
+  ['s-date','s-qty','s-amount','s-method','s-unit','s-revtype','s-buyer','s-period','s-reference','s-notes'].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', _updateSalesPreview);
+    el.addEventListener('change', _updateSalesPreview);
+  });
+  const submitBtn = document.getElementById('s-submit');
+  if (submitBtn) submitBtn.addEventListener('click', submitSale);
+  _wireSalesBackButtons();
+}
+
+/* Cloud-to-local mapper for Sales rows from Apps Script. */
+function cloudToLocalSale(r) {
+  if (!r) return null;
+  return {
+    id: String(r.id || r.Id || ('S-' + Date.now())),
+    ts: String(r.ts || r.timestamp || r.Timestamp || ''),
+    date: String(r.date || r.Date || ''),
+    business_unit: String(r.business_unit || r['Business Unit'] || ''),
+    product: String(r.product || r.Product || ''),
+    variant: String(r.variant || r.Variant || ''),
+    quantity: r.quantity != null ? Number(r.quantity) || 0 : null,
+    unit: String(r.unit || r.Unit || ''),
+    amount: Number(r.amount || r.Amount || 0) || 0,
+    payment_method: String(r.payment_method || r['Payment Method'] || ''),
+    revenue_type: String(r.revenue_type || r['Revenue Type'] || 'Income'),
+    buyer: String(r.buyer || r.Buyer || r['Buyer / Source'] || ''),
+    period: String(r.period || r['For Period'] || ''),
+    reference: String(r.reference || r.Reference || ''),
+    notes: String(r.notes || r.Notes || ''),
+    receipt_type: String(r.receipt_type || r['Receipt Type'] || ''),
+    receipt_id: String(r.receipt_id || r['Receipt ID'] || ''),
+    receipt_issued: !!(r.receipt_issued || r['Receipt Issued']),
+    recorded_from: String(r.recorded_from || r['Recorded From'] || '')
+  };
+}
+
+/* v6.11.1 — pushSaleToGate. Grounded in real Apps Script protocol:
+   action='sale' routes to writeSaleEntry (Apps Script v5.0.50+), which 
+   calls the new appendRowGeneric primitive. Payload fields match 
+   CONFIG.saleMap keys (server-side header lookup is the source of truth 
+   for field→column mapping). Sealed § 7.x (Cheison's Kiraka catch): 
+   when a pattern would generate N near-identical wire calls, build the 
+   server primitive once and let all N client posts route through it. */
+async function pushSaleToGate(row) {
+  try {
+    const body = {
+      action: 'sale',
+      payload: {
+        ts:               row.ts || new Date().toISOString(),
+        date:             row.date,
+        business_unit:    row.business_unit || '',
+        product:          row.product || '',
+        variant:          row.variant || '',
+        quantity:         row.quantity != null ? Number(row.quantity) : null,
+        unit:             row.unit || '',
+        amount:           Number(row.amount),
+        payment_method:   row.payment_method || '',
+        revenue_type:     row.revenue_type || 'Income',
+        buyer:            row.buyer || '',
+        period:           row.period || '',
+        reference:        row.reference || '',
+        notes:            row.notes || '',
+        receipt_type:     row.receipt_type || '',
+        receipt_id:       row.receipt_id || '',
+        receipt_issued:   !!row.receipt_issued,
+        id:               row.id,
+        recorded_from:    row.recorded_from || `PWA ${APP_VERSION}`
+      },
+      source: `PWA ${APP_VERSION} sale`
+    };
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST',
+      mode:   'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:   JSON.stringify(body)
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    if (json && json.ok) {
+      // appendRowGeneric returns {ok:true, duplicate:true} for ID replays.
+      // Treated as success — the row exists, no further work needed.
+      return { ok: true, via: 'gate', duplicate: !!(json.written && json.written.duplicate), summary: json.summary };
+    }
+    if (json && json.writesLocked) {
+      return { ok: false, reason: 'writes-locked', message: json.reason || 'Writes locked' };
+    }
+    if (json && json.duplicate) {
+      return {
+        ok: false,
+        reason: 'duplicate',
+        message: json.summary || 'Already recorded — check Sheet to confirm.',
+        existing: json.existing
+      };
+    }
+    if (json && json.phase1Limited) return null;
+    return { ok: false, reason: 'gate-rejected', message: (json && json.reason) || 'Rejected by gate' };
+  } catch (e) {
+    return null;
+  }
+}
+
+/* syncSale — same shape as syncBanked / syncPoultry. Returns true on 
+   successful cloud write, false otherwise. Caller (submitSale) handles 
+   queue-on-failure and writes-locked banner. */
+async function syncSale(row) {
+  if (!navigator.onLine) return false;
+  if (typeof USE_APPS_SCRIPT_GATE === 'undefined' || !USE_APPS_SCRIPT_GATE) return false;
+  if (typeof APPS_SCRIPT_GATE_URL === 'undefined' || !APPS_SCRIPT_GATE_URL) return false;
+  const gateResult = await pushSaleToGate(row);
+  if (gateResult) {
+    if (typeof lastWriteResult !== 'undefined') lastWriteResult = gateResult;
+    if (gateResult.ok) {
+      const stats = await storageGet(K_SYNC_STATS, { synced: 0, lastSync: null });
+      stats.synced = (stats.synced || 0) + 1;
+      stats.lastSync = new Date().toISOString();
+      await storageSet(K_SYNC_STATS, stats);
+      return true;
+    }
+  }
+  return false;
+}
+
+const K_SALES = 'sinonin_sales_v1';
 
 /* Resolve an owner name from a single-letter tag prefix using
    Control_Panel's OWNER_PREFIXES if present, else falling back to
@@ -6555,40 +7178,6 @@ function applyControlPanelToUI() {
       el.textContent = prefix + dorL;
     });
 
-    // v6.10.20 — POULTRY_LABEL: replace "Kipkenda Poultry" with tenant value.
-    // Levy prefers "Birei Poultry". Falls back to "Kipkenda Poultry" if not
-    // set so Sinonin sees no change. Same emoji-preservation pattern.
-    const polL = poultryLabel();
-    document.querySelectorAll('[data-label="poultry"]').forEach(function (el) {
-      const src = el.textContent || '';
-      const emojiMatch = src.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})\s*/u);
-      const prefix = emojiMatch ? emojiMatch[0] : '';
-      // Preserve any trailing chevron/suffix span by replacing only the leading text node
-      const firstChild = el.firstChild;
-      if (firstChild && firstChild.nodeType === Node.TEXT_NODE) {
-        firstChild.nodeValue = prefix + polL + ' ';
-      } else {
-        el.textContent = prefix + polL;
-      }
-    });
-
-    // v6.10.25 — ADMIN_NAV_POSITION: toggle visibility between the two admin
-    // buttons. Default 'header' (Sinonin); tenants who set 'bottom-nav' in
-    // Control_Panel (Birei, Kibois) see the bottom-nav button instead.
-    // Both buttons exist in the DOM at all times; only one is visible per
-    // tenant. Lock-state JS targets both via class="admin-nav-btn" so the
-    // state stays correct regardless of which is shown.
-    const adminPos = adminNavPosition();
-    const headerAdminBtn = document.getElementById('nav-settings');
-    const bottomAdminBtn = document.getElementById('nav-settings-bottom');
-    if (adminPos === 'bottom-nav') {
-      if (headerAdminBtn) headerAdminBtn.style.display = 'none';
-      if (bottomAdminBtn) bottomAdminBtn.style.display = '';
-    } else {
-      if (headerAdminBtn) headerAdminBtn.style.display = '';
-      if (bottomAdminBtn) bottomAdminBtn.style.display = 'none';
-    }
-
     // v6.10.13 — splash title (if splash is still on screen during a
     // subsequent control panel update): set from farmName
     const splashTitle = document.getElementById('splash-title');
@@ -6751,6 +7340,7 @@ const SCREEN_TITLES = {
   sheep: 'Dorper',
   cows: 'Dairy',
   other: 'Other',
+  sales: 'Sales',  // v6.11.0 — unified revenue-recording POS cascade
   insights: 'Insights',
   admin: 'Admin',
   // Legacy view names — kept reachable for backwards compat
@@ -6761,19 +7351,6 @@ const SCREEN_TITLES = {
 
 const K_ENTRIES = 'sinonin_entries_v1';
 const K_FACTORIES = 'sinonin_factories_v1';
-// v6.10.23 — Milk factories: per-tenant Milk_Factories sheet hydrates this.
-// Same shape as K_FACTORIES (cloud-replace-local pattern). Birei + Kibois 
-// use this for the milk-channel dropdown; Sinonin sees an empty list 
-// (no milk operations).
-const K_MILK_FACTORIES = 'sinonin_milk_factories_v1';
-// v6.10.23 — Tea + milk factories join the cloud-replace-local migration 
-// family. Tea factories were previously local-only (K_FACTORIES persisted 
-// only when operator edited via Settings UI); now Tea_Factories sheet is 
-// authoritative. SOURCE_VERSION wipes ensure tenants who never edited 
-// don't keep stale DEFAULT_FACTORIES from the old code in localStorage 
-// after deploy.
-const K_FACTORIES_SOURCE_VERSION      = 'sinonin_factories_source_version_v1';
-const K_MILK_FACTORIES_SOURCE_VERSION = 'sinonin_milk_factories_source_version_v1';
 const K_PLUCKERS = 'sinonin_pluckers_v1';
 const K_SETTINGS = 'sinonin_settings_v1';
 const K_EXPENSES = 'sinonin_expenses_v1';
@@ -6856,24 +7433,6 @@ const K_EXPENSES_SOURCE_VERSION      = 'sinonin_expenses_source_version_v1';
 const K_BANKED_SOURCE_VERSION        = 'sinonin_banked_source_version_v1';
 const K_POULTRY_SOURCE_VERSION       = 'sinonin_poultry_source_version_v1';
 const K_EGG_COLLECTION_SOURCE_VERSION = 'sinonin_egg_collection_source_version_v1';
-// v6.10.19 — Pluckers join the cloud-replace-local migration family. The
-// roster merge at the cloud-hydration site previously preserved local-only
-// pluckers (IDs not in cloud) as a safety net for queued-but-not-pushed
-// new pluckers. That preservation caused cross-tenant contamination:
-// Birei/Kibois bootstrapped with Sinonin's 45 hardcoded DEFAULT_PLUCKERS,
-// the roster merge saw cloud=[] (empty Plucker_Roster sheets) and preserved
-// all 45 names as "local-only" — persisting to K_PLUCKERS forever. Empty
-// Sheets couldn't override the cached pollution. v6.10.19 wipes K_PLUCKERS
-// on first boot AND switches the merge to cloud-authoritative (matching the
-// v6.2.2 family). Newly-added local pluckers may briefly disappear after a
-// cloud merge until pushed, but the sync queue ensures eventual consistency.
-const K_PLUCKERS_SOURCE_VERSION      = 'sinonin_pluckers_source_version_v1';
-// v6.10.20 — Incubation joins the cloud-replace-local migration family for
-// tenants without hatching operations (Birei). Was previously unmigrated so
-// stale batches from earlier app versions persisted in localStorage and
-// triggered a phantom "Hatching" notification on Birei's Home tab. Cloud
-// fetch repopulates from each tenant's own Incubation_Log sheet.
-const K_INCUBATION_SOURCE_VERSION    = 'sinonin_incubation_source_version_v1';
 const K_INCUBATION = 'sinonin_incubation_v1';     // v6.0 SHIP 5 — Incubation batches
 const K_VACCINATIONS = 'sinonin_vaccinations_v1';  // v6.0.0 — D4: Vaccination records
 const K_VACC_SCHEDULE = 'sinonin_vacc_schedule_v1'; // v6.0.0 — D4: Vaccination schedule (config)
@@ -6922,7 +7481,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.10.25';
+const APP_VERSION = 'v6.11.1';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -6977,8 +7536,6 @@ let STATE = {
   mortality: [],
   otherView: 'hub',
   factories: JSON.parse(JSON.stringify(DEFAULT_FACTORIES)),
-  // v6.10.23 — Milk factories (parallel array to tea factories).
-  milkFactories: JSON.parse(JSON.stringify(DEFAULT_MILK_FACTORIES)),
   settings: { ...DEFAULT_SETTINGS },
   view: 'home',
   mode: 'quick',
@@ -7000,7 +7557,7 @@ function computeEntry(e) {
   const qty = Number(e.qty) || 0;
   const gross     = qty * factory.priceKg;
   const labour    = qty * factory.wageKg;
-  const cess      = qty * teaCessPerKg();
+  const cess      = qty * STATE.settings.teaCessPerKg;
   const transport = STATE.settings.transportActive ? qty * factory.transport : 0;
   const shares    = qty * factory.shares;
   const bonus     = (bonusEligible && factory.bonusKg > 0) ? qty * factory.bonusKg : 0;
@@ -7315,13 +7872,6 @@ function applyAdminVisibility() {
   //   - admin   → Cheison authenticated (view-only OR gate-closed); gear icon
   //   - open    → Cheison authenticated AND writes enabled; green padlock
   // v5.8.7 — Insights "All Time" button shows padlock icon when IS_ADMIN false.
-  // v6.10.25 — Admin lock state is mirrored on BOTH admin buttons (header
-  // + bottom-nav) via class="admin-nav-btn". Only ONE is visible per tenant
-  // per ADMIN_NAV_POSITION (handled in applyControlPanelToUI), but state
-  // updates apply to both so the visible one reflects correctly. The 
-  // previous `settingsNavBtn.style.display = ''` was REMOVED — it overrode
-  // tenant visibility, making BOTH buttons show in admin mode for Birei/
-  // Kibois. Display is now owned exclusively by applyControlPanelToUI.
   const settingsNavBtn = document.getElementById('nav-settings');
   const adminSection = document.getElementById('settings-admin-section');
   // v5.3.2 — gate banner removed; padlock color is the indicator now
@@ -7339,12 +7889,23 @@ function applyAdminVisibility() {
   }
 
   if (IS_ADMIN) {
-    // v6.10.25 — Use setAdminLockState() helper to update BOTH buttons
-    // (header + bottom-nav). Display NOT touched here — owned by 
-    // applyControlPanelToUI's ADMIN_NAV_POSITION logic.
-    const writesOn = !!(ADMIN_STATE && ADMIN_STATE.writesEnabled);
-    const newState = writesOn ? 'open' : 'admin';
-    setAdminLockState(newState, writesOn ? 'Settings (writes open)' : 'Settings (admin)');
+    if (settingsNavBtn) {
+      settingsNavBtn.style.display = '';
+      // Decide between 'admin' (gate closed) and 'open' (writes ON)
+      const writesOn = !!(ADMIN_STATE && ADMIN_STATE.writesEnabled);
+      const newState = writesOn ? 'open' : 'admin';
+      const oldState = settingsNavBtn.dataset.lockState;
+      if (oldState !== newState) {
+        settingsNavBtn.dataset.lockState = newState;
+        settingsNavBtn.setAttribute('aria-label',
+          writesOn ? 'Settings (writes open)' : 'Settings (admin)');
+        // Brief pulse animation on state change
+        settingsNavBtn.classList.remove('lock-pulse');
+        // force reflow to restart animation
+        void settingsNavBtn.offsetWidth;
+        settingsNavBtn.classList.add('lock-pulse');
+      }
+    }
     if (adminSection) adminSection.style.display = '';
     // v6.0 SHIP 3 — render houses admin section
     if (typeof renderHousesAdmin === 'function') renderHousesAdmin();
@@ -7352,9 +7913,11 @@ function applyAdminVisibility() {
   } else {
     // Operator mode: keep Settings nav VISIBLE but locked. The button now
     // intercepts taps and shows a toast / modal instead of opening Settings.
-    // v6.10.25 — Helper updates BOTH buttons; display owned by 
-    // applyControlPanelToUI (tenant ADMIN_NAV_POSITION).
-    setAdminLockState('locked', 'Settings (locked)');
+    if (settingsNavBtn) {
+      settingsNavBtn.style.display = '';
+      settingsNavBtn.dataset.lockState = 'locked';
+      settingsNavBtn.setAttribute('aria-label', 'Settings (locked)');
+    }
     if (adminSection) adminSection.style.display = 'none';
     // v6.0 SHIP 3 — hide houses admin section in operator mode
     const housesSec = document.getElementById('settings-houses-section');
@@ -7806,19 +8369,13 @@ function wireAdminEscapeHatch() {
      leaked the secret gesture to operators. Silent rejection now.
    ============================================================ */
 function wireLockIconAuth() {
-  // v6.10.25 — Wire triple-tap auth on BOTH admin buttons (header +
-  // bottom-nav) via class. Only ONE is visible per tenant per 
-  // ADMIN_NAV_POSITION but wiring both ensures whichever is visible has
-  // the gesture handler attached. Each button gets its own tapCount /
-  // tapTimer local state via the forEach closure.
-  const allLockBtns = document.querySelectorAll('.admin-nav-btn');
-  allLockBtns.forEach(function (lockBtn) {
-    if (!lockBtn || lockBtn.dataset.authWired === '1') return;
-    lockBtn.dataset.authWired = '1';
+  const lockBtn = document.getElementById('nav-settings');
+  if (!lockBtn || lockBtn.dataset.authWired === '1') return;
+  lockBtn.dataset.authWired = '1';
 
-    // Triple-tap detection state (per-button local closure)
-    let tapCount = 0;
-    let tapTimer = null;
+  // Triple-tap detection state
+  let tapCount = 0;
+  let tapTimer = null;
 
   // Capture-phase click handler so we run BEFORE the existing nav-routing code
   // that switches views. We can stop propagation for taps that should NOT
@@ -7899,29 +8456,6 @@ function wireLockIconAuth() {
       }, 700);
     }
   }, true); // useCapture=true — runs before bubbling click handlers
-  }); // end forEach over .admin-nav-btn — v6.10.25
-}
-
-// v6.10.25 — Set lock state on ALL admin buttons (header + bottom-nav).
-// Both have class="admin-nav-btn". Only ONE is visible per tenant per 
-// ADMIN_NAV_POSITION but state mirrors to both so the visible one shows
-// the right padlock indicator. Does NOT touch display — applyControlPanelToUI
-// owns visibility. Triggers pulse animation on state change.
-function setAdminLockState(state, ariaLabel) {
-  const btns = document.querySelectorAll('.admin-nav-btn');
-  btns.forEach(function (btn) {
-    const oldState = btn.dataset.lockState;
-    if (oldState !== state) {
-      btn.dataset.lockState = state;
-      if (ariaLabel) btn.setAttribute('aria-label', ariaLabel);
-      btn.classList.remove('lock-pulse');
-      void btn.offsetWidth;
-      btn.classList.add('lock-pulse');
-    } else if (ariaLabel) {
-      // Same state, refresh label only (no pulse)
-      btn.setAttribute('aria-label', ariaLabel);
-    }
-  });
 }
 
 /* ============================================================
@@ -10092,6 +10626,14 @@ async function applyCloudResponse(data) {
     STATE.poultry = data.poultry.map(cloudToLocalPoultry);
     await storageSet(K_POULTRY, STATE.poultry);
   }
+  // v6.11.0 — Unified Sales hydration. Apps Script returns data.sales when 
+  // the new Sales sheet exists; missing means tenant's Apps Script hasn't 
+  // been upgraded yet — STATE.sales falls back to localStorage. Coexistence:
+  // legacy banked + poultry continue to populate from their own arrays.
+  if (Array.isArray(data.sales)) {
+    STATE.sales = data.sales.map(cloudToLocalSale).filter(Boolean);
+    await storageSet(K_SALES, STATE.sales);
+  }
   /* v6.5.0 — Dorper Farm sync (cloud-replace-local). Both Dorper_Sheep 
      and Dorper_Events are authoritative on the Sheet — admin/operator 
      edits via the spreadsheet propagate to all PWA installs on next 
@@ -10204,70 +10746,6 @@ async function applyCloudResponse(data) {
     if (typeof applyControlPanelToUI === 'function') {
       applyControlPanelToUI();
     }
-  }
-
-  /* v6.10.23 — Tea factories cloud hydration. Apps Script v5.0.48's 
-     readTeaFactories() reads each tenant's Tea_Factories sheet and ships 
-     the rows here as data.teaFactories. Cloud-replace-local pattern, matching
-     v6.2.2 family. Backward-compat aliases (transport, wageKg, bonusKg) added
-     for legacy rate-application code that still uses old field names — will
-     be removed in v6.10.24's proper refactor. */
-  if (Array.isArray(data.teaFactories)) {
-    STATE.factories = data.teaFactories.map(function (f) {
-      const nameTrim = String(f.name || '').trim();
-      // v6.10.24 — Sireet's 5 KSh/kg equity stake isn't in the Tea_Factories
-      // sheet schema (intentionally; only Sireet has it). Default to 5 for
-      // Sireet, 0 for everyone else, unless the sheet someday ships a 
-      // SharesKg column with an explicit value. Keeps the Sireet equity 
-      // hero card working without requiring a Control_Panel key for now.
-      // Architecturally this would move to Control_Panel SIREET_EQUITY_KG=5
-      // in a future tranche.
-      const isSireet = nameTrim.toLowerCase() === 'sireet';
-      const sharesDefault = isSireet ? 5 : 0;
-      return {
-        name:           nameTrim,
-        priceKg:        Number(f.priceKg) || 0,
-        transportKg:    Number(f.transportKg) || 0,
-        xmasBonusKg:    Number(f.xmasBonusKg) || 0,
-        marBonusKg:     Number(f.marBonusKg) || 0,
-        pluckerRateKg:  Number(f.pluckerRateKg) || 0,
-        pluckerBonusKg: Number(f.pluckerBonusKg) || 0,
-        active:         f.active !== false,
-        notes:          String(f.notes || ''),
-        // Backward-compat aliases — old code paths still use these
-        transport:      Number(f.transportKg) || 0,
-        wageKg:         Number(f.pluckerRateKg) || 0,
-        bonusKg:        Number(f.pluckerBonusKg) || 0,
-        shares:         (f.shares !== undefined && f.shares !== '') ? Number(f.shares) : sharesDefault,
-        greenleaf:      Number(f.greenleaf) || 0  // legacy
-      };
-    });
-    await storageSet(K_FACTORIES, STATE.factories);
-    // Repopulate factory dropdowns if currently rendered
-    if (typeof repopulateFactoryDropdown === 'function') {
-      try { repopulateFactoryDropdown(); } catch (e) {}
-    }
-  }
-
-  /* v6.10.23 — Milk factories cloud hydration. Same shape as tea factories
-     but with milk-specific column names. Birei + Kibois populate; Sinonin's
-     empty Milk_Factories returns []. Drives the milk-channel dropdown that
-     used to be hardcoded MILK_CHANNELS — operators now manage destinations
-     in their own sheets. */
-  if (Array.isArray(data.milkFactories)) {
-    STATE.milkFactories = data.milkFactories.map(function (f) {
-      return {
-        name:             String(f.name || '').trim(),
-        priceLitre:       Number(f.priceLitre) || 0,
-        transportLitre:   Number(f.transportLitre) || 0,
-        cessLitre:        Number(f.cessLitre) || 0,
-        bonusLitre:       Number(f.bonusLitre) || 0,
-        paymentFrequency: String(f.paymentFrequency || ''),
-        active:           f.active !== false,
-        notes:            String(f.notes || '')
-      };
-    });
-    await storageSet(K_MILK_FACTORIES, STATE.milkFactories);
   }
   /* v6.0 SHIP 2 / v6.2.2 — Egg Collection sync (cloud-replace-local) */
   if (Array.isArray(data.eggCollection)) {
@@ -10394,16 +10872,11 @@ async function applyCloudResponse(data) {
     await storageSet(K_LITTER_CHANGES, STATE.litterChanges);
   }
   if (Array.isArray(data.roster)) {
-    // v6.10.19 — Cloud-authoritative merge. Removed the local-only preservation
-    // loop that previously preserved IDs not in the cloud — that was the root
-    // cause of Sinonin's hardcoded DEFAULT_PLUCKERS leaking into Birei/Kibois
-    // and persisting in K_PLUCKERS forever. Sealed § (Cheison 26 May 2026 Verden):
-    // "Cloud is the source of truth for the roster. A newly added plucker that
-    // hasn't yet pushed will briefly disappear after a cloud merge, then
-    // reappear after the next push completes — eventual consistency, not
-    // mid-flight preservation. The sync queue holds the unsent write; nothing
-    // is lost." Matches the v6.2.2 cloud-replace-local pattern already in
-    // effect for entries, actuals, expenses, banked, poultry, egg-collection.
+    // Roster merge — cloud is authoritative for IDs that appear in cloud,
+    // local is authoritative for IDs that exist only locally (e.g. queued
+    // but not yet pushed). For IDs in both, cloud's most-recent submission
+    // wins because Apps Script already deduplicated to last-write-wins.
+    const cloudIds = new Set(data.roster.map(r => r.id));
     const merged = data.roster.map(r => ({
       id: r.id,
       name: r.name || '',
@@ -10412,6 +10885,11 @@ async function applyCloudResponse(data) {
       notes: r.notes || '',
       active: true
     }));
+    // Preserve any local-only pluckers (IDs not in cloud yet — newly added,
+    // probably queued for push)
+    PLUCKERS.forEach(local => {
+      if (!cloudIds.has(local.id)) merged.push(local);
+    });
     merged.sort((a, b) => a.id - b.id);
     PLUCKERS = merged;
     await storageSet(K_PLUCKERS, PLUCKERS);
@@ -10564,8 +11042,8 @@ function hideFirstInstallSplash() {
 }
 
 function populateDropdowns() {
-  const blockOpts = teaBlocks().map(b => `<option value="${b}">${b}</option>`).join('');
-  const businessUnitOpts = businessUnits().map(b => `<option value="${b}">${b}</option>`).join('');
+  const blockOpts = BLOCKS.map(b => `<option value="${b}">${b}</option>`).join('');
+  const businessUnitOpts = BUSINESS_UNITS.map(b => `<option value="${b}">${b}</option>`).join('');
   // Tea-only dropdowns: only tea blocks (Greenleaf entry, Actuals)
   document.getElementById('q-block').innerHTML = '<option value="">— Block —</option>' + blockOpts;
   document.getElementById('b-block').innerHTML = '<option value="">— Block —</option>' + blockOpts;
@@ -10709,6 +11187,14 @@ function switchView(v) {
   if (v === 'insights') renderInsights();
   if (v === 'admin' || v === 'settings') renderSettings();
   if (v === 'other') renderOther();
+  // v6.11.0 — Sales tab: POS cascade. Reset to Level 1 (business-unit cards)
+  // every time the tab is entered so the operator always starts at the top
+  // of the cascade rather than landing on whichever drill state was open 
+  // last time. Same UX principle as panel-other's hub reset.
+  if (v === 'sales') {
+    if (typeof renderSalesPanel === 'function') renderSalesPanel();
+    if (typeof resetSalesCascade === 'function') resetSalesCascade();
+  }
   // v6.10.5 — Sheep + Cows soft promotion: activate the right sub-view.
   // When the user taps "Other" itself, reset to the 'hub' tile picker so 
   // they don't land on whichever sub-view was last open (e.g. if they 
@@ -11226,8 +11712,8 @@ function xbAddRow() {
     catOpts += `<optgroup label="${tier}">${names.map(n => `<option value="${n}">${n}</option>`).join('')}</optgroup>`;
   });
   // Build allocation options: Whole farm + grouped tea blocks + grouped business units
-  const teaBlockOpts = teaBlocks().map(b => `<option value="${b}">${b}</option>`).join('');
-  const businessUnitOpts = businessUnits().map(b => `<option value="${b}">${b}</option>`).join('');
+  const teaBlockOpts = BLOCKS.map(b => `<option value="${b}">${b}</option>`).join('');
+  const businessUnitOpts = BUSINESS_UNITS.map(b => `<option value="${b}">${b}</option>`).join('');
   const blockOpts =
     `<option value="Whole farm" selected>Whole farm</option>` +
     `<optgroup label="Tea blocks">${teaBlockOpts}</optgroup>` +
@@ -16683,7 +17169,7 @@ function renderHome() {
   // Tea expenses MTD: any expense whose Allocation is a tea block, OR whose Tier is "Tea farm operations" / "Tea farm payroll"
   const teaTiers = ['Tea farm operations', 'Tea farm payroll'];
   const teaExpensesMonth = expensesMonth
-    .filter(x => teaBlocks().includes(x.block) || teaTiers.includes(x.tier))
+    .filter(x => BLOCKS.includes(x.block) || teaTiers.includes(x.tier))
     .reduce((s, x) => s + (x.amount || 0), 0);
 
   // v6.9.15 — Top card displays TODAY's kg (read from actuals), not MTD.
@@ -17310,13 +17796,13 @@ function renderHome() {
 
   // Zone 3 — Tea block bars (unchanged from prior behaviour)
   const byBlock = {};
-  teaBlocks().forEach(b => byBlock[b] = 0);
+  BLOCKS.forEach(b => byBlock[b] = 0);
   let consolidatedKg = 0;
   actualsMonth.forEach(a => {
     const b = a.block || 'All blocks';
     if (b === 'All blocks' || b === 'All blocks (consolidated)') {
       consolidatedKg += Number(a.kg) || 0;
-    } else if (teaBlocks().includes(b)) {
+    } else if (BLOCKS.includes(b)) {
       byBlock[b] += Number(a.kg) || 0;
     }
   });
@@ -17976,7 +18462,7 @@ function renderInsights() {
   // allocated by block, margin = cash − expenses. Pluckers excluded from this
   // section; they live in Plucker rankings below.
   const byBlock = {};
-  teaBlocks().forEach(b => byBlock[b] = { kg: 0, cashNow: 0, expenses: 0 });
+  BLOCKS.forEach(b => byBlock[b] = { kg: 0, cashNow: 0, expenses: 0 });
   byBlock['Consolidated'] = { kg: 0, cashNow: 0, expenses: 0 };
 
   actuals.forEach(a => {
@@ -21594,41 +22080,29 @@ function openCowMilkForm(presetTagId, presetSession) {
   }
   if (presetTagId) tagSel.value = presetTagId;
   
-  // Populate channel dropdown — v6.10.24: always rebuild from milkChannelList()
-  // so STATE.milkFactories changes (cloud sync arriving mid-session) take 
-  // effect immediately on next form open.
+  // Populate channel dropdown
   const chanSel = document.getElementById('cm-channel');
-  const currentChanVal = chanSel.value;
-  chanSel.innerHTML = '<option value="">— pick channel —</option>';
-  milkChannelList().forEach(function (ch) {
-    const opt = document.createElement('option');
-    opt.value = ch.value;
-    opt.textContent = ch.label;
-    chanSel.appendChild(opt);
-  });
-  // Preserve previous selection if still in the list
-  if (currentChanVal && Array.from(chanSel.options).some(function (o) { return o.value === currentChanVal; })) {
-    chanSel.value = currentChanVal;
+  if (chanSel.options.length <= 1) {
+    MILK_CHANNELS.forEach(function (ch) {
+      const opt = document.createElement('option');
+      opt.value = ch.value;
+      opt.textContent = ch.label;
+      chanSel.appendChild(opt);
+    });
   }
   chanSel.onchange = function () {
     const val = chanSel.value;
     const recipField = document.getElementById('cm-recipient-field');
     const buyerField = document.getElementById('cm-buyer-field');
     const buyerLabel = document.getElementById('cm-buyer-label');
-    // v6.10.24 — milkChannelType() returns case-insensitive substring-matched
-    // type, working with both hardcoded MILK_CHANNELS values ('Gifted', 
-    // 'Farm-Gate', 'Processed') and sheet-driven names ('Gift / Donation', 
-    // 'Farm Gate', 'In-house Process'). "Wasted" + commercial processors 
-    // fall through to null → both fields hidden, which is correct.
-    const type = milkChannelType(val);
-    if (type === 'gift') {
+    if (val === 'Gifted') {
       recipField.style.display = '';
       buyerField.style.display = 'none';
-    } else if (type === 'farm-gate') {
+    } else if (val === 'Farm-Gate') {
       recipField.style.display = 'none';
       buyerField.style.display = '';
       if (buyerLabel) buyerLabel.innerHTML = 'Buyer <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(walk-in at farm gate)</span>';
-    } else if (type === 'processed') {
+    } else if (val === 'Processed') {
       recipField.style.display = 'none';
       buyerField.style.display = '';
       if (buyerLabel) buyerLabel.innerHTML = 'Product <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(e.g. yoghurt, mursik, ghee)</span>';
@@ -21670,15 +22144,6 @@ function openCowMilkForm(presetTagId, presetSession) {
     otherOpt.textContent = 'Other (specify in notes)';
     opSel.appendChild(otherOpt);
   }
-
-  // v6.10.18 — Reset to Quick mode on every open + bind mode toggle.
-  // Batch mode initializes lazily on first switch so it doesn't rebuild
-  // the grid for operators who only ever use Quick.
-  _cmSetMode('quick');
-  const qBtn = document.getElementById('cm-mode-quick');
-  const bBtn = document.getElementById('cm-mode-batch');
-  if (qBtn) qBtn.onclick = function () { _cmSetMode('quick'); };
-  if (bBtn) bBtn.onclick = function () { _cmSetMode('batch'); };
 }
 
 function closeCowMilkForm() {
@@ -21694,298 +22159,6 @@ function _cmShowFeedback(message, kind) {
     : 'background:rgba(140,195,145,0.18); color:var(--forest-dark); border:1px solid rgba(140,195,145,0.45);';
   fb.style.cssText = 'display:block;margin-top:0.7rem;padding:0.6rem 0.8rem;border-radius:6px;font-family:"Fraunces",serif;font-size:0.9rem;' + colorStyle;
   fb.textContent = message;
-}
-
-/* ============================================================
-   v6.10.18 — COW MILK BATCH ENTRY
-   ============================================================
-   Mirrors Plucker Greenleaf Batch pattern. Operators record a whole
-   day's milkings at once after the last session, instead of three
-   separate Quick entries per cow per session.
-   
-   Header carries Date / Channel / Operator (and Gift recipient when
-   channel=Gifted, or Buyer for Farm-Gate/Processed) — applies to all
-   non-empty rows. Grid is one row per alive female cow with three
-   numeric inputs (AM/PM/Night). Blank cell = no milking that session.
-   Save All emits one submitMilkLog call per non-empty cell; the same
-   dedup-by-(date,session,tag) guard from the Quick path keeps the 
-   batch idempotent if resubmitted.
-   
-   Sealed § (Cheison 26 May 2026 Verden): "Levy and Isaac's hands pay
-   on verbal totals — 'total kgs is 200 today'. The app's value is the
-   structure: WHO plucked HOW MANY. Same shape for milking: WHICH cow
-   yielded HOW MANY litres in WHICH session, not just 'today's milk'."
-   ============================================================ */
-
-function _cmSetMode(mode) {
-  const quickBtn = document.getElementById('cm-mode-quick');
-  const batchBtn = document.getElementById('cm-mode-batch');
-  const quickPanel = document.getElementById('cm-quick-mode');
-  const batchPanel = document.getElementById('cm-batch-mode');
-  if (!quickBtn || !batchBtn || !quickPanel || !batchPanel) return;
-  
-  // Clear any stale feedback when switching modes
-  const fb = document.getElementById('cm-feedback');
-  if (fb) fb.style.display = 'none';
-  
-  if (mode === 'batch') {
-    quickBtn.classList.remove('active');
-    batchBtn.classList.add('active');
-    quickPanel.style.display = 'none';
-    batchPanel.style.display = '';
-    _cmInitBatchMode();
-  } else {
-    batchBtn.classList.remove('active');
-    quickBtn.classList.add('active');
-    quickPanel.style.display = '';
-    batchPanel.style.display = 'none';
-  }
-}
-
-function _cmInitBatchMode() {
-  // Date default = today
-  document.getElementById('cmb-date').value = new Date().toISOString().slice(0, 10);
-  
-  // Reset channel + reveal-fields + buyer text
-  document.getElementById('cmb-channel').value = '';
-  document.getElementById('cmb-recipient-field').style.display = 'none';
-  document.getElementById('cmb-buyer-field').style.display = 'none';
-  document.getElementById('cmb-recipient-other').style.display = 'none';
-  document.getElementById('cmb-recipient-other').value = '';
-  document.getElementById('cmb-buyer').value = '';
-  
-  // Populate channel dropdown — v6.10.24: rebuild from milkChannelList()
-  // every time so STATE.milkFactories cloud changes propagate.
-  const chanSel = document.getElementById('cmb-channel');
-  chanSel.innerHTML = '<option value="">— pick channel —</option>';
-  milkChannelList().forEach(function (ch) {
-    const opt = document.createElement('option');
-    opt.value = ch.value;
-    opt.textContent = ch.label;
-    chanSel.appendChild(opt);
-  });
-  chanSel.onchange = function () {
-    const val = chanSel.value;
-    const recipField = document.getElementById('cmb-recipient-field');
-    const buyerField = document.getElementById('cmb-buyer-field');
-    const buyerLabel = document.getElementById('cmb-buyer-label');
-    // v6.10.24 — case-insensitive type match (see milkChannelType helper)
-    const type = milkChannelType(val);
-    if (type === 'gift') {
-      recipField.style.display = '';
-      buyerField.style.display = 'none';
-    } else if (type === 'farm-gate') {
-      recipField.style.display = 'none';
-      buyerField.style.display = '';
-      if (buyerLabel) buyerLabel.innerHTML = 'Buyer <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(applies to all rows)</span>';
-    } else if (type === 'processed') {
-      recipField.style.display = 'none';
-      buyerField.style.display = '';
-      if (buyerLabel) buyerLabel.innerHTML = 'Product <span style="color:var(--brass-light); opacity:0.7; font-weight:400">(e.g. yoghurt, mursik, ghee)</span>';
-    } else {
-      recipField.style.display = 'none';
-      buyerField.style.display = 'none';
-    }
-  };
-  
-  // Populate recipient dropdown (mirrors cm-recipient)
-  const recipSel = document.getElementById('cmb-recipient');
-  if (recipSel.options.length <= 1) {
-    MILK_RECIPIENTS.forEach(function (r) {
-      const opt = document.createElement('option');
-      opt.value = r;
-      opt.textContent = r;
-      recipSel.appendChild(opt);
-    });
-  }
-  recipSel.onchange = function () {
-    const other = document.getElementById('cmb-recipient-other');
-    other.style.display = (recipSel.value === 'Other') ? '' : 'none';
-    if (recipSel.value !== 'Other') other.value = '';
-  };
-  
-  // Populate operator dropdown — same tenant-config workforce roster
-  const opSel = document.getElementById('cmb-operator');
-  if (opSel) {
-    opSel.innerHTML = '<option value="">— pick one —</option>';
-    workforceRoster().forEach(function (n) {
-      const opt = document.createElement('option');
-      opt.value = n;
-      opt.textContent = n;
-      opSel.appendChild(opt);
-    });
-    const otherOpt = document.createElement('option');
-    otherOpt.value = 'Other';
-    otherOpt.textContent = 'Other (specify in notes)';
-    opSel.appendChild(otherOpt);
-  }
-  
-  // Render grid + reset summary
-  _cmbRenderGrid();
-  _cmbUpdateSummary();
-  
-  // Wire submit button
-  const submitBtn = document.getElementById('cmb-submit');
-  if (submitBtn) submitBtn.onclick = function () { submitCowMilkBatch(); };
-}
-
-function _cmbRenderGrid() {
-  const grid = document.getElementById('cmb-grid');
-  if (!grid) return;
-  
-  const aliveCows = (STATE.cows || []).filter(function (c) {
-    return c.status === 'alive' && c.sex === 'F';
-  });
-  
-  if (aliveCows.length === 0) {
-    grid.innerHTML = '<div class="cmb-empty-state">No alive female cows on the registry yet. Add a cow first, then batch-log her milkings.</div>';
-    return;
-  }
-  
-  // Header row
-  let html = '<div class="cmb-grid-header">'
-    + '<div>Cow</div>'
-    + '<div>☀️ AM</div>'
-    + '<div>🌇 PM</div>'
-    + '<div>🌙 Night</div>'
-    + '</div>';
-  
-  // One row per alive cow with three litre inputs
-  aliveCows.forEach(function (c) {
-    const nameDisplay = c.name ? c.name : c.tag_id;
-    const meta = c.tag_id + (c.breed ? ' · ' + c.breed : '');
-    html += '<div class="cmb-row" data-tag="' + c.tag_id + '">'
-      + '<div>'
-      +   '<div class="cmb-cow-name">' + nameDisplay + '</div>'
-      +   '<div class="cmb-cow-meta">' + meta + '</div>'
-      + '</div>'
-      + '<input type="number" class="cmb-litre-input" data-session="AM" min="0" step="0.1" placeholder="—" inputmode="decimal">'
-      + '<input type="number" class="cmb-litre-input" data-session="PM" min="0" step="0.1" placeholder="—" inputmode="decimal">'
-      + '<input type="number" class="cmb-litre-input" data-session="Night" min="0" step="0.1" placeholder="—" inputmode="decimal">'
-      + '</div>';
-  });
-  
-  grid.innerHTML = html;
-  
-  // Wire input events for live summary + visual filled-state feedback
-  grid.querySelectorAll('.cmb-litre-input').forEach(function (inp) {
-    inp.addEventListener('input', function () {
-      const v = Number(inp.value);
-      if (v > 0) inp.classList.add('filled');
-      else inp.classList.remove('filled');
-      _cmbUpdateSummary();
-    });
-  });
-}
-
-function _cmbUpdateSummary() {
-  const grid = document.getElementById('cmb-grid');
-  if (!grid) return;
-  let count = 0;
-  let total = 0;
-  grid.querySelectorAll('.cmb-litre-input').forEach(function (inp) {
-    const v = Number(inp.value);
-    if (v > 0) {
-      count++;
-      total += v;
-    }
-  });
-  const countEl = document.getElementById('cmb-count');
-  const totalEl = document.getElementById('cmb-total');
-  const submitBtn = document.getElementById('cmb-submit');
-  if (countEl) countEl.textContent = String(count);
-  if (totalEl) totalEl.textContent = total.toFixed(1) + ' L';
-  if (submitBtn) submitBtn.disabled = (count === 0);
-}
-
-async function submitCowMilkBatch() {
-  // Validate header
-  const date = document.getElementById('cmb-date').value;
-  const channel = document.getElementById('cmb-channel').value;
-  const operator = document.getElementById('cmb-operator').value;
-  
-  if (!date) { _cmShowFeedback('Date is required', 'error'); return; }
-  if (!channel) { _cmShowFeedback('Pick a channel', 'error'); return; }
-  
-  // Resolve recipient/buyer (applies to whole batch). v6.10.24: 
-  // milkChannelType matches both legacy 'Gifted'/'Farm-Gate'/'Processed'
-  // and sheet-driven 'Gift / Donation'/'Farm Gate'/'In-house Process'.
-  let recipientOrBuyer = '';
-  const chanType = milkChannelType(channel);
-  if (chanType === 'gift') {
-    const recipSel = document.getElementById('cmb-recipient').value;
-    if (!recipSel) { _cmShowFeedback('Pick a gift recipient', 'error'); return; }
-    if (recipSel === 'Other') {
-      const otherTxt = (document.getElementById('cmb-recipient-other').value || '').trim();
-      if (!otherTxt) { _cmShowFeedback('Specify the recipient', 'error'); return; }
-      recipientOrBuyer = otherTxt;
-    } else {
-      recipientOrBuyer = recipSel;
-    }
-  } else if (chanType === 'farm-gate' || chanType === 'processed') {
-    recipientOrBuyer = (document.getElementById('cmb-buyer').value || '').trim();
-  }
-  
-  // Collect non-empty cells
-  const grid = document.getElementById('cmb-grid');
-  const records = [];
-  grid.querySelectorAll('.cmb-row').forEach(function (rowEl) {
-    const tagId = rowEl.dataset.tag;
-    rowEl.querySelectorAll('.cmb-litre-input').forEach(function (inp) {
-      const litres = Number(inp.value);
-      if (!litres || litres <= 0) return;
-      records.push({
-        ts: new Date().toISOString(),
-        date: date,
-        session: inp.dataset.session,
-        tag_id: tagId,
-        litres: litres,
-        channel: channel,
-        recipient_or_buyer: recipientOrBuyer,
-        operator: operator || '',
-        notes: '',
-        timestamp: new Date().toISOString()
-      });
-    });
-  });
-  
-  if (records.length === 0) {
-    _cmShowFeedback('No litres entered — fill at least one cell before saving', 'error');
-    return;
-  }
-  
-  const submitBtn = document.getElementById('cmb-submit');
-  if (submitBtn) submitBtn.disabled = true;
-  
-  _cmShowFeedback('Saving ' + records.length + ' milking' + (records.length === 1 ? '' : 's') + '...', 'success');
-  
-  // Submit one at a time — submitMilkLog handles dedup + sync queue per record.
-  // Sequential rather than Promise.all so the sync queue doesn't get a 
-  // burst that overwhelms slow connections; per-row queuing on failure
-  // is graceful.
-  let saved = 0;
-  let queued = 0;
-  for (const rec of records) {
-    const ok = await submitMilkLog(rec);
-    if (ok) saved++;
-    else queued++;
-  }
-  
-  // Final feedback
-  let msg;
-  if (queued === 0) {
-    msg = '🥛 Saved ' + saved + ' milking' + (saved === 1 ? '' : 's') + ' for ' + date;
-  } else if (saved === 0) {
-    msg = 'Queued ' + queued + ' milking' + (queued === 1 ? '' : 's') + ' locally — will sync when online';
-  } else {
-    msg = 'Saved ' + saved + ', queued ' + queued + ' for sync · ' + date;
-  }
-  _cmShowFeedback(msg, 'success');
-  
-  // Brief pause so feedback shows, then return to dashboard
-  setTimeout(function () {
-    closeCowMilkForm();
-  }, 1400);
 }
 
 async function submitCowMilkForm() {
@@ -22007,12 +22180,9 @@ async function submitCowMilkForm() {
   }
   if (!channel) { _cmShowFeedback('Pick a channel', 'error'); return; }
   
-  // Resolve recipient / buyer based on channel. v6.10.24: milkChannelType
-  // handles both hardcoded ('Gifted'/'Farm-Gate'/'Processed') and sheet-driven
-  // ('Gift / Donation'/'Farm Gate'/'In-house Process') naming.
+  // Resolve recipient / buyer based on channel
   let recipientOrBuyer = '';
-  const chanType = milkChannelType(channel);
-  if (chanType === 'gift') {
+  if (channel === 'Gifted') {
     const recipSel = document.getElementById('cm-recipient').value;
     if (!recipSel) { _cmShowFeedback('Pick a gift recipient', 'error'); return; }
     if (recipSel === 'Other') {
@@ -22022,7 +22192,7 @@ async function submitCowMilkForm() {
     } else {
       recipientOrBuyer = recipSel;
     }
-  } else if (chanType === 'farm-gate' || chanType === 'processed') {
+  } else if (channel === 'Farm-Gate' || channel === 'Processed') {
     recipientOrBuyer = (document.getElementById('cm-buyer').value || '').trim();
     // Optional for these channels — empty is fine
   }
@@ -23288,6 +23458,11 @@ function showUpdateBanner() {
   STATE.actuals = storedActuals.map(a => ({ block: 'All blocks', ...a }));
   STATE.banked = await storageGet(K_BANKED, []);
   STATE.poultry = await storageGet(K_POULTRY, []);
+  // v6.11.0 — Hydrate unified Sales table. Phase A coexists with legacy 
+  // banked/poultry stores. STATE.sales grows from this version onward; 
+  // Phase D migration will eventually fold banked + poultry into this 
+  // single store. Sealed § 7.x: one table, one write path, one read path.
+  STATE.sales = await storageGet(K_SALES, []);
   // v6.4.0 Step 1 — Hydrate Dorper Farm sheep registry and event log.
   STATE.sheep = await storageGet(K_SHEEP, []);
   STATE.sheepEvents = await storageGet(K_SHEEP_EVENTS, []);
@@ -23331,12 +23506,7 @@ function showUpdateBanner() {
     { key: K_EXPENSES_SOURCE_VERSION,       cur: 1, stateField: 'expenses',       storage: K_EXPENSES,       label: 'expenses'          },
     { key: K_BANKED_SOURCE_VERSION,         cur: 1, stateField: 'banked',         storage: K_BANKED,         label: 'banked'            },
     { key: K_POULTRY_SOURCE_VERSION,        cur: 1, stateField: 'poultry',        storage: K_POULTRY,        label: 'poultry'           },
-    { key: K_EGG_COLLECTION_SOURCE_VERSION, cur: 1, stateField: 'eggCollection',  storage: K_EGG_COLLECTION, label: 'egg-collection'    },
-    // v6.10.20 — Wipe stale K_INCUBATION cache so tenants without hatching
-    // operations (Birei) don't see ghost "Hatching" notifications from
-    // residual batches in localStorage. Cloud fetch repopulates from each
-    // tenant's Incubation_Log sheet (empty for Birei, populated for Sinonin).
-    { key: K_INCUBATION_SOURCE_VERSION,     cur: 1, stateField: 'incubation',    storage: K_INCUBATION,    label: 'incubation'        }
+    { key: K_EGG_COLLECTION_SOURCE_VERSION, cur: 1, stateField: 'eggCollection',  storage: K_EGG_COLLECTION, label: 'egg-collection'    }
   ];
   for (const m of migrations) {
     const stored = await storageGet(m.key, 0);
@@ -23371,39 +23541,6 @@ function showUpdateBanner() {
                 ' rows). Cloud fetch will repopulate. Migration v0 → v' +
                 BIRD_CENSUS_SOURCE_VERSION + '.');
   }
-
-  // v6.10.19 — One-time wipe of K_PLUCKERS to clear stale Sinonin names that
-  // leaked into Birei/Kibois via the v6.10.15-and-earlier cloud-merge logic
-  // that preserved local-only IDs (which DEFAULT_PLUCKERS' 45 Sinonin names
-  // populated). Cloud fetch then repopulates from each tenant's own
-  // Plucker_Roster sheet. Sinonin (populated sheet) gets its roster back;
-  // Birei/Kibois (empty sheets) get the clean empty state they expect.
-  // PLUCKERS is the module-level variable (not STATE.something) so this
-  // sits as its own block rather than fitting into the generic migrations
-  // loop above. Pattern mirrors BIRD_CENSUS_SOURCE_VERSION (v6.2.1).
-  const PLUCKERS_SOURCE_VERSION = 1;
-  const storedPlVer = await storageGet(K_PLUCKERS_SOURCE_VERSION, 0);
-  if (storedPlVer < PLUCKERS_SOURCE_VERSION) {
-    const beforeCount = (PLUCKERS || []).length;
-    PLUCKERS = [];
-    await storageSet(K_PLUCKERS, PLUCKERS);
-    await storageSet(K_PLUCKERS_SOURCE_VERSION, PLUCKERS_SOURCE_VERSION);
-    console.log('[v6.10.19] Wiped stale local PLUCKERS cache (' + beforeCount +
-                ' rows). Cloud fetch will repopulate from this tenant\'s Plucker_Roster ' +
-                'sheet. Migration v0 → v' + PLUCKERS_SOURCE_VERSION + '.');
-  }
-
-  // v6.10.23 — Tea + milk factories DO NOT get a SOURCE_VERSION wipe, by 
-  // design. If PWA v6.10.23 deploys BEFORE Apps Script v5.0.48 (cloud doesn't
-  // yet ship data.teaFactories), wiping would leave STATE.factories empty 
-  // with no source to refill. The v6.10.16 morning catastrophe taught this 
-  // lesson. Backward-compat aliases in DEFAULT_FACTORIES + the cloud-hydrate 
-  // handler mean old localStorage works seamlessly until cloud arrives with 
-  // new-schema data, at which point hydration overwrites. No wipe, no loss.
-  //
-  // K_FACTORIES_SOURCE_VERSION / K_MILK_FACTORIES_SOURCE_VERSION constants 
-  // are reserved for v6.10.24 once Apps Script is verified shipping the data.
-
   // v6.0 SHIP 5 — Incubation batches
   STATE.incubation = await storageGet(K_INCUBATION, []);
 
@@ -23502,9 +23639,6 @@ function showUpdateBanner() {
   } catch (e) { /* non-fatal — first-install has empty queue */ }
   const storedFactories = await storageGet(K_FACTORIES, null);
   if (storedFactories && Array.isArray(storedFactories) && storedFactories.length > 0) STATE.factories = storedFactories;
-  // v6.10.23 — Milk factories from localStorage (cloud merge will refresh).
-  const storedMilkFactories = await storageGet(K_MILK_FACTORIES, null);
-  if (storedMilkFactories && Array.isArray(storedMilkFactories) && storedMilkFactories.length > 0) STATE.milkFactories = storedMilkFactories;
   const storedPluckers = await storageGet(K_PLUCKERS, null);
   if (storedPluckers && Array.isArray(storedPluckers) && storedPluckers.length > 0) {
     PLUCKERS = storedPluckers.map(p => ({ active: true, ...p }));
@@ -23548,12 +23682,6 @@ function showUpdateBanner() {
   // when relocating an element across DOM contexts, the wiring that lived
   // in the old context must follow it — visibility without behavior is 
   // worse than absence.
-  // v6.10.22 — Header admin button (back from bottom-nav). The bottom-nav 
-  // forEach above only covers nav.bottom-nav buttons, so the header admin
-  // button needs its own click listener. Same data-view='admin' contract;
-  // same switchView() target. Sealed § 6.x: when relocating an element 
-  // across DOM contexts, the wiring that lived in the old context must 
-  // follow it — visibility without behavior is worse than absence.
   const headerAdminBtn = document.querySelector('header.brand #nav-settings');
   if (headerAdminBtn) {
     headerAdminBtn.addEventListener('click', () => switchView('admin'));
@@ -23576,6 +23704,12 @@ function showUpdateBanner() {
     el.addEventListener('change', updateBankedPreview);
   });
   document.getElementById('i-submit').addEventListener('click', submitBanked);
+
+  // v6.11.0 — Unified Sales form (POS cascade). Listeners wired once on
+  // boot; rendering reset happens on each switchView('sales') entry.
+  if (typeof _wireSalesForm === 'function') {
+    _wireSalesForm();
+  }
 
   // Poultry Sales
   ['y-date','y-product','y-stage','y-cohort','y-unit','y-quantity','y-amount','y-payment','y-buyer'].forEach(id => {

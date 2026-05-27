@@ -1,4 +1,14 @@
 // Sinonin Group Management App — Service Worker
+// v6.11.1 — syncSale protocol fix (action/payload/source, was broken kind/data) + grounded against real Apps Script writeXEntry pattern (27 May 2026, Cheison's appendBanked + Kiraka catches)
+// v6.11.0 — Phase A: Unified SALES tab · POS cascade · BUSINESS_UNITS / PRODUCTS_<UNIT> / VARIANTS_<UNIT>_<PRODUCT> Control_Panel keys · receipt fields seated in data model (26 May 2026 Verden, Birei/Kibois Sales unblock)
+// v6.10.15 — Egg horizon 10 → 15 days (catering window) — Elias inventory accuracy (26 May 2026 Verden)
+// v6.10.14 — DASHBOARD_ORDER per-tenant card sequencing · Coffee + Sugar Cane placeholders · strapline wrap (25 May 2026 Verden, Birei Dairy-led)
+// v6.10.13 — HIDDEN_PRODUCTS · DAIRY_LABEL · DORPER_LABEL · splash uses cached FARM_NAME (25 May 2026 Verden, Birei tenant-isation)
+// v6.10.12 — TENANT_APPS_SCRIPT_URL consolidation · STRAPLINE/ABOUT_TEXT/BRAND_MOTTO via Control_Panel (25 May 2026 Verden, Birei brand)
+// v6.10.11 — Product-aware stage dropdown · prevents Chicken+Normal-eggs nonsense (25 May 2026 Verden)
+// v6.10.10 — Cohort_id preserved in cloudToLocalPoultry · egg-batch dropdown 10-day window (25 May 2026 Verden evening)
+// v6.10.9 — Cache bust v216 for Sinonin smoke test rev (25 May 2026 Verden)
+// v6.10.9 — Compute fix: inBaseline cohorts only deduct TAGGED post-census sales (no double-count via stagesPassed)
 // v6.3.10 — Tea "Plucker Kg" label · Poultry=gold(eggshell) Sireet=deeper-green theming (07 May 2026 Verden)
 // v6.3.9 — Tea quick-add: Pluckers→Greenleaf (07 May 2026 Verden)
 // v6.3.8 — Hero cards as distinct chips (07 May 2026 Verden)
@@ -54,7 +64,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v232';
+const CACHE = 'sinonin-greenleaf-v224';
 
 const SHELL_FILES = [
   './',
