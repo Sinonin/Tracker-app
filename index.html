@@ -3196,7 +3196,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.7</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.8</span>
 </header>
 
 <main>
@@ -5954,7 +5954,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.7</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.8</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6115,16 +6115,31 @@
 </div>
 
 <script>
-const BLOCKS = ['Sinonin', 'Cheptabach', 'Bitonin', 'Kipkenda', 'Kipkorom', 'Sangalo'];
+/* v6.11.8 — Tea blocks now sourced from Control_Panel via TEA_BLOCKS key.
+   The legacy BLOCKS const remains as an empty backward-compat marker for any
+   serialized state that may reference it. Tenants declare their tea blocks
+   in Control_Panel: `TEA_BLOCKS = Sinonin,Cheptabach,Bitonin,...`. Tenants
+   with no tea blocks (e.g. tea-via-factories-only operations) leave the key
+   unset → empty dropdowns, no Sinonin data leakage. */
+const BLOCKS = [];
 
-/* Business units — appear in Allocation dropdown for expenses (and Records
-   block filter) alongside the tea blocks. Each one is a separate revenue or
-   cost centre under the Sinonin Group umbrella. Chelabaal is the
-   retirement-home-and-orchard project near Eldoret International Airport.
-   v6.10.2 — 'Dairy' added so cow-related expenses (feed, veterinary,
-   AI service, hooftrim, dewormer) can be allocated cleanly. Mirrors the
-   pattern already used for 'Dorper sheep'. */
-const BUSINESS_UNITS = ['Kipkenda Poultry', 'Olomotit Coffee', 'Maize', 'Dorper sheep', 'Dairy', 'Chelabaal'];
+function tenantTeaBlocks() {
+  const raw = tcfg('TEA_BLOCKS', '');
+  if (typeof raw !== 'string' || !raw) return [];
+  return raw.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+}
+
+/* v6.11.8 — Business units now sourced from Control_Panel via BUSINESS_UNITS
+   key. The legacy hardcoded array (with Sinonin-specific entries like 
+   Chelabaal) is replaced by an empty backward-compat marker. populateDropdowns 
+   reads from tcfg, matching what the new Sales tab POS cascade already does. */
+const BUSINESS_UNITS = [];
+
+function tenantBusinessUnits() {
+  const raw = tcfg('BUSINESS_UNITS', '');
+  if (typeof raw !== 'string' || !raw) return [];
+  return raw.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+}
 
 const DEFAULT_FACTORIES = [
   { name: "Sireet",    priceKg: 25,   transport: 3.90, shares: 5, wageKg: 9.5,  bonusKg: 0.5, greenleaf: 13 },
@@ -6178,52 +6193,19 @@ function netPerKg(factory, dateStr) {
   return Math.max(0, r.priceKg - r.transport - r.shares);
 }
 
-const DEFAULT_PLUCKERS = [
-  { id: 4,  name: "Elias Kimaru Kemboi",  bonus: true,  active: true, primaryBlock: "All farms",  notes: "Farm Manager" },
-  { id: 5,  name: "Cheptabach",            bonus: true,  active: true, primaryBlock: "Cheptabach", notes: "" },
-  { id: 6,  name: "Gladys Yego",           bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 7,  name: "Victor Kiprono",        bonus: true,  active: true, primaryBlock: "All farms",  notes: "" },
-  { id: 8,  name: "Faith Chepchirchir",    bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 9,  name: "Hillary Kimutai",       bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 10, name: "Sheila Jesang",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 11, name: "Colleta Jerono",        bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 12, name: "Zacchariah Kipleting",  bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 16, name: "Abram Kipruto",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 17, name: "Stanley Kosgei",        bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 19, name: "Eunice Koech",          bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 25, name: "Winnie Jepkemei",       bonus: false, active: true, primaryBlock: "Sangalo",    notes: "" },
-  { id: 29, name: "Nancy Cherop",          bonus: false, active: true, primaryBlock: "Sangalo",    notes: "" },
-  { id: 30, name: "Caren Jepngetich",      bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 31, name: "Josphat Kipkemboi",     bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 32, name: "Frankline Kirwa",       bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 33, name: "Contractors",           bonus: false, active: true, primaryBlock: "All farms",  notes: "Day-and-disappear" },
-  { id: 34, name: "Meshark Too",           bonus: false, active: true, primaryBlock: "All farms",  notes: "" },
-  { id: 35, name: "Ezron Rudisha",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 36, name: "Geofrey Malakwen",      bonus: false, active: true, primaryBlock: "All farms",  notes: "" },
-  { id: 37, name: "Nahashon Kipchirchir",  bonus: false, active: true, primaryBlock: "All farms",  notes: "" },
-  { id: 38, name: "Lydia Jelagat",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 40, name: "Juliet Jepkemboi",      bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 41, name: "Sharon Cherotich",      bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 42, name: "Mercy Chepleting",      bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 44, name: "Mercy Jepkurui",        bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 45, name: "Winnie Jepkoech",       bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 46, name: "Caren Lagat",           bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 47, name: "Kipkorom",              bonus: true,  active: true, primaryBlock: "Kipkorom",   notes: "" },
-  { id: 48, name: "Sylivia Chelimo",       bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 49, name: "Violah Chepchumba",     bonus: true,  active: true, primaryBlock: "All farms",  notes: "" },
-  { id: 50, name: "Rosepela Cherotich",    bonus: true,  active: true, primaryBlock: "Sangalo",    notes: "" },
-  { id: 51, name: "Boaz Kiplimo",          bonus: true,  active: true, primaryBlock: "Sangalo",    notes: "" },
-  { id: 52, name: "Irine Chepkoech",       bonus: true,  active: true, primaryBlock: "Sangalo",    notes: "" },
-  { id: 53, name: "Faith Jepngetich",      bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 54, name: "Caren Jebitok",         bonus: true,  active: true, primaryBlock: "Sangalo",    notes: "" },
-  { id: 55, name: "Sharon Cheptoo",        bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 56, name: "Collins Kimeli",        bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 57, name: "Violah Chelimo",        bonus: true,  active: true, primaryBlock: "Sangalo",    notes: "" },
-  { id: 58, name: "Eugene Kipkemboi",      bonus: false, active: true, primaryBlock: "Sangalo",    notes: "Work-n-Pay" },
-  { id: 59, name: "Patroba Cheptoo",       bonus: false, active: true, primaryBlock: "Sangalo",    notes: "Work-n-Pay" },
-  { id: 60, name: "Vivian Chumba",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" },
-  { id: 61, name: "Josphat Kibet",         bonus: true,  active: true, primaryBlock: "Septonok",   notes: "" }
-];
+/* v6.11.8 — DEFAULT_PLUCKERS is now an empty array. The legacy hardcoded 
+   Sinonin roster (~45 names) was leaking into other tenants whose 
+   Plucker_Roster sheets are empty (Kibois showed Sinonin's pluckers in the 
+   dropdown). Cloud-load via data.roster (Plucker_Roster sheet) is now the 
+   sole source of truth per tenant. Sinonin's pluckers live in their 
+   Plucker_Roster sheet (already populated); cloud-load populates PLUCKERS 
+   on boot; subsequent boots read from the K_PLUCKERS local cache. Empty 
+   default means a fresh-install device shows an empty plucker dropdown 
+   briefly until the first successful cloud-load, which is correct behaviour
+   for any tenant without pluckers, and not a regression for tenants with 
+   pluckers (they get filled within a second of the first cloud hit).
+   Sealed § 7.x: tenant data lives in the tenant's Sheet, not in PWA source. */
+const DEFAULT_PLUCKERS = [];
 
 let PLUCKERS = JSON.parse(JSON.stringify(DEFAULT_PLUCKERS));
 
@@ -6798,6 +6780,21 @@ function _renderSalesLevel1() {
   // Wire taps
   grid.querySelectorAll('.sales-card').forEach(function (btn) {
     btn.addEventListener('click', function () {
+      // v6.11.8 — Poultry sales require cohort/batch attribution that the 
+      // generic POS cascade doesn't yet carry. Route any poultry-tagged 
+      // business unit (slug containing "POULTRY") to the legacy Poultry 
+      // Sales form which has the y-cohort dropdown wired to active 
+      // cohorts in the selected stage. Preserves Egg_Batch_ID + Cohort_ID 
+      // attribution end-to-end. Sealed § 7.x (Cheison 27 May 2026 Verden): 
+      // "Poultry sales (eggs and birds) we have lost Batch_ID and 
+      // Cohort_IDs!" — restored by routing through the path that already 
+      // knows how to capture them. Phase β (future): teach the POS 
+      // cascade about cohorts directly so all paths converge.
+      const slug = btn.dataset.unitSlug || '';
+      if (slug.indexOf('POULTRY') !== -1 && typeof openAddPanel === 'function') {
+        openAddPanel('poultry', 'poultry');
+        return;
+      }
       SALES_CASCADE.unit = {
         slug: btn.dataset.unitSlug,
         label: btn.dataset.unitLabel,
@@ -7073,7 +7070,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.7'
+    recorded_from: 'PWA v6.11.8'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -7722,7 +7719,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.7';
+const APP_VERSION = 'v6.11.8';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -11283,8 +11280,16 @@ function hideFirstInstallSplash() {
 }
 
 function populateDropdowns() {
-  const blockOpts = BLOCKS.map(b => `<option value="${b}">${b}</option>`).join('');
-  const businessUnitOpts = BUSINESS_UNITS.map(b => `<option value="${b}">${b}</option>`).join('');
+  // v6.11.8 — Source tea blocks + business units from Control_Panel (tcfg) 
+  // instead of the legacy hardcoded BLOCKS / BUSINESS_UNITS arrays. Each 
+  // tenant declares their own; missing keys → empty dropdowns (no Sinonin 
+  // data leakage). The new Sales tab POS cascade already used tcfg; this 
+  // brings the legacy Records filter + expense allocation dropdowns into 
+  // line with the same source-of-truth pattern.
+  const teaBlocks = tenantTeaBlocks();
+  const bizUnits = tenantBusinessUnits();
+  const blockOpts = teaBlocks.map(b => `<option value="${b}">${b}</option>`).join('');
+  const businessUnitOpts = bizUnits.map(b => `<option value="${b}">${b}</option>`).join('');
   // Tea-only dropdowns: only tea blocks (Greenleaf entry, Actuals)
   document.getElementById('q-block').innerHTML = '<option value="">— Block —</option>' + blockOpts;
   document.getElementById('b-block').innerHTML = '<option value="">— Block —</option>' + blockOpts;
@@ -11961,8 +11966,9 @@ function xbAddRow() {
     catOpts += `<optgroup label="${tier}">${names.map(n => `<option value="${n}">${n}</option>`).join('')}</optgroup>`;
   });
   // Build allocation options: Whole farm + grouped tea blocks + grouped business units
-  const teaBlockOpts = BLOCKS.map(b => `<option value="${b}">${b}</option>`).join('');
-  const businessUnitOpts = BUSINESS_UNITS.map(b => `<option value="${b}">${b}</option>`).join('');
+  // v6.11.8 — Source from tcfg instead of legacy hardcoded consts.
+  const teaBlockOpts = tenantTeaBlocks().map(b => `<option value="${b}">${b}</option>`).join('');
+  const businessUnitOpts = tenantBusinessUnits().map(b => `<option value="${b}">${b}</option>`).join('');
   const blockOpts =
     `<option value="Whole farm" selected>Whole farm</option>` +
     `<optgroup label="Tea blocks">${teaBlockOpts}</optgroup>` +
@@ -17416,9 +17422,11 @@ function renderHome() {
     .reduce((s, a) => s + (Number(a.kg) || 0) * 5, 0);
 
   // Tea expenses MTD: any expense whose Allocation is a tea block, OR whose Tier is "Tea farm operations" / "Tea farm payroll"
+  // v6.11.8 — Tea blocks resolved from tcfg instead of legacy BLOCKS const.
   const teaTiers = ['Tea farm operations', 'Tea farm payroll'];
+  const teaBlocksFilter = tenantTeaBlocks();
   const teaExpensesMonth = expensesMonth
-    .filter(x => BLOCKS.includes(x.block) || teaTiers.includes(x.tier))
+    .filter(x => teaBlocksFilter.includes(x.block) || teaTiers.includes(x.tier))
     .reduce((s, x) => s + (x.amount || 0), 0);
 
   // v6.9.15 — Top card displays TODAY's kg (read from actuals), not MTD.
@@ -18044,14 +18052,16 @@ function renderHome() {
   }
 
   // Zone 3 — Tea block bars (unchanged from prior behaviour)
+  // v6.11.8 — Tea blocks resolved from tcfg instead of legacy BLOCKS const.
+  const teaBlocksZ3 = tenantTeaBlocks();
   const byBlock = {};
-  BLOCKS.forEach(b => byBlock[b] = 0);
+  teaBlocksZ3.forEach(b => byBlock[b] = 0);
   let consolidatedKg = 0;
   actualsMonth.forEach(a => {
     const b = a.block || 'All blocks';
     if (b === 'All blocks' || b === 'All blocks (consolidated)') {
       consolidatedKg += Number(a.kg) || 0;
-    } else if (BLOCKS.includes(b)) {
+    } else if (teaBlocksZ3.includes(b)) {
       byBlock[b] += Number(a.kg) || 0;
     }
   });
@@ -18710,8 +18720,13 @@ function renderInsights() {
   // Block economics — kg and cash pulled from Actuals (revenue truth), expenses
   // allocated by block, margin = cash − expenses. Pluckers excluded from this
   // section; they live in Plucker rankings below.
+  // v6.11.8 — Tea blocks sourced from Control_Panel (tcfg) instead of the 
+  // legacy hardcoded BLOCKS const. Tenants without tea blocks get an empty 
+  // byBlock dict; the Consolidated bucket still receives all actuals so 
+  // Insights renders cleanly even for non-tea tenants.
+  const teaBlocks = tenantTeaBlocks();
   const byBlock = {};
-  BLOCKS.forEach(b => byBlock[b] = { kg: 0, cashNow: 0, expenses: 0 });
+  teaBlocks.forEach(b => byBlock[b] = { kg: 0, cashNow: 0, expenses: 0 });
   byBlock['Consolidated'] = { kg: 0, cashNow: 0, expenses: 0 };
 
   actuals.forEach(a => {
@@ -19578,8 +19593,13 @@ function renderSheepDashActivity(aliveSheep) {
     const emoji = eventEmojis[ev.event_type] || '📌';
     const detail = [ev.drug_or_vaccine, ev.weight_kg ? ev.weight_kg + 'kg' : '', ev.cause_or_condition]
       .filter(Boolean).join(' · ');
+    // v6.11.8 — Row card styling. Previous version used border-top only, 
+    // which rendered rows invisible against the section's ivory-card 
+    // background. Now each row is a discrete warm-ivory card with rounded 
+    // corners and a subtle border — visually distinguishable, scannable, 
+    // and consistent with how event rows render in cow-dash-activity below.
     return `
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; padding:0.45rem 0; border-top:1px solid var(--rule); gap:0.5rem">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; padding:0.55rem 0.75rem; background:var(--ivory-warm); border:1px solid var(--rule); border-radius:6px; margin-bottom:0.4rem; gap:0.5rem">
         <div style="min-width:0; flex:1">
           <div style="font-family:'Fraunces',serif; font-size:0.92rem; color:var(--ink)">${emoji} ${ev.tag_id} · <span style="color:var(--forest); font-style:italic">${ev.event_type}</span></div>
           ${detail ? `<div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--slate); margin-top:0.1rem">${detail}</div>` : ''}
@@ -21878,8 +21898,12 @@ function renderCowDashActivity(aliveCows) {
     return;
   }
   
+  // v6.11.8 — Row card styling matching sheep-dash-activity. Each event 
+  // renders as a discrete warm-ivory card with subtle border and rounded 
+  // corners. Replaces previous border-top-only rows that blended invisibly 
+  // into the section's ivory-card background.
   root.innerHTML = recent.map(a => `
-    <div style="display:flex; gap:0.6rem; padding:0.5rem 0; border-top:1px solid var(--rule); align-items:flex-start;">
+    <div style="display:flex; gap:0.6rem; padding:0.55rem 0.75rem; background:var(--ivory-warm); border:1px solid var(--rule); border-radius:6px; margin-bottom:0.4rem; align-items:flex-start;">
       <div style="font-size:1.1rem; line-height:1.2">${a.icon}</div>
       <div style="flex:1; min-width:0">
         <div style="font-family:'Fraunces',serif; font-size:0.95rem; color:var(--ink)">${a.label}</div>
