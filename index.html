@@ -3216,7 +3216,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.2</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.3</span>
 </header>
 
 <main>
@@ -5899,7 +5899,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.2</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.3</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6433,29 +6433,61 @@ function _hasTeaSalesPath() {
 }
 
 /* Read business units for the SALES Level-1 card grid. Combines:
-   - "Tea" prepended IF PRODUCTS_TEA configured (tenant wants tea as sales dest)
-   - Each business unit from BUSINESS_UNITS Control_Panel key
-   Returns array of {label, slug, icon} objects. */
+   - "Tea" prepended IF PRODUCTS_TEA configured AND Tea is not already 
+     listed in BUSINESS_UNITS (tenant signaling tea is a sales destination 
+     even though tea is tracked via blocks, not as a top-level business unit)
+   - Each business unit from BUSINESS_UNITS Control_Panel key (in declared order)
+   Returns array of {label, slug, icon} objects.
+   
+   v6.11.3 — Dedup hardening (27 May 2026 Verden, Cheison's Kibois catch).
+   Kibois Control_Panel has BOTH Tea in BUSINESS_UNITS (their declared 
+   sales lineup: Dorper,Dairy,Goats,Tea,Potatoes,Training) AND PRODUCTS_TEA 
+   set. v6.11.2 logic auto-prepended Tea unconditionally → duplicate card. 
+   Now: detect Tea-in-BUSINESS_UNITS and skip auto-prepend in that case, 
+   preserving tenant's declared order. Sinonin (Tea NOT in BUSINESS_UNITS) 
+   still gets the auto-prepended Tea card. Birei (no PRODUCTS_TEA) gets 
+   no Tea card. All three correct. */
 function salesBusinessUnits() {
   const out = [];
-  // Tea first — by convention, when present
-  if (_hasTeaSalesPath()) {
-    out.push({ label: 'Tea', slug: 'TEA', icon: '🌿' });
+  const seenSlugs = {};
+  
+  function pushUnique(unit) {
+    if (seenSlugs[unit.slug]) return;
+    seenSlugs[unit.slug] = true;
+    out.push(unit);
   }
-  // Then the configured units. Keep original labels for display; slug 
-  // for Control_Panel lookups.
+  
+  // Pre-parse configured units to check if Tea is already declared
   const raw = tcfg('BUSINESS_UNITS', '');
+  const configuredLabels = [];
   if (raw && typeof raw === 'string') {
     raw.split(',').forEach(function (s) {
       const label = s.trim();
-      if (!label) return;
-      out.push({
-        label: label,
-        slug: _salesSlug(label),
-        icon: _iconForUnit(label)
-      });
+      if (label) configuredLabels.push(label);
     });
   }
+  const teaInBusinessUnits = configuredLabels.some(function (l) { 
+    return _salesSlug(l) === 'TEA'; 
+  });
+  
+  // Auto-prepend Tea ONLY when PRODUCTS_TEA is set AND Tea is not already 
+  // in BUSINESS_UNITS. Sinonin case: tea lives in blocks, not declared as 
+  // a business unit, so auto-prepend gives it a Sales tab presence without 
+  // requiring Control_Panel edit. Kibois case: Tea IS declared, so the 
+  // tenant's order is preserved (no prepend, Tea appears at its position).
+  if (_hasTeaSalesPath() && !teaInBusinessUnits) {
+    pushUnique({ label: 'Tea', slug: 'TEA', icon: '🌿' });
+  }
+  
+  // Then the configured units in declared order
+  configuredLabels.forEach(function (label) {
+    pushUnique({
+      label: label,
+      slug: _salesSlug(label),
+      icon: _iconForUnit(label)
+    });
+  });
+  
   return out;
 }
 
@@ -6867,7 +6899,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.2'
+    recorded_from: 'PWA v6.11.3'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -7506,7 +7538,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.2';
+const APP_VERSION = 'v6.11.3';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
