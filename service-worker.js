@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.11.11 — Cluster cards now derived from BUSINESS_UNITS Control_Panel value. panel-crops + panel-livestock card grids are empty in HTML; renderCropsHub/renderLivestockHub populate them from tcfg("BUSINESS_UNITS"), classified via _isLivestockUnit substring matcher (poultry/dairy/dorper/goats/sheep/cow/cattle/birds/chicken). Removes the last hardcoded leak (Chelabaal visible on Birei + Kibois despite their BUSINESS_UNITS not declaring it). Re-render hook added to applyControlPanelToUI (Cheison 27 May 2026 Verden)
 // v6.11.10 — Remaining hardcoded Sinonin defaults removed: DEFAULT_FACTORIES emptied (cloud Tea_Factories sheet authoritative); DEFAULT_SIREET_LEDGER fallback gated to FARM_NAME contains "Sinonin"; panel-poultry section gets data-product="poultry"; Sireet Equity card gets data-hide-key for granular HIDDEN_PRODUCTS matching (Cheison 27 May 2026 Verden)
 // v6.11.9 — Tenant cache stamp purges cross-tenant data on tenant switch (closes Sinonin pluckers leaking onto Kibois). BUSINESS_OPTIONS → tenantBusinessUnits(); Kipkenda Poultry h3 labels dynamic via poultryUnitLabel(); data-product=poultry added to home poultry section so HIDDEN_PRODUCTS hides it (Cheison 27 May 2026 Verden)
 // v6.11.8 — Five-fix bundle: tcfg-based BLOCKS + BUSINESS_UNITS in legacy dropdowns; DEFAULT_PLUCKERS emptied (cloud is sole source per tenant); sheep/cow event log row card styling; Sales-cascade poultry routes to legacy cohort-aware form (Cheison 27 May 2026 Verden)
@@ -73,7 +74,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v233';
+const CACHE = 'sinonin-greenleaf-v234';
 
 const SHELL_FILES = [
   './',

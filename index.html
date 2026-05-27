@@ -3196,7 +3196,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.10</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.11</span>
 </header>
 
 <main>
@@ -4378,24 +4378,11 @@
        ╚══════════════════════════════════════════════════════════════════════╝ -->
   <section class="panel" id="panel-crops">
     <div class="batch-instructions">Tap a crop to view its operations, actuals, expenses, and history.</div>
-    <div class="sales-card-grid" id="crops-card-grid">
-      <button class="sales-card" type="button" data-product="tea" data-cluster-target="tea">
-        <span class="sc-icon">🌿</span>
-        <span class="sc-label">Tea</span>
-      </button>
-      <button class="sales-card" type="button" data-product="coffee" data-cluster-target="other">
-        <span class="sc-icon">☕</span>
-        <span class="sc-label">Coffee</span>
-      </button>
-      <button class="sales-card" type="button" data-product="maize" data-cluster-target="other">
-        <span class="sc-icon">🌽</span>
-        <span class="sc-label">Maize</span>
-      </button>
-      <button class="sales-card" type="button" data-product="chelabaal" data-cluster-target="other">
-        <span class="sc-icon">🍃</span>
-        <span class="sc-label">Chelabaal</span>
-      </button>
-    </div>
+    <!-- v6.11.11 — Card grid now populated dynamically from BUSINESS_UNITS 
+         Control_Panel value via renderCropsHub(). Each non-livestock unit 
+         renders as a card; tap routes via _clusterTargetForUnit(). No 
+         hardcoded crops here — each tenant sees only what their CP declares. -->
+    <div class="sales-card-grid" id="crops-card-grid"></div>
   </section>
 
   <!-- ╔══════════════════════════════════════════════════════════════════════╗
@@ -4411,24 +4398,10 @@
        ╚══════════════════════════════════════════════════════════════════════╝ -->
   <section class="panel" id="panel-livestock">
     <div class="batch-instructions">Tap an animal to view its operations, registry, and event log.</div>
-    <div class="sales-card-grid" id="livestock-card-grid">
-      <button class="sales-card" type="button" data-product="poultry" data-cluster-target="poultry">
-        <span class="sc-icon">🐔</span>
-        <span class="sc-label">Poultry</span>
-      </button>
-      <button class="sales-card" type="button" data-product="dairy" data-cluster-target="cows">
-        <span class="sc-icon">🐄</span>
-        <span class="sc-label">Dairy</span>
-      </button>
-      <button class="sales-card" type="button" data-product="dorper" data-cluster-target="sheep">
-        <span class="sc-icon">🐑</span>
-        <span class="sc-label">Dorper</span>
-      </button>
-      <button class="sales-card" type="button" data-product="goats" data-cluster-target="other">
-        <span class="sc-icon">🐐</span>
-        <span class="sc-label">Goats</span>
-      </button>
-    </div>
+    <!-- v6.11.11 — Card grid now populated dynamically from BUSINESS_UNITS 
+         Control_Panel value via renderLivestockHub(). Each livestock-shaped 
+         unit (poultry/dairy/dorper/goats/sheep/cow/cattle) renders as a card. -->
+    <div class="sales-card-grid" id="livestock-card-grid"></div>
   </section>
 
   <!-- ╔══════════════════════════════════════════════════════════════════════╗
@@ -5954,7 +5927,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.10</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.11</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6501,18 +6474,67 @@ function _wireClusterCards() {
   wire('livestock-card-grid');
 }
 
-/* Render Crops hub. No-op currently (cards are static HTML); function 
-   exists for future-proofing (e.g., reading a CLUSTER_CROPS_ORDER 
-   Control_Panel key for tenant-defined order, or hiding entire cards 
-   when no relevant data exists). HIDDEN_PRODUCTS hiding already works 
-   automatically via the global data-product visibility CSS. */
+/* v6.11.11 — Cluster card classification helpers.
+   _isLivestockUnit: matches BUSINESS_UNITS entries by case-insensitive 
+   substring against the animal terms vocabulary. Anything matching goes 
+   to the Livestock cluster; everything else (including non-tea crops, 
+   training, services, holdings, etc.) goes to the Crops cluster.
+   _clusterTargetForUnit: maps a unit's label to the existing drill-target 
+   panel (panel-tea / panel-poultry / panel-cows / panel-sheep / panel-other).
+   Future tenants who introduce a new unit category get default "other" 
+   routing; structural promotion (e.g., panel-goats, panel-coffee) is a 
+   later phase. */
+function _isLivestockUnit(label) {
+  const s = String(label || '').toLowerCase();
+  return /\b(poultry|dairy|dorper|goats?|sheep|cow|cattle|birds?|chicken)\b/.test(s);
+}
+
+function _clusterTargetForUnit(label) {
+  const s = String(label || '').toLowerCase();
+  if (/\btea\b/.test(s)) return 'tea';
+  if (/\bpoultry\b/.test(s)) return 'poultry';
+  if (/\b(dairy|cow|cattle)\b/.test(s)) return 'cows';
+  if (/\b(dorper|sheep)\b/.test(s)) return 'sheep';
+  return 'other';
+}
+
+/* Build a sales-card button for a given business-unit label. data-product 
+   uses lowercased label (preserving spaces) so HIDDEN_PRODUCTS matching 
+   against the exact CP value works ("Sinonin Tea" → "sinonin tea"). */
+function _buildClusterCard(label) {
+  const dp = label.toLowerCase().trim();
+  return '<button class="sales-card" type="button" data-product="' + escapeHtml(dp) + 
+         '" data-cluster-target="' + _clusterTargetForUnit(label) + '">' +
+         '<span class="sc-icon">' + _iconForUnit(label) + '</span>' +
+         '<span class="sc-label">' + escapeHtml(label) + '</span>' +
+         '</button>';
+}
+
+/* Render Crops hub. v6.11.11 — cards generated from BUSINESS_UNITS 
+   Control_Panel value (filtered to non-livestock units). Each tenant sees 
+   only what their CP declares — no Sinonin Chelabaal leaking onto Birei 
+   or Kibois. Empty BUSINESS_UNITS → "configure your units" hint. */
 function renderCropsHub() {
-  // Currently static cards. Future v6.11.x can dynamically populate 
-  // from BUSINESS_UNITS (filtering for crop-category enterprises).
+  const grid = document.getElementById('crops-card-grid');
+  if (!grid) return;
+  const units = tenantBusinessUnits().filter(function (u) { return !_isLivestockUnit(u); });
+  if (units.length === 0) {
+    grid.innerHTML = '<div class="sales-card-empty">No crop business units configured. Set BUSINESS_UNITS in Control_Panel.</div>';
+  } else {
+    grid.innerHTML = units.map(_buildClusterCard).join('');
+  }
   _wireClusterCards();
 }
 
 function renderLivestockHub() {
+  const grid = document.getElementById('livestock-card-grid');
+  if (!grid) return;
+  const units = tenantBusinessUnits().filter(_isLivestockUnit);
+  if (units.length === 0) {
+    grid.innerHTML = '<div class="sales-card-empty">No livestock business units configured. Set BUSINESS_UNITS in Control_Panel.</div>';
+  } else {
+    grid.innerHTML = units.map(_buildClusterCard).join('');
+  }
   _wireClusterCards();
 }
 
@@ -7090,7 +7112,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.10'
+    recorded_from: 'PWA v6.11.11'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -7352,12 +7374,6 @@ function applyControlPanelToUI() {
       if (aboutMotto) aboutMotto.style.display = 'none';
     }
 
-    // Logo alt text: read tenant farm name so screen readers + crawlers
-    // see the right brand. The src (logo.png) is tenant-replaceable as a
-    // file in each tenant's repo (no DOM change needed for the image itself).
-    const brandLogo = document.getElementById('brand-logo');
-    if (brandLogo) brandLogo.alt = fn;
-    
     // v6.11.9 — Poultry section h3 labels: dynamically resolve from 
     // BUSINESS_UNITS so each tenant's poultry brand (e.g. Sinonin's 
     // "Kipkenda Poultry") shows correctly. For tenants without a poultry 
@@ -7369,6 +7385,19 @@ function applyControlPanelToUI() {
     if (homePoultryH3) homePoultryH3.textContent = poultryLabel;
     const insightsPoultryH3 = document.getElementById('insights-poultry-h3');
     if (insightsPoultryH3) insightsPoultryH3.textContent = poultryLabel;
+    // Logo alt text: read tenant farm name so screen readers + crawlers
+    // see the right brand. The src (logo.png) is tenant-replaceable as a
+    // file in each tenant's repo (no DOM change needed for the image itself).
+    const brandLogo = document.getElementById('brand-logo');
+    if (brandLogo) brandLogo.alt = fn;
+
+    // v6.11.11 — Cluster cards (Crops + Livestock) are now derived from 
+    // BUSINESS_UNITS via tcfg. Re-render after every control-panel apply 
+    // so the grids reflect the latest CP values without requiring a 
+    // navigation to the cluster panel.
+    if (typeof renderCropsHub === 'function') renderCropsHub();
+    if (typeof renderLivestockHub === 'function') renderLivestockHub();
+
     const housesPoultryLabel = document.getElementById('houses-poultry-label');
     if (housesPoultryLabel) housesPoultryLabel.textContent = '🐔 ' + poultryLabel;
 
@@ -7776,7 +7805,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.10';
+const APP_VERSION = 'v6.11.11';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
