@@ -3196,7 +3196,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.9</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.10</span>
 </header>
 
 <main>
@@ -3389,7 +3389,7 @@
       </div>
 
       <!-- ── 4. SIREET EQUITY (kept from v6.3.12, headline=lifetime) ── -->
-      <div class="hero-metric-card hero-metric-card-equity hmc-sireet" data-product="tea" data-card-id="sireet">
+      <div class="hero-metric-card hero-metric-card-equity hmc-sireet" data-product="tea" data-card-id="sireet" data-hide-key="sireet-equity">
         <div class="hmc-head">
           <span class="hmc-lbl">Sireet equity</span>
           <span class="hmc-period">5 Ksh/kg · cumulative</span>
@@ -3558,7 +3558,7 @@
   <!-- POULTRY — v6.3.12 (07 May 2026): proper Poultry panel with 
        overview cards (bird population, litter bar, incubation progress) 
        and Add CTA. Cards relocated from Home. -->
-  <section class="panel" id="panel-poultry">
+  <section class="panel" id="panel-poultry" data-product="poultry">
     <!-- v6.3.12 — Quick Add cards at TOP of panel. Each card routes to 
          panel-add with biz=poultry AND kind pre-set, straight to the 
          specific form. 5 cards: Eggs, Income, Vaccination, Census, Hatch. -->
@@ -5954,7 +5954,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.9</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.10</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6156,12 +6156,17 @@ function poultryUnitLabel() {
   return 'Poultry';
 }
 
-const DEFAULT_FACTORIES = [
-  { name: "Sireet",    priceKg: 25,   transport: 3.90, shares: 5, wageKg: 9.5,  bonusKg: 0.5, greenleaf: 13 },
-  { name: "Sang'alo",  priceKg: 23,   transport: 0,    shares: 0, wageKg: 8,    bonusKg: 0,   greenleaf: 0  },
-  { name: "Kapchorwa", priceKg: 24,   transport: 3,    shares: 0, wageKg: 10,   bonusKg: 0,   greenleaf: 0  },
-  { name: "Chebut",    priceKg: 26,   transport: 5,    shares: 0, wageKg: 7,    bonusKg: 0,   greenleaf: 15 }
-];
+/* v6.11.10 — DEFAULT_FACTORIES is now empty. The legacy hardcoded list 
+   (Sireet, Sang'alo, Kapchorwa, Chebut with Sinonin's specific pricing) 
+   was leaking to other tenants whose Tea_Factories sheet was different 
+   or whose actuals shouldn't reference Sinonin's rate structure. 
+   Cloud-load via data.teaFactories (Tea_Factories sheet on each tenant's 
+   Drive) is the sole source. Tenants without tea operations get an empty 
+   factories list (correct). Sinonin's Tea_Factories sheet remains 
+   authoritative for their factory rates.
+   Sealed § 7.x: tenant rate data lives in the tenant's sheet, not in 
+   PWA source. */
+const DEFAULT_FACTORIES = [];
 
 /* Factory rate history — applied per Actuals row based on its date.
    Each era runs from `from` (inclusive) until the next era begins.
@@ -7085,7 +7090,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.9'
+    recorded_from: 'PWA v6.11.10'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -7416,10 +7421,24 @@ function applyControlPanelToUI() {
     // empty list; un-hiding would clobber legitimate display=none on
     // sections that hide for other reasons (poultry insights, etc).
     // To re-show after removing from HIDDEN_PRODUCTS: hard-refresh.
+    // v6.11.10 — Match also against data-hide-key for granular hiding of 
+    // specific cards within a broader product (e.g. data-product="tea" 
+    // groups all tea cards; data-hide-key="sireet-equity" lets a tenant 
+    // hide just the Sireet Equity card while keeping other tea cards). 
+    // Slug normalization on both sides so "Sireet Equity" (CP value) 
+    // matches "sireet-equity" (data-hide-key value).
     const hidden = hiddenProducts();
+    function _hideKeySlug(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
     hidden.forEach(function (product) {
+      const productSlug = _hideKeySlug(product);
       const els = document.querySelectorAll('[data-product="' + product + '"]');
       els.forEach(function (el) { el.style.display = 'none'; });
+      // Also match data-hide-key via slug
+      document.querySelectorAll('[data-hide-key]').forEach(function (el) {
+        if (_hideKeySlug(el.getAttribute('data-hide-key')) === productSlug) {
+          el.style.display = 'none';
+        }
+      });
     });
 
     // v6.10.13 — DAIRY_LABEL / DORPER_LABEL: replace user-visible "Dairy"
@@ -7757,7 +7776,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.9';
+const APP_VERSION = 'v6.11.10';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -7966,7 +7985,20 @@ function sireetYTD() {
 }
 
 function sireetLifetime() {
-  const ledger = STATE.sireetLedger || DEFAULT_SIREET_LEDGER;
+  // v6.11.10 — DEFAULT_SIREET_LEDGER (Sinonin's historical 7-year aggregate 
+  // of ~190k kg + ~Ksh 990k) was leaking onto other tenants whose 
+  // STATE.sireetLedger was empty after cache purge. The fallback is now 
+  // tenant-gated: applied only when FARM_NAME contains "Sinonin". Other 
+  // tenants see liveThisYear from their own actuals only — correct, since 
+  // they have no Sinonin Sireet history. TECH DEBT: a proper Sireet_Ledger 
+  // sheet per tenant would let any tea farm declare their cooperative 
+  // shareholding history; until then, this FARM_NAME gate prevents the 
+  // 198k Kgs leak Cheison observed on Kibois.
+  let ledger = STATE.sireetLedger;
+  if (!ledger) {
+    const fn = (tcfg('FARM_NAME', '') || '').toLowerCase();
+    ledger = (fn.indexOf('sinonin') !== -1) ? DEFAULT_SIREET_LEDGER : { years: [] };
+  }
   const historical = ledger.years.reduce(
     (s, y) => ({ kg: s.kg + (y.kg || 0), ksh: s.ksh + (y.ksh || 0) }),
     { kg: 0, ksh: 0 }
@@ -24041,9 +24073,21 @@ function showUpdateBanner() {
   const storedSettings = await storageGet(K_SETTINGS, null);
   if (storedSettings) STATE.settings = { ...DEFAULT_SETTINGS, ...storedSettings };
   const storedLedger = await storageGet(K_SIREET_LEDGER, null);
-  STATE.sireetLedger = storedLedger
-    ? { asOf: storedLedger.asOf, years: [...(storedLedger.years || [])] }
-    : { asOf: DEFAULT_SIREET_LEDGER.asOf, years: [...DEFAULT_SIREET_LEDGER.years] };
+  if (storedLedger) {
+    STATE.sireetLedger = { asOf: storedLedger.asOf, years: [...(storedLedger.years || [])] };
+  } else {
+    // v6.11.10 — Gate DEFAULT_SIREET_LEDGER fallback to Sinonin tenant only.
+    // The hardcoded ledger contains Sinonin's specific 7-year history 
+    // (~190k kg), which was leaking onto other tenants after cache purge. 
+    // Non-Sinonin tenants get an empty ledger; their Sireet Equity card 
+    // (if visible at all) shows only liveThisYear from their actuals.
+    const fn = (tcfg('FARM_NAME', '') || '').toLowerCase();
+    if (fn.indexOf('sinonin') !== -1) {
+      STATE.sireetLedger = { asOf: DEFAULT_SIREET_LEDGER.asOf, years: [...DEFAULT_SIREET_LEDGER.years] };
+    } else {
+      STATE.sireetLedger = { asOf: null, years: [] };
+    }
+  }
   await rolloverClosedYearsIfNeeded();
 
   populateDropdowns();
