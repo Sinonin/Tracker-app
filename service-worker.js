@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.11.2 — HOTFIX: define escapeHtml helper. v6.11.1 deploy crashed mid-Sales-render leaving empty-state message visible (Cheison browser-console catch, 27 May 2026 Verden)
 // v6.11.1 — syncSale protocol fix (action/payload/source, was broken kind/data) + grounded against real Apps Script writeXEntry pattern (27 May 2026, Cheison's appendBanked + Kiraka catches)
 // v6.11.0 — Phase A: Unified SALES tab · POS cascade · BUSINESS_UNITS / PRODUCTS_<UNIT> / VARIANTS_<UNIT>_<PRODUCT> Control_Panel keys · receipt fields seated in data model (26 May 2026 Verden, Birei/Kibois Sales unblock)
 // v6.10.15 — Egg horizon 10 → 15 days (catering window) — Elias inventory accuracy (26 May 2026 Verden)
@@ -64,7 +65,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v224';
+const CACHE = 'sinonin-greenleaf-v225';
 
 const SHELL_FILES = [
   './',

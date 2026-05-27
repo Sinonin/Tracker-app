@@ -3216,7 +3216,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.1</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.2</span>
 </header>
 
 <main>
@@ -5899,7 +5899,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.1</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.2</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6366,6 +6366,31 @@ function dashboardOrder() {
    or Kaimosi Team (later). It lands on the cards with different products,
    more like a sales software at Aldo or EDEKA or a Restaurant."
    
+   v6.11.2 — HOTFIX: define escapeHtml helper. v6.11.0/1 assumed this 
+   utility existed in the codebase; it didn't. The Sales render threw 
+   ReferenceError mid-cards-paint, leaving the empty-state message 
+   visible from the prior render (when STATE.controlPanel was still 
+   empty during boot). Sealed § 7.x: grep before assume.
+   ============================================================ */
+
+/* Small HTML-escape helper. Used throughout the Sales module to defend 
+   against any Control_Panel value or buyer field containing HTML 
+   special chars. Defensive — current inputs are operator-typed strings 
+   (low risk), but prevents future surprises if any value flows in from 
+   a less-trusted source. */
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/* ============================================================
+   v6.11.0 — UNIFIED SALES MODULE (configuration model)
+   ============================================================
    Configuration model — per-tenant Control_Panel keys (Approach 1 from
    the 26 May architecture discussion):
    
@@ -6842,7 +6867,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.1'
+    recorded_from: 'PWA v6.11.2'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -7481,7 +7506,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.1';
+const APP_VERSION = 'v6.11.2';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
