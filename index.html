@@ -3214,7 +3214,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.5</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.6</span>
 </header>
 
 <main>
@@ -5972,7 +5972,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.5</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.6</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -7076,7 +7076,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.5'
+    recorded_from: 'PWA v6.11.6'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -7725,7 +7725,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.5';
+const APP_VERSION = 'v6.11.6';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -23923,7 +23923,25 @@ function showUpdateBanner() {
   renderBatchList();
 
   document.querySelectorAll('nav.bottom-nav button').forEach(b => {
-    b.addEventListener('click', () => switchView(b.dataset.view));
+    b.addEventListener('click', (ev) => {
+      // v6.11.6 — Bottom-nav Admin defers to header Admin's lock-icon-auth.
+      // The header button (#nav-settings) carries the full data-lock-state
+      // machine wired by wireLockIconAuth() — triple-tap auth gate for
+      // operators, single-tap pass-through for authenticated admins. By
+      // delegating the click rather than calling switchView directly, we
+      // get unified behavior across both entry points with zero auth-logic
+      // duplication. Sealed § 7.x (Cheison 27 May 2026 Verden): two
+      // visible Admin instances should never have two different security
+      // postures. Same gate, two doors.
+      if (b.dataset.view === 'admin') {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const headerAdmin = document.getElementById('nav-settings');
+        if (headerAdmin) headerAdmin.click();
+        return;
+      }
+      switchView(b.dataset.view);
+    });
   });
   
   // v6.10.5 STAGE 2b HOTFIX — The Admin button was relocated from bottom-nav 

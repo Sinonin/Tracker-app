@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.11.6 — Admin auth unification: bottom-nav Admin button delegates click to header Admin button so triple-tap + passphrase gate applies to BOTH entry points (Cheison 27 May 2026)
 // v6.11.5 — Phase B: cluster nav (HOME/CROPS/LIVESTOCK/SALES/INSIGHTS/ADMIN, 6 tabs) + de-Sinoninification (egg collectors from Control_Panel, section heading "Tea" not "Sinonin Tea", generic placeholders) — paint not walls (Cheison 27 May 2026 Verden)
 // v6.11.4 — Gift payment method (amount=0 allowed) — Cheison's Broken Eggs gift gap (27 May 2026)
 // v6.11.3 — FIX: Tea dedup in salesBusinessUnits when Tea is declared in BUSINESS_UNITS (Cheison Kibois catch, 27 May 2026)
@@ -68,7 +69,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v228';
+const CACHE = 'sinonin-greenleaf-v229';
 
 const SHELL_FILES = [
   './',
