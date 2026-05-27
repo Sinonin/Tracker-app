@@ -3196,7 +3196,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.14</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.15</span>
 </header>
 
 <main>
@@ -5927,7 +5927,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.14</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.15</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6129,16 +6129,25 @@ function poultryUnitLabel() {
   return 'Poultry';
 }
 
-/* v6.11.10 — DEFAULT_FACTORIES is now empty. The legacy hardcoded list 
-   (Sireet, Sang'alo, Kapchorwa, Chebut with Sinonin's specific pricing) 
-   was leaking to other tenants whose Tea_Factories sheet was different 
-   or whose actuals shouldn't reference Sinonin's rate structure. 
-   Cloud-load via data.teaFactories (Tea_Factories sheet on each tenant's 
-   Drive) is the sole source. Tenants without tea operations get an empty 
-   factories list (correct). Sinonin's Tea_Factories sheet remains 
-   authoritative for their factory rates.
+/* v6.11.10/v6.11.15 — DEFAULT_FACTORIES holds Sinonin's Tea_Factories 
+   baseline as an emergency fallback used ONLY when:
+     (a) The device is identified as Sinonin via _isSinoninTenant, AND
+     (b) Cloud-load hasn't yet returned data.teaFactories (boot window 
+         before first sync, or offline boot after cache purge)
+   For non-Sinonin tenants, STATE.factories stays empty until cloud-load 
+   from their own Tea_Factories sheet fires — they never see Sinonin's 
+   rates. Once data.teaFactories arrives (Apps Script v5.0.48+), the 
+   merge consumer overwrites STATE.factories with the tenant's 
+   authoritative sheet values for every tenant including Sinonin.
+   
    Sealed § 7.x: tenant rate data lives in the tenant's sheet, not in 
-   PWA source. */
+   PWA source. The hardcoded list here is *only* a Sinonin-device crash 
+   guard until cloud-load completes; it never reaches other tenants. */
+const DEFAULT_FACTORIES_SINONIN = [
+  { name: "Sireet",    priceKg: 25,   transport: 3.99, shares: 5, wageKg: 9.5,  bonusKg: 0.5, greenleaf: 13, notes: "TOP PRIORITY; finicky on quality; quality bonus motivates picking" },
+  { name: "Sang'alo",  priceKg: 23,   transport: 0,    shares: 0, wageKg: 8,    bonusKg: 0,   greenleaf: 0,  notes: "Next door to Sinonin" },
+  { name: "Kapchorwa", priceKg: 24,   transport: 0,    shares: 0, wageKg: 10,   bonusKg: 0,   greenleaf: 0,  notes: "Option for Kipkorom" }
+];
 const DEFAULT_FACTORIES = [];
 
 /* Factory rate history — applied per Actuals row based on its date.
@@ -7112,7 +7121,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.14'
+    recorded_from: 'PWA v6.11.15'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -7805,7 +7814,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.14';
+const APP_VERSION = 'v6.11.15';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -11260,6 +11269,42 @@ async function applyCloudResponse(data) {
     await storageSet(K_PLUCKERS, PLUCKERS);
     repopulatePluckerDropdown();
   }
+
+  // v6.11.15 — Tea_Factories cloud-load consumer. The Apps Script v5.0.48+ 
+  // returns data.teaFactories from each tenant's Tea_Factories sheet 
+  // (Name, PriceKg, TransportKg, XmasBonusKg, MarBonusKg, PluckerRateKg, 
+  // PluckerBonusKg, Active, Notes). Previously the PWA only read 
+  // K_FACTORIES localStorage cache and DEFAULT_FACTORIES; the cloud-load 
+  // consumer was missing entirely, so after v6.11.9 cache-stamp purge 
+  // wiped K_FACTORIES and v6.11.10 emptied DEFAULT_FACTORIES, Sinonin's 
+  // factories list became empty with nothing to refill it. This consumer 
+  // closes that loop: every doGet refresh re-hydrates STATE.factories 
+  // from the authoritative sheet. Only ACTIVE rows are loaded; inactive 
+  // factories stay in the sheet for historical reference but don't appear 
+  // in operator dropdowns. Field mapping uses defensive defaults so a 
+  // missing or non-numeric cell doesn't crash the renderer.
+  if (Array.isArray(data.teaFactories)) {
+    const mappedFactories = data.teaFactories
+      .filter(f => f && f.name && f.active !== false)
+      .map(f => ({
+        name: String(f.name).trim(),
+        priceKg: Number(f.priceKg) || 0,
+        transport: Number(f.transportKg) || 0,
+        shares: Number(f.shares) || 0,
+        wageKg: Number(f.pluckerRateKg) || 0,
+        bonusKg: Number(f.pluckerBonusKg) || 0,
+        greenleaf: Number(f.greenleaf) || 0,
+        xmasBonus: f.xmasBonusKg || 0,
+        marBonus: f.marBonusKg || 0,
+        notes: String(f.notes || '')
+      }));
+    if (mappedFactories.length > 0) {
+      STATE.factories = mappedFactories;
+      await storageSet(K_FACTORIES, STATE.factories);
+      if (typeof repopulateFactoryDropdowns === 'function') repopulateFactoryDropdowns();
+    }
+  }
+
   // v6.9.5 — Merge server-persisted acknowledgements into the local
   // cache (§ 6.11). The local cache is authoritative for instant UI
   // (button-tap dismiss is immediate); the server snapshot adds any
@@ -24126,7 +24171,23 @@ function showUpdateBanner() {
   }
   
   const storedFactories = await storageGet(K_FACTORIES, null);
-  if (storedFactories && Array.isArray(storedFactories) && storedFactories.length > 0) STATE.factories = storedFactories;
+  if (storedFactories && Array.isArray(storedFactories) && storedFactories.length > 0) {
+    STATE.factories = storedFactories;
+  } else if (_isSinoninTenant()) {
+    // v6.11.15 — Sinonin emergency fallback when local cache is empty 
+    // (e.g. immediately after v6.11.9 cache-stamp purge, before 
+    // cloud-load returns data.teaFactories). Restored ACTIVE Sinonin 
+    // factories only (Sireet, Sang'alo, Kapchorwa) — Chebut and 
+    // Kipchabo are inactive in the sheet and should not appear in 
+    // dropdowns. Save to K_FACTORIES so the next render fires with 
+    // values and the operator can record entries; cloud-load will 
+    // shortly overwrite with the authoritative sheet values.
+    STATE.factories = JSON.parse(JSON.stringify(DEFAULT_FACTORIES_SINONIN));
+    try {
+      await storageSet(K_FACTORIES, STATE.factories);
+      console.log('[v6.11.15] Sinonin factories emergency fallback applied (' + STATE.factories.length + ' active). Cloud-load will overwrite with authoritative sheet values.');
+    } catch (e) { /* non-fatal */ }
+  }
   const storedPluckers = await storageGet(K_PLUCKERS, null);
   if (storedPluckers && Array.isArray(storedPluckers) && storedPluckers.length > 0) {
     PLUCKERS = storedPluckers.map(p => ({ active: true, ...p }));

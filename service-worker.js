@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.11.15 — HOTFIX: Factories cloud-load consumer was missing. v6.11.10 emptied DEFAULT_FACTORIES claiming "cloud-load via data.teaFactories is sole source" — but no such consumer existed in the PWA; the Apps Script v5.0.48+ returned teaFactories but PWA only read K_FACTORIES localStorage. After v6.11.9 cache-stamp purge wiped K_FACTORIES, factories list became permanently empty. Three-part fix: (1) added Array.isArray(data.teaFactories) cloud-load consumer that maps sheet rows to STATE.factories (active rows only); (2) re-introduced DEFAULT_FACTORIES_SINONIN with 3 active factories (Sireet, Sangalo, Kapchorwa) as emergency boot-window fallback; (3) boot-load applies fallback for Sinonin tenant via _isSinoninTenant() check when K_FACTORIES is empty (Cheison 27 May 2026 Verden)
 // v6.11.14 — Sireet ledger MERGE logic. v6.11.13 restore branch fired only when years[] was empty, but Cheison's K_SIREET_LEDGER had partial entries (2024+2025 from rolloverClosedYearsIfNeeded reading actuals during broken v6.11.10 boot) so restore was bypassed and Insights showed 2026-only. New logic: for Sinonin devices ALWAYS reconstruct from DEFAULT_SIREET_LEDGER as base, overlay any non-zero stored entries (operator/auto values for closed-out years). Saves back so subsequent boots have consistent ledger (Cheison 27 May 2026 Verden)
 // v6.11.13 — HOTFIX: Restore Sinonin Sireet Equity historical ledger lost by v6.11.10 boot-window gate. _isSinoninTenant() checks BOTH tcfg("FARM_NAME") AND localStorage.cachedFarmName (durable across K_* cache purges) so Sinonin device recognises itself even when controlPanel is briefly empty post-purge. Boot-load auto-restores DEFAULT_SIREET_LEDGER when device is Sinonin AND K_SIREET_LEDGER is empty/null, then SAVES BACK to storage so subsequent boots use the restored data (Cheison 27 May 2026 Verden)
 // v6.11.12 — Notifications-area poultry cleanup: home-urgent-hatch-progress widget tagged data-product="poultry" so HIDDEN_PRODUCTS catches it; renderActionCards skips HATCH + LITTER alert sources when poultry hidden; hasUpcomingHatches forced false when poultry hidden so banner header does not say "Coming up"; renderHomeUrgentHatchProgress early-returns + clears container when poultry hidden (Cheison 27 May 2026 Verden)
@@ -77,7 +78,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v237';
+const CACHE = 'sinonin-greenleaf-v238';
 
 const SHELL_FILES = [
   './',
