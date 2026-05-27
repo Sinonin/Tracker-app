@@ -3196,7 +3196,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.11</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.12</span>
 </header>
 
 <main>
@@ -3483,7 +3483,7 @@
            When ac-list is empty AND hatches exist, renderActionCards 
            suppresses the 'All caught up' empty-state placeholder so the 
            widget surfaces immediately. -->
-      <div id="home-urgent-hatch-progress" style="display:none"></div>
+      <div id="home-urgent-hatch-progress" data-product="poultry" style="display:none"></div>
     </div>
 
   </section>
@@ -5927,7 +5927,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.11</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.12</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -7112,7 +7112,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.11'
+    recorded_from: 'PWA v6.11.12'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -7805,7 +7805,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.11';
+const APP_VERSION = 'v6.11.12';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -16234,6 +16234,16 @@ function renderHomeUrgentHatchProgress() {
   const container = document.getElementById('home-urgent-hatch-progress');
   if (!container) return;
 
+  // v6.11.12 — When tenant hides poultry via HIDDEN_PRODUCTS, the widget 
+  // container is already display:none from the standard hide pass (via 
+  // data-product="poultry" attr). Bail out early so we don't compute or 
+  // write anything that could re-show it.
+  if (hiddenProducts().indexOf('poultry') !== -1) {
+    container.innerHTML = '';
+    container.style.display = 'none';
+    return;
+  }
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -16643,10 +16653,16 @@ function renderActionCards() {
 
   const items = [];
 
+  // v6.11.12 — When tenant hides poultry via HIDDEN_PRODUCTS, skip 
+  // poultry-only alert sources (HATCH, LITTER). Vaccinations stay 
+  // (they may apply to other livestock — refactor the form-routing 
+  // later for tenant-aware vaccination targeting).
+  const _poultryHidden = hiddenProducts().indexOf('poultry') !== -1;
+
   // ─── HATCH alerts: TODAY OR OVERDUE only (Cheison v6.3.16: 
   //     "I don't want what doesn't deserve action TODAY to clutter Home")
   //     Removed the +14d approaching window. ───
-  (STATE.incubation || [])
+  if (!_poultryHidden) (STATE.incubation || [])
     .filter(b => b.status === 'incubating')
     .filter(b => {
       const exp = b.expected_hatch || '';
@@ -16717,8 +16733,9 @@ function renderActionCards() {
   // ─── LITTER alerts: TODAY OR OVERDUE only (Cheison v6.3.16: Home is 
   //     for things that need action TODAY). Earlier "uninitiated nudge" 
   //     and 14-day approach window are dropped — they belong on the 
-  //     Poultry tab, not the Home alert banner. ───
-  (() => {
+  //     Poultry tab, not the Home alert banner. 
+  //     v6.11.12 — Skipped when poultry is in HIDDEN_PRODUCTS. ───
+  if (!_poultryHidden) (() => {
     const changes = STATE.litterChanges || [];
     if (changes.length === 0) return;
     const latestChange = [...changes].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
@@ -16761,7 +16778,10 @@ function renderActionCards() {
   // immediately without redundant padding above it. Header text also 
   // adjusts: "Coming up" if hatches but no items, "Attention today" if 
   // items, "All caught up" only if truly nothing.
-  const hasUpcomingHatches = (() => {
+  // v6.11.12 — Suppress upcoming-hatch detection when tenant hides poultry. 
+  // Otherwise Kibois (HIDDEN_PRODUCTS=Poultry) would see "Coming up" banner 
+  // header if STATE.incubation somehow carried stale or sheet-sourced data.
+  const hasUpcomingHatches = _poultryHidden ? false : (() => {
     const t = new Date();
     t.setHours(0, 0, 0, 0);
     return (STATE.incubation || []).some(b => {
