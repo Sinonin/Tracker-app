@@ -9,6 +9,13 @@
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <title>Sinonin Group Management App</title>
+<!-- v6.11.17 — Tenant configuration externalized. Each tenant repo carries its 
+     own config.js with one line: window.TENANT_CONFIG = { appsScriptUrl: '...' }. 
+     This file (index.html) is byte-identical across Sinonin, Birei, and Kibois 
+     repos. Deploys no longer need a manual URL swap inside index.html — only 
+     config.js differs per tenant. Loaded synchronously here so TENANT_CONFIG is 
+     defined before the main inline script reads TENANT_APPS_SCRIPT_URL. -->
+<script src="config.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -3196,7 +3203,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.15</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.18</span>
 </header>
 
 <main>
@@ -5927,7 +5934,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.15</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.18</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6658,7 +6665,16 @@ function salesBusinessUnits() {
     });
   }
   const teaInBusinessUnits = configuredLabels.some(function (l) { 
-    return _salesSlug(l) === 'TEA'; 
+    // v6.11.18 — Detect ANY tea-bearing unit by word boundary, not exact 
+    // slug match. Previously this checked _salesSlug(l) === 'TEA', which 
+    // only matched a literal "Tea" entry. Sinonin's BUSINESS_UNITS uses 
+    // "Sinonin Tea" → slug "SINONINTEA" ≠ "TEA", so the check returned 
+    // false and the auto-prepend below fired, producing a duplicate: a 
+    // generic "Tea" card AND the "Sinonin Tea" card. Word-boundary match 
+    // catches "Sinonin Tea", "Tea", "Kapsara Tea", etc. — any unit whose 
+    // label carries the word tea — so the auto-prepend is correctly 
+    // suppressed when a tea unit already exists.
+    return /\btea\b/i.test(l); 
   });
   
   // Auto-prepend Tea ONLY when PRODUCTS_TEA is set AND Tea is not already 
@@ -7121,7 +7137,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.15'
+    recorded_from: 'PWA v6.11.18'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -7786,7 +7802,22 @@ const K_WEBAUTHN_CRED = 'sinonin_webauthn_cred_v1';  // v5.9.0 — Stored WebAut
 // architecture predates the multi-tenant intent." Found by Cheison
 // after his Birei deploy initially pulled Sinonin's data because
 // CLOUD_ENDPOINT was overlooked.
-const TENANT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyQNUy0HX_fC3M9poCgk86dM0bTiGkOpYDvFvSsNvkTjSuTKeA2X79D4UWAD6drHFAazA/exec';
+/* v6.11.17 — TENANT_APPS_SCRIPT_URL is now sourced from config.js (loaded 
+   via <script src="config.js"> in <head>). Each tenant repo owns its own 
+   config.js with the appropriate Apps Script web-app URL; index.html is 
+   byte-identical across tenants. If config.js is missing, malformed, or 
+   does not set window.TENANT_CONFIG.appsScriptUrl, the app fails loudly 
+   (console error + empty URL → cloud sync banner shows red), which is the 
+   right signal — silent fall-back to a stale hardcoded URL would mask 
+   misconfigured deploys. */
+const TENANT_APPS_SCRIPT_URL = (function () {
+  const cfg = (typeof window !== 'undefined' && window.TENANT_CONFIG) || null;
+  const url = cfg && typeof cfg.appsScriptUrl === 'string' ? cfg.appsScriptUrl.trim() : '';
+  if (!url) {
+    console.error('[v6.11.17] config.js is missing or window.TENANT_CONFIG.appsScriptUrl is not set. Cloud sync will fail. Each tenant repo must ship a config.js that defines window.TENANT_CONFIG = { appsScriptUrl: "https://script.google.com/macros/s/.../exec" };');
+  }
+  return url;
+})();
 
 const CLOUD_ENDPOINT = TENANT_APPS_SCRIPT_URL;
 
@@ -7814,7 +7845,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.15';
+const APP_VERSION = 'v6.11.18';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -11406,8 +11437,26 @@ async function runCloudSync(opts) {
   STATE.cloudFetching = true;
   updateSyncIndicator();
   try {
-    // First install OR explicit full refresh → no ?since= parameter
-    const since = (forceFullFetch || !hasHistory) ? null : meta.lastSyncDate;
+    // v6.11.16 — Always full fetch. The earlier incremental-sync optimisation 
+    // (since=meta.lastSyncDate) was architecturally incompatible with the 
+    // applyCloudResponse REPLACE semantics: subsequent incremental fetches 
+    // returned only entries dated >= lastSyncDate, then replaced STATE.actuals 
+    // (and entries/expenses/banked/poultry) with that small set — wiping 
+    // historical entries from device memory. Symptom: Cheison's 22 May Sireet 
+    // actual vanished from STATE.actuals → "no factory-confirmed actual" 
+    // toast fired on plucker recording even though the sheet HAD the actual.
+    // 
+    // The fix: cloud is authoritative for full state, every fetch. Cloud-side 
+    // readActuals/readExpenses/etc still accept the since= parameter (kept 
+    // for backward-compat with any future merging implementation), but the 
+    // PWA no longer passes it.
+    //
+    // Bandwidth: Sinonin's six tables total a few hundred rows — well under 
+    // 100 KB per fetch. Auto-sync stale-threshold caps frequency. Acceptable.
+    // The forceFullFetch flag is now a no-op preserved for callers; both 
+    // branches behave the same. hasHistory check kept so we don't probe the 
+    // splash flag inadvertently.
+    const since = null;
     const data = await cloudFetch(since);
     if (data) {
       await applyCloudResponse(data);
@@ -11471,7 +11520,15 @@ function populateDropdowns() {
     `<optgroup label="Tea blocks">${blockOpts}</optgroup>` +
     `<optgroup label="Business units">${businessUnitOpts}</optgroup>`;
   document.getElementById('filter-block').innerHTML = '<option value="">All Allocations</option>' + groupedOpts;
-  document.getElementById('x-block').innerHTML = '<option value="Whole farm">Whole farm</option>' + groupedOpts;
+  // v6.11.18 — "Whole farm" removed as a selectable expense allocation. 
+  // Cheison's intent: every cost is attributed to a specific tea block or 
+  // business unit; "Whole farm" is an AGGREGATE concept (the farm total, 
+  // already shown on the performance hero card), not a tagging bucket. The 
+  // dropdown now opens on a forced-choice placeholder so operators can no 
+  // longer silently default costs into an untagged pool. Historical 
+  // "Whole farm"-tagged expenses still render in their own Insights bucket 
+  // (unchanged) — this is an input-side change only.
+  document.getElementById('x-block').innerHTML = '<option value="">— Allocate to… —</option>' + groupedOpts;
   repopulatePluckerDropdown();
   repopulateFactoryDropdowns();
   repopulateCategoryDropdown();
@@ -12021,7 +12078,9 @@ function xValues() {
     category: document.getElementById('x-category').value,
     description: document.getElementById('x-description').value.trim(),
     amount: parseFloat(document.getElementById('x-amount').value) || 0,
-    block: document.getElementById('x-block').value || 'Whole farm',
+    // v6.11.18 — No "Whole farm" fallback. Empty block is caught by 
+    // submitExpense validation, forcing the operator to allocate.
+    block: document.getElementById('x-block').value,
     payee: document.getElementById('x-payee').value.trim()
   };
 }
@@ -12053,6 +12112,13 @@ async function submitExpense() {
 
   const v = xValues();
   if (!v.date || !v.category || v.amount <= 0) return;
+  // v6.11.18 — Allocation is now required (no silent "Whole farm" default).
+  if (!v.block) {
+    if (typeof showToast === 'function') showToast('Pick an allocation — which block or unit does this cost belong to?', 4000);
+    const sel = document.getElementById('x-block');
+    if (sel && typeof sel.focus === 'function') sel.focus();
+    return;
+  }
 
   // v5.8.0 — Add tab protection: confirm first submission per session
   if (!isSessionConfirmed('expense')) {
@@ -12145,8 +12211,11 @@ function xbAddRow() {
   // v6.11.8 — Source from tcfg instead of legacy hardcoded consts.
   const teaBlockOpts = tenantTeaBlocks().map(b => `<option value="${b}">${b}</option>`).join('');
   const businessUnitOpts = tenantBusinessUnits().map(b => `<option value="${b}">${b}</option>`).join('');
+  // v6.11.18 — "Whole farm" removed as a batch allocation option (see 
+  // single-form rationale). Forced-choice placeholder; empty rows are 
+  // validated at submit.
   const blockOpts =
-    `<option value="Whole farm" selected>Whole farm</option>` +
+    `<option value="" selected>— Allocate to… —</option>` +
     `<optgroup label="Tea blocks">${teaBlockOpts}</optgroup>` +
     `<optgroup label="Business units">${businessUnitOpts}</optgroup>`;
   wrap.innerHTML = `
@@ -12190,14 +12259,16 @@ function xbRowValues(rowEl) {
     category: rowEl.querySelector('.xb-cat').value,
     amount: parseFloat(rowEl.querySelector('.xb-amt').value) || 0,
     description: rowEl.querySelector('.xb-desc').value.trim(),
-    block: rowEl.querySelector('.xb-block').value || 'Whole farm',
+    // v6.11.18 — No "Whole farm" fallback; empty block fails xbRowIsValid.
+    block: rowEl.querySelector('.xb-block').value,
     payee: rowEl.querySelector('.xb-payee').value.trim()
   };
 }
 
 function xbRowIsValid(rowEl) {
   const v = xbRowValues(rowEl);
-  return v.category && v.amount > 0;
+  // v6.11.18 — Allocation now required alongside category + amount.
+  return v.category && v.amount > 0 && !!v.block;
 }
 
 function xbRowIsEmpty(rowEl) {
