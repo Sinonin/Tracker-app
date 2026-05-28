@@ -2977,19 +2977,49 @@
     text-transform: uppercase; padding: 0.25rem 0.5rem; background: transparent;
     border: 1px solid var(--rule); border-radius: 3px; color: var(--slate); cursor: pointer;
   }
-  .recon-chart { display: flex; align-items: flex-end; gap: 0.6rem; height: 150px; padding-top: 0.3rem; }
-  .recon-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
-  .recon-bar-label {
-    font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; color: var(--ink);
-    text-align: center; line-height: 1.25; margin-bottom: 0.25rem; font-variant-numeric: tabular-nums;
+  /* v6.11.22 — Single clustered chart: factories side by side, each a cluster
+     of three month-bars on a shared kg scale. Exact figures reveal on hover
+     (pointer) or tap (touch) per bar. Replaces the one-card-per-factory layout
+     for tighter use of space. */
+  .recon-chart-clustered {
+    display: flex; align-items: flex-end; justify-content: space-around;
+    gap: 0.7rem; height: 160px; padding: 0.3rem 0.2rem 0;
   }
-  .recon-bar-label .rbl-exp { display: block; color: var(--brass); font-size: 0.56rem; }
-  .recon-bar-track { width: 60%; max-width: 46px; flex: 1; display: flex; align-items: flex-end; }
+  .recon-fgroup { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; min-width: 0; }
+  .recon-bars { flex: 1; display: flex; align-items: flex-end; justify-content: center; gap: 0.25rem; width: 100%; }
+  .recon-bar-col { position: relative; flex: 1; max-width: 26px; height: 100%; display: flex; align-items: flex-end; cursor: pointer; }
+  .recon-bar-track { width: 100%; height: 100%; display: flex; align-items: flex-end; }
   .recon-bar { width: 100%; background: var(--forest); border-radius: 2px 2px 0 0; min-height: 2px; transition: height 0.3s ease; }
-  .recon-bar.recon-bar-mtd { background: var(--brass); opacity: 0.85; }
-  .recon-bar-month {
+  .recon-bar.recon-bar-mtd { background: var(--brass); opacity: 0.9; }
+  /* v6.11.23 — Month-clustered chart: current-month cluster tinted, factory
+     legend, empty-month marker. Bars carry their factory colour inline. */
+  .recon-fgroup.recon-group-mtd { background: rgba(176,141,87,0.07); border-radius: 3px; }
+  .recon-bar-empty { color: var(--slate); opacity: 0.4; font-family: 'IBM Plex Mono', monospace; align-self: flex-end; padding-bottom: 0.3rem; }
+  .recon-legend {
+    display: flex; flex-wrap: wrap; gap: 0.5rem 0.9rem; justify-content: center;
+    margin-top: 0.7rem;
+  }
+  .recon-leg {
+    display: inline-flex; align-items: center; gap: 0.3rem;
     font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; color: var(--slate);
-    margin-top: 0.35rem; text-align: center;
+  }
+  .recon-leg-dot { width: 0.6rem; height: 0.6rem; border-radius: 2px; display: inline-block; }
+  .recon-fgroup-name {
+    font-family: 'Fraunces', serif; font-size: 0.78rem; color: var(--forest);
+    margin-top: 0.4rem; text-align: center; line-height: 1.1;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+  }
+  .recon-tip {
+    position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+    margin-bottom: 0.3rem; background: var(--forest-dark); color: var(--ivory);
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem; white-space: nowrap;
+    padding: 0.25rem 0.4rem; border-radius: 3px; opacity: 0; pointer-events: none;
+    transition: opacity 0.15s ease; z-index: 5; font-variant-numeric: tabular-nums;
+  }
+  .recon-bar-col:hover .recon-tip, .recon-bar-col.tip-open .recon-tip { opacity: 1; }
+  .recon-chart-hint {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.55rem; color: var(--slate);
+    margin-top: 0.6rem; text-align: center; opacity: 0.75;
   }
 
   .factory-card {
@@ -3290,7 +3320,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.21</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.23</span>
 </header>
 
 <main>
@@ -3646,7 +3676,6 @@
             <button type="button" data-view="numbers" class="active" onclick="setReconView('numbers')">Numbers</button>
             <button type="button" data-view="chart" onclick="setReconView('chart')">Chart</button>
           </div>
-          <button type="button" id="recon-labeltoggle" class="recon-labelbtn" onclick="toggleReconLabels()" style="display:none">Labels: on</button>
         </div>
       </div>
       <!-- v6.11.19 — Per-factory monthly GL delivery vs booked income 
@@ -6043,7 +6072,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.21</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.23</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -7283,7 +7312,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.21'
+    recorded_from: 'PWA v6.11.23'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -7991,7 +8020,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.21';
+const APP_VERSION = 'v6.11.23';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -19136,22 +19165,21 @@ function setReconView(v) {
   STATE.factoryReconView = (v === 'chart') ? 'chart' : 'numbers';
   document.querySelectorAll('#recon-viewtoggle button').forEach(b =>
     b.classList.toggle('active', b.dataset.view === STATE.factoryReconView));
-  const lbl = document.getElementById('recon-labeltoggle');
-  if (lbl) lbl.style.display = (STATE.factoryReconView === 'chart') ? '' : 'none';
   renderFactoryRecon();
 }
-function toggleReconLabels() {
-  STATE.factoryReconLabels = !STATE.factoryReconLabels;
-  const btn = document.getElementById('recon-labeltoggle');
-  if (btn) btn.textContent = 'Labels: ' + (STATE.factoryReconLabels ? 'on' : 'off');
-  renderFactoryRecon();
+// v6.11.22 — Per-bar hover/tap reveals the exact figures, so toggle a tip
+// class on tap for touch devices (CSS :hover covers pointer devices).
+function reconBarTap(el) {
+  if (!el) return;
+  const open = el.classList.contains('tip-open');
+  document.querySelectorAll('.recon-bar-col.tip-open').forEach(c => c.classList.remove('tip-open'));
+  if (!open) el.classList.add('tip-open');
 }
 
 function renderFactoryRecon() {
   const box = document.getElementById('factory-recon');
   if (!box) return;
   if (typeof STATE.factoryReconView === 'undefined') STATE.factoryReconView = 'numbers';
-  if (typeof STATE.factoryReconLabels === 'undefined') STATE.factoryReconLabels = true;
 
   const factories = (STATE.factories || []).filter(f => f && f.name);
   if (!factories.length) {
@@ -19207,28 +19235,42 @@ function renderFactoryRecon() {
   }
 
   if (STATE.factoryReconView === 'chart') {
-    // CHART view — per factory, kg bars across 3 months (scaled to that 
-    // factory's own max so each factory's trend is legible regardless of 
-    // its absolute volume), expected income shown as a toggle-able label.
-    const showLabels = STATE.factoryReconLabels;
-    box.innerHTML = factoryData.map(fd => {
-      const maxKg = Math.max(1, ...fd.rows.map(r => r.glKg));
-      const bars = fd.rows.map(r => {
-        const h = Math.round((r.glKg / maxKg) * 100); // % of chart height
-        const label = showLabels
-          ? `<div class="recon-bar-label">${kg(r.glKg)} kg${r.expected > 0 ? `<span class="rbl-exp">Ksh ${moneyRound(r.expected)}</span>` : ''}</div>`
-          : '';
-        return `<div class="recon-bar-col">
-            ${label}
-            <div class="recon-bar-track"><div class="recon-bar ${r.m.isMtd ? 'recon-bar-mtd' : ''}" style="height:${h}%"></div></div>
-            <div class="recon-bar-month">${r.m.label}${r.m.isMtd ? ' <span class="recon-mtd">MTD</span>' : ''}</div>
+    // CHART view — clustered by MONTH (Cheison 28 May 2026 Verden). Months are
+    // the stable axis (oldest→newest); within each month only the factories
+    // that actually delivered that month render, each colour-coded. This suits
+    // the reality that some factories take nothing for long stretches (e.g.
+    // Kapchorwa only when Kipkorom tea routes through a relative's supplier
+    // number; Sang'alo is not preferred, so it has empty months) — those gaps
+    // simply don't draw, rather than leaving permanent empty factory clusters.
+    // Shared kg scale; exact figures on hover/tap. Current month tagged MTD.
+    const palette = ['var(--forest)', 'var(--brass)', '#6f8a5c', '#a9663f', '#5f7d8a', '#8a5f7d'];
+    const fcolor = {};
+    factoryData.forEach((fd, i) => { fcolor[fd.name] = palette[i % palette.length]; });
+    const globalMax = Math.max(1, ...factoryData.flatMap(fd => fd.rows.map(r => r.glKg)));
+    const chartMonths = months.slice().reverse(); // oldest → newest
+    const monthClusters = chartMonths.map(m => {
+      const bars = factoryData.map(fd => {
+        const row = fd.rows.find(r => r.m.ym === m.ym);
+        if (!row || row.glKg <= 0) return '';
+        const h = Math.round((row.glKg / globalMax) * 100);
+        const expTip = row.expected > 0 ? ` · Ksh ${moneyRound(row.expected)}` : '';
+        const tip = `${fd.name} · ${m.label}${m.isMtd ? ' MTD' : ''} · ${kg(row.glKg)} kg${expTip}`;
+        return `<div class="recon-bar-col" onclick="reconBarTap(this)">
+            <div class="recon-tip">${tip}</div>
+            <div class="recon-bar-track"><div class="recon-bar" style="height:${h}%;background:${fcolor[fd.name]}"></div></div>
           </div>`;
-      }).join('');
-      return `<div class="recon-factory">
-          <div class="recon-fname">${fd.name}</div>
-          <div class="recon-chart">${bars}</div>
+      }).filter(Boolean).join('');
+      return `<div class="recon-fgroup ${m.isMtd ? 'recon-group-mtd' : ''}">
+          <div class="recon-bars">${bars || '<div class="recon-bar-empty">—</div>'}</div>
+          <div class="recon-fgroup-name">${m.label}${m.isMtd ? ' <span class="recon-mtd">MTD</span>' : ''}</div>
         </div>`;
     }).join('');
+    const legend = factoryData.map(fd =>
+      `<span class="recon-leg"><span class="recon-leg-dot" style="background:${fcolor[fd.name]}"></span>${fd.name}</span>`
+    ).join('');
+    box.innerHTML = `<div class="recon-chart-clustered">${monthClusters}</div>
+      <div class="recon-legend">${legend}</div>
+      <div class="recon-chart-hint">Hover or tap a bar for kg &amp; expected income</div>`;
   } else {
     // NUMBERS view — full reconciliation table.
     box.innerHTML = factoryData.map(fd => {

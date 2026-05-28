@@ -1,4 +1,6 @@
 // Sinonin Group Management App — Service Worker
+// v6.11.23 — Factory chart re-clustered by MONTH instead of factory (Cheison 28 May 2026 Verden). Months are the stable axis (oldest->newest, current = MTD, tinted); within each month only factories that actually delivered render, colour-coded with a legend. Sparse/absent factories (Kapchorwa rare-route, Sangalo gaps) no longer leave permanent empty clusters. Shared kg scale, hover/tap for exact kg + expected
+// v6.11.22 — Factory chart reworked into a single clustered chart: factories side by side, each a cluster of 3 month-bars (oldest→newest, brass = current MTD) on a shared kg scale. Exact kg + expected income reveal on hover (pointer) or tap (touch) per bar — global Labels toggle removed, tighter use of space (Cheison 28 May 2026 Verden)
 // v6.11.21 — Cess folded into netPerKg (TEA_CESS_KG, flat 0.22/kg all factories) so expected income = price − cess − transport − equity everywhere (hero MTD/YTD, factory recon, Insights all read netPerKg). Hero sub-label updated. Factory reconciliation gains Chart view: per-factory kg bars × 3 months with toggle-able expected-income labels, Chart⇄Numbers toggle (Cheison 28 May 2026 Verden)
 // v6.11.20 — Factory reconciliation months clarified: calendar-month boundaries (Mar/Apr whole months, May month-to-date). Current month now tagged "MTD" so the partial-vs-complete distinction is explicit — Cheison reconciles against complete prior months, not a rolling window (Cheison 28 May 2026 Verden)
 // v6.11.19 — Cost model + factory reconciliation. (1) Shared Overhead via EXPENSE_ONLY_UNITS CP key — expense-only allocation, excluded from Sales/clusters. (2) Insights tea section restructured into Sinonin Tea umbrella (sum of all blocks) with owned per-field + Leased Tea subtotal (LEASED_BLOCKS CP key) + leased per-field. (3) No-distribution preserved — every cost sits where tagged. (4) Factory reconciliation widget on panel-tea: per-factory last-3-months GL delivered (kg→expected) vs booked income (Banked source=factory), gap shown. Booked matches production period if present else banking-date month (Cheison 28 May 2026 Verden)
@@ -84,7 +86,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v244';
+const CACHE = 'sinonin-greenleaf-v246';
 
 const SHELL_FILES = [
   './',
