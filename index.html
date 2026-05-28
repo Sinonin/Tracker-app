@@ -3380,7 +3380,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.27</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.28</span>
 </header>
 
 <main>
@@ -6133,7 +6133,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.27</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.28</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -7814,7 +7814,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.27'
+    recorded_from: 'PWA v6.11.28'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -8523,7 +8523,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.27';
+const APP_VERSION = 'v6.11.28';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -8545,7 +8545,12 @@ const DEFAULT_SIREET_LEDGER = {
 async function storageGet(key, fallback) {
   try {
     const r = localStorage.getItem(key);
-    return r !== null ? JSON.parse(r) : fallback;
+    if (r === null) return fallback;
+    // v6.11.28 — a stored literal "null" (JSON.stringify(null)) parses back to
+    // null and would otherwise slip past the `r !== null` guard; coalesce it to
+    // the caller's fallback so null/undefined never escapes as a live value.
+    const v = JSON.parse(r);
+    return (v === null || typeof v === 'undefined') ? fallback : v;
   } catch(e) { return fallback; }
 }
 async function storageSet(key, val) {
@@ -13126,7 +13131,7 @@ function _dupeKey(a) {
 function _getActualDupeAcks() {
   try {
     const raw = localStorage.getItem(K_ACTUAL_DUPE_ACKS);
-    return raw ? JSON.parse(raw) : {};
+    return (raw ? JSON.parse(raw) : {}) || {};
   } catch (e) { return {}; }
 }
 
@@ -13215,7 +13220,7 @@ function _birdPopulationAckKey(stage, dateStr) {
 function _getBirdPopulationAcks() {
   try {
     const raw = localStorage.getItem(K_BIRD_POPULATION_ACKS);
-    return raw ? JSON.parse(raw) : {};
+    return (raw ? JSON.parse(raw) : {}) || {};
   } catch (e) { return {}; }
 }
 
@@ -13271,7 +13276,7 @@ function _blockGapAckKey(date, block) {
 function _getBlockGapAcks() {
   try {
     const raw = localStorage.getItem(K_BLOCK_GAP_ACKS);
-    return raw ? JSON.parse(raw) : {};
+    return (raw ? JSON.parse(raw) : {}) || {};
   } catch (e) { return {}; }
 }
 
@@ -13557,7 +13562,7 @@ const K_PENDING_ACK_QUEUE = 'sinonin_pending_ack_queue_v1';
 function _stashAckForRetry(kind, payload) {
   try {
     const raw = localStorage.getItem(K_PENDING_ACK_QUEUE);
-    const q = raw ? JSON.parse(raw) : [];
+    const q = (raw ? JSON.parse(raw) : []) || [];
     q.push({ kind, payload, queuedAt: new Date().toISOString() });
     localStorage.setItem(K_PENDING_ACK_QUEUE, JSON.stringify(q));
   } catch (e) { console.warn('[ack-stash] save failed:', e.message); }
@@ -13567,7 +13572,7 @@ async function flushPendingAcks() {
   let q = [];
   try {
     const raw = localStorage.getItem(K_PENDING_ACK_QUEUE);
-    q = raw ? JSON.parse(raw) : [];
+    q = (raw ? JSON.parse(raw) : []) || [];
   } catch (e) { return; }
   if (q.length === 0) return;
   const remaining = [];
@@ -25122,7 +25127,10 @@ function showUpdateBanner() {
     
     if (shouldPurge) {
       for (const k of tenantDataKeys) {
-        try { await storageSet(k, null); } catch (e) { /* ignore individual key failures */ }
+        // v6.11.28 — removeItem, NOT storageSet(k, null): writing null persists
+        // the string "null", which downstream getters parse back to null and
+        // then crash on .length / [key]. Removing the key lets defaults apply.
+        try { localStorage.removeItem(k); } catch (e) { /* ignore individual key failures */ }
       }
       console.log('[tenant-stamp] cache purged · ' + reason);
     }

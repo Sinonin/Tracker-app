@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.11.28 — Storage null-safety fix (Cheison 28 May 2026 Verden). The tenant-stamp cache purge wrote storageSet(k, null) across all data keys, persisting the literal string "null"; storageGet and the dupe/gap/bird-population ack getters then parsed "null" back to null and crashed on .length / [key] (updateSyncIndicator, applyCloudResponse ack merges, flushPendingAcks, findActualDuplicates). Fix: purge now removeItem()s keys instead of writing null (root cause), and storageGet + all ack/queue getters coalesce a parsed null to their default — which also heals storage already holding "null" on the next load, no clearing needed. Not related to the receipt work. PWA-only; no Apps Script or config change.
 // v6.11.27 — Receipt/invoice config additions (Cheison 28 May 2026 Verden): paymentMethods + paymentTerms (printed on invoices) and a VAT placeholder (vatRate/vatNote). VAT is invisible at rate 0 and renders a Subtotal/VAT(incl.)/Total breakdown once a rate is set — ready for registration without a spurious 0% line today. config.js receipt block extended across all tenants. PWA + config only.
 // v6.11.26 — Receipt accountability lock (Cheison 28 May 2026 Verden). Receipts can now ONLY be issued from a recorded sale (the 🧾 on the sale row), never minted from scratch — closes the abuse vector of manufacturing a receipt for a purchase that never happened. The standalone builder is now INVOICE-only (invoices legitimately precede payment). Type toggle removed; entry point fixes the document type. Post-sale toast nudges toward the 🧾. PWA-only; Apps Script unchanged.
 // v6.11.25 — Receipt-from-sale integration (Cheison 28 May 2026 Verden). Each recorded sale row gets a 🧾 clickable that opens the receipt builder pre-filled from that sale (product, qty, unit price, buyer) — no re-entry, no dummy sale, no double-counting. On issue, the existing sale row is stamped durably via Apps Script v5.0.55 sale-receipt action (Receipt Type/ID/Issued), surviving cloud re-hydration; row shows 🧾✓ once receipted.
@@ -90,7 +91,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v250';
+const CACHE = 'sinonin-greenleaf-v251';
 
 const SHELL_FILES = [
   './',
