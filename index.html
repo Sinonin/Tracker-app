@@ -2963,6 +2963,35 @@
     padding: 0.05rem 0.2rem; margin-left: 0.3rem; vertical-align: middle;
   }
 
+  /* v6.11.21 — Factory reconciliation view toggles + kg bar chart. */
+  .recon-toggles { display: flex; align-items: center; gap: 0.5rem; }
+  .recon-viewtoggle { display: inline-flex; border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+  .recon-viewtoggle button {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0.25rem 0.5rem; background: transparent;
+    border: none; color: var(--slate); cursor: pointer;
+  }
+  .recon-viewtoggle button.active { background: var(--forest); color: var(--ivory); }
+  .recon-labelbtn {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0.25rem 0.5rem; background: transparent;
+    border: 1px solid var(--rule); border-radius: 3px; color: var(--slate); cursor: pointer;
+  }
+  .recon-chart { display: flex; align-items: flex-end; gap: 0.6rem; height: 150px; padding-top: 0.3rem; }
+  .recon-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
+  .recon-bar-label {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; color: var(--ink);
+    text-align: center; line-height: 1.25; margin-bottom: 0.25rem; font-variant-numeric: tabular-nums;
+  }
+  .recon-bar-label .rbl-exp { display: block; color: var(--brass); font-size: 0.56rem; }
+  .recon-bar-track { width: 60%; max-width: 46px; flex: 1; display: flex; align-items: flex-end; }
+  .recon-bar { width: 100%; background: var(--forest); border-radius: 2px 2px 0 0; min-height: 2px; transition: height 0.3s ease; }
+  .recon-bar.recon-bar-mtd { background: var(--brass); opacity: 0.85; }
+  .recon-bar-month {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; color: var(--slate);
+    margin-top: 0.35rem; text-align: center;
+  }
+
   .factory-card {
     background: var(--ivory-card);
     border: 1px solid var(--rule);
@@ -3261,7 +3290,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.20</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.21</span>
 </header>
 
 <main>
@@ -3596,7 +3625,7 @@
              cards, no redundancy. Sealed § 6.x (21 May 2026, Cheison
              Verden screenshot observation). -->
         <div class="biz-card"><div class="lbl">Today</div><div class="val" id="tea-kg-month">0</div><div class="sub">kg from actuals</div></div>
-        <div class="biz-card"><div class="lbl">Expected income</div><div class="val" id="tea-expected-month">Ksh 0</div><div class="sub">net after transport &amp; equity</div></div>
+        <div class="biz-card"><div class="lbl">Expected income</div><div class="val" id="tea-expected-month">Ksh 0</div><div class="sub">net after cess, transport &amp; equity</div></div>
         <div class="biz-card"><div class="lbl">Tea expenses</div><div class="val" id="tea-expenses-month">Ksh 0</div><div class="sub" id="tea-expenses-sub">tea blocks &amp; tea ops</div></div>
         <div class="biz-card"><div class="lbl">Sireet equity built</div><div class="val" id="tea-shares-month">Ksh 0</div><div class="sub">5 KES/kg accrued</div></div>
       </div>
@@ -3610,12 +3639,24 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>Factory reconciliation</h3><span class="meta">last 3 months</span></div>
+      <div class="section-head">
+        <h3>Factory reconciliation</h3>
+        <div class="recon-toggles">
+          <div class="recon-viewtoggle" id="recon-viewtoggle">
+            <button type="button" data-view="numbers" class="active" onclick="setReconView('numbers')">Numbers</button>
+            <button type="button" data-view="chart" onclick="setReconView('chart')">Chart</button>
+          </div>
+          <button type="button" id="recon-labeltoggle" class="recon-labelbtn" onclick="toggleReconLabels()" style="display:none">Labels: on</button>
+        </div>
+      </div>
       <!-- v6.11.19 — Per-factory monthly GL delivery vs booked income 
            (Cheison 28 May 2026 Verden). Quick-access reconciliation: 
            GL delivered (kg → expected income at net rate) against what 
            was banked from that factory. Booked side matches by production 
-           period when available, else by banking-date month. -->
+           period when available, else by banking-date month.
+           v6.11.21 — Chart view: kg bars per factory × 3 months with 
+           expected-income value labels (toggle). Numbers view: full table 
+           (kg, expected, booked, gap). -->
       <div id="factory-recon"></div>
     </div>
 
@@ -6002,7 +6043,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.20</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.21</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6296,7 +6337,15 @@ function rateForDate(factory, dateStr) {
 function netPerKg(factory, dateStr) {
   const r = rateForDate(factory, dateStr);
   if (!r) return 0;
-  return Math.max(0, r.priceKg - r.transport - r.shares);
+  // v6.11.21 — Cess folded in (Cheison 28 May 2026 Verden). Expected cash 
+  // income per kg = price − cess − transport − equity. Cess is a flat county 
+  // levy (TEA_CESS_KG, same rate all factories); transport is per-factory; 
+  // equity (r.shares) is 5/kg for Sireet and 0 elsewhere, so the "Sireet only" 
+  // rule is data-driven from Tea_Factories. This is the single source of truth 
+  // for expected income — hero MTD/YTD cards, factory reconciliation, and 
+  // Insights cash all read through here, so they stay in lockstep.
+  const cess = parseFloat(tcfg('TEA_CESS_KG', '0')) || 0;
+  return Math.max(0, r.priceKg - cess - r.transport - r.shares);
 }
 
 /* v6.11.8 — DEFAULT_PLUCKERS is now an empty array. The legacy hardcoded 
@@ -7234,7 +7283,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.20'
+    recorded_from: 'PWA v6.11.21'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -7942,7 +7991,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.20';
+const APP_VERSION = 'v6.11.21';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -19074,17 +19123,35 @@ function renderTeaPanel() {
   if (typeof renderFactoryRecon === 'function') renderFactoryRecon();
 }
 
-/* v6.11.19 — Factory reconciliation widget (Cheison 28 May 2026 Verden).
-   For each active tea factory, last 3 months: GL delivered (kg, from 
-   Actuals) → expected income (kg × era-aware net rate), against booked 
-   income (from Banked Income rows whose Source is that factory — seedling 
-   sales carry Source "seedlings" and are naturally excluded). Match on the 
-   production period ("For period") when the Banked row carries it; otherwise 
-   fall back to the banking-date month. Gap = Booked − Expected. Numbers-only, 
-   dense, for cross-checking tea-sales booking against GL-delivery income. */
+/* v6.11.19/v6.11.21 — Factory reconciliation widget (Cheison Verden).
+   For each active tea factory, last 3 calendar months: GL delivered (kg, from 
+   Actuals) → expected income (kg × era-aware net rate, cess-inclusive), and 
+   booked income (Banked rows whose Source is that factory — seedlings carry 
+   Source "seedlings" so they're excluded). Booked matches production period 
+   ("For period") when present, else banking-date month.
+   Two views (toggle): "Numbers" = full table (kg, expected, booked, gap);
+   "Chart" = per-factory kg bars across the 3 months with expected-income 
+   value labels (label toggle). Chart plots kg + expected only, per Cheison. */
+function setReconView(v) {
+  STATE.factoryReconView = (v === 'chart') ? 'chart' : 'numbers';
+  document.querySelectorAll('#recon-viewtoggle button').forEach(b =>
+    b.classList.toggle('active', b.dataset.view === STATE.factoryReconView));
+  const lbl = document.getElementById('recon-labeltoggle');
+  if (lbl) lbl.style.display = (STATE.factoryReconView === 'chart') ? '' : 'none';
+  renderFactoryRecon();
+}
+function toggleReconLabels() {
+  STATE.factoryReconLabels = !STATE.factoryReconLabels;
+  const btn = document.getElementById('recon-labeltoggle');
+  if (btn) btn.textContent = 'Labels: ' + (STATE.factoryReconLabels ? 'on' : 'off');
+  renderFactoryRecon();
+}
+
 function renderFactoryRecon() {
   const box = document.getElementById('factory-recon');
   if (!box) return;
+  if (typeof STATE.factoryReconView === 'undefined') STATE.factoryReconView = 'numbers';
+  if (typeof STATE.factoryReconLabels === 'undefined') STATE.factoryReconLabels = true;
 
   const factories = (STATE.factories || []).filter(f => f && f.name);
   if (!factories.length) {
@@ -19092,12 +19159,8 @@ function renderFactoryRecon() {
     return;
   }
 
-  // Last 3 months, newest first.
-  // v6.11.20 — Calendar-month boundaries, newest first. The two prior months
-  // (i=1,2) are WHOLE months; the current month (i=0) is month-to-date and is
-  // flagged isMtd so the display marks it partial. Cheison's point: anchoring
-  // to calendar months (not a rolling window) means Mar/Apr read as complete
-  // pictures and only May moves — exactly how he reconciles.
+  // Last 3 calendar months, newest first. Prior two are whole months; the 
+  // current month (i=0) is month-to-date (isMtd).
   const today = new Date();
   const months = [];
   for (let i = 0; i < 3; i++) {
@@ -19105,21 +19168,19 @@ function renderFactoryRecon() {
     months.push({
       ym: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
       label: d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }),
-      periodLabel: d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }), // e.g. "May 2026"
+      periodLabel: d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }),
       isMtd: i === 0
     });
   }
 
   const actuals = STATE.actuals || [];
   const banked = STATE.banked || [];
-
   const fnorm = s => String(s || '').trim().toLowerCase();
 
-  const cards = factories.map(f => {
-    const fname = f.name;
-    const fkey = fnorm(fname);
+  // Compute per-factory rows once; both views consume the same data.
+  const factoryData = factories.map(f => {
+    const fkey = fnorm(f.name);
     const rows = months.map(m => {
-      // GL delivered this month to this factory (from Actuals)
       let glKg = 0, expected = 0;
       actuals.forEach(a => {
         if (fnorm(a.factory) !== fkey) return;
@@ -19128,50 +19189,72 @@ function renderFactoryRecon() {
         glKg += kgv;
         expected += kgv * netPerKg(a.factory, a.date);
       });
-      // Booked income from this factory for this month.
-      // Prefer production period match; fall back to banking-date month.
       let booked = 0, hasBooking = false;
       banked.forEach(b => {
         if (fnorm(b.source) !== fkey) return;
         const periodMatch = b.period && fnorm(b.period) === fnorm(m.periodLabel);
         const dateMatch = !b.period && String(b.date || '').slice(0, 7) === m.ym;
-        if (periodMatch || dateMatch) {
-          booked += Number(b.amount) || 0;
-          hasBooking = true;
-        }
+        if (periodMatch || dateMatch) { booked += Number(b.amount) || 0; hasBooking = true; }
       });
       return { m, glKg, expected, booked, hasBooking };
     });
+    return { name: f.name, rows, anyData: rows.some(r => r.glKg > 0 || r.hasBooking) };
+  }).filter(fd => fd.anyData);
 
-    // Skip factories with no activity at all in the window
-    const anyData = rows.some(r => r.glKg > 0 || r.hasBooking);
-    if (!anyData) return '';
+  if (!factoryData.length) {
+    box.innerHTML = '<div class="empty" style="padding:1.2rem 0"><div class="em">No factory activity in the last 3 months.</div></div>';
+    return;
+  }
 
-    const body = rows.map(r => {
-      const gap = r.booked - r.expected;
-      const gapCell = r.hasBooking
-        ? `<span class="${Math.abs(gap) < 1 ? 'recon-ok' : (gap < 0 ? 'recon-warn' : 'recon-pos')}">${gap >= 0 ? '+' : ''}${moneyRound(gap)}</span>`
-        : '<span class="recon-pending">—</span>';
-      const bookedCell = r.hasBooking ? moneyRound(r.booked) : '<span class="recon-pending">—</span>';
-      return `<tr>
-          <td class="recon-mon">${r.m.label}${r.m.isMtd ? ' <span class="recon-mtd">MTD</span>' : ''}</td>
-          <td>${kg(r.glKg)}</td>
-          <td>${moneyRound(r.expected)}</td>
-          <td>${bookedCell}</td>
-          <td>${gapCell}</td>
-        </tr>`;
+  if (STATE.factoryReconView === 'chart') {
+    // CHART view — per factory, kg bars across 3 months (scaled to that 
+    // factory's own max so each factory's trend is legible regardless of 
+    // its absolute volume), expected income shown as a toggle-able label.
+    const showLabels = STATE.factoryReconLabels;
+    box.innerHTML = factoryData.map(fd => {
+      const maxKg = Math.max(1, ...fd.rows.map(r => r.glKg));
+      const bars = fd.rows.map(r => {
+        const h = Math.round((r.glKg / maxKg) * 100); // % of chart height
+        const label = showLabels
+          ? `<div class="recon-bar-label">${kg(r.glKg)} kg${r.expected > 0 ? `<span class="rbl-exp">Ksh ${moneyRound(r.expected)}</span>` : ''}</div>`
+          : '';
+        return `<div class="recon-bar-col">
+            ${label}
+            <div class="recon-bar-track"><div class="recon-bar ${r.m.isMtd ? 'recon-bar-mtd' : ''}" style="height:${h}%"></div></div>
+            <div class="recon-bar-month">${r.m.label}${r.m.isMtd ? ' <span class="recon-mtd">MTD</span>' : ''}</div>
+          </div>`;
+      }).join('');
+      return `<div class="recon-factory">
+          <div class="recon-fname">${fd.name}</div>
+          <div class="recon-chart">${bars}</div>
+        </div>`;
     }).join('');
-
-    return `<div class="recon-factory">
-        <div class="recon-fname">${fname}</div>
-        <table class="recon-table">
-          <thead><tr><th>Month</th><th>GL kg</th><th>Expected</th><th>Booked</th><th>Gap</th></tr></thead>
-          <tbody>${body}</tbody>
-        </table>
-      </div>`;
-  }).filter(Boolean).join('');
-
-  box.innerHTML = cards || '<div class="empty" style="padding:1.2rem 0"><div class="em">No factory activity in the last 3 months.</div></div>';
+  } else {
+    // NUMBERS view — full reconciliation table.
+    box.innerHTML = factoryData.map(fd => {
+      const body = fd.rows.map(r => {
+        const gap = r.booked - r.expected;
+        const gapCell = r.hasBooking
+          ? `<span class="${Math.abs(gap) < 1 ? 'recon-ok' : (gap < 0 ? 'recon-warn' : 'recon-pos')}">${gap >= 0 ? '+' : ''}${moneyRound(gap)}</span>`
+          : '<span class="recon-pending">—</span>';
+        const bookedCell = r.hasBooking ? moneyRound(r.booked) : '<span class="recon-pending">—</span>';
+        return `<tr>
+            <td class="recon-mon">${r.m.label}${r.m.isMtd ? ' <span class="recon-mtd">MTD</span>' : ''}</td>
+            <td>${kg(r.glKg)}</td>
+            <td>${moneyRound(r.expected)}</td>
+            <td>${bookedCell}</td>
+            <td>${gapCell}</td>
+          </tr>`;
+      }).join('');
+      return `<div class="recon-factory">
+          <div class="recon-fname">${fd.name}</div>
+          <table class="recon-table">
+            <thead><tr><th>Month</th><th>GL kg</th><th>Expected</th><th>Booked</th><th>Gap</th></tr></thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>`;
+    }).join('');
+  }
 }
 
 function renderPoultryPanel() {

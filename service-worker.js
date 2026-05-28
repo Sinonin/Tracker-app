@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.11.21 — Cess folded into netPerKg (TEA_CESS_KG, flat 0.22/kg all factories) so expected income = price − cess − transport − equity everywhere (hero MTD/YTD, factory recon, Insights all read netPerKg). Hero sub-label updated. Factory reconciliation gains Chart view: per-factory kg bars × 3 months with toggle-able expected-income labels, Chart⇄Numbers toggle (Cheison 28 May 2026 Verden)
 // v6.11.20 — Factory reconciliation months clarified: calendar-month boundaries (Mar/Apr whole months, May month-to-date). Current month now tagged "MTD" so the partial-vs-complete distinction is explicit — Cheison reconciles against complete prior months, not a rolling window (Cheison 28 May 2026 Verden)
 // v6.11.19 — Cost model + factory reconciliation. (1) Shared Overhead via EXPENSE_ONLY_UNITS CP key — expense-only allocation, excluded from Sales/clusters. (2) Insights tea section restructured into Sinonin Tea umbrella (sum of all blocks) with owned per-field + Leased Tea subtotal (LEASED_BLOCKS CP key) + leased per-field. (3) No-distribution preserved — every cost sits where tagged. (4) Factory reconciliation widget on panel-tea: per-factory last-3-months GL delivered (kg→expected) vs booked income (Banked source=factory), gap shown. Booked matches production period if present else banking-date month (Cheison 28 May 2026 Verden)
 // v6.11.18 — Two fixes: (1) Sales duplicate "Tea"/"Sinonin Tea" — teaInBusinessUnits detection changed from exact slug match (=== TEA) to word-boundary regex so "Sinonin Tea" suppresses the auto-prepend. (2) "Whole farm" removed as a selectable expense allocation in both single + batch forms (forced-choice placeholder, allocation now required at submit); historical Whole-farm expenses still render in their own Insights bucket (Cheison 28 May 2026 Verden)
@@ -83,7 +84,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v243';
+const CACHE = 'sinonin-greenleaf-v244';
 
 const SHELL_FILES = [
   './',
