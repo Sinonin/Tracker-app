@@ -17,8 +17,8 @@
 window.TENANT_CONFIG = {
   appsScriptUrl: 'https://script.google.com/macros/s/AKfycbyQNUy0HX_fC3M9poCgk86dM0bTiGkOpYDvFvSsNvkTjSuTKeA2X79D4UWAD6drHFAazA/exec',
   receipt: {
-    businessName: 'Sinonin Food Innovations Ltd (Sinonin Tea, Kipkenda Poultry)'',
-    address: 'P.O. Box 93, 30301Nandi Hills, Nandi County, Kenya',
+    businessName: 'Sinonin Food Innovations Ltd',
+    address: 'P.O. Box 93, 30301 Nandi Hills, Nandi County, Kenya',
     kraPin: 'P052094623V',
     logoUrl: 'logo.png',
     footer: 'Thank you for your support',
