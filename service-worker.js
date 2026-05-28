@@ -1,4 +1,6 @@
 // Sinonin Group Management App — Service Worker
+// v6.11.31 — Cohort sale misattribution fix (Cheison/Victor 28 May 2026). The sale form captures the operator-picked cohort_id (§ 7.6), but autoDecrementCohortOnSale ignored it and decremented the FIFO-oldest cohort at the stage. With the 04 May and 27 Apr cohorts both at "Chicks 1–7 days", a sale from 04 May silently drained 27 Apr, so 04 May still read as full and counts "twisted". The decrement now honors the picked cohort_id; FIFO remains only as a fallback for rows carrying no cohort_id. PWA-only. NOTE: does not retro-correct counts already mis-decremented, nor the separate cloud-count sync — both still to investigate.
+// v6.11.30 — Batch write data-loss fix (Cheison/Victor 28 May 2026, Sangalo). submitBatch and the batch-expense path fired every entry in parallel (Promise.all), overwhelming the Apps Script gate; throttled requests HTTP-errored, fell through to the no-cors Form fallback that reports success without confirming the write, and were silently lost (never gated, never queued, not in the sheet) — 2 of 12 pluckers vanished. Both batch paths now send sequentially, so every write is confirmed against the gate and real failures are queued for retry. PWA-only.
 // v6.11.29 — Receipt/invoice print fits one page (Cheison 28 May 2026 Verden). The print window used svg{width:100%} with no page orientation, so in landscape the document stretched to full width and its proportional height spilled onto a second page even with a single line item. Now forces @page{size:portrait} (receipts/invoices are portrait documents) and caps the SVG at max-height:275mm so it shrinks to one A4 page. PWA-only.
 // v6.11.28 — Storage null-safety fix (Cheison 28 May 2026 Verden). The tenant-stamp cache purge wrote storageSet(k, null) across all data keys, persisting the literal string "null"; storageGet and the dupe/gap/bird-population ack getters then parsed "null" back to null and crashed on .length / [key] (updateSyncIndicator, applyCloudResponse ack merges, flushPendingAcks, findActualDuplicates). Fix: purge now removeItem()s keys instead of writing null (root cause), and storageGet + all ack/queue getters coalesce a parsed null to their default — which also heals storage already holding "null" on the next load, no clearing needed. Not related to the receipt work. PWA-only; no Apps Script or config change.
 // v6.11.27 — Receipt/invoice config additions (Cheison 28 May 2026 Verden): paymentMethods + paymentTerms (printed on invoices) and a VAT placeholder (vatRate/vatNote). VAT is invisible at rate 0 and renders a Subtotal/VAT(incl.)/Total breakdown once a rate is set — ready for registration without a spurious 0% line today. config.js receipt block extended across all tenants. PWA + config only.
@@ -92,7 +94,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v252';
+const CACHE = 'sinonin-greenleaf-v254';
 
 const SHELL_FILES = [
   './',

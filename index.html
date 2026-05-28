@@ -3380,7 +3380,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.29</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.31</span>
 </header>
 
 <main>
@@ -6133,7 +6133,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.29</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.31</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -7814,7 +7814,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.29'
+    recorded_from: 'PWA v6.11.31'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -8523,7 +8523,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.29';
+const APP_VERSION = 'v6.11.31';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -12610,11 +12610,20 @@ async function submitBatch() {
     showToast(`Saved ${saved} entr${saved === 1 ? 'y' : 'ies'}`);
     console.log('[submitBatch] step 6: toast shown, about to sync');
     // Push to Google Sheet — parallel, queue on failure
-    const results = await Promise.all(newEntries.map(e => syncEntry(e)));
-    console.log('[submitBatch] step 7: sync results', results);
-    for (let i = 0; i < results.length; i++) {
-      if (!results[i]) await queueForSync(newEntries[i], 'greenleaf');
+    // v6.11.30 — Serialize batch writes (Cheison/Victor, 28 May 2026, Sangalo).
+    // Firing every entry at once with Promise.all overwhelmed the Apps Script
+    // gate; throttled requests came back as HTTP errors, fell through to the
+    // no-cors Form fallback — which cannot confirm a write yet reports success —
+    // so those entries were silently lost: never gated, never queued, never in
+    // the sheet. 2 of 12 pluckers vanished at Sangalo. Sending one at a time
+    // keeps each write confirmed against the gate; a genuine failure is queued.
+    const results = [];
+    for (let i = 0; i < newEntries.length; i++) {
+      const ok = await syncEntry(newEntries[i]);
+      results.push(ok);
+      if (!ok) await queueForSync(newEntries[i], 'greenleaf');
     }
+    console.log('[submitBatch] step 7: sync results', results);
     updateSyncIndicator();
     // v6.9.16 — Nudge fires once per batch (uses the first entry's
     // date/block/factory which are all identical across the batch by
@@ -13029,10 +13038,12 @@ async function submitBatchExpenses() {
   STATE.expenses.push(...newExpenses);
   await storageSet(K_EXPENSES, STATE.expenses);
   // Then push each to the form relay (any failure → queue for retry)
-  const results = await Promise.all(newExpenses.map(e => syncExpense(e)));
+  // v6.11.30 — Serialize batch writes; see submitBatch. Parallel Promise.all
+  // bursts overwhelm the gate and lose entries to the unverifiable Form fallback.
   let queuedCount = 0;
   for (let i = 0; i < newExpenses.length; i++) {
-    if (!results[i]) {
+    const ok = await syncExpense(newExpenses[i]);
+    if (!ok) {
       await queueForSync(newExpenses[i], 'expense');
       queuedCount++;
     }
@@ -14403,23 +14414,34 @@ async function autoDecrementCohortOnSale(saleRow) {
   if (!Array.isArray(STATE.cohorts) || STATE.cohorts.length === 0) return;
   const qty = Number(saleRow.quantity) || 0;
   if (qty <= 0) return;
-  const stage = saleRow.stage;
-  const today = new Date().toISOString().slice(0, 10);
-  // Eligible: current_count > 0, matches stage (asserted or aged) per § 6.x
-  const candidates = STATE.cohorts.filter(c => {
-    const cur = Number(c.current_count) || 0;
-    if (cur <= 0) return false;
-    if (!c.date_origin) return false;
-    // v6.9.11 — Use effectiveCohortStage so asserted stages (Cockerels etc)
-    // match by stored stage; otherwise computed by age.
-    if (typeof effectiveCohortStage === 'function') return effectiveCohortStage(c, today) === stage;
-    return c.stage === stage;
-  }).sort((a, b) => (a.date_origin || '').localeCompare(b.date_origin || ''));
-  if (candidates.length === 0) {
-    console.log('[cohort-decrement] no matching cohort for stage:', stage);
-    return;
+  // v6.11.31 — Honor the operator's EXPLICIT cohort pick (Cheison/Victor, 28 May
+  // 2026). yValues() captures saleRow.cohort_id at the write boundary (sealed
+  // § 7.6), but this function ignored it and decremented the FIFO-oldest cohort
+  // at the stage instead. With the 04 May and 27 Apr cohorts both at "Chicks
+  // 1–7 days", Victor's sale FROM the 04 May cohort silently drained the 27 Apr
+  // cohort — so 04 May still read as full and the numbers "twisted". The pick is
+  // the truth; FIFO is only a fallback for legacy rows that carry no cohort_id.
+  let cohort = saleRow.cohort_id
+    ? STATE.cohorts.find(c => c && c.cohort_id === saleRow.cohort_id)
+    : null;
+  if (!cohort) {
+    const stage = saleRow.stage;
+    const today = new Date().toISOString().slice(0, 10);
+    const candidates = STATE.cohorts.filter(c => {
+      const cur = Number(c.current_count) || 0;
+      if (cur <= 0) return false;
+      if (!c.date_origin) return false;
+      // v6.9.11 — Use effectiveCohortStage so asserted stages (Cockerels etc)
+      // match by stored stage; otherwise computed by age.
+      if (typeof effectiveCohortStage === 'function') return effectiveCohortStage(c, today) === stage;
+      return c.stage === stage;
+    }).sort((a, b) => (a.date_origin || '').localeCompare(b.date_origin || ''));
+    if (candidates.length === 0) {
+      console.log('[cohort-decrement] no matching cohort for stage:', stage, '/ cohort_id:', saleRow.cohort_id || '(none)');
+      return;
+    }
+    cohort = candidates[0]; // FIFO fallback — oldest cohort when no pick was captured
   }
-  const cohort = candidates[0]; // FIFO — oldest cohort consumed first
   const oldCurrent = Number(cohort.current_count) || 0;
   const oldSold    = Number(cohort.sold_count) || 0;
   const newCurrent = Math.max(0, oldCurrent - qty);
