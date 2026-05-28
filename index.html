@@ -3380,7 +3380,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.28</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.29</span>
 </header>
 
 <main>
@@ -6133,7 +6133,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.28</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.29</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -7609,7 +7609,7 @@ function _recPrint() {
   if (!svg) return;
   const w = window.open('', '_blank');
   if (!w) { showToast('Allow pop-ups to print, or use Save image', 5000); return; }
-  w.document.write('<!doctype html><html><head><title>' + (RECEIPT_STATE.lastDoc ? RECEIPT_STATE.lastDoc.number : 'Document') + '</title><style>body{margin:0}svg{width:100%}</style></head><body>' + svg + '<script>window.onload=function(){window.print();}<\/script></body></html>');
+  w.document.write('<!doctype html><html><head><title>' + (RECEIPT_STATE.lastDoc ? RECEIPT_STATE.lastDoc.number : 'Document') + '</title><style>@page{size:portrait;margin:10mm}html,body{margin:0;padding:0}svg{display:block;width:100%;height:auto;max-height:275mm;margin:0 auto}</style></head><body>' + svg + '<script>window.onload=function(){window.print();}<\/script></body></html>');
   w.document.close();
 }
 async function _recCanvasBlob() {
@@ -7814,7 +7814,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.28'
+    recorded_from: 'PWA v6.11.29'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -8523,7 +8523,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.28';
+const APP_VERSION = 'v6.11.29';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
