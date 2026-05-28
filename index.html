@@ -3056,6 +3056,14 @@
     font-size: 0.66rem; color: var(--forest-dark);
   }
   .rec-doc-actions button:active { transform: scale(0.97); }
+  /* v6.11.25 — Per-sale "issue receipt" clickable in recent-sales rows. */
+  .sale-receipt-btn {
+    background: transparent; border: 1px solid var(--rule); border-radius: 6px;
+    cursor: pointer; font-size: 0.95rem; line-height: 1; padding: 0.3rem 0.4rem;
+    margin-left: 0.5rem; flex-shrink: 0;
+  }
+  .sale-receipt-btn:active { transform: scale(0.95); }
+  .sale-receipt-btn.done { border-color: var(--success); opacity: 0.85; }
   .recon-fgroup-name {
     font-family: 'Fraunces', serif; font-size: 0.78rem; color: var(--forest);
     margin-top: 0.4rem; text-align: center; line-height: 1.1;
@@ -3372,7 +3380,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.24</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.27</span>
 </header>
 
 <main>
@@ -4628,7 +4636,7 @@
     <!-- L1: BUSINESS UNIT CARDS -->
     <div id="sales-level-1" class="sales-level">
       <div class="batch-instructions">Tap the business unit to record a sale. Tea sold to Sireet, eggs at the gate, a milk run, a sheep sold — all land here.</div>
-      <button type="button" id="receipt-entry-btn" class="receipt-entry-btn" style="display:none" onclick="openReceiptBuilder()">🧾 Issue receipt / invoice</button>
+      <button type="button" id="receipt-entry-btn" class="receipt-entry-btn" style="display:none" onclick="openReceiptBuilder()">🧾 Raise an invoice</button>
       <div id="sales-unit-cards" class="sales-card-grid"></div>
     </div>
 
@@ -6125,7 +6133,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.24</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.27</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -7254,9 +7262,15 @@ function openReceiptBuilder() {
   const cfg = _receiptCfg();
   if (!cfg) { showToast('Receipt branding not configured for this tenant', 4000); return; }
   _ensureReceiptOverlay();
-  RECEIPT_STATE = { type: 'RCT', lines: [], buyer: '', lastDoc: null };
-  _recAddLine(); // start with one empty row
-  _recSyncTypeButtons();
+  // v6.11.26 — Standalone builder issues INVOICES only (Cheison 28 May 2026
+  // Verden). A receipt can never be minted from scratch — it must come from a
+  // recorded sale (the 🧾 on the row), so it always has a real transaction
+  // behind it and can't be abused to manufacture evidence for a purchase that
+  // never happened. Invoices legitimately precede payment, so they live here.
+  RECEIPT_STATE = { type: 'INV', lines: [], buyer: '', saleId: null, lastDoc: null };
+  _recAddLine();
+  const t = document.getElementById('rec-title'); if (t) t.textContent = 'New Invoice';
+  const s = document.getElementById('rec-subtitle'); if (s) s.textContent = 'Raised before payment';
   document.getElementById('rec-buyer').value = '';
   document.getElementById('rec-doc-view').style.display = 'none';
   document.getElementById('rec-builder').style.display = '';
@@ -7268,6 +7282,67 @@ function _recClose() {
   if (ov) ov.classList.remove('show');
 }
 
+/* v6.11.25 — Issue a receipt/invoice FROM an already-recorded sale (Cheison
+   28 May 2026 Verden). The elegant path: a sale is closed, the buyer wants a
+   document, the operator taps 🧾 on that sale row — the builder opens with the
+   line pre-filled from the sale (product, qty, unit price, buyer), no re-entry,
+   no dummy sale, no double-counting. On issue, the existing sale row is stamped
+   server-side (sale-receipt action) so the receipt link is durable, not just a
+   local flag the next cloud sync would wipe. */
+function issueReceiptForSale(saleId) {
+  const cfg = _receiptCfg();
+  if (!cfg) { showToast('Receipt branding not configured for this tenant', 4000); return; }
+  const sale = (STATE.sales || []).find(s => s && s.id === saleId);
+  if (!sale) { showToast('Sale not found', 3000); return; }
+  _ensureReceiptOverlay();
+  const qty = Number(sale.quantity) || 0;
+  const amount = Number(sale.amount) || 0;
+  const unitPrice = qty > 0 ? amount / qty : amount;
+  const desc = (sale.product || '') + (sale.variant ? ' · ' + sale.variant : '');
+  RECEIPT_STATE = {
+    type: 'RCT',
+    buyer: sale.buyer || '',
+    saleId: sale.id,
+    lines: [{ desc: desc, qty: qty > 0 ? qty : 1, price: qty > 0 ? unitPrice : amount, batch: '' }],
+    lastDoc: null
+  };
+  _recRenderLines();
+  const t = document.getElementById('rec-title'); if (t) t.textContent = 'Receipt';
+  const st = document.getElementById('rec-subtitle');
+  if (st) st.textContent = 'For ' + (sale.product || 'sale') + (sale.buyer ? ' · ' + sale.buyer : '');
+  const buyerEl = document.getElementById('rec-buyer');
+  if (buyerEl) buyerEl.value = RECEIPT_STATE.buyer;
+  document.getElementById('rec-doc-view').style.display = 'none';
+  document.getElementById('rec-builder').style.display = '';
+  document.getElementById('receipt-overlay').classList.add('show');
+}
+
+async function _recStampSale(saleId, typeLabel, number) {
+  // Local update first (instant UI feedback on the sale row).
+  const sale = (STATE.sales || []).find(s => s && s.id === saleId);
+  if (sale) {
+    sale.receipt_type = typeLabel;
+    sale.receipt_id = number;
+    sale.receipt_issued = true;
+    try { await storageSet(K_SALES, STATE.sales); } catch (e) {}
+    if (typeof _renderRecentSalesForContext === 'function') _renderRecentSalesForContext();
+  }
+  // Durable server stamp so it survives cloud re-hydration.
+  if (navigator.onLine && typeof TENANT_APPS_SCRIPT_URL !== 'undefined' && TENANT_APPS_SCRIPT_URL) {
+    try {
+      await fetch(TENANT_APPS_SCRIPT_URL, {
+        method: 'POST', mode: 'cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'sale-receipt',
+          payload: { id: saleId, receipt_type: typeLabel, receipt_id: number },
+          source: 'PWA ' + APP_VERSION + ' sale-receipt'
+        })
+      });
+    } catch (e) { /* best-effort; local flag already set, audit log has the number */ }
+  }
+}
+
 function _ensureReceiptOverlay() {
   if (document.getElementById('receipt-overlay')) return;
   const ov = document.createElement('div');
@@ -7277,11 +7352,7 @@ function _ensureReceiptOverlay() {
   ov.innerHTML = `
     <div class="modal-card rec-card" role="dialog" aria-modal="true">
       <div id="rec-builder">
-        <div class="modal-header"><h2>Receipt / Invoice</h2></div>
-        <div class="rec-typetoggle" id="rec-typetoggle">
-          <button type="button" data-t="RCT" onclick="_recSetType('RCT')">Receipt</button>
-          <button type="button" data-t="INV" onclick="_recSetType('INV')">Invoice</button>
-        </div>
+        <div class="modal-header"><h2 id="rec-title">Document</h2><p class="modal-subtitle" id="rec-subtitle"></p></div>
         <div class="field"><label>Buyer (optional)</label>
           <input type="text" id="rec-buyer" placeholder="Customer name"></div>
         <div class="rec-lines-head">
@@ -7313,12 +7384,10 @@ function _ensureReceiptOverlay() {
 }
 
 function _recSetType(t) {
+  // v6.11.26 — Type is now fixed by entry point (standalone = INV, from-sale =
+  // RCT); the toggle was removed to make free-standing receipts impossible.
+  // Retained as a harmless no-op guard for any stale reference.
   RECEIPT_STATE.type = (t === 'INV') ? 'INV' : 'RCT';
-  _recSyncTypeButtons();
-}
-function _recSyncTypeButtons() {
-  document.querySelectorAll('#rec-typetoggle button').forEach(b =>
-    b.classList.toggle('active', b.dataset.t === RECEIPT_STATE.type));
 }
 
 function _recAddLine() {
@@ -7428,6 +7497,12 @@ async function _recIssue() {
   document.getElementById('rec-builder').style.display = 'none';
   document.getElementById('rec-doc-view').style.display = '';
   showToast((doc.type === 'INV' ? 'Invoice ' : 'Receipt ') + doc.number + ' issued', 3500);
+
+  // v6.11.25 — If this document was issued FROM a recorded sale, stamp that
+  // sale row durably (server + local) so the link survives cloud re-hydration.
+  if (RECEIPT_STATE.saleId) {
+    await _recStampSale(RECEIPT_STATE.saleId, doc.type === 'INV' ? 'Invoice' : 'Receipt', doc.number);
+  }
 }
 
 function _renderReceiptSVG(doc) {
@@ -7470,11 +7545,49 @@ function _renderReceiptSVG(doc) {
     rows.push(`<text x="${cAmt}" y="${y}" text-anchor="end" fill="#26302b" font-family="IBM Plex Mono,monospace" font-size="14">${moneyRound(amt)}</text>`);
     if (ln.batch) { y += 18; rows.push(`<text x="${padX + 8}" y="${y}" fill="#8a7d68" font-family="IBM Plex Mono,monospace" font-size="11" font-style="italic">Batch: ${escapeHtml(ln.batch)}</text>`); }
   });
-  // Total
+  // v6.11.27 — VAT block (Cheison 28 May 2026 Verden). Placeholder by design:
+  // invisible while vatRate is 0 (clean document, no spurious 0% line on a
+  // not-yet-registered business), and the moment you set vatRate (e.g. 16) the
+  // Subtotal / VAT / Total breakdown appears. VAT is treated as INCLUSIVE of
+  // the line amounts (the Kenyan norm — displayed prices include VAT), so
+  // enabling it doesn't inflate already-agreed prices; it extracts the tax.
+  // A vatNote (optional) prints a small line even at 0% if you want a visible
+  // placeholder like "Not VAT registered".
+  const vatRate = parseFloat(cfg.vatRate) || 0;
   y += 30;
   rows.push(`<line x1="${cQty}" y1="${y - 14}" x2="${W - padX}" y2="${y - 14}" stroke="#1E3A2F" stroke-width="1.5"/>`);
+  if (vatRate > 0) {
+    const vat = doc.total * vatRate / (100 + vatRate);
+    const sub = doc.total - vat;
+    rows.push(`<text x="${cPrice}" y="${y + 4}" text-anchor="end" fill="#5b6b60" font-family="IBM Plex Mono,monospace" font-size="12">Subtotal</text>`);
+    rows.push(`<text x="${cAmt}" y="${y + 4}" text-anchor="end" fill="#26302b" font-family="IBM Plex Mono,monospace" font-size="13">${moneyRound(sub)}</text>`);
+    y += 22;
+    rows.push(`<text x="${cPrice}" y="${y + 4}" text-anchor="end" fill="#5b6b60" font-family="IBM Plex Mono,monospace" font-size="12">VAT (${vatRate}%, incl.)</text>`);
+    rows.push(`<text x="${cAmt}" y="${y + 4}" text-anchor="end" fill="#26302b" font-family="IBM Plex Mono,monospace" font-size="13">${moneyRound(vat)}</text>`);
+    y += 26;
+  }
   rows.push(`<text x="${cPrice}" y="${y + 6}" text-anchor="end" fill="#1E3A2F" font-family="IBM Plex Mono,monospace" font-size="13" letter-spacing="1">TOTAL</text>`);
   rows.push(`<text x="${cAmt}" y="${y + 6}" text-anchor="end" fill="#1E3A2F" font-family="Fraunces,serif" font-size="20" font-weight="700">Ksh ${moneyRound(doc.total)}</text>`);
+  if (vatRate <= 0 && cfg.vatNote) {
+    y += 24;
+    rows.push(`<text x="${cAmt}" y="${y}" text-anchor="end" fill="#8a7d68" font-family="IBM Plex Mono,monospace" font-size="11" font-style="italic">${escapeHtml(cfg.vatNote)}</text>`);
+  }
+  // v6.11.27 — Invoices carry payment instructions + terms (how and by when to
+  // pay). Receipts skip these (already settled). Both come from config.js.
+  if (doc.type === 'INV') {
+    if (cfg.paymentMethods) {
+      y += 40;
+      rows.push(`<text x="${padX}" y="${y}" fill="#5b6b60" font-family="IBM Plex Mono,monospace" font-size="11" letter-spacing="1">PAYMENT</text>`);
+      y += 18;
+      rows.push(`<text x="${padX}" y="${y}" fill="#26302b" font-family="IBM Plex Mono,monospace" font-size="12">${escapeHtml(cfg.paymentMethods)}</text>`);
+    }
+    if (cfg.paymentTerms) {
+      y += 26;
+      rows.push(`<text x="${padX}" y="${y}" fill="#5b6b60" font-family="IBM Plex Mono,monospace" font-size="11" letter-spacing="1">TERMS</text>`);
+      y += 18;
+      rows.push(`<text x="${padX}" y="${y}" fill="#26302b" font-family="Fraunces,serif" font-size="12.5" font-style="italic">${escapeHtml(cfg.paymentTerms)}</text>`);
+    }
+  }
   // Footer
   y += 56;
   rows.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" fill="#5b6b60" font-family="Fraunces,serif" font-size="14" font-style="italic">${escapeHtml(cfg.footer || 'Thank you')}</text>`);
@@ -7627,15 +7740,24 @@ function _renderRecentSalesForContext() {
   }
   section.style.display = '';
   countEl.textContent = all.length + ' shown';
+  const _recAvail = !!_receiptCfg();
   list.innerHTML = all.map(function (r) {
     const qty = (r.quantity && r.unit) ? (r.quantity + ' ' + r.unit) : '';
+    // v6.11.25 — Issue a receipt FROM this recorded sale (no re-entry). Shows a
+    // ✓ once stamped; tapping again re-opens to re-print/re-share.
+    let receiptCell = '';
+    if (_recAvail) {
+      receiptCell = r.receipt_id
+        ? '<button class="sale-receipt-btn done" title="' + escapeHtml(r.receipt_id) + ' — tap to view again" onclick="issueReceiptForSale(\'' + escapeHtml(r.id) + '\')">🧾✓</button>'
+        : '<button class="sale-receipt-btn" title="Issue receipt for this sale" onclick="issueReceiptForSale(\'' + escapeHtml(r.id) + '\')">🧾</button>';
+    }
     return '<div class="record-row">'
       + '<div>'
       +   '<div class="name">' + escapeHtml(r.product || '') + (r.variant ? ' · ' + escapeHtml(r.variant) : '') + '</div>'
       +   '<div class="meta">' + escapeHtml(r.date || '') + ' · ' + escapeHtml(r.payment_method || '') + (qty ? ' · ' + escapeHtml(qty) : '') + (r.buyer ? ' · ' + escapeHtml(r.buyer) : '') + '</div>'
       + '</div>'
-      + '<div class="qty"></div>'
       + '<div class="val">Ksh ' + moneyRound(Number(r.amount) || 0) + '</div>'
+      + receiptCell
       + '</div>';
   }).join('');
 }
@@ -7692,7 +7814,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.24'
+    recorded_from: 'PWA v6.11.27'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -7707,7 +7829,8 @@ async function submitSale() {
   _updateSalesPreview();
   _renderRecentSalesForContext();
 
-  showToast('Sale recorded · ' + c.product.label + ' · Ksh ' + moneyRound(amount), 3000);
+  showToast('Sale recorded · ' + c.product.label + ' · Ksh ' + moneyRound(amount)
+    + (_receiptCfg() ? ' — tap 🧾 below for a receipt' : ''), _receiptCfg() ? 4500 : 3000);
 
   // Route to cloud via gate (same write-gate pattern as banked/poultry).
   // syncSale is a thin wrapper that builds the gated request and calls 
@@ -8400,7 +8523,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.24';
+const APP_VERSION = 'v6.11.27';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover

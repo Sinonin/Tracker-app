@@ -1,4 +1,7 @@
 // Sinonin Group Management App — Service Worker
+// v6.11.27 — Receipt/invoice config additions (Cheison 28 May 2026 Verden): paymentMethods + paymentTerms (printed on invoices) and a VAT placeholder (vatRate/vatNote). VAT is invisible at rate 0 and renders a Subtotal/VAT(incl.)/Total breakdown once a rate is set — ready for registration without a spurious 0% line today. config.js receipt block extended across all tenants. PWA + config only.
+// v6.11.26 — Receipt accountability lock (Cheison 28 May 2026 Verden). Receipts can now ONLY be issued from a recorded sale (the 🧾 on the sale row), never minted from scratch — closes the abuse vector of manufacturing a receipt for a purchase that never happened. The standalone builder is now INVOICE-only (invoices legitimately precede payment). Type toggle removed; entry point fixes the document type. Post-sale toast nudges toward the 🧾. PWA-only; Apps Script unchanged.
+// v6.11.25 — Receipt-from-sale integration (Cheison 28 May 2026 Verden). Each recorded sale row gets a 🧾 clickable that opens the receipt builder pre-filled from that sale (product, qty, unit price, buyer) — no re-entry, no dummy sale, no double-counting. On issue, the existing sale row is stamped durably via Apps Script v5.0.55 sale-receipt action (Receipt Type/ID/Issued), surviving cloud re-hydration; row shows 🧾✓ once receipted.
 // v6.11.24 — Receipt/Invoice engine (infrastructure phase). Build-a-document flow from Sales: type (Receipt/Invoice), line items with optional batch/cohort, server-allocated number (Apps Script v5.0.54 receipt-number action, atomic via LockService, tenant prefix from config.js). Branded SVG document -> Print/PDF, PNG export, Web Share (WhatsApp/email). Config receipt block added to all tenants. No income writeback or product codes yet (deferred). (Cheison 28 May 2026 Verden)
 // v6.11.23 — Factory chart re-clustered by MONTH instead of factory (Cheison 28 May 2026 Verden). Months are the stable axis (oldest->newest, current = MTD, tinted); within each month only factories that actually delivered render, colour-coded with a legend. Sparse/absent factories (Kapchorwa rare-route, Sangalo gaps) no longer leave permanent empty clusters. Shared kg scale, hover/tap for exact kg + expected
 // v6.11.22 — Factory chart reworked into a single clustered chart: factories side by side, each a cluster of 3 month-bars (oldest→newest, brass = current MTD) on a shared kg scale. Exact kg + expected income reveal on hover (pointer) or tap (touch) per bar — global Labels toggle removed, tighter use of space (Cheison 28 May 2026 Verden)
@@ -87,7 +90,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v247';
+const CACHE = 'sinonin-greenleaf-v250';
 
 const SHELL_FILES = [
   './',
