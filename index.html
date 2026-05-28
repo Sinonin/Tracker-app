@@ -2905,6 +2905,64 @@
   .econ-grid .econ-item .l { font-family: 'IBM Plex Mono', monospace; font-size: 0.55rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--slate); }
   .econ-grid .econ-item .v { font-family: 'Fraunces', serif; font-size: 0.95rem; font-weight: 500; color: var(--ink); margin-top: 0.15rem; font-variant-numeric: tabular-nums; }
 
+  /* v6.11.19 — Sinonin Tea umbrella hierarchy. The umbrella headline reads
+     as the whole tea enterprise; sub-cards indent to show they roll up into
+     it; the leased subtotal sits between owned fields and leased fields. */
+  .econ-card.econ-umbrella {
+    border-left: 4px solid var(--forest);
+    background: linear-gradient(180deg, rgba(30,58,47,0.05), var(--ivory-card));
+  }
+  .econ-card.econ-umbrella .econ-head .t { font-size: 1.18rem; font-weight: 600; }
+  .econ-card.econ-sub {
+    margin-left: 1rem;
+    border-left: 2px solid var(--rule);
+    padding: 0.7rem 0.85rem;
+    background: transparent;
+  }
+  .econ-card.econ-sub .econ-head .t { font-size: 0.95rem; color: var(--slate); }
+  .econ-card.econ-subtotal {
+    margin-left: 1rem;
+    border-left: 2px solid var(--brass);
+    background: rgba(176,141,87,0.06);
+  }
+  .econ-card.econ-subtotal .econ-head .t { font-size: 0.98rem; color: var(--brass); font-weight: 600; }
+  .econ-card.econ-leased { border-left-color: var(--brass); }
+  .econ-card.econ-overhead, .econ-card.econ-other {
+    border-left: 3px solid var(--slate);
+    background: rgba(100,110,120,0.04);
+  }
+  .econ-card.econ-overhead .econ-head .t, .econ-card.econ-other .econ-head .t { color: var(--slate); font-style: italic; }
+
+  /* v6.11.19 — Factory reconciliation table (GL delivery vs booked income). */
+  .recon-factory { margin-bottom: 1rem; }
+  .recon-fname {
+    font-family: 'Fraunces', serif; font-weight: 600; font-size: 1.02rem;
+    color: var(--forest); margin-bottom: 0.4rem;
+  }
+  .recon-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  .recon-table th {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.52rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--slate); text-align: right; padding: 0.3rem 0.4rem;
+    border-bottom: 1px solid var(--rule); font-weight: 500;
+  }
+  .recon-table th:first-child { text-align: left; }
+  .recon-table td {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; color: var(--ink);
+    text-align: right; padding: 0.34rem 0.4rem; border-bottom: 1px solid var(--rule);
+  }
+  .recon-table td.recon-mon { text-align: left; color: var(--slate); font-size: 0.78rem; }
+  .recon-table tr:last-child td { border-bottom: none; }
+  .recon-ok { color: var(--success); }
+  .recon-pos { color: var(--brass); }
+  .recon-warn { color: var(--danger); }
+  .recon-pending { color: var(--slate); opacity: 0.5; }
+  .recon-mtd {
+    display: inline-block; font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.5rem; letter-spacing: 0.1em; color: var(--brass);
+    border: 1px solid var(--brass); border-radius: 2px;
+    padding: 0.05rem 0.2rem; margin-left: 0.3rem; vertical-align: middle;
+  }
+
   .factory-card {
     background: var(--ivory-card);
     border: 1px solid var(--rule);
@@ -3203,7 +3261,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.18</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.20</span>
 </header>
 
 <main>
@@ -3549,6 +3607,16 @@
         <div class="biz-card biz-card-aggregate"><div class="lbl">📊 MTD all factories</div><div class="val" id="tea-mtd-all-kg">0</div><div class="sub" id="tea-mtd-all-sub">Ksh 0 expected</div></div>
         <div class="biz-card biz-card-aggregate"><div class="lbl">📅 YTD all factories</div><div class="val" id="tea-ytd-all-kg">0</div><div class="sub" id="tea-ytd-all-sub">Ksh 0 expected</div></div>
       </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>Factory reconciliation</h3><span class="meta">last 3 months</span></div>
+      <!-- v6.11.19 — Per-factory monthly GL delivery vs booked income 
+           (Cheison 28 May 2026 Verden). Quick-access reconciliation: 
+           GL delivered (kg → expected income at net rate) against what 
+           was banked from that factory. Booked side matches by production 
+           period when available, else by banking-date month. -->
+      <div id="factory-recon"></div>
     </div>
 
     <div class="section">
@@ -5934,7 +6002,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.18</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.20</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6105,6 +6173,35 @@ const BLOCKS = [];
 
 function tenantTeaBlocks() {
   const raw = tcfg('TEA_BLOCKS', '');
+  if (typeof raw !== 'string' || !raw) return [];
+  return raw.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+}
+
+/* v6.11.19 — Leased tea blocks (Cheison 28 May 2026 Verden). LEASED_BLOCKS 
+   Control_Panel key lists which tea blocks are leased rather than owned 
+   (Sinonin: Kipkorom, Sangalo). Used by Insights to break leased fields out 
+   under the Sinonin Tea umbrella with their own subtotal, because leased 
+   economics carry rent and Cheison tracks their margin to the cent. Returns 
+   [] when unset → no leased split shown, umbrella still rolls up all blocks. */
+function tenantLeasedBlocks() {
+  const raw = tcfg('LEASED_BLOCKS', '');
+  if (typeof raw !== 'string' || !raw) return [];
+  return raw.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+}
+
+function _isLeasedBlock(name) {
+  const leased = tenantLeasedBlocks().map(function (s) { return s.toLowerCase(); });
+  return leased.indexOf(String(name || '').toLowerCase()) !== -1;
+}
+
+/* v6.11.19 — Expense-only allocation targets (Cheison 28 May 2026 Verden). 
+   EXPENSE_ONLY_UNITS Control_Panel key lists allocations that appear in the 
+   expense dropdown but NOT in Sales cards or Crops/Livestock clusters — you 
+   don't sell overhead. Sinonin: "Shared Overhead" (Elias's wages, vehicle 
+   service/insurance, bank fees, SHA — genuinely farm-wide costs localised to 
+   one honest home, never distributed by ratio). Returns [] when unset. */
+function tenantExpenseOnlyUnits() {
+  const raw = tcfg('EXPENSE_ONLY_UNITS', '');
   if (typeof raw !== 'string' || !raw) return [];
   return raw.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
 }
@@ -7137,7 +7234,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.18'
+    recorded_from: 'PWA v6.11.20'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -7845,7 +7942,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.18';
+const APP_VERSION = 'v6.11.20';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -10887,6 +10984,7 @@ function cloudToLocalBanked(r) {
     source: r.source,
     amount: Number(r.amount) || 0,
     period: r.period || '',
+    type: r.type || '',
     reference: r.reference || '',
     _source: 'cloud'
   };
@@ -11516,9 +11614,16 @@ function populateDropdowns() {
   document.getElementById('b-block').innerHTML = '<option value="">— Block —</option>' + blockOpts;
   document.getElementById('a-block').innerHTML = '<option value="All blocks">All blocks (consolidated)</option>' + blockOpts;
   // Allocation dropdowns: tea blocks AND business units (Records filter, expense form)
+  // v6.11.19 — Append expense-only units (Shared Overhead) as a third group, 
+  // present in expense allocation but absent from Sales/cluster surfaces.
+  const expenseOnlyUnits = tenantExpenseOnlyUnits();
+  const expenseOnlyOpts = expenseOnlyUnits.length
+    ? `<optgroup label="Overhead">${expenseOnlyUnits.map(u => `<option value="${u}">${u}</option>`).join('')}</optgroup>`
+    : '';
   const groupedOpts =
     `<optgroup label="Tea blocks">${blockOpts}</optgroup>` +
-    `<optgroup label="Business units">${businessUnitOpts}</optgroup>`;
+    `<optgroup label="Business units">${businessUnitOpts}</optgroup>` +
+    expenseOnlyOpts;
   document.getElementById('filter-block').innerHTML = '<option value="">All Allocations</option>' + groupedOpts;
   // v6.11.18 — "Whole farm" removed as a selectable expense allocation. 
   // Cheison's intent: every cost is attributed to a specific tea block or 
@@ -12214,10 +12319,16 @@ function xbAddRow() {
   // v6.11.18 — "Whole farm" removed as a batch allocation option (see 
   // single-form rationale). Forced-choice placeholder; empty rows are 
   // validated at submit.
+  // v6.11.19 — Expense-only units (Shared Overhead) appended as Overhead group.
+  const expenseOnlyUnitsB = tenantExpenseOnlyUnits();
+  const expenseOnlyOptsB = expenseOnlyUnitsB.length
+    ? `<optgroup label="Overhead">${expenseOnlyUnitsB.map(u => `<option value="${u}">${u}</option>`).join('')}</optgroup>`
+    : '';
   const blockOpts =
     `<option value="" selected>— Allocate to… —</option>` +
     `<optgroup label="Tea blocks">${teaBlockOpts}</optgroup>` +
-    `<optgroup label="Business units">${businessUnitOpts}</optgroup>`;
+    `<optgroup label="Business units">${businessUnitOpts}</optgroup>` +
+    expenseOnlyOptsB;
   wrap.innerHTML = `
     <button class="xb-row-del" title="Remove this row">×</button>
     <div class="xb-row-num">Row ${xbRowCounter}</div>
@@ -18960,6 +19071,107 @@ function renderTeaPanel() {
   // tea-shares-month, etc.) all live in panel-tea now and are populated by 
   // the same renderHome() math.
   if (typeof renderHome === 'function') renderHome();
+  if (typeof renderFactoryRecon === 'function') renderFactoryRecon();
+}
+
+/* v6.11.19 — Factory reconciliation widget (Cheison 28 May 2026 Verden).
+   For each active tea factory, last 3 months: GL delivered (kg, from 
+   Actuals) → expected income (kg × era-aware net rate), against booked 
+   income (from Banked Income rows whose Source is that factory — seedling 
+   sales carry Source "seedlings" and are naturally excluded). Match on the 
+   production period ("For period") when the Banked row carries it; otherwise 
+   fall back to the banking-date month. Gap = Booked − Expected. Numbers-only, 
+   dense, for cross-checking tea-sales booking against GL-delivery income. */
+function renderFactoryRecon() {
+  const box = document.getElementById('factory-recon');
+  if (!box) return;
+
+  const factories = (STATE.factories || []).filter(f => f && f.name);
+  if (!factories.length) {
+    box.innerHTML = '<div class="empty" style="padding:1.2rem 0"><div class="em">No factories configured.</div><div class="sub">Tea_Factories sheet populates this on next sync.</div></div>';
+    return;
+  }
+
+  // Last 3 months, newest first.
+  // v6.11.20 — Calendar-month boundaries, newest first. The two prior months
+  // (i=1,2) are WHOLE months; the current month (i=0) is month-to-date and is
+  // flagged isMtd so the display marks it partial. Cheison's point: anchoring
+  // to calendar months (not a rolling window) means Mar/Apr read as complete
+  // pictures and only May moves — exactly how he reconciles.
+  const today = new Date();
+  const months = [];
+  for (let i = 0; i < 3; i++) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    months.push({
+      ym: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+      label: d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }),
+      periodLabel: d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }), // e.g. "May 2026"
+      isMtd: i === 0
+    });
+  }
+
+  const actuals = STATE.actuals || [];
+  const banked = STATE.banked || [];
+
+  const fnorm = s => String(s || '').trim().toLowerCase();
+
+  const cards = factories.map(f => {
+    const fname = f.name;
+    const fkey = fnorm(fname);
+    const rows = months.map(m => {
+      // GL delivered this month to this factory (from Actuals)
+      let glKg = 0, expected = 0;
+      actuals.forEach(a => {
+        if (fnorm(a.factory) !== fkey) return;
+        if (String(a.date || '').slice(0, 7) !== m.ym) return;
+        const kgv = Number(a.kg) || 0;
+        glKg += kgv;
+        expected += kgv * netPerKg(a.factory, a.date);
+      });
+      // Booked income from this factory for this month.
+      // Prefer production period match; fall back to banking-date month.
+      let booked = 0, hasBooking = false;
+      banked.forEach(b => {
+        if (fnorm(b.source) !== fkey) return;
+        const periodMatch = b.period && fnorm(b.period) === fnorm(m.periodLabel);
+        const dateMatch = !b.period && String(b.date || '').slice(0, 7) === m.ym;
+        if (periodMatch || dateMatch) {
+          booked += Number(b.amount) || 0;
+          hasBooking = true;
+        }
+      });
+      return { m, glKg, expected, booked, hasBooking };
+    });
+
+    // Skip factories with no activity at all in the window
+    const anyData = rows.some(r => r.glKg > 0 || r.hasBooking);
+    if (!anyData) return '';
+
+    const body = rows.map(r => {
+      const gap = r.booked - r.expected;
+      const gapCell = r.hasBooking
+        ? `<span class="${Math.abs(gap) < 1 ? 'recon-ok' : (gap < 0 ? 'recon-warn' : 'recon-pos')}">${gap >= 0 ? '+' : ''}${moneyRound(gap)}</span>`
+        : '<span class="recon-pending">—</span>';
+      const bookedCell = r.hasBooking ? moneyRound(r.booked) : '<span class="recon-pending">—</span>';
+      return `<tr>
+          <td class="recon-mon">${r.m.label}${r.m.isMtd ? ' <span class="recon-mtd">MTD</span>' : ''}</td>
+          <td>${kg(r.glKg)}</td>
+          <td>${moneyRound(r.expected)}</td>
+          <td>${bookedCell}</td>
+          <td>${gapCell}</td>
+        </tr>`;
+    }).join('');
+
+    return `<div class="recon-factory">
+        <div class="recon-fname">${fname}</div>
+        <table class="recon-table">
+          <thead><tr><th>Month</th><th>GL kg</th><th>Expected</th><th>Booked</th><th>Gap</th></tr></thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>`;
+  }).filter(Boolean).join('');
+
+  box.innerHTML = cards || '<div class="empty" style="padding:1.2rem 0"><div class="em">No factory activity in the last 3 months.</div></div>';
 }
 
 function renderPoultryPanel() {
@@ -19010,50 +19222,103 @@ function renderInsights() {
     byBlock[bucket].cashNow += cash;
   });
 
-  // v5.8.4 — Whole-farm allocation REMOVED per Cheison's decision (Q2 = B-strict).
-  // 
-  // Background: Insights previously distributed "Whole farm" expenses across 
-  // blocks proportionally by kg revenue. This made Sangalo (a leased farm) 
-  // appear to cost ~Ksh 860k when the sheet filter showed only ~Ksh 506k.
-  // The allocation was sound accounting in theory but conflated leased farm 
-  // economics with shared overhead.
-  //
-  // New behavior: each block shows ONLY its directly-tagged expenses.
-  // "Whole farm" expenses appear under their own bucket (no allocation).
-  // This matches sheet filters exactly — no surprise inflation.
-  //
-  // Cheison's input-side fix: advise Victor to avoid "Whole farm" tagging
-  // and attribute every expense to its specific block from now on.
+  // v6.11.19 — Expense bucketing for the Sinonin Tea umbrella model 
+  // (Cheison 28 May 2026 Verden). Replaces the flat "Whole farm catch-all" 
+  // with directed buckets, honouring the no-distribution principle — every 
+  // shilling sits where a human tagged it; nothing is spread by ratio.
+  //   · tea block        → its block bucket (rolls up into Sinonin Tea)
+  //   · Shared Overhead  → its own overhead bucket (EXPENSE_ONLY_UNITS)
+  //   · non-tea unit     → "other enterprises" expense total (Option A: tea
+  //                         section stays tea; full per-unit P&L is a later
+  //                         phase that needs non-tea revenue wiring)
+  //   · "Whole farm"/unknown → legacy bucket, shown only if non-zero
+  const overheadUnits = tenantExpenseOnlyUnits();
+  const overheadKey = {};
+  overheadUnits.forEach(u => overheadKey[u.toLowerCase()] = u);
+  const byOverhead = {};
+  overheadUnits.forEach(u => byOverhead[u] = 0);
+  const businessUnitSet = tenantBusinessUnits().map(u => u.toLowerCase());
+  let otherUnitExp = 0;
   let wholeFarmExp = 0;
   expenses.forEach(x => {
-    if (x.block === 'Whole farm' || !byBlock[x.block]) {
-      wholeFarmExp += x.amount;
+    const b = x.block || '';
+    const bl = b.toLowerCase();
+    if (byBlock[b]) {
+      byBlock[b].expenses += x.amount;                  // tea block
+    } else if (overheadKey[bl]) {
+      byOverhead[overheadKey[bl]] += x.amount;          // shared overhead
+    } else if (b === 'Whole farm') {
+      wholeFarmExp += x.amount;                         // legacy catch-all
+    } else if (businessUnitSet.indexOf(bl) !== -1) {
+      otherUnitExp += x.amount;                         // non-tea enterprise
     } else {
-      byBlock[x.block].expenses += x.amount;
+      wholeFarmExp += x.amount;                         // unknown → legacy
     }
   });
-  // Show Whole farm as its own bucket (not allocated)
-  if (wholeFarmExp > 0) {
-    byBlock['Whole farm'] = { kg: 0, cashNow: 0, expenses: wholeFarmExp };
-  }
-  Object.values(byBlock).forEach(v => { v.margin = v.cashNow - v.expenses; });
 
-  const blockRows = Object.entries(byBlock)
-    .filter(([,v]) => v.kg > 0 || v.expenses > 0)
-    .sort((a,b) => b[1].kg - a[1].kg);
+  // Roll-ups. Umbrella = all tea (six blocks + any consolidated/untagged tea).
+  // Leased subtotal = the LEASED_BLOCKS subset. Owned = the remainder, shown
+  // per-field (Cheison: per-leased-field + leased total; owned per-field is
+  // enough — no separate owned subtotal).
+  const leasedBlocks = teaBlocks.filter(_isLeasedBlock);
+  const ownedBlocks  = teaBlocks.filter(b => !_isLeasedBlock(b));
+  const sumOf = (names) => names.reduce((acc, b) => {
+    const v = byBlock[b];
+    if (v) { acc.kg += v.kg; acc.cashNow += v.cashNow; acc.expenses += v.expenses; }
+    return acc;
+  }, { kg: 0, cashNow: 0, expenses: 0 });
+  const umbrella  = sumOf(teaBlocks.concat(['Consolidated']));
+  const leasedSub = sumOf(leasedBlocks);
+
+  const _econCard = (name, v, cls, showKg) => {
+    const income = v.cashNow || 0, exp = v.expenses || 0;
+    const kgCell = (showKg === false) ? '' : `<span class="k">${kg(v.kg || 0)} kg</span>`;
+    return `<div class="econ-card ${cls || ''}">
+        <div class="econ-head"><span class="t">${name}</span>${kgCell}</div>
+        <div class="econ-grid">
+          <div class="econ-item"><div class="l">Income</div><div class="v">${moneyRound(income)}</div></div>
+          <div class="econ-item"><div class="l">Expenses</div><div class="v">${moneyRound(exp)}</div></div>
+          <div class="econ-item"><div class="l">Margin</div><div class="v">${moneyRound(income - exp)}</div></div>
+        </div>
+      </div>`;
+  };
+
   const box = document.getElementById('econ-blocks');
-  if (blockRows.length === 0) {
+  let econHtml = '';
+  const teaHasData = umbrella.kg > 0 || umbrella.expenses > 0;
+  if (teaHasData) {
+    // Umbrella headline — the whole tea enterprise, owned + leased.
+    econHtml += _econCard('🌿 Sinonin Tea', umbrella, 'econ-umbrella');
+    // Owned blocks, per field.
+    ownedBlocks.forEach(b => {
+      const v = byBlock[b];
+      if (v && (v.kg > 0 || v.expenses > 0)) econHtml += _econCard(b, v, 'econ-sub');
+    });
+    // Untagged tea (delivered without a block) — still part of the umbrella.
+    const cons = byBlock['Consolidated'];
+    if (cons && (cons.kg > 0 || cons.expenses > 0)) econHtml += _econCard('Consolidated tea', cons, 'econ-sub');
+    // Leased: subtotal first, then each leased field.
+    if (leasedBlocks.length && (leasedSub.kg > 0 || leasedSub.expenses > 0)) {
+      econHtml += _econCard('↳ Leased Tea (subtotal)', leasedSub, 'econ-subtotal');
+      leasedBlocks.forEach(b => {
+        const v = byBlock[b];
+        if (v && (v.kg > 0 || v.expenses > 0)) econHtml += _econCard(b + ' · leased', v, 'econ-sub econ-leased');
+      });
+    }
+  }
+  // Shared Overhead — cost-only lines, never rolled into any enterprise.
+  overheadUnits.forEach(u => {
+    if (byOverhead[u] > 0) econHtml += _econCard(u, { kg: 0, cashNow: 0, expenses: byOverhead[u] }, 'econ-overhead', false);
+  });
+  // Non-tea enterprises — expense total only for now (revenue wiring is a later phase).
+  if (otherUnitExp > 0) econHtml += _econCard('Other enterprises · expenses', { kg: 0, cashNow: 0, expenses: otherUnitExp }, 'econ-other', false);
+  // Legacy "Whole farm" — only if historical rows still carry it.
+  if (wholeFarmExp > 0) econHtml += _econCard('Whole farm · legacy', { kg: 0, cashNow: 0, expenses: wholeFarmExp }, 'econ-other', false);
+
+  if (!econHtml) {
     box.innerHTML = `<div class="empty" style="padding:1.5rem 0"><div class="em">No actuals or expenses this period.</div></div>`;
   } else {
-    box.innerHTML = blockRows.map(([name, v]) => `
-      <div class="econ-card">
-        <div class="econ-head"><span class="t">${name}</span><span class="k">${kg(v.kg)} kg</span></div>
-        <div class="econ-grid">
-          <div class="econ-item"><div class="l">Income</div><div class="v">${moneyRound(v.cashNow)}</div></div>
-          <div class="econ-item"><div class="l">Expenses</div><div class="v">${moneyRound(v.expenses)}</div></div>
-          <div class="econ-item"><div class="l">Margin</div><div class="v">${moneyRound(v.margin)}</div></div>
-        </div>
-      </div>`).join('');
+    box.innerHTML = econHtml;
   }
 
   // Sireet shares — MTD / YTD / Lifetime (lifetime uses the carryover ledger + live current year)

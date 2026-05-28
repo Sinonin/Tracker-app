@@ -1,4 +1,6 @@
 // Sinonin Group Management App — Service Worker
+// v6.11.20 — Factory reconciliation months clarified: calendar-month boundaries (Mar/Apr whole months, May month-to-date). Current month now tagged "MTD" so the partial-vs-complete distinction is explicit — Cheison reconciles against complete prior months, not a rolling window (Cheison 28 May 2026 Verden)
+// v6.11.19 — Cost model + factory reconciliation. (1) Shared Overhead via EXPENSE_ONLY_UNITS CP key — expense-only allocation, excluded from Sales/clusters. (2) Insights tea section restructured into Sinonin Tea umbrella (sum of all blocks) with owned per-field + Leased Tea subtotal (LEASED_BLOCKS CP key) + leased per-field. (3) No-distribution preserved — every cost sits where tagged. (4) Factory reconciliation widget on panel-tea: per-factory last-3-months GL delivered (kg→expected) vs booked income (Banked source=factory), gap shown. Booked matches production period if present else banking-date month (Cheison 28 May 2026 Verden)
 // v6.11.18 — Two fixes: (1) Sales duplicate "Tea"/"Sinonin Tea" — teaInBusinessUnits detection changed from exact slug match (=== TEA) to word-boundary regex so "Sinonin Tea" suppresses the auto-prepend. (2) "Whole farm" removed as a selectable expense allocation in both single + batch forms (forced-choice placeholder, allocation now required at submit); historical Whole-farm expenses still render in their own Insights bucket (Cheison 28 May 2026 Verden)
 // v6.11.17 — Tenant URL externalized to config.js. index.html now byte-identical across Sinonin/Birei/Kibois repos; only config.js differs per tenant. TENANT_APPS_SCRIPT_URL sourced from window.TENANT_CONFIG.appsScriptUrl loaded synchronously via <script src="config.js"> in head. Service worker precaches config.js as shell (network-first) so URL rotations propagate on next online load. Each tenant repo gets its own 3-line config.js (Cheison 27 May 2026 Verden)
 // v6.11.16 — Always full fetch. The runCloudSync since=lastSyncDate path was architecturally incompatible with applyCloudResponse REPLACE semantics: incremental fetch returned only entries dated >= lastSyncDate, then replaced STATE.actuals/entries/expenses/banked/poultry wholesale — wiping historical entries from device memory after every auto-sync. Symptom: Cheison saw "no factory-confirmed actual for Sireet on 22 May" toast despite the actual being on the sheet — STATE.actuals had only today entries. Fix: PWA no longer passes since= parameter; cloud-side keeps the param for forward compat. Bandwidth cost negligible — six tables total a few hundred rows (Cheison 27 May 2026 Verden)
@@ -81,7 +83,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v241';
+const CACHE = 'sinonin-greenleaf-v243';
 
 const SHELL_FILES = [
   './',
