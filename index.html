@@ -3004,6 +3004,58 @@
     font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; color: var(--slate);
   }
   .recon-leg-dot { width: 0.6rem; height: 0.6rem; border-radius: 2px; display: inline-block; }
+
+  /* v6.11.24 — Receipt / invoice builder + document. */
+  .receipt-entry-btn {
+    width: 100%; padding: 0.7rem; margin-bottom: 0.9rem;
+    background: var(--forest); color: var(--ivory); border: none; border-radius: 8px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; letter-spacing: 0.08em;
+    text-transform: uppercase; cursor: pointer;
+  }
+  .receipt-entry-btn:active { transform: scale(0.99); }
+  .rec-card { max-width: 460px; max-height: 88vh; overflow-y: auto; text-align: left; }
+  .rec-typetoggle { display: flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; margin-bottom: 1rem; }
+  .rec-typetoggle button {
+    flex: 1; padding: 0.55rem; background: transparent; border: none; cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--slate);
+  }
+  .rec-typetoggle button.active { background: var(--forest); color: var(--ivory); }
+  .rec-lines-head {
+    display: grid; grid-template-columns: 1fr 70px 90px 28px; gap: 0.4rem;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.55rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--slate); margin: 0.8rem 0 0.3rem; padding: 0 0.1rem;
+  }
+  .rec-line { margin-bottom: 0.5rem; }
+  .rec-line-main { display: grid; grid-template-columns: 1fr 70px 90px 28px; gap: 0.4rem; align-items: center; }
+  .rec-line input {
+    width: 100%; padding: 0.45rem 0.5rem; border: 1px solid var(--rule); border-radius: 5px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; box-sizing: border-box;
+  }
+  .rec-line .rl-desc { font-family: 'Fraunces', serif; }
+  .rec-line .rl-batch { margin-top: 0.3rem; font-size: 0.72rem; color: var(--slate); }
+  .rec-line .rl-del {
+    background: transparent; border: 1px solid var(--rule); border-radius: 5px; cursor: pointer;
+    color: var(--danger); font-size: 1rem; line-height: 1; padding: 0.3rem;
+  }
+  .rec-addline {
+    background: transparent; border: 1px dashed var(--rule); border-radius: 6px; width: 100%;
+    padding: 0.5rem; margin-top: 0.3rem; cursor: pointer; color: var(--forest);
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem;
+  }
+  .rec-total-row {
+    display: flex; justify-content: space-between; align-items: baseline; margin: 1rem 0;
+    padding-top: 0.7rem; border-top: 1.5px solid var(--forest);
+    font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 600; color: var(--forest-dark);
+  }
+  #rec-doc-canvas { margin-bottom: 1rem; }
+  .rec-doc-actions { display: flex; gap: 0.5rem; margin-bottom: 0.8rem; }
+  .rec-doc-actions button {
+    flex: 1; padding: 0.6rem 0.4rem; border: 1px solid var(--rule); border-radius: 7px;
+    background: #fff; cursor: pointer; font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.66rem; color: var(--forest-dark);
+  }
+  .rec-doc-actions button:active { transform: scale(0.97); }
   .recon-fgroup-name {
     font-family: 'Fraunces', serif; font-size: 0.78rem; color: var(--forest);
     margin-top: 0.4rem; text-align: center; line-height: 1.1;
@@ -3320,7 +3372,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.23</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.24</span>
 </header>
 
 <main>
@@ -4576,6 +4628,7 @@
     <!-- L1: BUSINESS UNIT CARDS -->
     <div id="sales-level-1" class="sales-level">
       <div class="batch-instructions">Tap the business unit to record a sale. Tea sold to Sireet, eggs at the gate, a milk run, a sheep sold — all land here.</div>
+      <button type="button" id="receipt-entry-btn" class="receipt-entry-btn" style="display:none" onclick="openReceiptBuilder()">🧾 Issue receipt / invoice</button>
       <div id="sales-unit-cards" class="sales-card-grid"></div>
     </div>
 
@@ -6072,7 +6125,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.23</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.24</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -7171,10 +7224,337 @@ function _wireSalesBackButtons() {
   });
 }
 
+/* ============================================================
+   RECEIPT / INVOICE ENGINE — v6.11.24 (Cheison 28 May 2026 Verden)
+   Infrastructure phase. Build-a-document flow: the operator opens the
+   builder from the Sales panel "only if they need" one, picks Receipt or
+   Invoice, adds line items (with an optional batch/cohort per line — shown
+   only when filled, never forced), and issues. The number is allocated
+   server-side (atomic, collision-free across operators) with the tenant
+   prefix from config.js; the document renders as an SVG that prints/saves
+   to PDF, exports as PNG, and shares via the device share sheet (WhatsApp,
+   email, anything installed). No product codes (deferred until an inventory
+   module needs them); no income writeback yet (the server audit log records
+   every allocated number — sales linkage and invoice→receipt conversion are
+   the next phase). Decorations and fancier furniture later, per Cheison. */
+function _receiptCfg() {
+  return (typeof window !== 'undefined' && window.TENANT_CONFIG && window.TENANT_CONFIG.receipt)
+    ? window.TENANT_CONFIG.receipt : null;
+}
+
+var RECEIPT_STATE = { type: 'RCT', lines: [], buyer: '', lastDoc: null };
+
+function initReceiptFeature() {
+  const btn = document.getElementById('receipt-entry-btn');
+  if (!btn) return;
+  btn.style.display = _receiptCfg() ? '' : 'none';
+}
+
+function openReceiptBuilder() {
+  const cfg = _receiptCfg();
+  if (!cfg) { showToast('Receipt branding not configured for this tenant', 4000); return; }
+  _ensureReceiptOverlay();
+  RECEIPT_STATE = { type: 'RCT', lines: [], buyer: '', lastDoc: null };
+  _recAddLine(); // start with one empty row
+  _recSyncTypeButtons();
+  document.getElementById('rec-buyer').value = '';
+  document.getElementById('rec-doc-view').style.display = 'none';
+  document.getElementById('rec-builder').style.display = '';
+  document.getElementById('receipt-overlay').classList.add('show');
+}
+
+function _recClose() {
+  const ov = document.getElementById('receipt-overlay');
+  if (ov) ov.classList.remove('show');
+}
+
+function _ensureReceiptOverlay() {
+  if (document.getElementById('receipt-overlay')) return;
+  const ov = document.createElement('div');
+  ov.className = 'modal-backdrop';
+  ov.id = 'receipt-overlay';
+  ov.setAttribute('aria-hidden', 'true');
+  ov.innerHTML = `
+    <div class="modal-card rec-card" role="dialog" aria-modal="true">
+      <div id="rec-builder">
+        <div class="modal-header"><h2>Receipt / Invoice</h2></div>
+        <div class="rec-typetoggle" id="rec-typetoggle">
+          <button type="button" data-t="RCT" onclick="_recSetType('RCT')">Receipt</button>
+          <button type="button" data-t="INV" onclick="_recSetType('INV')">Invoice</button>
+        </div>
+        <div class="field"><label>Buyer (optional)</label>
+          <input type="text" id="rec-buyer" placeholder="Customer name"></div>
+        <div class="rec-lines-head">
+          <span>Item</span><span>Qty</span><span>Unit price</span><span></span>
+        </div>
+        <div id="rec-lines"></div>
+        <button type="button" class="rec-addline" onclick="_recAddLine()">+ Add item</button>
+        <div class="rec-total-row"><span>Total</span><span id="rec-total">Ksh 0</span></div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" onclick="_recClose()">Cancel</button>
+          <button type="button" class="btn-primary" id="rec-issue-btn" onclick="_recIssue()">Issue</button>
+        </div>
+      </div>
+      <div id="rec-doc-view" style="display:none">
+        <div id="rec-doc-canvas"></div>
+        <div class="rec-doc-actions">
+          <button type="button" onclick="_recPrint()">🖨 Print / PDF</button>
+          <button type="button" onclick="_recSaveImage()">🖼 Save image</button>
+          <button type="button" onclick="_recShare()">↗ Share</button>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" onclick="_recClose()">Done</button>
+          <button type="button" class="btn-primary" onclick="openReceiptBuilder()">New document</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click', function (e) { if (e.target === ov) _recClose(); });
+}
+
+function _recSetType(t) {
+  RECEIPT_STATE.type = (t === 'INV') ? 'INV' : 'RCT';
+  _recSyncTypeButtons();
+}
+function _recSyncTypeButtons() {
+  document.querySelectorAll('#rec-typetoggle button').forEach(b =>
+    b.classList.toggle('active', b.dataset.t === RECEIPT_STATE.type));
+}
+
+function _recAddLine() {
+  RECEIPT_STATE.lines.push({ desc: '', qty: '', price: '', batch: '' });
+  _recRenderLines();
+}
+function _recRemoveLine(i) {
+  RECEIPT_STATE.lines.splice(i, 1);
+  if (!RECEIPT_STATE.lines.length) RECEIPT_STATE.lines.push({ desc: '', qty: '', price: '', batch: '' });
+  _recRenderLines();
+}
+function _recReadLines() {
+  const wrap = document.getElementById('rec-lines');
+  if (!wrap) return;
+  wrap.querySelectorAll('.rec-line').forEach((row, i) => {
+    if (!RECEIPT_STATE.lines[i]) return;
+    RECEIPT_STATE.lines[i].desc  = row.querySelector('.rl-desc').value;
+    RECEIPT_STATE.lines[i].qty   = row.querySelector('.rl-qty').value;
+    RECEIPT_STATE.lines[i].price = row.querySelector('.rl-price').value;
+    RECEIPT_STATE.lines[i].batch = row.querySelector('.rl-batch').value;
+  });
+}
+function _recRenderLines() {
+  const wrap = document.getElementById('rec-lines');
+  if (!wrap) return;
+  wrap.innerHTML = RECEIPT_STATE.lines.map((ln, i) => `
+    <div class="rec-line" data-i="${i}">
+      <div class="rec-line-main">
+        <input class="rl-desc" placeholder="Day-old chicks" value="${escapeHtml(ln.desc || '')}" oninput="_recRecalc()">
+        <input class="rl-qty" type="number" inputmode="decimal" min="0" step="any" placeholder="Qty" value="${ln.qty}" oninput="_recRecalc()">
+        <input class="rl-price" type="number" inputmode="decimal" min="0" step="any" placeholder="Price" value="${ln.price}" oninput="_recRecalc()">
+        <button type="button" class="rl-del" title="Remove" onclick="_recRemoveLine(${i})">×</button>
+      </div>
+      <input class="rl-batch" placeholder="Batch / cohort (optional — e.g. poultry)" value="${escapeHtml(ln.batch || '')}" oninput="_recRecalc()">
+    </div>`).join('');
+  _recRecalc();
+}
+function _recRecalc() {
+  _recReadLines();
+  const total = RECEIPT_STATE.lines.reduce((s, ln) =>
+    s + (parseFloat(ln.qty) || 0) * (parseFloat(ln.price) || 0), 0);
+  const el = document.getElementById('rec-total');
+  if (el) el.textContent = 'Ksh ' + moneyRound(total);
+  return total;
+}
+
+async function _recAllocateNumber(type) {
+  const cfg = _receiptCfg() || {};
+  if (!navigator.onLine) return { ok: false, offline: true };
+  if (typeof TENANT_APPS_SCRIPT_URL === 'undefined' || !TENANT_APPS_SCRIPT_URL) return { ok: false };
+  try {
+    const res = await fetch(TENANT_APPS_SCRIPT_URL, {
+      method: 'POST', mode: 'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'receipt-number',
+        payload: { type: type, prefix: cfg.numberPrefix || '' },
+        source: 'PWA ' + APP_VERSION + ' receipt'
+      })
+    });
+    const data = await res.json();
+    return data && data.ok ? data : { ok: false };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+async function _recIssue() {
+  const total = _recRecalc();
+  const lines = RECEIPT_STATE.lines.filter(ln =>
+    (ln.desc && ln.desc.trim()) && (parseFloat(ln.qty) > 0) && (parseFloat(ln.price) >= 0));
+  if (!lines.length) { showToast('Add at least one item with a quantity and price', 4000); return; }
+
+  const btn = document.getElementById('rec-issue-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Issuing…'; }
+  const alloc = await _recAllocateNumber(RECEIPT_STATE.type);
+  if (btn) { btn.disabled = false; btn.textContent = 'Issue'; }
+  if (!alloc.ok) {
+    showToast(alloc.offline
+      ? 'Connect to issue a numbered document (numbers are assigned by the server to stay unique).'
+      : 'Could not allocate a number — try again.', 6000);
+    return;
+  }
+
+  const cfg = _receiptCfg() || {};
+  const doc = {
+    type: RECEIPT_STATE.type,
+    number: alloc.number,
+    date: new Date().toISOString().slice(0, 10),
+    buyer: (document.getElementById('rec-buyer').value || '').trim(),
+    lines: lines.map(ln => ({
+      desc: ln.desc.trim(),
+      qty: parseFloat(ln.qty) || 0,
+      price: parseFloat(ln.price) || 0,
+      batch: (ln.batch || '').trim()
+    })),
+    total: total,
+    cfg: cfg
+  };
+  RECEIPT_STATE.lastDoc = doc;
+  // Client-side history (server audit log already records the allocation).
+  STATE.receipts = STATE.receipts || [];
+  STATE.receipts.push({ number: doc.number, type: doc.type, date: doc.date, buyer: doc.buyer, total: doc.total, ts: new Date().toISOString() });
+  try { await storageSet('sinonin_receipts_v1', STATE.receipts); } catch (e) {}
+
+  document.getElementById('rec-doc-canvas').innerHTML = _renderReceiptSVG(doc);
+  document.getElementById('rec-builder').style.display = 'none';
+  document.getElementById('rec-doc-view').style.display = '';
+  showToast((doc.type === 'INV' ? 'Invoice ' : 'Receipt ') + doc.number + ' issued', 3500);
+}
+
+function _renderReceiptSVG(doc) {
+  const cfg = doc.cfg || {};
+  const title = doc.type === 'INV' ? 'INVOICE' : 'RECEIPT';
+  const W = 720, padX = 48;
+  let y = 0;
+  const rows = [];
+  const head = [];
+  // Header band
+  head.push(`<rect x="0" y="0" width="${W}" height="150" fill="#1E3A2F"/>`);
+  head.push(`<image href="${escapeHtml(cfg.logoUrl || 'logo.png')}" x="${padX}" y="34" width="82" height="82" preserveAspectRatio="xMidYMid meet"/>`);
+  head.push(`<text x="${padX + 100}" y="62" fill="#F4EFE6" font-family="Fraunces,serif" font-size="26" font-weight="600">${escapeHtml(cfg.businessName || 'Business')}</text>`);
+  head.push(`<text x="${padX + 100}" y="86" fill="#CBB994" font-family="IBM Plex Mono,monospace" font-size="13">${escapeHtml(cfg.address || '')}</text>`);
+  if (cfg.kraPin) head.push(`<text x="${padX + 100}" y="106" fill="#CBB994" font-family="IBM Plex Mono,monospace" font-size="13">KRA PIN: ${escapeHtml(cfg.kraPin)}</text>`);
+  y = 150;
+  // Title + meta
+  y += 44;
+  head.push(`<text x="${padX}" y="${y}" fill="#1E3A2F" font-family="Fraunces,serif" font-size="30" font-weight="700" letter-spacing="2">${title}</text>`);
+  head.push(`<text x="${W - padX}" y="${y - 18}" text-anchor="end" fill="#5b6b60" font-family="IBM Plex Mono,monospace" font-size="13">No. ${escapeHtml(doc.number)}</text>`);
+  head.push(`<text x="${W - padX}" y="${y}" text-anchor="end" fill="#5b6b60" font-family="IBM Plex Mono,monospace" font-size="13">Date: ${escapeHtml(doc.date)}</text>`);
+  y += 12;
+  if (doc.buyer) { y += 22; head.push(`<text x="${padX}" y="${y}" fill="#2a3a32" font-family="IBM Plex Mono,monospace" font-size="14">Issued to: ${escapeHtml(doc.buyer)}</text>`); }
+  // Table header
+  y += 36;
+  const cQty = 380, cPrice = 500, cAmt = W - padX;
+  rows.push(`<line x1="${padX}" y1="${y - 16}" x2="${W - padX}" y2="${y - 16}" stroke="#d8cfc0"/>`);
+  rows.push(`<text x="${padX}" y="${y}" fill="#8a7d68" font-family="IBM Plex Mono,monospace" font-size="11" letter-spacing="1">ITEM</text>`);
+  rows.push(`<text x="${cQty}" y="${y}" text-anchor="end" fill="#8a7d68" font-family="IBM Plex Mono,monospace" font-size="11" letter-spacing="1">QTY</text>`);
+  rows.push(`<text x="${cPrice}" y="${y}" text-anchor="end" fill="#8a7d68" font-family="IBM Plex Mono,monospace" font-size="11" letter-spacing="1">PRICE</text>`);
+  rows.push(`<text x="${cAmt}" y="${y}" text-anchor="end" fill="#8a7d68" font-family="IBM Plex Mono,monospace" font-size="11" letter-spacing="1">AMOUNT</text>`);
+  rows.push(`<line x1="${padX}" y1="${y + 10}" x2="${W - padX}" y2="${y + 10}" stroke="#d8cfc0"/>`);
+  // Line items
+  doc.lines.forEach(ln => {
+    y += 36;
+    const amt = ln.qty * ln.price;
+    rows.push(`<text x="${padX}" y="${y}" fill="#26302b" font-family="Fraunces,serif" font-size="15">${escapeHtml(ln.desc)}</text>`);
+    rows.push(`<text x="${cQty}" y="${y}" text-anchor="end" fill="#26302b" font-family="IBM Plex Mono,monospace" font-size="14">${ln.qty}</text>`);
+    rows.push(`<text x="${cPrice}" y="${y}" text-anchor="end" fill="#26302b" font-family="IBM Plex Mono,monospace" font-size="14">${moneyRound(ln.price)}</text>`);
+    rows.push(`<text x="${cAmt}" y="${y}" text-anchor="end" fill="#26302b" font-family="IBM Plex Mono,monospace" font-size="14">${moneyRound(amt)}</text>`);
+    if (ln.batch) { y += 18; rows.push(`<text x="${padX + 8}" y="${y}" fill="#8a7d68" font-family="IBM Plex Mono,monospace" font-size="11" font-style="italic">Batch: ${escapeHtml(ln.batch)}</text>`); }
+  });
+  // Total
+  y += 30;
+  rows.push(`<line x1="${cQty}" y1="${y - 14}" x2="${W - padX}" y2="${y - 14}" stroke="#1E3A2F" stroke-width="1.5"/>`);
+  rows.push(`<text x="${cPrice}" y="${y + 6}" text-anchor="end" fill="#1E3A2F" font-family="IBM Plex Mono,monospace" font-size="13" letter-spacing="1">TOTAL</text>`);
+  rows.push(`<text x="${cAmt}" y="${y + 6}" text-anchor="end" fill="#1E3A2F" font-family="Fraunces,serif" font-size="20" font-weight="700">Ksh ${moneyRound(doc.total)}</text>`);
+  // Footer
+  y += 56;
+  rows.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" fill="#5b6b60" font-family="Fraunces,serif" font-size="14" font-style="italic">${escapeHtml(cfg.footer || 'Thank you')}</text>`);
+  y += 22;
+  rows.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" fill="#a99" font-family="IBM Plex Mono,monospace" font-size="10">Computer-generated ${title.toLowerCase()} · not a fiscal tax invoice</text>`);
+  const H = y + 36;
+  return `<svg id="rec-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="100%" style="background:#F4EFE6;border:1px solid #d8cfc0;border-radius:6px">
+    <rect x="0" y="0" width="${W}" height="${H}" fill="#F4EFE6"/>
+    ${head.join('')}${rows.join('')}
+  </svg>`;
+}
+
+function _recSvgString() {
+  const svg = document.querySelector('#rec-doc-canvas svg');
+  return svg ? new XMLSerializer().serializeToString(svg) : '';
+}
+function _recPrint() {
+  const svg = _recSvgString();
+  if (!svg) return;
+  const w = window.open('', '_blank');
+  if (!w) { showToast('Allow pop-ups to print, or use Save image', 5000); return; }
+  w.document.write('<!doctype html><html><head><title>' + (RECEIPT_STATE.lastDoc ? RECEIPT_STATE.lastDoc.number : 'Document') + '</title><style>body{margin:0}svg{width:100%}</style></head><body>' + svg + '<script>window.onload=function(){window.print();}<\/script></body></html>');
+  w.document.close();
+}
+async function _recCanvasBlob() {
+  const svg = _recSvgString();
+  if (!svg) return null;
+  const vb = (RECEIPT_STATE.lastDoc && document.querySelector('#rec-doc-canvas svg')) ? document.querySelector('#rec-doc-canvas svg').viewBox.baseVal : { width: 720, height: 900 };
+  const scale = 2;
+  return new Promise(resolve => {
+    const img = new Image();
+    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    img.onload = function () {
+      const canvas = document.createElement('canvas');
+      canvas.width = (vb.width || 720) * scale;
+      canvas.height = (vb.height || 900) * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#F4EFE6'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(b => resolve(b), 'image/png');
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+async function _recSaveImage() {
+  const blob = await _recCanvasBlob();
+  if (!blob) { showToast('Could not render image — try Print / PDF', 5000); return; }
+  const name = (RECEIPT_STATE.lastDoc ? RECEIPT_STATE.lastDoc.number : 'document') + '.png';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+async function _recShare() {
+  const blob = await _recCanvasBlob();
+  const doc = RECEIPT_STATE.lastDoc;
+  const name = (doc ? doc.number : 'document') + '.png';
+  if (blob && navigator.canShare) {
+    const file = new File([blob], name, { type: 'image/png' });
+    if (navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: name, text: (doc && doc.cfg ? doc.cfg.businessName + ' · ' : '') + name });
+        return;
+      } catch (e) { /* user cancelled or unsupported — fall through */ }
+    }
+  }
+  // Fallback: save the image + offer WhatsApp text link
+  await _recSaveImage();
+  showToast('Image saved — attach it in WhatsApp or email', 5000);
+}
+
 /* Public render — called by switchView when entering sales tab */
 function renderSalesPanel() {
   // Idempotent: just re-render Level 1 (BUSINESS_UNITS may have changed)
   _renderSalesLevel1();
+  if (typeof initReceiptFeature === 'function') initReceiptFeature();
 }
 
 /* Live preview + validation on form fields */
@@ -7312,7 +7692,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.23'
+    recorded_from: 'PWA v6.11.24'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -8020,7 +8400,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.23';
+const APP_VERSION = 'v6.11.24';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover

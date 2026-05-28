@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.11.24 — Receipt/Invoice engine (infrastructure phase). Build-a-document flow from Sales: type (Receipt/Invoice), line items with optional batch/cohort, server-allocated number (Apps Script v5.0.54 receipt-number action, atomic via LockService, tenant prefix from config.js). Branded SVG document -> Print/PDF, PNG export, Web Share (WhatsApp/email). Config receipt block added to all tenants. No income writeback or product codes yet (deferred). (Cheison 28 May 2026 Verden)
 // v6.11.23 — Factory chart re-clustered by MONTH instead of factory (Cheison 28 May 2026 Verden). Months are the stable axis (oldest->newest, current = MTD, tinted); within each month only factories that actually delivered render, colour-coded with a legend. Sparse/absent factories (Kapchorwa rare-route, Sangalo gaps) no longer leave permanent empty clusters. Shared kg scale, hover/tap for exact kg + expected
 // v6.11.22 — Factory chart reworked into a single clustered chart: factories side by side, each a cluster of 3 month-bars (oldest→newest, brass = current MTD) on a shared kg scale. Exact kg + expected income reveal on hover (pointer) or tap (touch) per bar — global Labels toggle removed, tighter use of space (Cheison 28 May 2026 Verden)
 // v6.11.21 — Cess folded into netPerKg (TEA_CESS_KG, flat 0.22/kg all factories) so expected income = price − cess − transport − equity everywhere (hero MTD/YTD, factory recon, Insights all read netPerKg). Hero sub-label updated. Factory reconciliation gains Chart view: per-factory kg bars × 3 months with toggle-able expected-income labels, Chart⇄Numbers toggle (Cheison 28 May 2026 Verden)
@@ -86,7 +87,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v246';
+const CACHE = 'sinonin-greenleaf-v247';
 
 const SHELL_FILES = [
   './',
