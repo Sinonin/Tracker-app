@@ -1706,6 +1706,19 @@
   .quick-add-grid.quick-add-tight .qa-icon svg {
     width: 18px; height: 18px;
   }
+  /* v6.11.35 — Tea two-leaves-and-a-bud icon, reusable everywhere the fern
+     emoji (🌿) used to stand in for "tea product." Same SVG geometry as the
+     .qa-icon on the Plucker Kg quick-add card (v6.3.20), now lifted to a
+     shared class so the Sales cascade, Insights cards, picker, etc. all read
+     the same visual language. Sized via em to track surrounding text;
+     coloured via var(--forest), overridable per context. */
+  .tea-leaf-icon {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    vertical-align: -0.15em;
+    color: var(--forest);
+  }
   .quick-add-card .qa-label {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.62rem;
@@ -3415,7 +3428,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.34</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.35</span>
 </header>
 
 <main>
@@ -6168,7 +6181,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.34</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.35</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6951,7 +6964,7 @@ function salesBusinessUnits() {
   // requiring Control_Panel edit. Kibois case: Tea IS declared, so the 
   // tenant's order is preserved (no prepend, Tea appears at its position).
   if (_hasTeaSalesPath() && !teaInBusinessUnits) {
-    pushUnique({ label: 'Tea', slug: 'TEA', icon: '🌿' });
+    pushUnique({ label: 'Tea', slug: 'TEA', icon: TEA_LEAF_SVG });
   }
   
   // Then the configured units in declared order
@@ -6966,6 +6979,14 @@ function salesBusinessUnits() {
   return out;
 }
 
+/* v6.11.35 — Reusable two-leaves-and-a-bud SVG. Same geometry as the icon on
+   the Plucker Kg quick-add card (v6.3.20); lifted to a shared constant so the
+   Sales cascade, Insights cards, picker etc. all speak the same visual
+   language — and replaces 🌿 (which reads as fern) wherever it stood in for
+   tea-product iconography. Sized + coloured via the .tea-leaf-icon CSS class
+   (1em / var(--forest)) so it adapts to context. */
+const TEA_LEAF_SVG = '<svg class="tea-leaf-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="0.5" stroke-linejoin="round" stroke-linecap="round" aria-label="Two leaves and a bud"><line x1="12" y1="13" x2="12" y2="22" stroke-width="1.4"/><path d="M12 13 C10.6 9 11 4 12 2 C13 4 13.4 9 12 13 Z"/><path d="M12 13 C7 11 3 8 3 3.5 C8 5 11.5 8.5 12 13 Z"/><path d="M12 13 C17 11 21 8 21 3.5 C16 5 12.5 8.5 12 13 Z"/></svg>';
+
 /* Map common unit labels to an emoji icon. Falls through to generic. */
 function _iconForUnit(label) {
   const l = String(label || '').toLowerCase();
@@ -6975,7 +6996,7 @@ function _iconForUnit(label) {
   if (l.indexOf('goat') !== -1) return '🐐';
   if (l.indexOf('coffee') !== -1) return '☕';
   if (l.indexOf('maize') !== -1) return '🌽';
-  if (l.indexOf('tea') !== -1) return '🌿';
+  if (l.indexOf('tea') !== -1) return TEA_LEAF_SVG;
   if (l.indexOf('chelabaal') !== -1) return '🍃';
   if (l.indexOf('sugar') !== -1) return '🎋';
   if (l.indexOf('potato') !== -1) return '🥔';
@@ -6994,7 +7015,7 @@ function _iconForProduct(unitLabel, productLabel) {
   if (u.indexOf('tea') !== -1) {
     if (p.indexOf('greenleaf') !== -1) return '🍃';
     if (p.indexOf('seedling') !== -1) return '🌱';
-    return '🌿';
+    return TEA_LEAF_SVG;
   }
   // Poultry-specific
   if (u.indexOf('poultry') !== -1) {
@@ -7175,8 +7196,11 @@ function _enterSalesLevel2() {
 }
 
 function _enterSalesLevel3(variants) {
-  document.getElementById('sales-crumb-unit-2').textContent = SALES_CASCADE.unit.icon + ' ' + SALES_CASCADE.unit.label;
-  document.getElementById('sales-crumb-product').textContent = SALES_CASCADE.product.icon + ' ' + SALES_CASCADE.product.label;
+  // v6.11.35 — innerHTML (not textContent) so the tea-leaf SVG icon renders.
+  // Labels come from controlled Control_Panel config; escapeHtml defends
+  // against any oddly-typed cell content.
+  document.getElementById('sales-crumb-unit-2').innerHTML = SALES_CASCADE.unit.icon + ' ' + escapeHtml(SALES_CASCADE.unit.label);
+  document.getElementById('sales-crumb-product').innerHTML = SALES_CASCADE.product.icon + ' ' + escapeHtml(SALES_CASCADE.product.label);
   const grid = document.getElementById('sales-variant-cards');
   grid.innerHTML = variants.map(function (v) {
     return '<button class="sales-card" type="button" data-variant-slug="' + v.slug + '" data-variant-label="' + escapeHtml(v.label) + '">'
@@ -7198,10 +7222,12 @@ function _enterSalesLevel3(variants) {
 
 function _enterSalesLevel4() {
   const c = SALES_CASCADE;
-  // Build breadcrumb
-  let crumb = c.unit.icon + ' ' + c.unit.label + ' · ' + c.product.label;
-  if (c.variant) crumb += ' · ' + c.variant.label;
-  document.getElementById('sales-form-crumb').textContent = crumb;
+  // Build breadcrumb. v6.11.35 — innerHTML (was textContent) so the tea-leaf
+  // SVG icon renders. Labels escaped for safety; icon is trusted (TEA_LEAF_SVG
+  // constant or controlled emoji).
+  let crumb = c.unit.icon + ' ' + escapeHtml(c.unit.label) + ' · ' + escapeHtml(c.product.label);
+  if (c.variant) crumb += ' · ' + escapeHtml(c.variant.label);
+  document.getElementById('sales-form-crumb').innerHTML = crumb;
   document.getElementById('sales-form-title').textContent = 'Record ' + c.product.label + ' sale';
   document.getElementById('sales-form-meta').textContent = c.unit.label + (c.variant ? ' · ' + c.variant.label : '');
 
@@ -7961,7 +7987,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.34'
+    recorded_from: 'PWA v6.11.35'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -8670,7 +8696,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.34';
+const APP_VERSION = 'v6.11.35';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -20063,7 +20089,7 @@ function renderInsights() {
   const teaHasData = umbrella.kg > 0 || umbrella.expenses > 0;
   if (teaHasData) {
     // Umbrella headline — the whole tea enterprise, owned + leased.
-    econHtml += _econCard('🌿 Sinonin Tea', umbrella, 'econ-umbrella');
+    econHtml += _econCard(TEA_LEAF_SVG + ' Sinonin Tea', umbrella, 'econ-umbrella');
     // Owned blocks, per field.
     ownedBlocks.forEach(b => {
       const v = byBlock[b];
