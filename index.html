@@ -3027,7 +3027,7 @@
     text-transform: uppercase; color: var(--slate); margin: 0.8rem 0 0.3rem; padding: 0 0.1rem;
   }
   .rec-line { margin-bottom: 0.5rem; }
-  .rec-line-main { display: grid; grid-template-columns: 1fr 70px 90px 28px; gap: 0.4rem; align-items: center; }
+  .rec-line-main { display: grid; grid-template-columns: 1fr 32px 70px 90px 28px; gap: 0.4rem; align-items: center; }
   .rec-line input {
     width: 100%; padding: 0.45rem 0.5rem; border: 1px solid var(--rule); border-radius: 5px;
     font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; box-sizing: border-box;
@@ -3038,6 +3038,41 @@
     background: transparent; border: 1px solid var(--rule); border-radius: 5px; cursor: pointer;
     color: var(--danger); font-size: 1rem; line-height: 1; padding: 0.3rem;
   }
+  /* v6.11.32 — Catalogue picker button + modal */
+  .rec-line .rl-pick {
+    background: transparent; border: 1px solid var(--rule); border-radius: 5px; cursor: pointer;
+    font-size: 0.9rem; line-height: 1; padding: 0.3rem; color: var(--brass);
+  }
+  .rec-line .rl-pick:active { transform: scale(0.94); }
+  .cat-overlay {
+    position: fixed; inset: 0; background: rgba(18, 36, 25, 0.55); z-index: 1200;
+    display: none; align-items: center; justify-content: center; padding: 1rem;
+  }
+  .cat-overlay.show { display: flex; }
+  .cat-modal {
+    background: var(--ivory-card); border-radius: 12px; padding: 1.2rem; max-width: 420px; width: 100%;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3); border: 1px solid var(--rule);
+  }
+  .cat-modal h3 {
+    margin: 0 0 0.2rem 0; font-family: 'Fraunces', serif; font-size: 1.15rem; color: var(--forest);
+  }
+  .cat-modal p.cat-sub { margin: 0 0 0.9rem 0; font-size: 0.78rem; color: var(--slate); font-style: italic; }
+  .cat-modal label {
+    display: block; font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; letter-spacing: 1px;
+    color: var(--slate-light); margin: 0.6rem 0 0.2rem 0;
+  }
+  .cat-modal select {
+    width: 100%; padding: 0.55rem; border-radius: 6px; border: 1px solid var(--rule); background: white;
+    font-family: 'Fraunces', serif; font-size: 0.95rem; color: var(--ink);
+  }
+  .cat-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+  .cat-actions button {
+    flex: 1; padding: 0.55rem; border-radius: 6px; cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; font-weight: 600;
+  }
+  .cat-actions .cat-confirm { background: var(--forest); color: var(--ivory); border: none; }
+  .cat-actions .cat-cancel  { background: transparent; color: var(--forest); border: 1px solid var(--rule); }
+  .cat-actions button:active { transform: scale(0.97); }
   .rec-addline {
     background: transparent; border: 1px dashed var(--rule); border-radius: 6px; width: 100%;
     padding: 0.5rem; margin-top: 0.3rem; cursor: pointer; color: var(--forest);
@@ -3380,7 +3415,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.31</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.33</span>
 </header>
 
 <main>
@@ -6133,7 +6168,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.31</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.33</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -7282,6 +7317,120 @@ function _recClose() {
   if (ov) ov.classList.remove('show');
 }
 
+/* v6.11.32 — Catalogue picker for receipt/invoice line items (Cheison, 29 May
+   2026, Verden). Tapping 📋 on a line opens a small Unit → Product → Variant
+   cascade that reads the SAME PRODUCTS_/VARIANTS_ entries from Control_Panel
+   that the Sales POS uses, then writes the canonical label
+   "Unit · Product · Variant" into the description field. Two effects:
+   portfolio language and invoice language can't drift apart (WoW § 2), and the
+   operator stops retyping things the system already knows. The desc remains
+   editable, so one-off services / catch-alls can still be typed; the picker is
+   a convenience, not a wall. */
+function _ensureCataloguePicker() {
+  if (document.getElementById('cat-overlay')) return;
+  const ov = document.createElement('div');
+  ov.className = 'cat-overlay';
+  ov.id = 'cat-overlay';
+  ov.innerHTML = `
+    <div class="cat-modal" role="dialog" aria-labelledby="cat-title">
+      <h3 id="cat-title">Pick from catalogue</h3>
+      <p class="cat-sub">Reads from Control_Panel — same products as the Sales cascade.</p>
+      <label for="cat-unit">Business unit</label>
+      <select id="cat-unit"></select>
+      <label for="cat-product">Product</label>
+      <select id="cat-product"><option value="">— Pick a unit first —</option></select>
+      <label for="cat-variant">Variant <span style="text-transform:none;color:var(--slate-light)">(optional)</span></label>
+      <select id="cat-variant"><option value="">— None / not applicable —</option></select>
+      <div class="cat-actions">
+        <button type="button" class="cat-cancel"  onclick="_catCancel()">Cancel</button>
+        <button type="button" class="cat-confirm" onclick="_catConfirm()">Use this</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  document.getElementById('cat-unit').addEventListener('change', _catOnUnitChange);
+  document.getElementById('cat-product').addEventListener('change', _catOnProductChange);
+}
+
+let CATALOGUE_PICKER_LINE = -1;   // which receipt line is being filled
+
+function openCataloguePicker(lineIdx) {
+  _ensureCataloguePicker();
+  CATALOGUE_PICKER_LINE = lineIdx;
+  const units = (typeof tenantBusinessUnits === 'function') ? tenantBusinessUnits() : [];
+  const unitSel = document.getElementById('cat-unit');
+  if (!units || units.length === 0) {
+    unitSel.innerHTML = '<option value="">— No BUSINESS_UNITS configured —</option>';
+  } else {
+    unitSel.innerHTML = '<option value="">— Pick a unit —</option>'
+      + units.map(label => {
+          const slug = (typeof _salesSlug === 'function') ? _salesSlug(label) : String(label).toUpperCase().replace(/[^A-Z0-9]/g, '');
+          return `<option value="${escapeHtml(slug)}" data-label="${escapeHtml(label)}">${escapeHtml(label)}</option>`;
+        }).join('');
+  }
+  document.getElementById('cat-product').innerHTML = '<option value="">— Pick a unit first —</option>';
+  document.getElementById('cat-variant').innerHTML = '<option value="">— None / not applicable —</option>';
+  document.getElementById('cat-overlay').classList.add('show');
+}
+
+function _catOnUnitChange() {
+  const unitSel = document.getElementById('cat-unit');
+  const productSel = document.getElementById('cat-product');
+  const variantSel = document.getElementById('cat-variant');
+  variantSel.innerHTML = '<option value="">— None / not applicable —</option>';
+  const slug = unitSel.value;
+  if (!slug) { productSel.innerHTML = '<option value="">— Pick a unit first —</option>'; return; }
+  const unitLabel = unitSel.options[unitSel.selectedIndex].dataset.label || slug;
+  const products = (typeof salesProductsFor === 'function') ? salesProductsFor(slug, unitLabel) : [];
+  if (!products || products.length === 0) {
+    productSel.innerHTML = '<option value="">— No PRODUCTS_' + escapeHtml(slug) + ' configured —</option>';
+  } else {
+    productSel.innerHTML = '<option value="">— Pick a product —</option>'
+      + products.map(p => `<option value="${escapeHtml(p.slug)}" data-label="${escapeHtml(p.label)}">${escapeHtml(p.label)}</option>`).join('');
+  }
+}
+
+function _catOnProductChange() {
+  const unitSel = document.getElementById('cat-unit');
+  const productSel = document.getElementById('cat-product');
+  const variantSel = document.getElementById('cat-variant');
+  const unitSlug = unitSel.value;
+  const productSlug = productSel.value;
+  if (!unitSlug || !productSlug) { variantSel.innerHTML = '<option value="">— None / not applicable —</option>'; return; }
+  const variants = (typeof salesVariantsFor === 'function') ? salesVariantsFor(unitSlug, productSlug) : [];
+  if (!variants || variants.length === 0) {
+    variantSel.innerHTML = '<option value="">— None / not applicable —</option>';
+  } else {
+    variantSel.innerHTML = '<option value="">— None / not applicable —</option>'
+      + variants.map(v => `<option value="${escapeHtml(v.slug || v.label)}" data-label="${escapeHtml(v.label)}">${escapeHtml(v.label)}</option>`).join('');
+  }
+}
+
+function _catConfirm() {
+  if (CATALOGUE_PICKER_LINE < 0) { _catCancel(); return; }
+  const unitSel = document.getElementById('cat-unit');
+  const productSel = document.getElementById('cat-product');
+  const variantSel = document.getElementById('cat-variant');
+  const unitLabel = unitSel.value ? (unitSel.options[unitSel.selectedIndex].dataset.label || unitSel.value) : '';
+  const productLabel = productSel.value ? (productSel.options[productSel.selectedIndex].dataset.label || productSel.value) : '';
+  const variantLabel = variantSel.value ? (variantSel.options[variantSel.selectedIndex].dataset.label || variantSel.value) : '';
+  if (!unitLabel || !productLabel) {
+    showToast('Pick a unit and a product first', 2500);
+    return;
+  }
+  const desc = unitLabel + ' · ' + productLabel + (variantLabel ? ' · ' + variantLabel : '');
+  if (RECEIPT_STATE && RECEIPT_STATE.lines && RECEIPT_STATE.lines[CATALOGUE_PICKER_LINE]) {
+    RECEIPT_STATE.lines[CATALOGUE_PICKER_LINE].desc = desc;
+    _recRenderLines();
+  }
+  _catCancel();
+}
+
+function _catCancel() {
+  CATALOGUE_PICKER_LINE = -1;
+  const ov = document.getElementById('cat-overlay');
+  if (ov) ov.classList.remove('show');
+}
+
 /* v6.11.25 — Issue a receipt/invoice FROM an already-recorded sale (Cheison
    28 May 2026 Verden). The elegant path: a sale is closed, the buyer wants a
    document, the operator taps 🧾 on that sale row — the builder opens with the
@@ -7417,6 +7566,7 @@ function _recRenderLines() {
     <div class="rec-line" data-i="${i}">
       <div class="rec-line-main">
         <input class="rl-desc" placeholder="Day-old chicks" value="${escapeHtml(ln.desc || '')}" oninput="_recRecalc()">
+        <button type="button" class="rl-pick" title="Pick from catalogue" onclick="openCataloguePicker(${i})">📋</button>
         <input class="rl-qty" type="number" inputmode="decimal" min="0" step="any" placeholder="Qty" value="${ln.qty}" oninput="_recRecalc()">
         <input class="rl-price" type="number" inputmode="decimal" min="0" step="any" placeholder="Price" value="${ln.price}" oninput="_recRecalc()">
         <button type="button" class="rl-del" title="Remove" onclick="_recRemoveLine(${i})">×</button>
@@ -7814,7 +7964,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.31'
+    recorded_from: 'PWA v6.11.33'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -8523,7 +8673,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.31';
+const APP_VERSION = 'v6.11.33';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -11965,19 +12115,28 @@ async function applyCloudResponse(data) {
     // local is authoritative for IDs that exist only locally (e.g. queued
     // but not yet pushed). For IDs in both, cloud's most-recent submission
     // wins because Apps Script already deduplicated to last-write-wins.
-    const cloudIds = new Set(data.roster.map(r => r.id));
+    //
+    // v6.11.33 — Coerce ids to Number at the boundary (Cheison, 29 May 2026,
+    // Cheptabach batch). Sheets returns a cell's type from getValues(); a cell
+    // typed as text (e.g. an apostrophe-prefixed '1001' or a Plucker ID column
+    // formatted as text) comes back as a String, not a Number. Downstream
+    // lookups use strict === against parseInt'd dataset values, so a string id
+    // silently fails to match — and submitBatch SKIPS the entry without any
+    // toast. Rudisha (#35) and Chebunmoi (#1001) vanished from the 29 May batch
+    // this way. Normalising here means downstream code can rely on numeric ids.
+    const cloudIds = new Set(data.roster.map(r => Number(r.id)));
     const merged = data.roster.map(r => ({
-      id: r.id,
+      id: Number(r.id),
       name: r.name || '',
       bonus: !!r.bonus,
       primaryBlock: r.primaryBlock || '',
       notes: r.notes || '',
       active: true
-    }));
+    })).filter(r => Number.isFinite(r.id));   // drop any garbage ids
     // Preserve any local-only pluckers (IDs not in cloud yet — newly added,
     // probably queued for push)
     PLUCKERS.forEach(local => {
-      if (!cloudIds.has(local.id)) merged.push(local);
+      if (!cloudIds.has(Number(local.id))) merged.push(local);
     });
     merged.sort((a, b) => a.id - b.id);
     PLUCKERS = merged;
@@ -12461,7 +12620,9 @@ async function submitQuick() {
       showToast('Cannot save — check date/block/factory/qty and try again');
       return;
     }
-    const plucker = PLUCKERS.find(p => p.id === v.pluckerId);
+    // v6.11.33 — Tolerant numeric match (see submitBatch comment).
+    const targetId = Number(v.pluckerId);
+    const plucker = PLUCKERS.find(p => Number(p.id) === targetId);
     console.log('[submitQuick] step 4: plucker found?', !!plucker, plucker ? `${plucker.id}. ${plucker.name}` : 'NOT FOUND in PLUCKERS array. PLUCKERS length: ' + PLUCKERS.length);
     if (!plucker) {
       console.error('[submitQuick] EXIT: plucker not found in PLUCKERS. Looking for id=', v.pluckerId, 'Available ids:', PLUCKERS.map(p => p.id));
@@ -12583,12 +12744,19 @@ async function submitBatch() {
     let saved = 0;
     const tsBase = Date.now();
     const newEntries = [];
+    const skipped = [];   // v6.11.33 — collect drops to surface, never silent
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
-      const plucker = PLUCKERS.find(p => p.id === r.pluckerId);
+      // v6.11.33 — Tolerant numeric match. Roster ids returned from the cloud
+      // can be String if the Roster cell is text-typed, so strict === against
+      // a parseInt'd dataset.pid silently fails. Coerce both sides; if the
+      // lookup still can't resolve, record the id and surface AFTER the loop.
+      const targetId = Number(r.pluckerId);
+      const plucker = PLUCKERS.find(p => Number(p.id) === targetId);
       console.log(`[submitBatch] step 3.${i}: row pluckerId=${r.pluckerId}, found?`, !!plucker, plucker ? plucker.name : 'NOT FOUND');
       if (!plucker) {
         console.error(`[submitBatch] SKIPPING row ${i}: plucker id ${r.pluckerId} not in PLUCKERS. Available ids:`, PLUCKERS.map(p => p.id));
+        skipped.push({ pluckerId: r.pluckerId, qty: r.qty });
         continue;
       }
       const entry = {
@@ -12607,6 +12775,16 @@ async function submitBatch() {
     console.log('[submitBatch] step 5: storageSet K_ENTRIES complete');
     document.querySelectorAll('.batch-kg').forEach(i => i.value = '');
     updateBatchSummary();
+    // v6.11.33 — Surface any drops loudly. Previously a missing-from-roster
+    // entry was console.error-only — invisible on a phone — and the user got
+    // an unqualified "Saved N entries" toast that lied by omission. Now the
+    // user sees the count saved AND a clear warning listing the ids that
+    // didn't make it, so they can fix the roster and re-enter.
+    if (skipped.length > 0) {
+      const ids = skipped.map(s => s.pluckerId).join(', ');
+      const kgs = skipped.reduce((sum, s) => sum + (Number(s.qty) || 0), 0);
+      showToast(`⚠️ ${skipped.length} entr${skipped.length === 1 ? 'y' : 'ies'} NOT saved — plucker id(s) ${ids} (total ${kgs}kg) not in roster. Check the Roster tab.`, 10000);
+    }
     showToast(`Saved ${saved} entr${saved === 1 ? 'y' : 'ies'}`);
     console.log('[submitBatch] step 6: toast shown, about to sync');
     // Push to Google Sheet — parallel, queue on failure
