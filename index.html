@@ -3415,7 +3415,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.33</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.34</span>
 </header>
 
 <main>
@@ -6168,7 +6168,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.33</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.34</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -6586,10 +6586,7 @@ function farmOwner()       { return tcfg('FARM_OWNER',       'Cheison'); }
 function farmOwnerTitle()  { return tcfg('FARM_OWNER_TITLE', 'Kiruogindet araap ' + farmOwner()); }
 function farmLocation()    { return tcfg('FARM_LOCATION',    'Nandi, Kenya'); }
 function currencySymbol()  { return tcfg('CURRENCY_SYMBOL',  'Ksh'); }
-function adminRejectMsg()  { return tcfg('ADMIN_REJECT_MSG', farmOwnerTitle() + ' does not allow you to see Settings'); }
-function cowGestationDays()   { return parseInt(tcfg('GESTATION_COW_DAYS',   '280'), 10) || 280; }
 function sheepGestationDays() { return parseInt(tcfg('GESTATION_SHEEP_DAYS', '150'), 10) || 150; }
-function lactationDays()      { return parseInt(tcfg('LACTATION_DAYS',       '305'), 10) || 305; }
 
 /* v6.10.12 — Brand string helpers. These let each tenant set their own
    header strapline, About description, and motto via Control_Panel.
@@ -7964,7 +7961,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.33'
+    recorded_from: 'PWA v6.11.34'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -8673,7 +8670,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.33';
+const APP_VERSION = 'v6.11.34';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -11563,46 +11560,9 @@ function pluckedKgOf(r) {
 
 // Content-based identity keys — used to dedupe cloud rows against
 // local rows. If two rows have the same key, they are the same row.
-function pluckerKey(r) {
-  // plucker row from cloud has .plucker as "6. Gladys Yego" string;
-  // local row has .pluckerName. Normalise to the cloud form.
-  const name = r.plucker || (r.pluckerId != null ? `${r.pluckerId}. ${r.pluckerName}` : r.pluckerName || '');
-  // v5.9.3 — Use pluckedKgOf helper for consistent kg field resolution
-  return `${r.date}|${(r.block||'').trim()}|${name.trim()}|${pluckedKgOf(r).toFixed(2)}|${(r.factory||'').trim()}`;
-}
-function actualKey(r) {
-  // v5.9.3 — Use actualKgOf helper for consistent kg field resolution
-  return `${r.date}|${(r.factory||'').trim()}|${(r.block||'').trim()}|${actualKgOf(r).toFixed(2)}`;
-}
-function expenseKey(r) {
-  return `${r.date}|${(r.category||'').trim()}|${Number(r.amount || 0).toFixed(2)}|${(r.block||'').trim()}|${(r.payee||'').trim()}`;
-}
-function bankedKey(r) {
-  return `${r.date}|${(r.business||'').trim()}|${(r.source||'').trim()}|${Number(r.amount || 0).toFixed(2)}|${(r.period||'').trim()}`;
-}
-function poultryKey(r) {
-  return `${r.date}|${(r.product||'').trim()}|${(r.unit||'').trim()}|${Number(r.quantity || 0).toFixed(2)}|${Number(r.amount || 0).toFixed(2)}`;
-}
-/* v5.7 Wide-schema — Egg Collection cloud key.
-   One row per day → date IS the key. */
-function eggCollectionKey(r) {
-  return String(r.date || '');
-}
 
-/* v6.0 SHIP 3 — Houses cloud key (Name is unique, case-insensitive). */
-function houseKey(r) {
-  return String(r.name || '').trim().toLowerCase();
-}
 
-/* v6.0 SHIP 4 — Bird Census cloud key (date + house + stage; Count not in key). */
-function birdCensusKey(r) {
-  return `${r.date}|${String(r.house||'').trim()}|${String(r.stage||'').trim()}`;
-}
 
-/* v6.0 SHIP 5 — Incubation cloud key (Batch_ID is unique). */
-function incubationKey(r) {
-  return String(r.batch_id || '').trim();
-}
 
 function mergeByKey(local, cloud, keyFn, mapCloud) {
   // Build a set of local keys
@@ -19756,24 +19716,6 @@ function renderRecords() {
   });
 }
 
-function filterEntries() {
-  // legacy — kept for any internal callers; equivalent to filterRecords with type=greenleaf
-  const period = document.getElementById('filter-period').value;
-  const block = document.getElementById('filter-block').value;
-  const factory = document.getElementById('filter-factory').value;
-  const now = new Date();
-  const todayIso = now.toISOString().slice(0,10);
-  const weekCutoff = new Date(now.getTime() - 7 * 86400000).toISOString().slice(0,10);
-  const ym = todayIso.slice(0,7);
-  return STATE.entries.filter(e => {
-    if (period === 'today' && e.date !== todayIso) return false;
-    if (period === 'week' && e.date < weekCutoff) return false;
-    if (period === 'month' && !e.date.startsWith(ym)) return false;
-    if (block && e.block !== block) return false;
-    if (factory && e.factory !== factory) return false;
-    return true;
-  }).sort((a,b) => b.ts.localeCompare(a.ts));
-}
 
 function periodEntries(p) {
   const now = new Date();
@@ -20628,16 +20570,6 @@ async function renderSheepSyncDiagnostic() {
   el.innerHTML = html;
 }
 
-/* Manual flush trigger from the Sheep view diagnostic. Forces a queue 
-   flush even if blockedByGate items are present (manual:true bypasses 
-   the gate-rejection skip). */
-async function forceFlushDorper() {
-  showToast('Flushing sync queue...', 1500);
-  if (typeof flushQueue === 'function') {
-    await flushQueue({ manual: true });
-  }
-  await renderSheepSyncDiagnostic();
-}
 
 function ensureSheepFiltersPopulated() {
   const ownerSel = document.getElementById('sheep-filter-owner');

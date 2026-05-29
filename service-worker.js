@@ -1,4 +1,5 @@
 // Sinonin Group Management App — Service Worker
+// v6.11.34 — #CleaningFriday pass 1: removed 14 dead functions (Cheison, 29 May 2026, Verden). Excised pluckerKey/actualKey/expenseKey/bankedKey/poultryKey/eggCollectionKey/houseKey/birdCensusKey/incubationKey (a superseded set of storage-key dedup helpers, replaced by id-based dedup), plus adminRejectMsg, cowGestationDays, lactationDays, forceFlushDorper, filterEntries. 68 lines, 3.4KB. All 14 verified zero residual references before removal. typedConfirm deliberately retained pending an explicit call on whether destructive ops need a typed-confirmation guardrail. Behaviour-neutral; cache v256 -> v257.
 // v6.11.33 — Silent plucker-drop fix (Cheison, 29 May 2026, Cheptabach). PLUCKERS.find(p => p.id === r.pluckerId) used strict equality against a parseInt-d dataset.pid. When the Roster cell is text-typed in the sheet (e.g. an apostrophe-prefixed '1001), getValues() returns the id as a String — the strict check fails and submitBatch SKIPPED the entry with only a console.error. Rudisha (#35) and Chebunmoi (#1001) vanished from the 29 May Cheptabach batch this way. Two fixes: (1) coerce id to Number at the cloud roster merge boundary so PLUCKERS always carries numeric ids; (2) tolerant Number() match in both submitBatch and submitQuick, plus an explicit on-screen warning toast listing any skipped ids and total kg — never silent again. PWA-only.
 // v6.11.32 — Catalogue picker on receipt/invoice lines (Cheison, 29 May 2026, Verden). Each line now carries a 📋 button that opens a Unit -> Product -> Variant cascade reading the same PRODUCTS_/VARIANTS_ entries from Control_Panel that the Sales POS uses, then writes the canonical label into the description. Portfolio language and invoice language can't drift apart, and the operator stops retyping what the system already knows. The desc remains editable for one-off / catch-all items. PWA-only; v5.0.57 Apps Script changes are independent (sheet tab arrangement menu).
 // v6.11.31 — Cohort sale misattribution fix (Cheison/Victor 28 May 2026). The sale form captures the operator-picked cohort_id (§ 7.6), but autoDecrementCohortOnSale ignored it and decremented the FIFO-oldest cohort at the stage. With the 04 May and 27 Apr cohorts both at "Chicks 1–7 days", a sale from 04 May silently drained 27 Apr, so 04 May still read as full and counts "twisted". The decrement now honors the picked cohort_id; FIFO remains only as a fallback for rows carrying no cohort_id. PWA-only. NOTE: does not retro-correct counts already mis-decremented, nor the separate cloud-count sync — both still to investigate.
@@ -96,7 +97,7 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v256';
+const CACHE = 'sinonin-greenleaf-v257';
 
 const SHELL_FILES = [
   './',
