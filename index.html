@@ -3428,7 +3428,7 @@
   <button id="header-unlock-btn" class="header-unlock" type="button" aria-label="Unlock with biometric" title="Unlock with Face ID / PIN" style="display:none">
     🔓
   </button>
-  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.35</span>
+  <span class="version-label" id="version-label" title="Sinonin Group Management App version">v6.11.36</span>
 </header>
 
 <main>
@@ -6181,7 +6181,7 @@
     </div>
 
     <div class="section">
-      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.35</span></div>
+      <div class="section-head"><h3>About</h3><span class="meta" id="about-version-meta">v6.11.36</span></div>
       <div id="about-description" style="font-family:'Fraunces',serif;font-size:0.9rem;color:var(--slate);line-height:1.6">Sinonin Group Management App · Built for the Sinonin–Kipkenda farms in Nandi County: tea, poultry, dorper sheep, coffee, maize. Five input streams — plucker entries, actuals, expenses, banked income, poultry sales — all push to Google Forms on Drive, and read back from a shared Apps Script endpoint. Every phone sees the farm's full state.</div>
       <div id="about-motto" style="font-family:'Fraunces',serif;font-style:italic;font-size:0.95rem;color:var(--brass);margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--rule);text-align:center">Sinonin Tea · The Tea of Champions</div>
     </div>
@@ -7987,7 +7987,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.35'
+    recorded_from: 'PWA v6.11.36'
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -8696,7 +8696,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.35';
+const APP_VERSION = 'v6.11.36';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -8883,8 +8883,30 @@ function tierForCategory(catName) {
    On init, any year older than the current year whose entries are
    sitting in STATE.actuals gets rolled into the ledger. */
 function sireetRate() {
-  const sireet = STATE.factories.find(f => f.name === 'Sireet');
-  return sireet ? (sireet.shares || 0) : 5;
+  // v6.11.36 — Default to the canonical 5 KES/kg when STATE.factories doesn't
+  // carry a valid positive shares override (Cheison, 29 May 2026, Verden).
+  //
+  // Tea_Factories cloud-read (Apps Script v5.0.48, 26 May 2026) returns 9
+  // fields per factory — name, priceKg, transportKg, xmasBonusKg, marBonusKg,
+  // pluckerRateKg, pluckerBonusKg, active, notes — but NOT 'shares'. The PWA
+  // mapper then does `shares: Number(f.shares) || 0`, which collapses the
+  // undefined cloud value to 0. The previous logic here trusted that 0 and
+  // returned it, zeroing every Ksh on the Insights tab "Equity by year" table
+  // for the live (2026) year — and every Ksh on the rolled-up sub-cards via
+  // sireetMTD()/sireetYTD().
+  //
+  // Past-year ledger entries (≤ 2025) are unaffected because they were rolled
+  // up BEFORE v5.0.48 landed, when the seeded shares=5 was authoritative; the
+  // frozen ksh figures still read correctly.
+  //
+  // The 5 KES/kg is a sealed commercial term (WoW § 3), already hardcoded as
+  // SIREET_RATE = 5 in the home-hero computation. Treating the cloud as an
+  // override-if-present, default-canonical-otherwise keeps both paths honest.
+  const sireet = STATE.factories && STATE.factories.find(f => f.name === 'Sireet');
+  if (sireet && Number.isFinite(sireet.shares) && sireet.shares > 0) {
+    return sireet.shares;
+  }
+  return 5;
 }
 
 function sireetActualsInYear(year) {
