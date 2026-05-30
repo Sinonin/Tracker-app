@@ -4496,7 +4496,10 @@
           <select id="ih-batch-id"><option value="">— Select incubating batch —</option></select>
         </div>
         <div class="field"><label>Date hatched</label><input type="date" id="ih-date-hatched"></div>
-        <div class="field"><label>Hatched count</label><input type="number" id="ih-hatched" inputmode="numeric" step="1" min="0" placeholder="0"></div>
+        <div class="field"><label>Normal chicks</label><input type="number" id="ih-normal" inputmode="numeric" step="1" min="0" placeholder="0"></div>
+        <div class="field"><label>Deformed (alive, not for sale)</label><input type="number" id="ih-deformed" inputmode="numeric" step="1" min="0" placeholder="0"></div>
+        <div class="field"><label>Died at emergence</label><input type="number" id="ih-mortal" inputmode="numeric" step="1" min="0" placeholder="0"></div>
+        <div class="field"><label>Hatched total (auto)</label><input type="number" id="ih-hatched" readonly tabindex="-1" placeholder="0" style="opacity:0.7"></div>
         <div class="field"><label>Failed count (optional, computed if blank)</label><input type="number" id="ih-failed" inputmode="numeric" step="1" min="0" placeholder="auto"></div>
         <div class="field"><label>Notes</label><input type="text" id="ih-notes" placeholder="optional" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
         <button class="submit" id="ih-submit" disabled>Record hatch</button>
@@ -8696,7 +8699,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.36';
+const APP_VERSION = 'v6.11.37';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -15346,7 +15349,7 @@ function initIncubationForm() {
   }
 
   // Wire hatch form
-  const hatchFields = ['ih-batch-id', 'ih-date-hatched', 'ih-hatched', 'ih-failed', 'ih-notes'];
+  const hatchFields = ['ih-batch-id', 'ih-date-hatched', 'ih-normal', 'ih-deformed', 'ih-mortal', 'ih-hatched', 'ih-failed', 'ih-notes'];
   hatchFields.forEach(id => {
     const el = document.getElementById(id);
     if (el && !el.dataset.wired) {
@@ -15401,6 +15404,12 @@ function populateHatchBatchDropdown() {
 }
 
 function validateIncubationHatch() {
+  // Hatch composition partition — the total is computed from the parts, never typed.
+  const _n = Number((document.getElementById('ih-normal') || {}).value) || 0;
+  const _d = Number((document.getElementById('ih-deformed') || {}).value) || 0;
+  const _m = Number((document.getElementById('ih-mortal') || {}).value) || 0;
+  const _hcEl = document.getElementById('ih-hatched');
+  if (_hcEl) _hcEl.value = (_n + _d + _m) > 0 ? (_n + _d + _m) : '';
   const id = (document.getElementById('ih-batch-id') || {}).value;
   const dh = (document.getElementById('ih-date-hatched') || {}).value;
   const hc = (document.getElementById('ih-hatched') || {}).value;
@@ -15556,6 +15565,9 @@ async function submitIncubationHatch() {
   const id = (document.getElementById('ih-batch-id') || {}).value;
   const dh = (document.getElementById('ih-date-hatched') || {}).value;
   const hc = Number((document.getElementById('ih-hatched') || {}).value);
+  const normal   = Number((document.getElementById('ih-normal')   || {}).value) || 0;
+  const deformed = Number((document.getElementById('ih-deformed') || {}).value) || 0;
+  const mortal   = Number((document.getElementById('ih-mortal')   || {}).value) || 0;
   const failedRaw = (document.getElementById('ih-failed') || {}).value;
   const notes = ((document.getElementById('ih-notes') || {}).value || '').trim();
 
@@ -15679,11 +15691,13 @@ async function submitIncubationHatch() {
         origin_type: 'hatch',
         house: targetHouse,
         stage: 'Chicks 1\u20137 days',
-        initial_count: hc,
-        current_count: hc,
+        initial_count: hc,                       // = normal + deformed + mortal
+        current_count: normal + deformed,         // live birds (sellable + deformed)
         sold_count: 0,
-        mortality_count: 0,
-        notes: 'Auto-created from hatch of batch ' + id + (notes ? ' · ' + notes : '')
+        mortality_count: mortal,                  // died at emergence
+        notes: 'Auto-created from hatch of batch ' + id +
+               ' · Hatch split — Normal ' + normal + ' / Deformed ' + deformed +
+               ' / Died-at-emergence ' + mortal + (notes ? ' · ' + notes : '')
       };
 
       STATE.cohorts = STATE.cohorts || [];
@@ -15761,6 +15775,9 @@ async function submitIncubationHatch() {
 
     // Clear hatch form
     document.getElementById('ih-batch-id').value = '';
+    document.getElementById('ih-normal').value = '';
+    document.getElementById('ih-deformed').value = '';
+    document.getElementById('ih-mortal').value = '';
     document.getElementById('ih-hatched').value = '';
     document.getElementById('ih-failed').value = '';
     document.getElementById('ih-notes').value = '';

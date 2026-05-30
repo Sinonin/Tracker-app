@@ -99,7 +99,8 @@
 // operator action. A Vercel deploy → operators see new version on next app
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
-const CACHE = 'sinonin-greenleaf-v259';
+// v6.11.37 — Hatch composition: Normal/Deformed/Died-at-emergence → cohort seed (30 May 2026 Verden)
+const CACHE = 'sinonin-greenleaf-v260';
 
 const SHELL_FILES = [
   './',
