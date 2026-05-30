@@ -8700,7 +8700,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.38';
+const APP_VERSION = 'v6.11.39';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -15694,13 +15694,13 @@ async function submitIncubationHatch() {
         origin_type: 'hatch',
         house: targetHouse,
         stage: 'Chicks 1\u20137 days',
-        initial_count: hc,                       // = normal + deformed + mortal
-        current_count: normal + deformed,         // live birds (sellable + deformed)
+        initial_count: normal + mortal,           // main-line birds (live + died-at-emergence)
+        current_count: normal,                    // live in brooder (deformed routed to -Q cohort)
         sold_count: 0,
         mortality_count: mortal,                  // died at emergence
         notes: 'Auto-created from hatch of batch ' + id +
                ' · Hatch split — Normal ' + normal + ' / Deformed ' + deformed +
-               ' / Died-at-emergence ' + mortal + (notes ? ' · ' + notes : '')
+               ' (→ ' + cohortId + '-Q) / Died-at-emergence ' + mortal + (notes ? ' · ' + notes : '')
       };
 
       STATE.cohorts = STATE.cohorts || [];
@@ -15734,7 +15734,7 @@ async function submitIncubationHatch() {
             await queueForSync(cohortPayload, 'cohort');
           }
         }
-        showToast('🐣 Cohort ' + cohortId + ' created · ' + hc + ' chicks in ' + targetHouse, 4500);
+        showToast('🐣 Cohort ' + cohortId + ' created · ' + normal + ' chicks in ' + targetHouse, 4500);
 
         // v6.9.7 — Offer to record day-1 Marek's vaccination immediately.
         // Sealed 18 May 2026 (Hanover train ride): "trigger vaccinate record
@@ -15753,7 +15753,7 @@ async function submitIncubationHatch() {
             setTimeout(() => {
               const shouldOpen = window.confirm(
                 '🐣 Cohort ' + cohortId + ' created.\n\n' +
-                'Record ' + day1Vaccine.vaccine + ' (day 1) for ' + hc + ' chicks now?'
+                'Record ' + day1Vaccine.vaccine + ' (day 1) for ' + normal + ' chicks now?'
               );
               if (shouldOpen) {
                 openVaccinationFormPrefilled({
@@ -15761,13 +15761,50 @@ async function submitIncubationHatch() {
                   stage: stage,
                   house: targetHouse,
                   vaccine: day1Vaccine.vaccine,
-                  birds_count: hc
+                  birds_count: normal
                 });
               }
             }, 800);
           }
         } catch (vaccOfferErr) {
           console.warn('[hatch→vacc-offer] failed silently:', vaccOfferErr && vaccOfferErr.message);
+        }
+      }
+
+      // v6.11.39 — Deformed birds route to their OWN per-hatch quarantine
+      // cohort (ID = brooder cohort + '-Q'), not the brooder. Keeps the brooder
+      // count clean and the deformed sellable/countable from their own row,
+      // with the ID tracing back to the hatch. Sealed 30 May 2026 Verden:
+      // "deformities need a suffix that identifies them as belonging but in quarantine".
+      if (deformed > 0) {
+        const qCohortId = cohortId + '-Q';
+        const qCohort = {
+          cohort_id: qCohortId,
+          ts: new Date().toISOString(),
+          date_origin: dh,
+          origin_type: 'hatch',
+          house: 'Quarantine',
+          stage: 'Deformities',
+          initial_count: deformed,
+          current_count: deformed,
+          sold_count: 0,
+          mortality_count: 0,
+          notes: 'Deformed from hatch ' + id + ' — quarantined (belongs to ' + cohortId + ')'
+        };
+        if (STATE.cohorts.findIndex(c => c.cohort_id === qCohortId) === -1) {
+          STATE.cohorts.push(qCohort);
+          await storageSet(K_COHORTS, STATE.cohorts);
+          const qPayload = { mode: 'create', ...qCohort };
+          const qOk = await syncCohort(qPayload);
+          if (!qOk) {
+            const qDup = lastWriteResult && (
+              lastWriteResult.reason === 'duplicate' ||
+              (typeof lastWriteResult.message === 'string' &&
+               /duplicate|already exists/i.test(lastWriteResult.message))
+            );
+            if (!qDup) await queueForSync(qPayload, 'cohort');
+          }
+          showToast('🏥 Quarantine cohort ' + qCohortId + ' · ' + deformed + ' deformed bird' + (deformed === 1 ? '' : 's'), 4500);
         }
       }
     } catch (cohortErr) {
