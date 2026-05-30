@@ -4496,6 +4496,7 @@
           <select id="ih-batch-id"><option value="">— Select incubating batch —</option></select>
         </div>
         <div class="field"><label>Date hatched</label><input type="date" id="ih-date-hatched"></div>
+        <div class="field"><label>Fertile eggs at candling (Day 18–19, optional)</label><input type="number" id="ih-fertile" inputmode="numeric" step="1" min="0" placeholder="optional"></div>
         <div class="field"><label>Normal chicks</label><input type="number" id="ih-normal" inputmode="numeric" step="1" min="0" placeholder="0"></div>
         <div class="field"><label>Deformed (alive, not for sale)</label><input type="number" id="ih-deformed" inputmode="numeric" step="1" min="0" placeholder="0"></div>
         <div class="field"><label>Died at emergence</label><input type="number" id="ih-mortal" inputmode="numeric" step="1" min="0" placeholder="0"></div>
@@ -8699,7 +8700,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.37';
+const APP_VERSION = 'v6.11.38';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -15349,7 +15350,7 @@ function initIncubationForm() {
   }
 
   // Wire hatch form
-  const hatchFields = ['ih-batch-id', 'ih-date-hatched', 'ih-normal', 'ih-deformed', 'ih-mortal', 'ih-hatched', 'ih-failed', 'ih-notes'];
+  const hatchFields = ['ih-batch-id', 'ih-date-hatched', 'ih-fertile', 'ih-normal', 'ih-deformed', 'ih-mortal', 'ih-hatched', 'ih-failed', 'ih-notes'];
   hatchFields.forEach(id => {
     const el = document.getElementById(id);
     if (el && !el.dataset.wired) {
@@ -15568,6 +15569,7 @@ async function submitIncubationHatch() {
   const normal   = Number((document.getElementById('ih-normal')   || {}).value) || 0;
   const deformed = Number((document.getElementById('ih-deformed') || {}).value) || 0;
   const mortal   = Number((document.getElementById('ih-mortal')   || {}).value) || 0;
+  const fertile  = Number((document.getElementById('ih-fertile')  || {}).value) || 0;
   const failedRaw = (document.getElementById('ih-failed') || {}).value;
   const notes = ((document.getElementById('ih-notes') || {}).value || '').trim();
 
@@ -15651,7 +15653,8 @@ async function submitIncubationHatch() {
         payload: {
           ts: ts, // include for idempotency
           mode: 'hatch', batch_id: id, date_hatched: dh,
-          hatched_count: hc, failed_count: failed, notes: notes
+          hatched_count: hc, failed_count: failed, fertile_count: fertile,
+          notes: fertile > 0 ? ((notes ? notes + ' · ' : '') + 'Fertile@candling(D18-19): ' + fertile) : notes
         },
         source: `PWA ${APP_VERSION} incubation-hatch`
       };
@@ -15775,6 +15778,7 @@ async function submitIncubationHatch() {
 
     // Clear hatch form
     document.getElementById('ih-batch-id').value = '';
+    document.getElementById('ih-fertile').value = '';
     document.getElementById('ih-normal').value = '';
     document.getElementById('ih-deformed').value = '';
     document.getElementById('ih-mortal').value = '';

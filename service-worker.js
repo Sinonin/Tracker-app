@@ -100,7 +100,8 @@
 // open or next pull-to-refresh. No "clear browser data" instructions ever.
 
 // v6.11.37 — Hatch composition: Normal/Deformed/Died-at-emergence → cohort seed (30 May 2026 Verden)
-const CACHE = 'sinonin-greenleaf-v260';
+// v6.11.38 — Candling placeholder: Fertile-eggs field on Record hatch (30 May 2026 Verden)
+const CACHE = 'sinonin-greenleaf-v261';
 
 const SHELL_FILES = [
   './',
