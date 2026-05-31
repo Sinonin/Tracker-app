@@ -8700,7 +8700,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.41';
+const APP_VERSION = 'v6.11.42';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -14412,58 +14412,60 @@ function populatePoultryCohortDropdown() {
     // updated operational floor, not a regression.
     const cutoff = new Date(Date.now() - 15 * 86400000).toISOString().slice(0, 10);
 
-    // v6.11.41 — Net each batch by eggs already SOLD so sold-off batches drop
-    // out of the picker and the rest show eggs REMAINING, not gross collected.
-    // Eggs have no Cohort_Population row to decrement (a batch is a collection
-    // day), so remaining is computed on demand: collected − sold. Egg sales are
-    // poultry rows (product 'Eggs') carrying the batch id in cohort_id; quantity
-    // is in 'Trays' (30 eggs) or 'No. of eggs'. Sealed Cheison 31 May 2026
-    // ("eggs are not decrementing"): the picker IS the egg ledger's decrement point.
+    // v6.11.42 — Per-GRADE batch tagging so each grade clears on its own count.
+    // One collection day yields up to three sellable sub-batches:
+    //   <batch_id>     -> Normal          (collected = e.normal)
+    //   <batch_id>_SA  -> Small/Abnormal  (collected = e.small_abnormal)
+    //   <batch_id>_B   -> Broken          (collected = e.broken)
+    // The sale tags cohort_id with the chosen sub-id; remaining = collected −
+    // sold for THAT id, so grades decrement independently. Base id stays
+    // unsuffixed for Normal (backward-compatible: prior egg sales tagged the
+    // base id count as Normal). Forward-scoped. Sealed Cheison 31 May 2026.
     const EGGS_PER_TRAY = 30;
     const isTrayUnit = (u) => /tray|crate/i.test(String(u || ''));
-    const soldByBatch = {};
+    const soldById = {};
     (STATE.poultry || []).forEach(s => {
       if (!s || s.product !== 'Eggs') return;
-      const bid = String(s.cohort_id || '').trim();
-      if (!bid) return;
-      const eggs = (Number(s.quantity) || 0) * (isTrayUnit(s.unit) ? EGGS_PER_TRAY : 1);
-      soldByBatch[bid] = (soldByBatch[bid] || 0) + eggs;
+      const id = String(s.cohort_id || '').trim();
+      if (!id) return;
+      soldById[id] = (soldById[id] || 0) + (Number(s.quantity) || 0) * (isTrayUnit(s.unit) ? EGGS_PER_TRAY : 1);
     });
 
-    const collectedByBatch = {};
-    const batchMeta = {};
-    (STATE.eggCollection || []).forEach(e => {
-      if (!e || !e.egg_batch_id || !e.date || e.date < cutoff) return;
-      const bid = String(e.egg_batch_id).trim();
-      const got = (Number(e.normal) || 0) + (Number(e.small_abnormal) || 0) + (Number(e.broken) || 0);
-      collectedByBatch[bid] = (collectedByBatch[bid] || 0) + got;
-      if (!batchMeta[bid] || String(e.date) > String(batchMeta[bid].date)) {
-        batchMeta[bid] = { date: e.date, collector: e.collector || '' };
-      }
-    });
+    const fmtRemaining = (n) => {
+      const t = Math.floor(n / EGGS_PER_TRAY), r = n % EGGS_PER_TRAY;
+      const br = t > 0 ? ' (' + t + ' tray' + (t === 1 ? '' : 's') + (r ? ' + ' + r : '') + ')' : '';
+      return n + ' left' + br;
+    };
 
-    const batches = Object.keys(collectedByBatch)
-      .map(bid => {
-        const collected = collectedByBatch[bid];
-        const sold = soldByBatch[bid] || 0;
-        return { bid: bid, collected: collected, sold: sold, remaining: collected - sold,
-                 date: batchMeta[bid].date, collector: batchMeta[bid].collector };
-      })
-      .filter(b => b.remaining > 0)                                   // hide sold-off batches
-      .sort((a, b) => String(b.date).localeCompare(String(a.date)));  // newest first
+    const GRADES = [
+      { suf: '',    label: 'Normal',         field: 'normal' },
+      { suf: '_SA', label: 'Small/Abnormal', field: 'small_abnormal' },
+      { suf: '_B',  label: 'Broken',         field: 'broken' }
+    ];
+
+    const rows = (STATE.eggCollection || [])
+      .filter(e => e && e.egg_batch_id && e.date && e.date >= cutoff)
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));  // newest first
 
     let html = '<option value="" selected>— no batch attribution —</option>';
-    if (batches.length > 0) {
-      html += batches.map(b => {
-        const trays = Math.floor(b.remaining / EGGS_PER_TRAY);
-        const rem = b.remaining % EGGS_PER_TRAY;
-        const breakdown = trays > 0 ? ' (' + trays + ' tray' + (trays === 1 ? '' : 's') + (rem ? ' + ' + rem : '') + ')' : '';
-        const label = ' · ' + b.remaining + ' left' + breakdown + (b.sold > 0 ? ' · of ' + b.collected : '');
-        const coll = b.collector ? ' · ' + b.collector : '';
-        return '<option value="' + b.bid + '">' + b.bid + ' · ' + b.date + label + coll + '</option>';
-      }).join('');
-    } else {
-      html += '<option value="" disabled>(no egg batches with stock in last 15 days — log Egg Collection)</option>';
+    let any = false;
+    rows.forEach(e => {
+      const base = String(e.egg_batch_id).trim();
+      const coll = e.collector ? ' · ' + e.collector : '';
+      GRADES.forEach(g => {
+        const collected = Number(e[g.field]) || 0;
+        if (collected <= 0) return;
+        const id = base + g.suf;
+        const remaining = collected - (soldById[id] || 0);
+        if (remaining <= 0) return;
+        any = true;
+        const ofLabel = (soldById[id] || 0) > 0 ? ' · of ' + collected : '';
+        html += '<option value="' + id + '">' + id + ' · ' + e.date + ' · ' + g.label +
+                ' · ' + fmtRemaining(remaining) + ofLabel + coll + '</option>';
+      });
+    });
+    if (!any) {
+      html += '<option value="" disabled>(no egg stock to sell in last 15 days — log Egg Collection)</option>';
     }
     cohortEl.innerHTML = html;
     return;
