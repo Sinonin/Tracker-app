@@ -4453,6 +4453,11 @@
       <div class="field"><label>Stage</label>
         <select id="bc-stage"><option value="">— Select stage —</option></select>
       </div>
+      <!-- v6.11.45 — Cohort attribution for traceability (which chicks belong
+           to which cohort). Optional: blank for standing-flock counts. -->
+      <div class="field"><label id="bc-cohort-label">Cohort (optional · traceability)</label>
+        <select id="bc-cohort"><option value="">— pick stage &amp; house first —</option></select>
+      </div>
       <div class="field"><label>Count (number of birds)</label><input type="number" id="bc-count" inputmode="numeric" step="1" min="0" placeholder="0"></div>
       <div class="field"><label>Notes (optional)</label><input type="text" id="bc-notes" placeholder="e.g. mortality 2 yesterday, recount" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
 
@@ -4606,6 +4611,13 @@
           <select id="mt-house"><option value="">— House —</option></select>
         </div>
         <div class="field"><label>Count</label><input type="number" id="mt-count" min="1" value="1" placeholder="1"></div>
+      </div>
+      <!-- v6.11.45 — Cohort attribution on death. Defaults to the OLDEST
+           matching cohort (FIFO) but the operator can pick; blank = a
+           non-cohort death (e.g. a standing layer). Sent on the
+           Bird_Mortality row AND drives the server die-delta. -->
+      <div class="field"><label id="mt-cohort-label">Cohort (which batch died)</label>
+        <select id="mt-cohort"><option value="">— pick stage &amp; house first —</option></select>
       </div>
       <div class="field"><label>Cause</label>
         <select id="mt-cause">
@@ -8706,7 +8718,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.44';
+const APP_VERSION = 'v6.11.45';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -11823,13 +11835,14 @@ function cloudToLocalHouse(r) {
 /* v6.0 SHIP 4 — Cloud-to-local mapper for bird census rows. */
 function cloudToLocalBirdCensus(r) {
   return {
-    id: 'C-BC-' + r.date + '-' + String(r.house||'').trim() + '-' + String(r.stage||'').trim(),
+    id: 'C-BC-' + r.date + '-' + String(r.house||'').trim() + '-' + String(r.stage||'').trim() + '-' + String(r.cohort_id||'').trim(),
     ts: r.ts || r.date + 'T00:00:00Z',
     date: r.date,
     house: String(r.house || '').trim(),
     stage: String(r.stage || '').trim(),
     count: Number(r.count) || 0,
     notes: String(r.notes || ''),
+    cohort_id: String(r.cohort_id || '').trim(),
     _source: 'cloud'
   };
 }
@@ -14749,27 +14762,34 @@ async function autoDecrementCohortOnMortality(mortRow) {
     if (typeof effectiveCohortStage === 'function') return effectiveCohortStage(c, today) === stage;
     return c.stage === stage;
   }).sort((a, b) => (a.date_origin || '').localeCompare(b.date_origin || ''));
-  if (candidates.length === 0) {
-    console.log('[cohort-decrement] no matching cohort for mortality stage:', stage, 'house:', house);
+  // v6.11.45 — Prefer the operator-chosen cohort; fall back to FIFO-oldest.
+  let cohort = null;
+  if (mortRow.cohort_id) {
+    cohort = (STATE.cohorts || []).find(c => c && c.cohort_id === mortRow.cohort_id) || null;
+  }
+  if (!cohort) cohort = candidates[0] || null;
+  if (!cohort) {
+    console.log('[cohort-decrement] no cohort to attribute death to · stage:', stage, 'house:', house);
     return;
   }
-  const cohort = candidates[0];
   const oldCurrent   = Number(cohort.current_count) || 0;
   const oldMortality = Number(cohort.mortality_count) || 0;
   const newCurrent   = Math.max(0, oldCurrent - count);
   const newMortality = oldMortality + count;
-  cohort.current_count   = newCurrent;
+  cohort.current_count   = newCurrent;      // optimistic local
   cohort.mortality_count = newMortality;
   try { await storageSet(K_COHORTS, STATE.cohorts); } catch {}
+  // v6.11.45 — server-relative die-delta (mirror of sell-delta): server reads
+  // its OWN counts so a stale cache can't clobber. Idempotent per death_id.
   const update = {
-    mode: 'deduct',
+    mode: 'die',
     cohort_id: cohort.cohort_id,
-    ts: new Date().toISOString(),
-    current_count: newCurrent,
-    mortality_count: newMortality
+    qty: count,
+    death_id: mortRow.id,
+    ts: mortRow.ts || new Date().toISOString()
   };
   await queueForSync(update, 'cohort');
-  console.log(`[cohort-decrement-mortality] ${cohort.cohort_id}: current ${oldCurrent} → ${newCurrent}, mortality ${oldMortality} → ${newMortality}`);
+  console.log(`[cohort-die-delta] ${cohort.cohort_id}: -${count} current ${oldCurrent}->${newCurrent} mortality ${oldMortality}->${newMortality} death_id=${mortRow.id}`);
   if (typeof flushQueue === 'function') flushQueue({ manual: true }).catch(() => {});
 }
 
@@ -15141,6 +15161,18 @@ function initBirdCensusForm() {
       BIRD_CENSUS_STAGES.map(s => `<option value="${s}">${s}</option>`).join('');
   }
 
+  // v6.11.45 — Cohort picker (optional, for traceability).
+  const bcCohEl = document.getElementById('bc-cohort');
+  const repopBc = () => buildCohortSelect(bcCohEl,
+    (document.getElementById('bc-stage') || {}).value || '',
+    (document.getElementById('bc-house') || {}).value || '',
+    '\u2014 none / unattributed \u2014', false);
+  ['bc-stage', 'bc-house'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el._cohortWired) { el._cohortWired = true; el.addEventListener('change', repopBc); }
+  });
+  repopBc();
+
   validateBirdCensus();
 
   // Wire field listeners (idempotent)
@@ -15198,6 +15230,7 @@ async function submitBirdCensus() {
   const stage = (document.getElementById('bc-stage') || {}).value || '';
   const count = (document.getElementById('bc-count') || {}).value;
   const notes = ((document.getElementById('bc-notes') || {}).value || '').trim();
+  const cohort = (document.getElementById('bc-cohort') || {}).value || '';
 
   if (!date || !house || !stage || count === '' || count === undefined) {
     showToast('Please fill all required fields', 3000);
@@ -15222,7 +15255,8 @@ async function submitBirdCensus() {
     house: house,
     stage: stage,
     count: Number(count),
-    notes: notes
+    notes: notes,
+    cohort_id: cohort
   };
 
   // Optimistic local insert
@@ -15267,7 +15301,8 @@ async function pushBirdCensusToGate(row) {
         house: row.house,
         stage: row.stage,
         count: Number(row.count || 0),
-        notes: row.notes || ''
+        notes: row.notes || '',
+        cohort_id: row.cohort_id || ''
       },
       source: `PWA ${APP_VERSION} bird-census`
     };
@@ -17167,6 +17202,37 @@ async function syncCohort(record) {
 /* Initialize the mortality form: defaults, populate house dropdown, 
    wire the submit button. Runs every time kind='mortality' is selected 
    in the Add panel. */
+/* v6.11.45 — Shared cohort-picker for mortality + census. Lists ACTIVE
+   cohorts (current_count > 0) whose effective stage matches, oldest-first
+   (FIFO). Mirrors the sale cohort dropdown. */
+function cohortPickerOptions(stage, house) {
+  const today = new Date().toISOString().slice(0, 10);
+  return (Array.isArray(STATE.cohorts) ? STATE.cohorts : []).filter(c => {
+    if (!c || !c.cohort_id) return false;
+    if ((Number(c.current_count) || 0) <= 0) return false;
+    if (stage) {
+      const st = (typeof effectiveCohortStage === 'function') ? effectiveCohortStage(c, today) : c.stage;
+      if (st !== stage) return false;
+    }
+    if (house && c.house && c.house !== house) return false;
+    return true;
+  }).sort((a, b) => String(a.date_origin || '').localeCompare(String(b.date_origin || '')));
+}
+
+function buildCohortSelect(selectEl, stage, house, placeholder, defaultFirst) {
+  if (!selectEl) return;
+  const matches = cohortPickerOptions(stage, house);
+  const prev = selectEl.value;
+  let html = '<option value="">' + (placeholder || '\u2014 none / unattributed \u2014') + '</option>';
+  matches.forEach((c, i) => {
+    const cur = Number(c.current_count) || 0;
+    const lbl = c.cohort_id + ' \u00b7 ' + cur + ' left' + (c.date_origin ? ' \u00b7 ' + c.date_origin : '');
+    const sel = (prev ? (c.cohort_id === prev) : (defaultFirst && i === 0)) ? ' selected' : '';
+    html += '<option value="' + c.cohort_id + '"' + sel + '>' + lbl + '</option>';
+  });
+  selectEl.innerHTML = html;
+}
+
 function initMortalityForm() {
   // Default date to today
   const dEl = document.getElementById('mt-date');
@@ -17187,6 +17253,18 @@ function initMortalityForm() {
     }
   }
 
+  // v6.11.45 — Cohort picker: repopulate when stage/house change.
+  const mtCohEl = document.getElementById('mt-cohort');
+  const repopMt = () => buildCohortSelect(mtCohEl,
+    (document.getElementById('mt-stage') || {}).value || '',
+    (document.getElementById('mt-house') || {}).value || '',
+    '\u2014 none / unattributed \u2014', true);
+  ['mt-stage', 'mt-house'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el._cohortWired) { el._cohortWired = true; el.addEventListener('change', repopMt); }
+  });
+  repopMt();
+
   // Wire submit (once)
   const submitBtn = document.getElementById('mt-submit');
   if (submitBtn && !submitBtn._wired) {
@@ -17203,6 +17281,7 @@ async function submitMortality() {
   const count = (document.getElementById('mt-count') || {}).value;
   const cause = (document.getElementById('mt-cause') || {}).value || '';
   const notes = ((document.getElementById('mt-notes') || {}).value || '').trim();
+  const cohort = (document.getElementById('mt-cohort') || {}).value || '';
 
   if (!date || !stage || !house || count === '' || count === undefined || !cause) {
     showToast('Please fill date, stage, house, count, and cause', 3000);
@@ -17243,7 +17322,7 @@ async function submitMortality() {
     stage: stage,
     count: countN,
     cause: cause,
-    cohort_id: '',
+    cohort_id: cohort,
     notes: notes
   };
 
