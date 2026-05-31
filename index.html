@@ -4485,6 +4485,12 @@
         <div class="field"><label>Date set</label><input type="date" id="ib-date-set"></div>
         <div class="field"><label>Eggs in (count)</label><input type="number" id="ib-eggs-in" inputmode="numeric" step="1" min="1" placeholder="0"></div>
         <div class="field"><label>Source</label><input type="text" id="ib-source" placeholder="e.g. Own Ground Floor, Bought Eldoret" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
+        <div class="field" id="ib-draws-field">
+          <label>Drawn from stock (per batch · optional)</label>
+          <div id="ib-draws"></div>
+          <button type="button" id="ib-draw-add" style="margin-top:0.4rem;padding:0.35rem 0.7rem;border:1px dashed currentColor;background:transparent;border-radius:6px;cursor:pointer;font:inherit;opacity:0.85">+ Add source batch</button>
+          <div id="ib-draws-tally" style="margin-top:0.4rem;font-size:0.85rem;opacity:0.8"></div>
+        </div>
         <div class="field"><label>Expected hatch (auto = +21 days)</label><input type="date" id="ib-expected-hatch"></div>
         <div class="field"><label>Notes</label><input type="text" id="ib-notes" placeholder="optional" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
         <button class="submit" id="ib-start-submit" disabled>Start batch</button>
@@ -8700,7 +8706,11 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.42';
+const APP_VERSION = 'v6.11.44';
+// v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
+// reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
+// AND the incubation draw helper. Advance one line for a fresh clearing.
+const EGG_CLEARED_THROUGH = '2026-05-29';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -11839,6 +11849,7 @@ function cloudToLocalIncubation(r) {
     hatch_rate:     Number(r.hatch_rate) || 0,
     status:         String(r.status || 'incubating'),
     notes:          String(r.notes || ''),
+    egg_draws:      Array.isArray(r.egg_draws) ? r.egg_draws : [],
     _source:        'cloud'
   };
 }
@@ -14412,6 +14423,14 @@ function populatePoultryCohortDropdown() {
     // updated operational floor, not a regression.
     const cutoff = new Date(Date.now() - 15 * 86400000).toISOString().slice(0, 10);
 
+    // v6.11.43 — Clearing cutoff. Cheison 31 May 2026: every egg batch dated
+    // ON/BEFORE this date is reconciled CLOSED (sold, incubated, or gifted) and
+    // must not reappear as sellable stock. This is an honest zero, not a fake
+    // sale: the gross Egg_Collection rows are retained for yield history; only
+    // the sell-picker stops re-offering already-disposed batches. Advance this
+    // one line whenever a fresh clearing is agreed. Forward-scoped, additive.
+    // (EGG_CLEARED_THROUGH is defined once at module scope — see APP_VERSION.)
+
     // v6.11.42 — Per-GRADE batch tagging so each grade clears on its own count.
     // One collection day yields up to three sellable sub-batches:
     //   <batch_id>     -> Normal          (collected = e.normal)
@@ -14431,6 +14450,19 @@ function populatePoultryCohortDropdown() {
       soldById[id] = (soldById[id] || 0) + (Number(s.quantity) || 0) * (isTrayUnit(s.unit) ? EGGS_PER_TRAY : 1);
     });
 
+    // v6.11.44 — Eggs drawn into the incubator are an internal transfer, not a
+    // sale: subtract them from the source batch's remaining (Normal grade).
+    const incubatedById = {};
+    (STATE.incubation || []).forEach(b => {
+      if (!b || !Array.isArray(b.egg_draws)) return;
+      b.egg_draws.forEach(d => {
+        const id = String((d && d.id) || '').trim();
+        const q = Number(d && d.qty) || 0;
+        if (!id || q <= 0) return;
+        incubatedById[id] = (incubatedById[id] || 0) + q;
+      });
+    });
+
     const fmtRemaining = (n) => {
       const t = Math.floor(n / EGGS_PER_TRAY), r = n % EGGS_PER_TRAY;
       const br = t > 0 ? ' (' + t + ' tray' + (t === 1 ? '' : 's') + (r ? ' + ' + r : '') + ')' : '';
@@ -14444,7 +14476,7 @@ function populatePoultryCohortDropdown() {
     ];
 
     const rows = (STATE.eggCollection || [])
-      .filter(e => e && e.egg_batch_id && e.date && e.date >= cutoff)
+      .filter(e => e && e.egg_batch_id && e.date && e.date >= cutoff && e.date > EGG_CLEARED_THROUGH)
       .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));  // newest first
 
     let html = '<option value="" selected>— no batch attribution —</option>';
@@ -14456,7 +14488,7 @@ function populatePoultryCohortDropdown() {
         const collected = Number(e[g.field]) || 0;
         if (collected <= 0) return;
         const id = base + g.suf;
-        const remaining = collected - (soldById[id] || 0);
+        const remaining = collected - (soldById[id] || 0) - (incubatedById[id] || 0);
         if (remaining <= 0) return;
         any = true;
         const ofLabel = (soldById[id] || 0) > 0 ? ' · of ' + collected : '';
@@ -15346,6 +15378,105 @@ const VACC_SCHEDULE_DEFAULT = [
 
 let INCUBATION_MODE = 'start'; // 'start' or 'hatch'
 
+/* v6.11.44 — Incubation egg-draw helpers. Eggs set into the incubator are an
+   internal transfer off a source egg batch (Normal grade), NOT a sale. Elias
+   picks the batch(es) + counts; the egg sell-picker subtracts these so stock
+   decrements honestly with zero revenue. Source batches listed oldest-first
+   (FIFO) so aging stock is drawn before fresh. */
+function eggBatchesOpenForDraw() {
+  const PER = 30;
+  const trayU = (u) => /tray|crate/i.test(String(u || ''));
+  const sold = {};
+  (STATE.poultry || []).forEach(s => {
+    if (!s || s.product !== 'Eggs') return;
+    const id = String(s.cohort_id || '').trim();
+    if (!id) return;
+    sold[id] = (sold[id] || 0) + (Number(s.quantity) || 0) * (trayU(s.unit) ? PER : 1);
+  });
+  const inc = {};
+  (STATE.incubation || []).forEach(b => {
+    if (!b || !Array.isArray(b.egg_draws)) return;
+    b.egg_draws.forEach(d => {
+      const id = String((d && d.id) || '').trim();
+      const q = Number(d && d.qty) || 0;
+      if (!id || q <= 0) return;
+      inc[id] = (inc[id] || 0) + q;
+    });
+  });
+  const window15 = new Date(Date.now() - 15 * 86400000).toISOString().slice(0, 10);
+  return (STATE.eggCollection || [])
+    .filter(e => e && e.egg_batch_id && e.date && e.date >= window15 && e.date > EGG_CLEARED_THROUGH)
+    .map(e => {
+      const id = String(e.egg_batch_id).trim();
+      const collected = Number(e.normal) || 0;
+      const remaining = collected - (sold[id] || 0) - (inc[id] || 0);
+      return { id, date: e.date, remaining };
+    })
+    .filter(b => b.remaining > 0)
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+}
+
+function incubationDrawOptionsHtml(selectedId) {
+  const opts = eggBatchesOpenForDraw();
+  let h = '<option value="">— select batch —</option>';
+  opts.forEach(o => {
+    const sel = o.id === selectedId ? ' selected' : '';
+    h += '<option value="' + o.id + '"' + sel + '>' + o.id + ' \u00b7 ' + o.date + ' \u00b7 ' + o.remaining + ' left</option>';
+  });
+  if (selectedId && !opts.some(o => o.id === selectedId)) {
+    h += '<option value="' + selectedId + '" selected>' + selectedId + ' \u00b7 (0 left)</option>';
+  }
+  return h;
+}
+
+function addIncubationDrawRow(presetId, presetQty) {
+  const wrap = document.getElementById('ib-draws');
+  if (!wrap) return;
+  const row = document.createElement('div');
+  row.className = 'ib-draw-row';
+  row.style.cssText = 'display:flex;gap:0.4rem;align-items:center;margin-bottom:0.4rem';
+  row.innerHTML =
+    '<select class="ib-draw-batch" style="flex:1;font-family:\'IBM Plex Mono\',monospace">' +
+      incubationDrawOptionsHtml(presetId || '') + '</select>' +
+    '<input type="number" class="ib-draw-qty" inputmode="numeric" step="1" min="1" ' +
+      'placeholder="eggs" style="width:5.5rem" value="' + (presetQty != null ? presetQty : '') + '">' +
+    '<button type="button" class="ib-draw-del" title="Remove" ' +
+      'style="border:none;background:transparent;font-size:1.1rem;cursor:pointer;opacity:0.6">\u2715</button>';
+  wrap.appendChild(row);
+  row.querySelector('.ib-draw-del').addEventListener('click', () => { row.remove(); updateIncubationDrawTally(); });
+  row.querySelector('.ib-draw-batch').addEventListener('change', updateIncubationDrawTally);
+  row.querySelector('.ib-draw-qty').addEventListener('input', updateIncubationDrawTally);
+  updateIncubationDrawTally();
+}
+
+function collectIncubationDraws() {
+  const draws = [];
+  document.querySelectorAll('#ib-draws .ib-draw-row').forEach(row => {
+    const id = ((row.querySelector('.ib-draw-batch') || {}).value || '').trim();
+    const qty = Number((row.querySelector('.ib-draw-qty') || {}).value) || 0;
+    if (id && qty > 0) draws.push({ id, qty });
+  });
+  const merged = {};
+  draws.forEach(d => { merged[d.id] = (merged[d.id] || 0) + d.qty; });
+  return Object.keys(merged).map(id => ({ id, qty: merged[id] }));
+}
+
+function updateIncubationDrawTally() {
+  const el = document.getElementById('ib-draws-tally');
+  if (!el) return;
+  const drawn = collectIncubationDraws().reduce((s, d) => s + d.qty, 0);
+  const ei = Number((document.getElementById('ib-eggs-in') || {}).value) || 0;
+  if (!drawn && !ei) { el.textContent = ''; return; }
+  let msg = 'Drawn from tracked stock: ' + drawn;
+  if (ei) {
+    const diff = ei - drawn;
+    if (diff === 0) msg += ' \u00b7 matches eggs in \u2713';
+    else if (diff > 0) msg += ' \u00b7 ' + diff + ' from untracked source (bought / older stock)';
+    else msg += ' \u00b7 ' + (-diff) + ' MORE than eggs in \u2014 check counts';
+  }
+  el.textContent = msg;
+}
+
 function initIncubationForm() {
   // Wire mode toggle
   const modeButtons = document.querySelectorAll('#incubation-mode-toggle button');
@@ -15408,6 +15539,20 @@ function initIncubationForm() {
   if (hatchBtn && !hatchBtn.dataset.wired) {
     hatchBtn.dataset.wired = '1';
     hatchBtn.addEventListener('click', submitIncubationHatch);
+  }
+
+  // v6.11.44 — Incubation draw rows: reset to one empty row on open, wire add.
+  const drawsWrap = document.getElementById('ib-draws');
+  if (drawsWrap) { drawsWrap.innerHTML = ''; addIncubationDrawRow(); }
+  const drawAddBtn = document.getElementById('ib-draw-add');
+  if (drawAddBtn && !drawAddBtn.dataset.wired) {
+    drawAddBtn.dataset.wired = '1';
+    drawAddBtn.addEventListener('click', () => addIncubationDrawRow());
+  }
+  const eiDrawEl = document.getElementById('ib-eggs-in');
+  if (eiDrawEl && !eiDrawEl.dataset.drawWired) {
+    eiDrawEl.dataset.drawWired = '1';
+    eiDrawEl.addEventListener('input', updateIncubationDrawTally);
   }
 
   // Initial validation
@@ -15520,10 +15665,12 @@ async function submitIncubationStart() {
   if (submitBtn) { submitBtn.dataset.inFlight = '1'; submitBtn.disabled = true; }
 
   try {
+    const eggDraws = collectIncubationDraws();
     const row = {
       batch_id: id, ts: new Date().toISOString(), date_set: ds, eggs_in: ei,
       source: src, expected_hatch: eh, date_hatched: '', hatched_count: 0,
-      failed_count: 0, hatch_rate: 0, status: 'incubating', notes: notes
+      failed_count: 0, hatch_rate: 0, status: 'incubating', notes: notes,
+      egg_draws: eggDraws
     };
 
     if (!Array.isArray(STATE.incubation)) STATE.incubation = [];
@@ -15541,7 +15688,8 @@ async function submitIncubationStart() {
         payload: {
           ts: row.ts, // include client ts for idempotency
           mode: 'start', batch_id: id, date_set: ds, eggs_in: ei,
-          source: src, expected_hatch: eh, notes: notes
+          source: src, expected_hatch: eh, notes: notes,
+          egg_draws: eggDraws
         },
         source: `PWA ${APP_VERSION} incubation-start`
       };
