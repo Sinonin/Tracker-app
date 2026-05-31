@@ -8700,7 +8700,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.39';
+const APP_VERSION = 'v6.11.40';
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -14640,13 +14640,17 @@ async function autoDecrementCohortOnSale(saleRow) {
   cohort.current_count = newCurrent;
   cohort.sold_count    = newSold;
   try { await storageSet(K_COHORTS, STATE.cohorts); } catch {}
-  // Queue 'deduct' update to gate (will sync absolutes)
+  // v6.11.40 — SELL DELTA, not client absolutes: server subtracts from its
+  // own Current/Sold (kills the stale-cache clobber). sale_id keys the
+  // permanent server-side idempotency; ts is the SALE's ts (stable across
+  // retries), NOT a fresh now(); else a retry would read as a new event.
+  const saleId = saleRow.id || saleRow.ts || (cohort.cohort_id + ':' + Date.now());
   const update = {
-    mode: 'deduct',
+    mode: 'sell',
     cohort_id: cohort.cohort_id,
-    ts: new Date().toISOString(),
-    current_count: newCurrent,
-    sold_count: newSold
+    qty: qty,
+    sale_id: saleId,
+    ts: saleRow.ts || saleId
   };
   await queueForSync(update, 'cohort');
   console.log(`[cohort-decrement] ${cohort.cohort_id}: current ${oldCurrent} → ${newCurrent}, sold ${oldSold} → ${newSold}`);
