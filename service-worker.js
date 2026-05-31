@@ -103,7 +103,8 @@
 // v6.11.38 — Candling placeholder: Fertile-eggs field on Record hatch (30 May 2026 Verden)
 // v6.11.39 — Deformed birds route to per-hatch quarantine cohort (suffix -Q) (30 May 2026 Verden)
 // v6.11.40 — Cohort sell-delta: server-relative decrement, no client absolutes (31 May 2026 Verden)
-const CACHE = 'sinonin-greenleaf-v263';
+// v6.11.41 — Egg-batch picker nets collected − sold; sold-off batches hidden (31 May 2026 Verden)
+const CACHE = 'sinonin-greenleaf-v264';
 
 const SHELL_FILES = [
   './',
