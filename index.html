@@ -8718,7 +8718,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.45';
+const APP_VERSION = 'v6.11.46';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -16012,7 +16012,8 @@ async function submitIncubationHatch() {
           date_origin: dh,
           origin_type: 'hatch',
           house: 'Quarantine',
-          stage: 'Deformities',
+          // v6.11.46 — _Q always lands in the Quarantine stage (asserted).
+          stage: 'Quarantine',
           initial_count: deformed,
           current_count: deformed,
           sold_count: 0,
@@ -16156,6 +16157,11 @@ function ageAllCohorts() {
   STATE.cohorts.forEach(c => {
     if (!c.date_origin || !c.cohort_id) return;
     if (Number(c.current_count) <= 0) return; // empty cohort, skip
+    // v6.11.46 — Never auto-age an asserted-stage cohort (Cockerels,
+    // Quarantine, Deformities, Retired). Age can't derive these; re-aging a
+    // -Q cohort to a chick stage was what pulled deformed birds back into
+    // Chicks 1-7 (the 16:57 overwrite). Respect the operator classification.
+    if (typeof ASSERTED_STAGES !== 'undefined' && ASSERTED_STAGES.indexOf(c.stage) !== -1) return;
     
     const origin = new Date(c.date_origin + 'T00:00:00Z');
     if (isNaN(origin.getTime())) return;
