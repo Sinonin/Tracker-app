@@ -8718,7 +8718,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.46';
+const APP_VERSION = 'v6.11.47';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -18312,30 +18312,36 @@ function computeStageLive(stage, house, today) {
 
   // Baseline: latest manual census for this (stage, house). 
   // If house omitted, sum the latest-per-house entries.
-  const census = (STATE.birdCensus || []).filter(c => c.stage === stage);
+  // v6.11.47 — Mirror Apps Script v5.0.63/64: census is the baseline ONLY for
+  // standing flocks (Layers/Cockerels). Every cohort stage is pure per-cohort
+  // truth (current_count), so a stale Deformities/Quarantine census can't leak
+  // into the card and chicks aren't double-counted against a census number.
+  const CENSUS_BASELINE_STAGES = ['Layers', 'Cockerels'];
   let baseline = 0;
   let censusDate = '1970-01-01';
-  if (house) {
-    const matching = census.filter(c => c.house === house);
-    matching.forEach(c => {
-      if ((c.date || '') > censusDate) {
-        censusDate = c.date;
-        baseline = Number(c.count) || 0;
-      }
-    });
-  } else {
-    // Sum latest-per-house
-    const latestByHouse = {};
-    census.forEach(c => {
-      const h = c.house || '';
-      if (!latestByHouse[h] || (c.date || '') > (latestByHouse[h].date || '')) {
-        latestByHouse[h] = c;
-      }
-    });
-    Object.values(latestByHouse).forEach(c => {
-      baseline += Number(c.count) || 0;
-      if ((c.date || '') > censusDate) censusDate = c.date;
-    });
+  if (CENSUS_BASELINE_STAGES.indexOf(stage) !== -1) {
+    const census = (STATE.birdCensus || []).filter(c => c.stage === stage);
+    if (house) {
+      const matching = census.filter(c => c.house === house);
+      matching.forEach(c => {
+        if ((c.date || '') > censusDate) {
+          censusDate = c.date;
+          baseline = Number(c.count) || 0;
+        }
+      });
+    } else {
+      const latestByHouse = {};
+      census.forEach(c => {
+        const h = c.house || '';
+        if (!latestByHouse[h] || (c.date || '') > (latestByHouse[h].date || '')) {
+          latestByHouse[h] = c;
+        }
+      });
+      Object.values(latestByHouse).forEach(c => {
+        baseline += Number(c.count) || 0;
+        if ((c.date || '') > censusDate) censusDate = c.date;
+      });
+    }
   }
 
   // v6.9.4 — PER-COHORT live computation replaces stage-bucketed sales 
@@ -18479,7 +18485,9 @@ function computeStageLive(stage, house, today) {
     } else {
       // New cohort (or transitioned into stage after census): add full
       // live count contribution.
-      const cohortLive = Math.max(0, initial - soldForCohort - mortForCohort);
+      // v6.11.47 — Live = delta-maintained current_count (mirrors AS v5.0.64);
+      // sell-delta / die-delta / create keep it exact.
+      const cohortLive = Math.max(0, Number(c.current_count) || 0);
       cohortLiveTotal += cohortLive;
       // v6.9.8 — Capture origin date only for cohorts with live birds (a
       // fully-sold cohort that's left this stage shouldn't anchor freshness).
