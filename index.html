@@ -7511,6 +7511,86 @@ function issueReceiptForSale(saleId) {
   document.getElementById('receipt-overlay').classList.add('show');
 }
 
+/* v6.11.51 — Open the receipt builder from ANY sale-shaped row, not just a
+   STATE.sales lookup. Unified sales pass their own row; poultry sales (which
+   never enter STATE.sales) pass row + receiptSaleId set to their Sales-sheet
+   mirror id (row.id + '-PS') so the server stamp targets the right row. */
+function issueReceiptForRow(row) {
+  const cfg = _receiptCfg();
+  if (!cfg) { showToast('Receipt branding not configured for this tenant', 4000); return; }
+  if (!row) { showToast('Sale not found', 3000); return; }
+  _ensureReceiptOverlay();
+  const qty = Number(row.quantity) || 0;
+  const amount = Number(row.amount) || 0;
+  const unitPrice = qty > 0 ? amount / qty : amount;
+  const variant = row.variant || row.stage || '';
+  const desc = (row.product || '') + (variant ? ' \u00b7 ' + variant : '');
+  RECEIPT_STATE = {
+    type: 'RCT',
+    buyer: row.buyer || '',
+    saleId: row.receiptSaleId || row.id || null,
+    lines: [{ desc: desc, qty: qty > 0 ? qty : 1, price: qty > 0 ? unitPrice : amount, batch: row.cohort_id || '' }],
+    lastDoc: null
+  };
+  _recRenderLines();
+  const t = document.getElementById('rec-title'); if (t) t.textContent = 'Receipt';
+  const st = document.getElementById('rec-subtitle');
+  if (st) st.textContent = 'For ' + (row.product || 'sale') + (row.buyer ? ' \u00b7 ' + row.buyer : '');
+  const buyerEl = document.getElementById('rec-buyer');
+  if (buyerEl) buyerEl.value = RECEIPT_STATE.buyer;
+  document.getElementById('rec-doc-view').style.display = 'none';
+  document.getElementById('rec-builder').style.display = '';
+  document.getElementById('receipt-overlay').classList.add('show');
+}
+
+/* v6.11.51 — Prominent, tappable receipt prompt after a sale (Cheison 01 Jun
+   2026 Verden, "make the receipt toast prominent and linked"). Replaces the
+   silent auto-open overlay: a sale lands, this banner rises with the summary
+   and a 🧾 button. Tap → builder pre-filled from the sale; ignore → it fades
+   after 9s. Skipped for gifts / zero-value lines (no receipt for free goods).
+   Works for unified sales and poultry sales alike. */
+function showReceiptToast(saleRow) {
+  if (!_receiptCfg() || !saleRow) return;
+  if ((Number(saleRow.amount) || 0) <= 0) return; // gift / giveaway — no receipt
+  // One-time keyframe (opacity only — transform is reserved for centering)
+  if (!document.getElementById('rc-toast-style')) {
+    const s = document.createElement('style');
+    s.id = 'rc-toast-style';
+    s.textContent = '@keyframes rcToastFade{from{opacity:0}to{opacity:1}}';
+    document.head.appendChild(s);
+  }
+  const existing = document.getElementById('receipt-toast');
+  if (existing) existing.remove();
+  const amt = (typeof moneyRound === 'function') ? moneyRound(Number(saleRow.amount) || 0) : (Number(saleRow.amount) || 0);
+  const variant = saleRow.variant || saleRow.stage || '';
+  const label = (saleRow.product || 'Sale') + (variant ? ' \u00b7 ' + variant : '');
+  const el = document.createElement('div');
+  el.id = 'receipt-toast';
+  el.style.cssText = [
+    'position:fixed', 'left:50%', 'transform:translateX(-50%)', 'bottom:5.2rem', 'z-index:9998',
+    'width:calc(100% - 1.6rem)', 'max-width:420px',
+    'background:var(--ink,#1a2826)', 'border:1.5px solid var(--brass,#b8935a)', 'border-radius:10px',
+    'box-shadow:0 10px 30px rgba(0,0,0,0.45)', 'padding:0.85rem 0.9rem',
+    'display:flex', 'align-items:center', 'gap:0.7rem',
+    "font-family:'Fraunces',serif", 'color:var(--ivory,#f5e8d3)',
+    'animation:rcToastFade 0.25s ease-out'
+  ].join(';');
+  el.innerHTML =
+    '<div style="flex:1;min-width:0">' +
+      '<div style="font-size:0.78rem;opacity:0.75">Sale recorded \u00b7 Ksh ' + amt + '</div>' +
+      '<div style="font-size:1rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + label + '</div>' +
+    '</div>' +
+    '<button id="receipt-toast-go" style="flex:none;padding:0.6rem 0.95rem;background:var(--brass,#b8935a);border:none;border-radius:7px;color:#1a2826;font-family:inherit;font-weight:700;font-size:0.92rem;cursor:pointer">\uD83E\uDDFE Receipt</button>' +
+    '<button id="receipt-toast-x" aria-label="Dismiss" style="flex:none;background:transparent;border:none;color:var(--ivory,#f5e8d3);opacity:0.6;font-size:1.35rem;line-height:1;cursor:pointer;padding:0 0.2rem">\u00d7</button>';
+  document.body.appendChild(el);
+  const close = () => { const e2 = document.getElementById('receipt-toast'); if (e2) e2.remove(); };
+  const goBtn = document.getElementById('receipt-toast-go');
+  if (goBtn) goBtn.addEventListener('click', () => { close(); try { issueReceiptForRow(saleRow); } catch (e) { console.warn('[receipt-toast] open failed:', e && e.message); } });
+  const xBtn = document.getElementById('receipt-toast-x');
+  if (xBtn) xBtn.addEventListener('click', close);
+  setTimeout(() => { if (document.getElementById('receipt-toast') === el) close(); }, 9000);
+}
+
 async function _recStampSale(saleId, typeLabel, number) {
   // Local update first (instant UI feedback on the sale row).
   const sale = (STATE.sales || []).find(s => s && s.id === saleId);
@@ -8045,14 +8125,11 @@ async function submitSale() {
   }
   if (typeof updateSyncIndicator === 'function') updateSyncIndicator();
 
-  // v6.11.50 — Auto-prompt receipt after each sale (Cheison 01 Jun 2026 Verden,
-  // "don't block — just auto-prompt"). Non-blocking: the sale is already saved
-  // and synced above. When the tenant has receipt branding configured, open the
-  // builder pre-filled from this sale (issueReceiptForSale reads the row from
-  // STATE.sales by id) so the operator can issue with no re-entry — or simply
-  // close it. Nothing is forced, nothing gates the save.
-  if (_receiptCfg() && typeof issueReceiptForSale === 'function') {
-    try { issueReceiptForSale(row.id); } catch (e) { console.warn('[receipt-autoprompt] failed:', e && e.message); }
+  // v6.11.50/51 — Prominent, linked receipt prompt after each sale (Cheison
+  // 01 Jun 2026). Non-blocking banner with a 🧾 button; the sale is already
+  // saved + synced above. Skipped for gifts/zero-value inside showReceiptToast.
+  if (_receiptCfg() && typeof showReceiptToast === 'function') {
+    try { showReceiptToast(row); } catch (e) { console.warn('[receipt-autoprompt] failed:', e && e.message); }
   }
 }
 
@@ -8727,7 +8804,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.50';
+const APP_VERSION = 'v6.11.51';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -14756,6 +14833,12 @@ async function submitPoultry() {
     }
   } catch (e) {
     console.warn('[sales-mirror] poultry\u2192Sales mirror failed (primary write unaffected):', e && e.message);
+  }
+
+  // v6.11.51 — Prominent, linked receipt prompt after a poultry sale. The
+  // receipt stamps the Sales-sheet mirror row (id + '-PS'); skipped for gifts.
+  if (_receiptCfg() && typeof showReceiptToast === 'function') {
+    try { showReceiptToast(Object.assign({}, row, { receiptSaleId: row.id + '-PS' })); } catch (e) { console.warn('[receipt-toast] poultry failed:', e && e.message); }
   }
 
   updateSyncIndicator();
