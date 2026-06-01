@@ -8718,7 +8718,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.47';
+const APP_VERSION = 'v6.11.48';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -14314,8 +14314,8 @@ const POULTRY_STAGES = [
 const STAGES_BY_PRODUCT = {
   'Eggs':    ['Normal eggs', 'Broken eggs', 'Small/Abnormal Eggs'],
   'Chicks':  ['Chicks 1\u20137 days', 'Chicks 7\u201328 days'],
-  'Chicken': ['Growers', 'Layers', 'Cockerels', 'Retired birds', 'Deformities', 'Quarantine'],
-  'Other':   POULTRY_STAGES   // fallback: all stages for unusual transactions
+  'Chicken': ['Growers', 'Layers', 'Cockerels', 'Retired birds'],
+  'Other':   ['Quarantine', 'Deformities']   // v6.11.48 — conditions, any age; kept off Chicken so a chick can be quarantined/deformed without being mislabelled a 'Chicken'
 };
 
 function populatePoultryStageDropdown() {
@@ -16148,6 +16148,36 @@ function getStageCohortAge(stage) {
    server will reconcile on its own daily trigger once that ships).
    
    Returns: number of cohorts promoted in this pass (for logging). */
+/* v6.11.48 — Quarantine back-fill migration. Cheison 1 Jun 2026 Verden.
+   Existing -Q / _Q (or Quarantine-house) cohorts created before the
+   Quarantine-stage rule are stuck in a chick stage. This promotes them to
+   the Quarantine stage as a CODED, auditable, idempotent correction pushed
+   through the gate -- never a hand-edited cell. Runs each render; acts only
+   when a quarantine cohort is mis-staged, so it self-stops once corrected
+   (ageAllCohorts then leaves it alone via the asserted-stage guard). */
+function quarantineBackfillMigration() {
+  if (!Array.isArray(STATE.cohorts) || STATE.cohorts.length === 0) return 0;
+  const fixes = [];
+  STATE.cohorts.forEach(c => {
+    if (!c || !c.cohort_id) return;
+    if (Number(c.current_count) <= 0) return;            // nothing live to move
+    const isQ = /[-_]Q$/.test(String(c.cohort_id)) || c.house === 'Quarantine';
+    if (!isQ) return;
+    if (c.stage === 'Quarantine' || c.stage === 'Deformities') return; // already correct
+    c.stage = 'Quarantine';                              // optimistic local
+    fixes.push(c.cohort_id);
+  });
+  if (fixes.length === 0) return 0;
+  storageSet(K_COHORTS, STATE.cohorts).catch(() => {});
+  for (const id of fixes) {
+    const payload = { mode: 'update', cohort_id: id, stage: 'Quarantine' };
+    syncCohort(payload).then(ok => { if (!ok) queueForSync(payload, 'cohort'); })
+      .catch(() => queueForSync(payload, 'cohort'));
+  }
+  console.log('[v6.11.48 quarantine-backfill] promoted to Quarantine: ' + fixes.join(' \u00b7 '));
+  return fixes.length;
+}
+
 function ageAllCohorts() {
   if (!Array.isArray(STATE.cohorts) || STATE.cohorts.length === 0) return 0;
   const today = new Date();
@@ -18556,6 +18586,8 @@ function renderHome() {
   // to do. Updates STATE.cohorts in-place; storage write is async; gate
   // push is best-effort.
   if (typeof ageAllCohorts === 'function') ageAllCohorts();
+  // v6.11.48 — promote any legacy quarantine cohort into the Quarantine stage.
+  if (typeof quarantineBackfillMigration === 'function') quarantineBackfillMigration();
 
   // v6.1.4 — Render deep litter bar in Kipkenda Poultry section header.
   // Reads STATE.litterChanges (already hydrated on boot). Idempotent.
