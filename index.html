@@ -8024,8 +8024,7 @@ async function submitSale() {
   _updateSalesPreview();
   _renderRecentSalesForContext();
 
-  showToast('Sale recorded · ' + c.product.label + ' · Ksh ' + moneyRound(amount)
-    + (_receiptCfg() ? ' — tap 🧾 below for a receipt' : ''), _receiptCfg() ? 4500 : 3000);
+  showToast('Sale recorded \u00b7 ' + c.product.label + ' \u00b7 Ksh ' + moneyRound(amount), 3000);
 
   // Route to cloud via gate (same write-gate pattern as banked/poultry).
   // syncSale is a thin wrapper that builds the gated request and calls 
@@ -8045,6 +8044,16 @@ async function submitSale() {
     }
   }
   if (typeof updateSyncIndicator === 'function') updateSyncIndicator();
+
+  // v6.11.50 — Auto-prompt receipt after each sale (Cheison 01 Jun 2026 Verden,
+  // "don't block — just auto-prompt"). Non-blocking: the sale is already saved
+  // and synced above. When the tenant has receipt branding configured, open the
+  // builder pre-filled from this sale (issueReceiptForSale reads the row from
+  // STATE.sales by id) so the operator can issue with no re-entry — or simply
+  // close it. Nothing is forced, nothing gates the save.
+  if (_receiptCfg() && typeof issueReceiptForSale === 'function') {
+    try { issueReceiptForSale(row.id); } catch (e) { console.warn('[receipt-autoprompt] failed:', e && e.message); }
+  }
 }
 
 /* Wire form input listeners + back buttons + submit. Idempotent. */
@@ -8718,7 +8727,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.49';
+const APP_VERSION = 'v6.11.50';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -11015,7 +11024,11 @@ async function queueForSync(record, kind) {
   //   litter-change — record carries house + date + op (change/reset)
   // These store the full payload in the queue item; the dispatcher reads
   // item.payload directly instead of looking up by recordId.
-  const isPayloadKind = (kind === 'roster' || kind === 'cohort' || kind === 'litter-change' || kind === 'sheep' || kind === 'sheep-event' || kind === 'cow' || kind === 'cow-event' || kind === 'feed-log' || kind === 'milk-log');
+  // v6.11.50 — 'sale' joins the payload-carrying kinds. The unified Sales path
+  // had NO replay branch, so an offline sale (and the new poultry→Sales mirror,
+  // which never lands in STATE.sales) was silently dropped on flush. Carrying
+  // the full payload makes both replay correctly.
+  const isPayloadKind = (kind === 'roster' || kind === 'cohort' || kind === 'litter-change' || kind === 'sheep' || kind === 'sheep-event' || kind === 'cow' || kind === 'cow-event' || kind === 'feed-log' || kind === 'milk-log' || kind === 'sale');
   if (isPayloadKind) {
     queue.push({ kind, payload: record, attempts: 0, queuedAt: new Date().toISOString(), blockedByGate });
   } else {
@@ -11376,6 +11389,7 @@ async function flushQueue(opts) {
       else if (kind === 'actual') record = STATE.actuals.find(a => a.id === recordId);
       else if (kind === 'banked') record = (STATE.banked || []).find(b => b.id === recordId);
       else if (kind === 'poultry') record = (STATE.poultry || []).find(p => p.id === recordId);
+      else if (kind === 'sale') record = item.payload || (STATE.sales || []).find(s => s && s.id === recordId) || null; // v6.11.50 — payload-carried (mirror) or STATE.sales (unified)
       else if (kind === 'egg-collection') record = (STATE.eggCollection || []).find(e => e.id === recordId);
       else if (kind === 'bird-census') record = (STATE.birdCensus || []).find(b => b.id === recordId);
       else if (kind === 'vaccination') record = (STATE.vaccinations || []).find(v => v.id === recordId);
@@ -11399,6 +11413,7 @@ async function flushQueue(opts) {
       else if (kind === 'actual')  ok = await pushActualToForm(record);
       else if (kind === 'banked')  ok = await pushBankedToForm(record);
       else if (kind === 'poultry') ok = await pushPoultryToForm(record);
+      else if (kind === 'sale')    { const _sr = await pushSaleToGate(record); ok = !!(_sr && _sr.ok); } // v6.11.50
       else if (kind === 'egg-collection') ok = await syncEggCollection(record);
       else if (kind === 'bird-census') ok = await syncBirdCensus(record);
       else if (kind === 'vaccination') ok = await syncVaccination(record);
@@ -14700,6 +14715,49 @@ async function submitPoultry() {
   if (row.product !== 'Eggs') {
     try { await autoDecrementCohortOnSale(row); } catch (e) { console.warn('[cohort-decrement] failed:', e.message); }
   }
+
+  // v6.11.50 — Phase D, Path A: dual-write bridge. Every poultry/egg sale is
+  // ALSO mirrored into the unified Sales sheet (action='sale') so that sheet
+  // becomes the single ledger for cross-unit reporting. WRITE-ONLY mirror: the
+  // row is NOT added to STATE.sales, and the app's poultry reports keep reading
+  // STATE.poultry — so there is ZERO in-app double-count. Cohort/stage are
+  // folded into Reference + Notes (no Sales schema change). Wrapped so a mirror
+  // failure can never break the primary Poultry Sales write; offline it queues
+  // as a payload-carrying 'sale' (replay branch added v6.11.50). Sealed Cheison
+  // 01 Jun 2026 Verden. CAUTION: during the dual-write window, never SUM the
+  // Sales sheet and the Poultry Sales sheet in one spreadsheet total — that is
+  // the only double-count surface, and it lives outside the app.
+  try {
+    const mirror = {
+      id:             row.id + '-PS',
+      ts:             row.ts,
+      date:           row.date,
+      business_unit:  'Poultry',
+      product:        row.product,
+      variant:        row.stage || '',
+      quantity:       row.quantity != null ? Number(row.quantity) : null,
+      unit:           row.unit || '',
+      amount:         Number(row.amount) || 0,
+      payment_method: row.payment_method || '',
+      revenue_type:   'Income',
+      buyer:          row.buyer || '',
+      period:         '',
+      reference:      row.cohort_id || '',
+      notes:          (row.stage ? 'Stage: ' + row.stage : '') +
+                      (row.cohort_id ? (row.stage ? ' \u00b7 ' : '') + 'Cohort: ' + row.cohort_id : ''),
+      receipt_type:   '',
+      receipt_id:     '',
+      receipt_issued: false,
+      recorded_from:  'PWA ' + APP_VERSION + ' poultry-mirror'
+    };
+    if (typeof syncSale === 'function') {
+      const mSynced = await syncSale(mirror);
+      if (!mSynced && typeof queueForSync === 'function') await queueForSync(mirror, 'sale');
+    }
+  } catch (e) {
+    console.warn('[sales-mirror] poultry\u2192Sales mirror failed (primary write unaffected):', e && e.message);
+  }
+
   updateSyncIndicator();
 }
 
