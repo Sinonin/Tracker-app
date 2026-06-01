@@ -8804,7 +8804,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.51';
+const APP_VERSION = 'v6.11.52';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -19549,42 +19549,75 @@ function renderHome() {
   // only count collections, sales, AND incubations that fall inside the window.
   // All grades count (broken/small/abnormal/normal) — Cheison: "they're 
   // sellable as Grade B/C goods." Crate size = 30 eggs (Kenyan standard).
+  // v6.11.52 — Egg stock card REBUILT to share the sell-picker's accounting
+  // basis (Cheison 01 Jun 2026 Verden: "PWA is not pulling that"). The old card
+  // did a naive collected(15d) − sold(15d) − incubated(eggs_in,15d), which (1)
+  // ignored the EGG_OPENING_BALANCE pool the picker offers, (2) counted batches
+  // already cleared by EGG_CLEARED_THROUGH, and (3) over-subtracted incubation
+  // by full eggs_in instead of the tracked egg_draws — netting 812 when the
+  // truth (opening pool) is 1190. Card and picker now compute identically:
+  //   available = opening_remaining + Σ per-grade remaining of non-cleared
+  //               in-window batches, each id clamped at ≥ 0, incubation via
+  //               egg_draws keyed by source batch id.
   const EGG_STOCK_HORIZON_DAYS = 15;
   const horizonCutoffDate = new Date();
   horizonCutoffDate.setDate(horizonCutoffDate.getDate() - EGG_STOCK_HORIZON_DAYS);
   const horizonCutoffStr = horizonCutoffDate.toISOString().slice(0, 10);
 
-  const recentEggColl = (Array.isArray(STATE.eggCollection) ? STATE.eggCollection : [])
-    .filter(e => e && (e.date || '') >= horizonCutoffStr);
-  const eggsCollectedInWindow = recentEggColl.reduce((s, e) => {
-    return s + (Number(e.gf_normal) || 0) + (Number(e.gf_small) || 0) + (Number(e.gf_broken) || 0)
-             + (Number(e.ud_normal) || 0) + (Number(e.ud_small) || 0) + (Number(e.ud_broken) || 0);
-  }, 0);
-  const eggsBrokenSmallInWindow = recentEggColl.reduce((s, e) => {
-    return s + (Number(e.gf_small) || 0) + (Number(e.gf_broken) || 0)
-             + (Number(e.ud_small) || 0) + (Number(e.ud_broken) || 0);
-  }, 0);
-  const eggsSoldInWindow = (Array.isArray(STATE.poultry) ? STATE.poultry : [])
-    .filter(p => p && p.product === 'Eggs' && (p.date || '') >= horizonCutoffStr)
-    .reduce((s, p) => {
-      const n = Number(p.quantity) || 0;
-      const unit = String(p.unit || '').trim();
-      return s + (unit === 'Trays' ? n * 30 : n);
-    }, 0);
-  const eggsIncubatedInWindow = (Array.isArray(STATE.incubation) ? STATE.incubation : [])
-    .filter(b => b && (b.date_set || '') >= horizonCutoffStr)
-    .reduce((s, b) => s + (Number(b.eggs_in) || 0), 0);
+  const _PER = 30;
+  const _trayU = (u) => /tray|crate/i.test(String(u || ''));
+  // Sold per id (cohort_id) — tray/crate → eggs. Mirrors the picker's soldById.
+  const _soldById = {};
+  (Array.isArray(STATE.poultry) ? STATE.poultry : []).forEach(s => {
+    if (!s || s.product !== 'Eggs') return;
+    const id = String(s.cohort_id || '').trim(); if (!id) return;
+    _soldById[id] = (_soldById[id] || 0) + (Number(s.quantity) || 0) * (_trayU(s.unit) ? _PER : 1);
+  });
+  // Incubated per SOURCE id — egg_draws (internal transfer), NOT full eggs_in.
+  const _incById = {};
+  (Array.isArray(STATE.incubation) ? STATE.incubation : []).forEach(b => {
+    if (!b || !Array.isArray(b.egg_draws)) return;
+    b.egg_draws.forEach(d => {
+      const id = String((d && d.id) || '').trim(); const q = Number(d && d.qty) || 0;
+      if (!id || q <= 0) return; _incById[id] = (_incById[id] || 0) + q;
+    });
+  });
 
-  const eggsInStock = eggsCollectedInWindow - eggsSoldInWindow - eggsIncubatedInWindow;
+  const _GRADES = [
+    { suf: '',    field: 'normal',         bs: false },
+    { suf: '_SA', field: 'small_abnormal', bs: true  },
+    { suf: '_B',  field: 'broken',         bs: true  }
+  ];
+
+  let eggsInStock = 0;
+  let eggsBrokenSmallInWindow = 0;
+
+  // Opening recount pool — Normal-only, exempt from window/cutoff (same as picker).
+  if (typeof EGG_OPENING_BALANCE !== 'undefined' && Number(EGG_OPENING_BALANCE.normal) > 0) {
+    const oid = EGG_OPENING_BALANCE.id;
+    eggsInStock += Math.max(0, Number(EGG_OPENING_BALANCE.normal) - (_soldById[oid] || 0) - (_incById[oid] || 0));
+  }
+
+  // Per-grade remaining of non-cleared in-window dated batches — same filter as picker.
+  (Array.isArray(STATE.eggCollection) ? STATE.eggCollection : [])
+    .filter(e => e && e.egg_batch_id && e.date && e.date >= horizonCutoffStr && e.date > EGG_CLEARED_THROUGH)
+    .forEach(e => {
+      const base = String(e.egg_batch_id).trim();
+      _GRADES.forEach(g => {
+        const collected = Number(e[g.field]) || 0;
+        if (collected <= 0) return;
+        const id = base + g.suf;
+        const remaining = Math.max(0, collected - (_soldById[id] || 0) - (_incById[id] || 0));
+        if (remaining <= 0) return;
+        eggsInStock += remaining;
+        if (g.bs) eggsBrokenSmallInWindow += remaining;
+      });
+    });
+
   const eggsStockEl = document.getElementById('poultry-eggs-stock-summary-text');
   if (eggsStockEl) {
-    if (eggsCollectedInWindow === 0) {
-      eggsStockEl.textContent = `no eggs collected in last ${EGG_STOCK_HORIZON_DAYS} days`;
-    } else if (eggsInStock < 0) {
-      // Defensive: sales/incubation exceed collections in the window.
-      // Possible legit cause: collections were recorded outside the window
-      // but sales/incubation inside it. Show the math honestly.
-      eggsStockEl.textContent = `${eggsInStock.toLocaleString('en-KE')} eggs (sold + incubated exceed collected in last ${EGG_STOCK_HORIZON_DAYS}d) · ${eggsBrokenSmallInWindow} broken/small/abnormal collected`;
+    if (eggsInStock <= 0) {
+      eggsStockEl.textContent = `no egg stock available · last ${EGG_STOCK_HORIZON_DAYS}d`;
     } else {
       const crates = Math.floor(eggsInStock / 30);
       const loose = eggsInStock - crates * 30;
