@@ -8718,11 +8718,19 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.48';
+const APP_VERSION = 'v6.11.49';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
-const EGG_CLEARED_THROUGH = '2026-05-29';
+const EGG_CLEARED_THROUGH = '2026-05-31';
+// v6.11.49 — Opening recount pool. Faith physical count 1 Jun 2026 = 1,190 NORMAL
+// eggs. Trays were undated, so legacy stock is ONE honest pool — no fabricated
+// per-batch split. Broken excluded (taken daily by the poultry team, never sale
+// stock). Recorded here as an authoritative recount, NOT an Egg_Collection row,
+// so it never inflates lay/yield. Sells FIRST under FIFO and depletes through real
+// egg sales tagged to its id. Cutoff moved to 31 May closes the undated legacy
+// per-batch lines (their sale tags were unreliable); this pool replaces them.
+const EGG_OPENING_BALANCE = { id: 'KP-OPENING-2026', date: '2026-05-27', normal: 1190, label: 'Opening recount \u00b7 pre-date-marking pool' };
 
 /* Sireet historical ledger — seeded with Dr. Cheison's 2019-2025 cumulative figures.
    Each entry is a closed-out year. Years 2026+ live in STATE.actuals until year-end rollover
@@ -14490,10 +14498,23 @@ function populatePoultryCohortDropdown() {
 
     const rows = (STATE.eggCollection || [])
       .filter(e => e && e.egg_batch_id && e.date && e.date >= cutoff && e.date > EGG_CLEARED_THROUGH)
-      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));  // newest first
+      .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));  // v6.11.49 — oldest first (FIFO: sell aging stock first)
 
     let html = '<option value="" selected>— no batch attribution —</option>';
     let any = false;
+    // v6.11.49 — Opening recount pool first (oldest physical stock → sell before any
+    // dated batch). Normal-only; depletes via sales tagged to its id; exempt from the
+    // date cutoff/window since it is the reconciled legacy stock, not a collection row.
+    if (typeof EGG_OPENING_BALANCE !== 'undefined' && Number(EGG_OPENING_BALANCE.normal) > 0) {
+      const oid = EGG_OPENING_BALANCE.id;
+      const oRemaining = Number(EGG_OPENING_BALANCE.normal) - (soldById[oid] || 0) - (incubatedById[oid] || 0);
+      if (oRemaining > 0) {
+        any = true;
+        const oOf = (soldById[oid] || 0) > 0 ? ' \u00b7 of ' + Number(EGG_OPENING_BALANCE.normal) : '';
+        html += '<option value="' + oid + '">' + EGG_OPENING_BALANCE.label + ' \u00b7 ' +
+                fmtRemaining(oRemaining) + oOf + ' \u00b7 sell first</option>';
+      }
+    }
     rows.forEach(e => {
       const base = String(e.egg_batch_id).trim();
       const coll = e.collector ? ' · ' + e.collector : '';
