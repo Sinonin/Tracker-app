@@ -8804,7 +8804,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.52';
+const APP_VERSION = 'v6.11.53';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -14588,6 +14588,19 @@ function populatePoultryCohortDropdown() {
       { suf: '_B',  label: 'Broken',         field: 'broken' }
     ];
 
+    // v6.11.53 — Grade filter: show only sub-batches matching the selected egg
+    // stage. 'Broken eggs' → _B only; 'Small/Abnormal Eggs' → _SA only;
+    // 'Normal eggs' → Normal (base) only + the opening pool (which is
+    // Normal-only). Before this, every grade of every batch showed regardless
+    // of stage, so a broken-egg sale could be mis-tagged to a Normal/base id —
+    // the _B grade then never cleared (the "sticky broken egg", and how one
+    // batch's single broken egg got sold 3×). No stage picked → no filter
+    // (show all), preserving the prior fallback. Sealed Cheison 01 Jun 2026.
+    const STAGE_TO_SUFFIX = { 'Normal eggs': '', 'Broken eggs': '_B', 'Small/Abnormal Eggs': '_SA' };
+    const hasGradeFilter = Object.prototype.hasOwnProperty.call(STAGE_TO_SUFFIX, stage);
+    const gradeFilterSuffix = hasGradeFilter ? STAGE_TO_SUFFIX[stage] : null;
+    const showOpeningPool = !hasGradeFilter || gradeFilterSuffix === ''; // opening pool is Normal-only
+
     const rows = (STATE.eggCollection || [])
       .filter(e => e && e.egg_batch_id && e.date && e.date >= cutoff && e.date > EGG_CLEARED_THROUGH)
       .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));  // v6.11.49 — oldest first (FIFO: sell aging stock first)
@@ -14597,7 +14610,7 @@ function populatePoultryCohortDropdown() {
     // v6.11.49 — Opening recount pool first (oldest physical stock → sell before any
     // dated batch). Normal-only; depletes via sales tagged to its id; exempt from the
     // date cutoff/window since it is the reconciled legacy stock, not a collection row.
-    if (typeof EGG_OPENING_BALANCE !== 'undefined' && Number(EGG_OPENING_BALANCE.normal) > 0) {
+    if (showOpeningPool && typeof EGG_OPENING_BALANCE !== 'undefined' && Number(EGG_OPENING_BALANCE.normal) > 0) {
       const oid = EGG_OPENING_BALANCE.id;
       const oRemaining = Number(EGG_OPENING_BALANCE.normal) - (soldById[oid] || 0) - (incubatedById[oid] || 0);
       if (oRemaining > 0) {
@@ -14611,6 +14624,7 @@ function populatePoultryCohortDropdown() {
       const base = String(e.egg_batch_id).trim();
       const coll = e.collector ? ' · ' + e.collector : '';
       GRADES.forEach(g => {
+        if (hasGradeFilter && g.suf !== gradeFilterSuffix) return; // v6.11.53 — grade filter
         const collected = Number(e[g.field]) || 0;
         if (collected <= 0) return;
         const id = base + g.suf;
