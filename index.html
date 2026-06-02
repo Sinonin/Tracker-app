@@ -4811,7 +4811,13 @@
           <div class="field"><label>For period (optional)</label><input type="text" id="s-period" placeholder="e.g. May 2026"></div>
         </div>
 
-        <div class="field"><label>Buyer / Source</label><input type="text" id="s-buyer" placeholder="e.g. factory, customer name, market" style="font-family:'Fraunces',serif"></div>
+        <!-- v6.11.54 step 3 — Strict, unit-aware destination. Tea/Milk → factory
+             list; Poultry → buyers; Gift → configured gift destinations; else
+             Add new. Strict input, not hard-required (dividends/fees may have no
+             buyer). renderSaleDestination() rebuilds by unit + payment method. -->
+        <div class="field"><label id="s-dest-label">Buyer / Source</label>
+          <select id="s-dest-select"><option value="">— Select —</option></select>
+          <input type="text" id="s-dest-new" placeholder="Type name" autocapitalize="words" autocomplete="off" spellcheck="false" style="font-family:'Fraunces',serif;display:none;margin-top:0.5rem"></div>
         <div class="field"><label>Reference (optional)</label><input type="text" id="s-reference" placeholder="e.g. M-Pesa code, TXN ID, KCB ref"></div>
         <div class="field"><label>Notes (optional)</label><input type="text" id="s-notes"></div>
 
@@ -7262,10 +7268,10 @@ function _enterSalesLevel4() {
   document.getElementById('s-qty').value = '';
   document.getElementById('s-amount').value = '';
   document.getElementById('s-period').value = '';
-  document.getElementById('s-buyer').value = c.variant ? c.variant.label : '';  // variant often IS the buyer (Sireet, KCC)
   document.getElementById('s-reference').value = '';
   document.getElementById('s-notes').value = '';
   document.getElementById('s-method').value = '';
+  if (typeof renderSaleDestination === 'function') renderSaleDestination(); // v6.11.54 step 3 — builds list + pre-selects factory variant
 
   // Unit default for this context
   document.getElementById('s-unit').value = _defaultUnitForContext(c.unit.label, c.product.label);
@@ -7967,7 +7973,7 @@ function _updateSalesPreview() {
   
   const unitSel = document.getElementById('s-unit').value;
   const revtype = document.getElementById('s-revtype').value;
-  const buyer = document.getElementById('s-buyer').value.trim();
+  const buyer = _resolveSaleDest();
 
   // Validation: date + method + amount required. Qty optional (lump-sum 
   // sales possible — Sireet shares dividend, training fee, etc.).
@@ -8053,7 +8059,7 @@ async function submitSale() {
   const method = document.getElementById('s-method').value;
   const unitSel = document.getElementById('s-unit').value;
   const revtype = document.getElementById('s-revtype').value || 'Income';
-  const buyer = document.getElementById('s-buyer').value.trim();
+  const buyer = _resolveSaleDest();
   const period = document.getElementById('s-period').value.trim();
   const reference = document.getElementById('s-reference').value.trim();
   const notes = document.getElementById('s-notes').value.trim();
@@ -8139,12 +8145,20 @@ async function submitSale() {
 
 /* Wire form input listeners + back buttons + submit. Idempotent. */
 function _wireSalesForm() {
-  ['s-date','s-qty','s-amount','s-method','s-unit','s-revtype','s-buyer','s-period','s-reference','s-notes'].forEach(function (id) {
+  ['s-date','s-qty','s-amount','s-method','s-unit','s-revtype','s-dest-select','s-dest-new','s-period','s-reference','s-notes'].forEach(function (id) {
     const el = document.getElementById(id);
     if (!el) return;
     el.addEventListener('input', _updateSalesPreview);
     el.addEventListener('change', _updateSalesPreview);
   });
+  // v6.11.54 step 3 — payment flips Gift⇄sale (swaps the list); select toggles
+  // the Add-new/Other reveal; new-input tidies on blur.
+  const sMethodEl = document.getElementById('s-method');
+  if (sMethodEl) sMethodEl.addEventListener('change', function () { if (typeof renderSaleDestination === 'function') renderSaleDestination(); });
+  const sDestSel = document.getElementById('s-dest-select');
+  if (sDestSel) sDestSel.addEventListener('change', function () { _toggleSaleDestNew(); _updateSalesPreview(); });
+  const sDestNew = document.getElementById('s-dest-new');
+  if (sDestNew) sDestNew.addEventListener('blur', function () { sDestNew.value = _tidyName(sDestNew.value); _updateSalesPreview(); });
   const submitBtn = document.getElementById('s-submit');
   if (submitBtn) submitBtn.addEventListener('click', submitSale);
   _wireSalesBackButtons();
@@ -8809,7 +8823,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.55';
+const APP_VERSION = 'v6.11.56';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -14632,6 +14646,80 @@ function _poultryDestFilled() {
   if (!sel) return false;
   if (sel.value === POULTRY_DEST_ADD) return _resolvePoultryDest().length > 0;
   return !!sel.value;
+}
+
+/* ============================================================
+   v6.11.54 (step 3) — UNIFIED SALES destination control.
+   Unit-aware, reusing the shared helpers:
+     · Tea     → factory list (STATE.factories), strictly sold
+     · Milk    → factory list (STATE.milkFactories) when sold; gift list when Gift
+     · Poultry → known buyers when sold; gift list when Gift
+     · other   → known buyers (generic Buyer / Source)
+   The factory variant pre-selects when it matches the list (preserves the
+   old Sireet/KCC auto-fill). Strict input (pick or Add new — no raw free
+   text), but NOT hard-required: diverse revenue (dividends, fees) may carry
+   no buyer, so an empty pick still submits, exactly as before.
+   ============================================================ */
+const SALE_DEST_ADD = '__ADD__';
+function _saleUnitKind(unitLabel) {
+  const u = String(unitLabel || '').toLowerCase();
+  if (/tea|greenleaf|leaf/.test(u)) return 'tea';
+  if (/milk|dairy/.test(u)) return 'milk';
+  if (/poultry|chick|egg|bird|hen|layer|cockerel/.test(u)) return 'poultry';
+  return 'other';
+}
+function _teaFactoryNames() {
+  return (Array.isArray(STATE.factories) ? STATE.factories : []).filter(f => f && f.name).map(f => String(f.name).trim());
+}
+function _milkFactoryNames() {
+  return (Array.isArray(STATE.milkFactories) ? STATE.milkFactories : []).filter(f => f && f.name).map(f => String(f.name).trim());
+}
+function renderSaleDestination() {
+  const sel = document.getElementById('s-dest-select');
+  const lbl = document.getElementById('s-dest-label');
+  if (!sel) return;
+  const c = (typeof SALES_CASCADE !== 'undefined') ? SALES_CASCADE : {};
+  if (!c || !c.unit) { sel.innerHTML = '<option value="">— Select —</option>'; return; }
+  const isGift = (document.getElementById('s-method') || {}).value === 'GIFT';
+  const kind = _saleUnitKind(c.unit.label);
+  const prev = sel.value;
+  let opts, label, addLabel;
+  if (isGift) {
+    label = 'Gift to'; opts = _giftDestinationsFor(c.unit.label); addLabel = '➕ Other (specify)…';
+  } else if (kind === 'tea') {
+    label = 'Factory'; opts = _teaFactoryNames(); addLabel = '➕ Add factory…';
+  } else if (kind === 'milk') {
+    label = 'Factory'; opts = _milkFactoryNames(); addLabel = '➕ Add factory…';
+  } else if (kind === 'poultry') {
+    label = 'Buyer'; opts = _knownBuyers(); addLabel = '➕ Add new…';
+  } else {
+    label = 'Buyer / Source'; opts = _knownBuyers(); addLabel = '➕ Add new…';
+  }
+  if (lbl) lbl.textContent = label;
+  const seen = new Set();
+  opts = (opts || []).filter(o => { const k = String(o).toLowerCase(); if (!o || seen.has(k)) return false; seen.add(k); return true; });
+  sel.innerHTML = '<option value="">— Select —</option>'
+    + opts.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('')
+    + `<option value="${SALE_DEST_ADD}">${addLabel}</option>`;
+  const variantLabel = c.variant ? c.variant.label : '';
+  if (variantLabel && opts.indexOf(variantLabel) !== -1) sel.value = variantLabel;     // preserve Sireet/KCC auto-fill
+  else if (prev && (prev === SALE_DEST_ADD || opts.indexOf(prev) !== -1)) sel.value = prev;
+  _toggleSaleDestNew();
+}
+function _toggleSaleDestNew() {
+  const sel = document.getElementById('s-dest-select');
+  const nu  = document.getElementById('s-dest-new');
+  if (!sel || !nu) return;
+  const show = sel.value === SALE_DEST_ADD;
+  nu.style.display = show ? '' : 'none';
+  if (!show) nu.value = '';
+  if (show) nu.focus();
+}
+function _resolveSaleDest() {
+  const sel = document.getElementById('s-dest-select');
+  if (!sel) return '';
+  if (sel.value === SALE_DEST_ADD) { const nu = document.getElementById('s-dest-new'); return _tidyName((nu && nu.value) || ''); }
+  return sel.value || '';
 }
 
 /* v6.9.10 — Populate the cohort dropdown based on selected stage.
