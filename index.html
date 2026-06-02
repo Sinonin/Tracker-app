@@ -3779,12 +3779,6 @@
     <div class="section">
       <div class="section-head">
         <h3>Factory reconciliation</h3>
-        <div class="recon-toggles">
-          <div class="recon-viewtoggle" id="recon-viewtoggle">
-            <button type="button" data-view="numbers" class="active" onclick="setReconView('numbers')">Numbers</button>
-            <button type="button" data-view="chart" onclick="setReconView('chart')">Chart</button>
-          </div>
-        </div>
       </div>
       <!-- v6.11.19 — Per-factory monthly GL delivery vs booked income 
            (Cheison 28 May 2026 Verden). Quick-access reconciliation: 
@@ -8815,7 +8809,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.54';
+const APP_VERSION = 'v6.11.55';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -20666,7 +20660,10 @@ function renderFactoryRecon() {
     return;
   }
 
-  if (STATE.factoryReconView === 'chart') {
+  // v6.11.55 — Numbers table dropped (Cheison 02 Jun 2026 Verden): the factory
+  // reconciliation is graph-only now, with the full figures on hover/tap. The
+  // chart is the sole view; no toggle.
+  {
     // CHART view — clustered by MONTH (Cheison 28 May 2026 Verden). Months are
     // the stable axis (oldest→newest); within each month only the factories
     // that actually delivered that month render, each colour-coded. This suits
@@ -20685,8 +20682,14 @@ function renderFactoryRecon() {
         const row = fd.rows.find(r => r.m.ym === m.ym);
         if (!row || row.glKg <= 0) return '';
         const h = Math.round((row.glKg / globalMax) * 100);
-        const expTip = row.expected > 0 ? ` · Ksh ${moneyRound(row.expected)}` : '';
-        const tip = `${fd.name} · ${m.label}${m.isMtd ? ' MTD' : ''} · ${kg(row.glKg)} kg${expTip}`;
+        // v6.11.55 — Full reconciliation now lives on the bar's hover/tap, since
+        // the numbers table is gone: kg, expected, booked, and the gap.
+        const expTip = ` · Exp Ksh ${moneyRound(row.expected)}`;
+        const gap = row.booked - row.expected;
+        const bookedTip = row.hasBooking
+          ? ` · Bkd Ksh ${moneyRound(row.booked)} · Gap ${gap >= 0 ? '+' : ''}${moneyRound(gap)}`
+          : ' · Bkd —';
+        const tip = `${fd.name} · ${m.label}${m.isMtd ? ' MTD' : ''} · ${kg(row.glKg)} kg${expTip}${bookedTip}`;
         return `<div class="recon-bar-col" onclick="reconBarTap(this)">
             <div class="recon-tip">${tip}</div>
             <div class="recon-bar-track"><div class="recon-bar" style="height:${h}%;background:${fcolor[fd.name]}"></div></div>
@@ -20702,32 +20705,7 @@ function renderFactoryRecon() {
     ).join('');
     box.innerHTML = `<div class="recon-chart-clustered">${monthClusters}</div>
       <div class="recon-legend">${legend}</div>
-      <div class="recon-chart-hint">Hover or tap a bar for kg &amp; expected income</div>`;
-  } else {
-    // NUMBERS view — full reconciliation table.
-    box.innerHTML = factoryData.map(fd => {
-      const body = fd.rows.map(r => {
-        const gap = r.booked - r.expected;
-        const gapCell = r.hasBooking
-          ? `<span class="${Math.abs(gap) < 1 ? 'recon-ok' : (gap < 0 ? 'recon-warn' : 'recon-pos')}">${gap >= 0 ? '+' : ''}${moneyRound(gap)}</span>`
-          : '<span class="recon-pending">—</span>';
-        const bookedCell = r.hasBooking ? moneyRound(r.booked) : '<span class="recon-pending">—</span>';
-        return `<tr>
-            <td class="recon-mon">${r.m.label}${r.m.isMtd ? ' <span class="recon-mtd">MTD</span>' : ''}</td>
-            <td>${kg(r.glKg)}</td>
-            <td>${moneyRound(r.expected)}</td>
-            <td>${bookedCell}</td>
-            <td>${gapCell}</td>
-          </tr>`;
-      }).join('');
-      return `<div class="recon-factory">
-          <div class="recon-fname">${fd.name}</div>
-          <table class="recon-table">
-            <thead><tr><th>Month</th><th>GL kg</th><th>Expected</th><th>Booked</th><th>Gap</th></tr></thead>
-            <tbody>${body}</tbody>
-          </table>
-        </div>`;
-    }).join('');
+      <div class="recon-chart-hint">Hover or tap a bar for kg, expected, booked &amp; gap</div>`;
   }
 }
 
