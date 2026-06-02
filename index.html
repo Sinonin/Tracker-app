@@ -4324,7 +4324,17 @@
       </div>
       <div class="field"><label>Amount (Ksh)</label><input type="number" id="y-amount" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
       <div class="field"><label>Payment method</label><select id="y-payment"></select></div>
-      <div class="field"><label>Buyer (optional)</label><input type="text" id="y-buyer" placeholder="Customer name" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
+      <!-- v6.11.54 — Strict Destination control replaces free-text buyer
+           (Cheison 02 Jun 2026 Verden: "Delete the posting by…" landed in this
+           field as a buyer). Sale → pick an existing buyer or "➕ Add new…";
+           Gift → pick a configured gift destination (GIFT_DESTINATIONS key) or
+           "Other (specify)". The reveal input handles new/other entries with a
+           gentle name-tidy. renderPoultryDestination() rebuilds the list by
+           product/stage/payment. Graceful fallback: if no list is available the
+           "Add new" path still accepts a typed value, so a sale never blocks. -->
+      <div class="field"><label id="y-dest-label">Buyer</label>
+        <select id="y-dest-select"><option value="">— Select —</option></select>
+        <input type="text" id="y-dest-new" placeholder="Type name" autocapitalize="words" autocomplete="off" spellcheck="false" style="font-family:'Fraunces',serif;font-size:1.05rem;display:none;margin-top:0.5rem"></div>
 
       <button class="submit" id="y-submit" disabled>Record Sale</button>
 
@@ -8649,6 +8659,7 @@ const SCREEN_TITLES = {
 
 const K_ENTRIES = 'sinonin_entries_v1';
 const K_FACTORIES = 'sinonin_factories_v1';
+const K_MILK_FACTORIES = 'sinonin_milk_factories_v1'; // v6.11.54
 const K_PLUCKERS = 'sinonin_pluckers_v1';
 
 /* v6.11.9 — Tenant cache stamp. Identifies which tenant the localStorage 
@@ -8804,7 +8815,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.53';
+const APP_VERSION = 'v6.11.54';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -12315,6 +12326,18 @@ async function applyCloudResponse(data) {
     }
   }
 
+  // v6.11.54 — Milk factory consumer. The backend already serves
+  // data.milkFactories (KCC, etc.) but the PWA never caught it, so the
+  // unified Sales milk sold-destination picker had no source list. Mirror
+  // the tea consumer: ACTIVE rows only, defensive numeric coercion.
+  if (Array.isArray(data.milkFactories)) {
+    const mappedMilk = data.milkFactories
+      .filter(f => f && f.name && f.active !== false)
+      .map(f => ({ name: String(f.name).trim(), priceKg: Number(f.priceKg) || 0, notes: String(f.notes || '') }));
+    STATE.milkFactories = mappedMilk;
+    try { await storageSet(K_MILK_FACTORIES, STATE.milkFactories); } catch (e) { /* key may not exist yet — non-fatal */ }
+  }
+
   // v6.9.5 — Merge server-persisted acknowledgements into the local
   // cache (§ 6.11). The local cache is authoritative for instant UI
   // (button-tap dismiss is immediate); the server snapshot adds any
@@ -12537,6 +12560,7 @@ function populateDropdowns() {
   // Eggs — sealed Cheison: "Grade A eggs should be sold; Grade B/C can
   // be moved any way that clears them, including gifting to staff."
   if (typeof populatePoultryPaymentDropdown === 'function') populatePoultryPaymentDropdown();
+  if (typeof renderPoultryDestination === 'function') renderPoultryDestination(); // v6.11.54
 
   const todayIso = new Date().toISOString().slice(0,10);
   document.getElementById('q-date').value = todayIso;
@@ -14448,7 +14472,7 @@ function yValues() {
     quantity: parseFloat(document.getElementById('y-quantity').value) || 0,
     amount: parseFloat(document.getElementById('y-amount').value) || 0,
     payment_method: document.getElementById('y-payment').value,
-    buyer: document.getElementById('y-buyer').value.trim(),
+    buyer: _resolvePoultryDest(),
     // v6.9.10 — Cohort identity captured at write boundary (§ 7.6 closed).
     // Empty for non-bird products (Eggs) or when no stage is selected.
     cohort_id: (document.getElementById('y-cohort') || {}).value || ''
@@ -14491,6 +14515,129 @@ function populatePoultryPaymentDropdown() {
   // falls back to '' (placeholder) — the validation will block submit
   // until they pick a valid method. Honest, doesn't silently keep an 
   // invalid value.
+}
+
+/* ============================================================
+   v6.11.54 — STRICT DESTINATION CONTROL (shared helpers)
+   Replaces the free-text buyer field. Three lists, by context:
+     · Sale  → known buyers (from prior sales) + "➕ Add new…"
+     · Gift  → configured gift destinations for the unit + "Other (specify)"
+   Gift destinations are NOT hard-coded — they read the Control_Panel
+   GIFT_DESTINATIONS key (surfaced via STATE.controlPanel). The default
+   below is only a boot fallback, same pattern as DEFAULT_FACTORIES_SINONIN.
+   ============================================================ */
+
+// Boot fallback only — the Control_Panel GIFT_DESTINATIONS key overrides this.
+const DEFAULT_GIFT_DESTINATIONS = {
+  Milk:    ['Church', 'Relative', 'Domestic'],
+  Poultry: ['Poultry Team', 'Church', 'Others']
+};
+
+// Gentle name tidy — capitalise the first letter of all-lowercase words only,
+// so "McDonald", "O'Brien", Kalenjin "arap" survive untouched. Trims + collapses.
+function _tidyName(s) {
+  return String(s || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .map(w => (w && w === w.toLowerCase()) ? (w.charAt(0).toUpperCase() + w.slice(1)) : w)
+    .join(' ');
+}
+
+// Parse Control_Panel GIFT_DESTINATIONS ("Milk:Church,Relative;Poultry:Team,Church")
+// into { Unit: [dest,…] }. Falls back to DEFAULT_GIFT_DESTINATIONS for the unit.
+function _giftDestinationsFor(unit) {
+  const raw = (STATE.controlPanel && STATE.controlPanel.GIFT_DESTINATIONS) || '';
+  if (raw) {
+    const map = {};
+    raw.split(';').forEach(seg => {
+      const i = seg.indexOf(':'); if (i === -1) return;
+      const u = seg.slice(0, i).trim();
+      const list = seg.slice(i + 1).split(',').map(x => x.trim()).filter(Boolean);
+      if (u && list.length) map[u] = list;
+    });
+    if (map[unit] && map[unit].length) return map[unit];
+  }
+  return DEFAULT_GIFT_DESTINATIONS[unit] || [];
+}
+
+// Distinct prior buyers from the books (poultry + unified sales), excluding
+// blanks, gift-destination labels, and obvious junk. Sorted for the picker.
+function _knownBuyers() {
+  const giftLabels = new Set(
+    [].concat(_giftDestinationsFor('Milk'), _giftDestinationsFor('Poultry')).map(s => s.toLowerCase())
+  );
+  const seen = new Map(); // lowercased → canonical display
+  const push = (b) => {
+    const v = _tidyName(b);
+    if (!v) return;
+    const lc = v.toLowerCase();
+    if (giftLabels.has(lc)) return;           // a gift destination isn't a buyer
+    if (lc.length < 2) return;                // drop single chars / junk
+    if (!seen.has(lc)) seen.set(lc, v);
+  };
+  (Array.isArray(STATE.poultry) ? STATE.poultry : []).forEach(s => s && push(s.buyer));
+  (Array.isArray(STATE.sales)   ? STATE.sales   : []).forEach(s => s && push(s.buyer));
+  return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
+}
+
+// Build the poultry destination <select> from product/stage/payment context.
+const POULTRY_DEST_ADD = '__ADD__';
+function renderPoultryDestination() {
+  const sel = document.getElementById('y-dest-select');
+  const nu  = document.getElementById('y-dest-new');
+  const lbl = document.getElementById('y-dest-label');
+  if (!sel) return;
+  const isGift = (document.getElementById('y-payment') || {}).value === 'Gift';
+  const prev = sel.value;
+  let opts, addLabel;
+  if (isGift) {
+    if (lbl) lbl.textContent = 'Gift to';
+    opts = _giftDestinationsFor('Poultry');
+    addLabel = '➕ Other (specify)…';
+  } else {
+    if (lbl) lbl.textContent = 'Buyer';
+    opts = _knownBuyers();
+    addLabel = '➕ Add new…';
+  }
+  sel.innerHTML = '<option value="">— Select —</option>'
+    + opts.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('')
+    + `<option value="${POULTRY_DEST_ADD}">${addLabel}</option>`;
+  // Preserve a still-valid prior selection
+  if (prev && (prev === POULTRY_DEST_ADD || opts.indexOf(prev) !== -1)) sel.value = prev;
+  _togglePoultryDestNew();
+  if (nu && (sel.value !== POULTRY_DEST_ADD)) nu.value = '';
+}
+
+function _togglePoultryDestNew() {
+  const sel = document.getElementById('y-dest-select');
+  const nu  = document.getElementById('y-dest-new');
+  if (!sel || !nu) return;
+  const show = sel.value === POULTRY_DEST_ADD;
+  nu.style.display = show ? '' : 'none';
+  nu.placeholder = ((document.getElementById('y-payment') || {}).value === 'Gift')
+    ? 'Specify recipient' : 'Type buyer name';
+  if (show) nu.focus();
+}
+
+// Resolve the chosen destination/buyer to a single string for the saved row.
+function _resolvePoultryDest() {
+  const sel = document.getElementById('y-dest-select');
+  if (!sel) return '';
+  if (sel.value === POULTRY_DEST_ADD) {
+    const nu = document.getElementById('y-dest-new');
+    return _tidyName((nu && nu.value) || '');
+  }
+  return sel.value || '';
+}
+
+// True when the destination control has a usable value (strict: a real pick,
+// or "Add new/Other" with a non-empty typed value).
+function _poultryDestFilled() {
+  const sel = document.getElementById('y-dest-select');
+  if (!sel) return false;
+  if (sel.value === POULTRY_DEST_ADD) return _resolvePoultryDest().length > 0;
+  return !!sel.value;
 }
 
 /* v6.9.10 — Populate the cohort dropdown based on selected stage.
@@ -14673,7 +14820,7 @@ function updatePoultryPreview() {
   // v6.9.21 — Gifts are zero-revenue transactions (broken/small eggs given 
   // to staff). Amount > 0 is not required when payment_method = 'Gift'.
   const isGift = v.payment_method === 'Gift';
-  const valid = v.date && v.product && v.stage && v.unit && v.quantity > 0 && (isGift || v.amount > 0) && v.payment_method;
+  const valid = v.date && v.product && v.stage && v.unit && v.quantity > 0 && (isGift || v.amount > 0) && v.payment_method && _poultryDestFilled();
   document.getElementById('y-submit').disabled = !valid;
   const preview = document.getElementById('y-preview');
   if (!valid) { preview.style.display = 'none'; return; }
@@ -14687,6 +14834,7 @@ function updatePoultryPreview() {
 async function submitPoultry() {
   const v = yValues();
   if (!v.date || !v.product || !v.stage || !v.unit || v.quantity <= 0 || !v.payment_method) return;
+  if (!_poultryDestFilled()) { showToast('Pick a buyer / destination (or Add new)', 3000); return; }
   // v6.9.21 — Gifts may be zero-amount (broken eggs given to staff). 
   // For non-gifts, amount > 0 is still required.
   const isGiftSubmit = v.payment_method === 'Gift';
@@ -14761,7 +14909,8 @@ async function submitPoultry() {
   // typically records multiple sales in same product/payment session.
   document.getElementById('y-quantity').value = '';
   document.getElementById('y-amount').value = '';
-  document.getElementById('y-buyer').value = '';
+  { const _ds = document.getElementById('y-dest-select'); if (_ds) _ds.value = '';
+    const _dn = document.getElementById('y-dest-new'); if (_dn) { _dn.value = ''; _dn.style.display = 'none'; } }
   updatePoultryPreview();
 
   const row = {
@@ -26054,12 +26203,17 @@ function showUpdateBanner() {
   }
 
   // Poultry Sales
-  ['y-date','y-product','y-stage','y-cohort','y-unit','y-quantity','y-amount','y-payment','y-buyer'].forEach(id => {
+  ['y-date','y-product','y-stage','y-cohort','y-unit','y-quantity','y-amount','y-payment','y-dest-select','y-dest-new'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.addEventListener('input', updatePoultryPreview);
     el.addEventListener('change', updatePoultryPreview);
   });
+  // v6.11.54 — Destination select toggles the "Add new / Other" reveal input.
+  const yDestSel = document.getElementById('y-dest-select');
+  if (yDestSel) yDestSel.addEventListener('change', () => { _togglePoultryDestNew(); updatePoultryPreview(); });
+  const yDestNew = document.getElementById('y-dest-new');
+  if (yDestNew) yDestNew.addEventListener('blur', () => { yDestNew.value = _tidyName(yDestNew.value); updatePoultryPreview(); });
   // v6.9.10 — Stage change repopulates the cohort dropdown with active 
   // cohorts in that stage. Auto-select the OLDEST cohort (FIFO — older 
   // birds sell first) so the operator's default is the right answer.
@@ -26072,6 +26226,7 @@ function showUpdateBanner() {
     yStageEl.addEventListener('change', () => {
       if (typeof populatePoultryCohortDropdown === 'function') populatePoultryCohortDropdown();
       if (typeof populatePoultryPaymentDropdown === 'function') populatePoultryPaymentDropdown();
+      if (typeof renderPoultryDestination === 'function') renderPoultryDestination();
     });
   }
   const yProductEl = document.getElementById('y-product');
@@ -26083,6 +26238,14 @@ function showUpdateBanner() {
       if (typeof populatePoultryStageDropdown === 'function') populatePoultryStageDropdown();
       if (typeof populatePoultryCohortDropdown === 'function') populatePoultryCohortDropdown();
       if (typeof populatePoultryPaymentDropdown === 'function') populatePoultryPaymentDropdown();
+      if (typeof renderPoultryDestination === 'function') renderPoultryDestination();
+    });
+  }
+  // v6.11.54 — Payment change flips Gift⇄sale, which swaps the destination list.
+  const yPayEl = document.getElementById('y-payment');
+  if (yPayEl) {
+    yPayEl.addEventListener('change', () => {
+      if (typeof renderPoultryDestination === 'function') renderPoultryDestination();
     });
   }
   document.getElementById('y-submit').addEventListener('click', submitPoultry);
