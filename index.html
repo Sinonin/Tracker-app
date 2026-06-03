@@ -6428,7 +6428,18 @@ const BUSINESS_UNITS = [];
 function tenantBusinessUnits() {
   const raw = tcfg('BUSINESS_UNITS', '');
   if (typeof raw !== 'string' || !raw) return [];
-  return raw.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  // v6.11.58 — De-dupe defensively (case-insensitive, first occurrence wins).
+  // A duplicated BUSINESS_UNITS value (e.g. "Maize" listed twice) was rendering
+  // two identical cluster cards. This guards the whole class of error at the
+  // single source every consumer reads (Sales L1, Crops hub, Livestock hub).
+  const seen = new Set();
+  return raw.split(',').map(function (s) { return s.trim(); }).filter(function (s) {
+    if (!s) return false;
+    const k = s.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
 }
 
 /* v6.11.9 — Resolve the tenant's poultry unit label by finding the first 
@@ -8825,7 +8836,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.57';
+const APP_VERSION = 'v6.11.60';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -14836,7 +14847,18 @@ function populatePoultryCohortDropdown() {
       .filter(e => e && e.egg_batch_id && e.date && e.date >= cutoff && e.date > EGG_CLEARED_THROUGH)
       .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));  // v6.11.49 — oldest first (FIFO: sell aging stock first)
 
-    let html = '<option value="" selected>— no batch attribution —</option>';
+    // v6.11.59 — FIFO default: pre-select the first real option (opening pool /
+    // oldest batch), so a sale decrements stock by default with no extra tap.
+    // v6.11.60 — Attribution is MANDATORY (Cheison 02 Jun 2026 Verden: "Sell vs
+    // a Batch_ID or Cohort_ID. Discipline over democracy. Limit the freedom to
+    // err."). The "no batch attribution" escape is gone — the picker offers only
+    // real stock (FIFO-ordered, FIFO-default selected). No tracked stock → only
+    // the disabled "(no egg stock)" line shows → the sale is blocked at submit,
+    // which is correct: you can't sell what you don't have.
+    const _prevCohort = cohortEl.value;
+    let firstRealVal = '';
+    const _validCohortVals = new Set();
+    let html = '';
     let any = false;
     // v6.11.49 — Opening recount pool first (oldest physical stock → sell before any
     // dated batch). Normal-only; depletes via sales tagged to its id; exempt from the
@@ -14846,6 +14868,8 @@ function populatePoultryCohortDropdown() {
       const oRemaining = Number(EGG_OPENING_BALANCE.normal) - (soldById[oid] || 0) - (incubatedById[oid] || 0);
       if (oRemaining > 0) {
         any = true;
+        if (!firstRealVal) firstRealVal = oid;   // opening pool sells first → FIFO top
+        _validCohortVals.add(oid);
         const oOf = (soldById[oid] || 0) > 0 ? ' \u00b7 of ' + Number(EGG_OPENING_BALANCE.normal) : '';
         html += '<option value="' + oid + '">' + EGG_OPENING_BALANCE.label + ' \u00b7 ' +
                 fmtRemaining(oRemaining) + oOf + ' \u00b7 sell first</option>';
@@ -14862,6 +14886,8 @@ function populatePoultryCohortDropdown() {
         const remaining = collected - (soldById[id] || 0) - (incubatedById[id] || 0);
         if (remaining <= 0) return;
         any = true;
+        if (!firstRealVal) firstRealVal = id;    // oldest batch grade → FIFO after pool
+        _validCohortVals.add(id);
         const ofLabel = (soldById[id] || 0) > 0 ? ' · of ' + collected : '';
         html += '<option value="' + id + '">' + id + ' · ' + e.date + ' · ' + g.label +
                 ' · ' + fmtRemaining(remaining) + ofLabel + coll + '</option>';
@@ -14871,6 +14897,9 @@ function populatePoultryCohortDropdown() {
       html += '<option value="" disabled>(no egg stock to sell in last 15 days — log Egg Collection)</option>';
     }
     cohortEl.innerHTML = html;
+    // FIFO default — keep a still-valid prior pick; otherwise select the first
+    // real option (opening pool / oldest batch) so the sale decrements by default.
+    cohortEl.value = (_prevCohort && _validCohortVals.has(_prevCohort)) ? _prevCohort : (firstRealVal || '');
     return;
   }
 
@@ -14904,7 +14933,7 @@ function updatePoultryPreview() {
   // v6.9.21 — Gifts are zero-revenue transactions (broken/small eggs given 
   // to staff). Amount > 0 is not required when payment_method = 'Gift'.
   const isGift = v.payment_method === 'Gift';
-  const valid = v.date && v.product && v.stage && v.unit && v.quantity > 0 && (isGift || v.amount > 0) && v.payment_method && _poultryDestFilled();
+  const valid = v.date && v.product && v.stage && v.unit && v.quantity > 0 && (isGift || v.amount > 0) && v.payment_method && _poultryDestFilled() && !!v.cohort_id;
   document.getElementById('y-submit').disabled = !valid;
   const preview = document.getElementById('y-preview');
   if (!valid) { preview.style.display = 'none'; return; }
@@ -14919,6 +14948,7 @@ async function submitPoultry() {
   const v = yValues();
   if (!v.date || !v.product || !v.stage || !v.unit || v.quantity <= 0 || !v.payment_method) return;
   if (!_poultryDestFilled()) { showToast('Pick a buyer / destination (or Add new)', 3000); return; }
+  if (!v.cohort_id) { showToast('Every sale must attribute to a Batch / Cohort — no tracked stock means nothing to sell', 4000); return; }
   // v6.9.21 — Gifts may be zero-amount (broken eggs given to staff). 
   // For non-gifts, amount > 0 is still required.
   const isGiftSubmit = v.payment_method === 'Gift';
