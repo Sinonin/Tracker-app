@@ -4063,6 +4063,7 @@
       <button class="active" data-biz="tea">Tea</button>
       <button data-biz="poultry">Poultry</button>
       <button data-biz="expenses">Expenses</button>
+      <button data-biz="crops">🌽 Crops</button>
     </div>
 
     <div class="kind-toggle" id="kind-toggle-tea">
@@ -4078,6 +4079,12 @@
       <button data-kind="bird-census">Census</button>
       <button data-kind="incubation">Incubation</button>
       <button data-kind="vaccination">💉 Vacc</button>
+    </div>
+
+    <!-- v6.11.62 (M2 step 3) — Crops kind-toggle. One kind for now (maize
+         harvest); coffee delivery joins here later. -->
+    <div class="kind-toggle" id="kind-toggle-crops" style="display:none">
+      <button class="active" data-kind="maize-harvest">🌽 Harvest</button>
     </div>
 
     <!-- v5.9.1 — Expenses kind-toggle removed (only one child = redundant nav layer).
@@ -4349,6 +4356,26 @@
     </div>
 
     <!-- ========= EGG COLLECTION (v6.0 SHIP 1) ========= -->
+    <!-- v6.11.62 (M2 step 3) — Maize harvest entry. Minimal record: date · plot
+         (from Control_Panel MAIZE_PLOTS) · grade (MAIZE_GRADES, default
+         Dry/Green/Seed) · quantity · unit (context-aware: bags/kg/debe/gorogoro).
+         Submits action 'maize-harvest' to the gate (backend v5.0.65); offline-
+         queued on failure, exactly like egg collection. -->
+    <div id="maize-harvest-kind" style="display:none">
+      <div class="batch-instructions">Record a maize harvest — one row per plot · grade · load. Stock = harvested − sold, per grade. Keep date/plot/grade to log several loads quickly.</div>
+      <div class="field"><label>Date</label><input type="date" id="mh-date" onchange="validateMaizeHarvest()"></div>
+      <div class="pair">
+        <div class="field"><label>Plot</label><select id="mh-plot" onchange="validateMaizeHarvest()"><option value="">— Plot —</option></select></div>
+        <div class="field"><label>Grade</label><select id="mh-grade" onchange="validateMaizeHarvest()"><option value="">— Grade —</option></select></div>
+      </div>
+      <div class="pair">
+        <div class="field"><label>Quantity</label><input type="number" id="mh-qty" inputmode="decimal" step="0.01" min="0" placeholder="0" oninput="validateMaizeHarvest()"></div>
+        <div class="field"><label>Unit</label><select id="mh-unit" onchange="validateMaizeHarvest()"></select></div>
+      </div>
+      <div class="field" style="margin-top:0.7rem"><label>Notes (optional)</label><input type="text" id="mh-notes" placeholder="e.g. moisture, store location" autocomplete="off"></div>
+      <button class="submit" id="mh-submit" onclick="submitMaizeHarvest()" disabled>Record Harvest</button>
+    </div>
+
     <div id="egg-collection-kind" style="display:none">
       <div class="batch-instructions">Daily egg collection — record per house. One row per day captures all layer houses. Use 0 for zero-collection days.</div>
 
@@ -8889,7 +8916,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.61';
+const APP_VERSION = 'v6.11.62';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -11553,6 +11580,7 @@ async function flushQueue(opts) {
       else if (kind === 'poultry') record = (STATE.poultry || []).find(p => p.id === recordId);
       else if (kind === 'sale') record = item.payload || (STATE.sales || []).find(s => s && s.id === recordId) || null; // v6.11.50 — payload-carried (mirror) or STATE.sales (unified)
       else if (kind === 'egg-collection') record = (STATE.eggCollection || []).find(e => e.id === recordId);
+      else if (kind === 'maize-harvest') record = item.payload || (STATE.maizeHarvest || []).find(m => m.id === recordId) || null; // v6.11.62
       else if (kind === 'bird-census') record = (STATE.birdCensus || []).find(b => b.id === recordId);
       else if (kind === 'vaccination') record = (STATE.vaccinations || []).find(v => v.id === recordId);
       // v6.1.7 — Cohort and litter records use queue payload (carry full record),
@@ -11577,6 +11605,7 @@ async function flushQueue(opts) {
       else if (kind === 'poultry') ok = await pushPoultryToForm(record);
       else if (kind === 'sale')    { const _sr = await pushSaleToGate(record); ok = !!(_sr && _sr.ok); } // v6.11.50
       else if (kind === 'egg-collection') ok = await syncEggCollection(record);
+      else if (kind === 'maize-harvest') { const _mh = await pushMaizeHarvestToGate(record); ok = !!(_mh && _mh.ok); } // v6.11.62
       else if (kind === 'bird-census') ok = await syncBirdCensus(record);
       else if (kind === 'vaccination') ok = await syncVaccination(record);
       else if (kind === 'cohort')      ok = await syncCohort(record);
@@ -11976,6 +12005,22 @@ function cloudToLocalPoultry(r) {
 }
 /* v6.0 SHIP 2 / v5.7 Wide-schema cloud-to-local mapper for egg collection rows.
    Server returns derived totals + per-house. We keep both. */
+// v6.11.62 (M2 step 3) — Maize harvest cloud→local mapper. Stable id from
+// ts+plot+grade so cloud-replace-local doesn't churn ids across syncs.
+function cloudToLocalMaizeHarvest(r) {
+  return {
+    id: 'C-MH-' + String(r.ts || r.date || '') + '-' + String(r.plot || '').trim() + '-' + String(r.grade || '').trim(),
+    ts: r.ts || (r.date ? r.date + 'T00:00:00Z' : new Date().toISOString()),
+    date: r.date || '',
+    plot: String(r.plot || '').trim(),
+    grade: String(r.grade || '').trim(),
+    quantity: Number(r.quantity) || 0,
+    unit: String(r.unit || '').trim(),
+    notes: String(r.notes || ''),
+    _source: 'cloud'
+  };
+}
+
 function cloudToLocalEggCollection(r) {
   const gfN = Number(r.gf_normal) || 0;
   const gfS = Number(r.gf_small)  || 0;
@@ -12211,6 +12256,11 @@ async function applyCloudResponse(data) {
   if (Array.isArray(data.eggCollection)) {
     STATE.eggCollection = data.eggCollection.map(cloudToLocalEggCollection);
     await storageSet(K_EGG_COLLECTION, STATE.eggCollection);
+  }
+  /* v6.11.62 (M2 step 3) — Maize harvest sync (cloud-replace-local) */
+  if (Array.isArray(data.maizeHarvest)) {
+    STATE.maizeHarvest = data.maizeHarvest.map(cloudToLocalMaizeHarvest);
+    await storageSet(K_MAIZE_HARVEST, STATE.maizeHarvest);
   }
   /* v6.0 SHIP 3 — Houses sync (cloud-replace-local; config, not transactions) */
   if (Array.isArray(data.houses)) {
@@ -13064,12 +13114,15 @@ function switchBiz(b) {
   document.querySelectorAll('.biz-toggle button').forEach(el => el.classList.toggle('active', el.dataset.biz === b));
   document.getElementById('kind-toggle-tea').style.display = b === 'tea' ? '' : 'none';
   document.getElementById('kind-toggle-poultry').style.display = b === 'poultry' ? '' : 'none';
+  // v6.11.62 (M2 step 3) — Crops kind-toggle
+  { const ct = document.getElementById('kind-toggle-crops'); if (ct) ct.style.display = b === 'crops' ? '' : 'none'; }
   // v5.9.1 — kind-toggle-expenses kept as empty placeholder (single-child eliminated)
   // No display toggle needed; the form itself shows via switchKind('expense') below.
   // When switching business, activate the first kind in that business's toggle
   if (b === 'tea') switchKind('greenleaf');
   else if (b === 'poultry') switchKind('poultry');
   else if (b === 'expenses') switchKind('expense');
+  else if (b === 'crops') switchKind('maize-harvest');
 }
 
 function switchKind(k) {
@@ -13083,6 +13136,9 @@ function switchKind(k) {
   // v6.0 SHIP 1 — Egg Collection
   const ecKindEl = document.getElementById('egg-collection-kind');
   if (ecKindEl) ecKindEl.style.display = k === 'egg-collection' ? '' : 'none';
+  // v6.11.62 (M2 step 3) — Maize harvest
+  const mhKindEl = document.getElementById('maize-harvest-kind');
+  if (mhKindEl) mhKindEl.style.display = k === 'maize-harvest' ? '' : 'none';
   // v6.0 SHIP 4 — Bird Census
   const bcKindEl = document.getElementById('bird-census-kind');
   if (bcKindEl) bcKindEl.style.display = k === 'bird-census' ? '' : 'none';
@@ -13108,6 +13164,7 @@ function switchKind(k) {
   if (k === 'poultry') renderRecentPoultry();
   if (k === 'poultry' && typeof populatePoultryCohortDropdown === 'function') populatePoultryCohortDropdown();
   if (k === 'egg-collection' && typeof initEggCollectionForm === 'function') initEggCollectionForm();
+  if (k === 'maize-harvest' && typeof initMaizeHarvestForm === 'function') initMaizeHarvestForm();
   if (k === 'bird-census' && typeof initBirdCensusForm === 'function') initBirdCensusForm();
   if (k === 'incubation' && typeof initIncubationForm === 'function') initIncubationForm();
   if (k === 'incubation' && typeof renderIncubationProgress === 'function') renderIncubationProgress();
@@ -13130,6 +13187,7 @@ function resetFormDate(kind) {
     'banked':          ['b-date'],
     'poultry':         ['y-date'],
     'egg-collection':  ['ec-date'],
+    'maize-harvest':   ['mh-date'],
     'bird-census':     ['bc-date'],
     'incubation':      ['id-date-set', 'ih-date-hatched'],
     'vaccination':     ['vc-date'],
@@ -15322,6 +15380,12 @@ if (typeof STATE === 'object' && !Array.isArray(STATE.eggCollection)) {
   STATE.eggCollection = [];
 }
 
+// v6.11.62 (M2 step 3) — Maize harvest local store
+const K_MAIZE_HARVEST = 'sinonin_maize_harvest_v1';
+if (typeof STATE === 'object' && !Array.isArray(STATE.maizeHarvest)) {
+  STATE.maizeHarvest = [];
+}
+
 function initEggCollectionForm() {
   // Default date to today
   const dEl = document.getElementById('ec-date');
@@ -15452,6 +15516,154 @@ function validateEggCollection() {
     } else {
       preview.style.display = 'none';
     }
+  }
+}
+
+/* ============================================================
+   v6.11.62 (M2 step 3) — MAIZE HARVEST entry
+   ============================================================
+   Mirrors the egg-collection flow end-to-end: form → STATE →
+   gate (action 'maize-harvest', backend v5.0.65) → offline queue
+   on failure. Minimal record (Cheison 03 Jun 2026 Verden):
+   date · plot · grade · quantity · unit. Plots from Control_Panel
+   MAIZE_PLOTS; grades from MAIZE_GRADES (default Dry/Green/Seed);
+   units from the shared context-aware set (bags/kg/debe/gorogoro). */
+
+const MAIZE_GRADES_DEFAULT = ['Dry maize', 'Green maize', 'Seed maize'];
+
+function _maizePlots() {
+  const raw = (STATE.controlPanel && STATE.controlPanel.MAIZE_PLOTS) || '';
+  return String(raw).split(',').map(s => s.trim()).filter(Boolean);
+}
+function _maizeGrades() {
+  const raw = (STATE.controlPanel && STATE.controlPanel.MAIZE_GRADES) || '';
+  const list = String(raw).split(',').map(s => s.trim()).filter(Boolean);
+  return list.length ? list : MAIZE_GRADES_DEFAULT.slice();
+}
+function _maizeHarvestUnits() {
+  return (typeof _unitsForContext === 'function') ? _unitsForContext('Maize', '') : ['bags', 'kg', 'debe', 'gorogoro'];
+}
+
+function initMaizeHarvestForm() {
+  const plotSel = document.getElementById('mh-plot');
+  if (plotSel) {
+    const plots = _maizePlots();
+    plotSel.innerHTML = plots.length
+      ? '<option value="">— Plot —</option>' + plots.map(p => '<option value="' + escapeHtml(p) + '">' + escapeHtml(p) + '</option>').join('')
+      : '<option value="">— Set MAIZE_PLOTS in Control_Panel —</option>';
+  }
+  const gradeSel = document.getElementById('mh-grade');
+  if (gradeSel) {
+    gradeSel.innerHTML = '<option value="">— Grade —</option>'
+      + _maizeGrades().map(g => '<option value="' + escapeHtml(g) + '">' + escapeHtml(g) + '</option>').join('');
+  }
+  const unitSel = document.getElementById('mh-unit');
+  if (unitSel) {
+    const units = _maizeHarvestUnits();
+    const lbl = (typeof SALES_UNIT_LABELS !== 'undefined') ? SALES_UNIT_LABELS : {};
+    unitSel.innerHTML = units.map(u => '<option value="' + u + '">' + (lbl[u] || u) + '</option>').join('');
+    unitSel.value = units[0] || 'bags';
+  }
+  validateMaizeHarvest();
+}
+
+function validateMaizeHarvest() {
+  const date = (document.getElementById('mh-date') || {}).value || '';
+  const plot = (document.getElementById('mh-plot') || {}).value || '';
+  const grade = (document.getElementById('mh-grade') || {}).value || '';
+  const qty = Number((document.getElementById('mh-qty') || {}).value || 0);
+  const unit = (document.getElementById('mh-unit') || {}).value || '';
+  const valid = !!date && !!plot && !!grade && qty > 0 && !!unit;
+  const btn = document.getElementById('mh-submit');
+  if (btn) btn.disabled = !valid;
+  return valid;
+}
+
+async function submitMaizeHarvest() {
+  const date = (document.getElementById('mh-date') || {}).value || '';
+  const plot = ((document.getElementById('mh-plot') || {}).value || '').trim();
+  const grade = ((document.getElementById('mh-grade') || {}).value || '').trim();
+  const qty = Number((document.getElementById('mh-qty') || {}).value || 0);
+  const unit = ((document.getElementById('mh-unit') || {}).value || '').trim();
+  const notes = ((document.getElementById('mh-notes') || {}).value || '').trim();
+
+  if (!date) { showToast('Pick a date', 2500); return; }
+  if (!plot) { showToast('Pick a plot', 2500); return; }
+  if (!grade) { showToast('Pick a grade', 2500); return; }
+  if (!(qty > 0)) { showToast('Quantity must be greater than zero', 2500); return; }
+
+  if (!isSessionConfirmed('maize-harvest')) {
+    const summaryHtml = '<div><strong>' + qty + ' ' + escapeHtml(unit) + ' · ' + escapeHtml(grade) + '</strong></div>'
+      + '<div style="opacity:0.85;margin-top:0.3rem;">' + escapeHtml(plot) + ' · ' + date + '</div>';
+    const ok = await confirmFirstSubmit('maize-harvest', summaryHtml);
+    if (!ok) { showToast('Cancelled', 1800); return; }
+    markSessionConfirmed('maize-harvest');
+  }
+
+  const row = {
+    id: 'mh-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+    ts: new Date().toISOString(),
+    date: date, plot: plot, grade: grade,
+    quantity: qty, unit: unit, notes: notes
+  };
+
+  if (!Array.isArray(STATE.maizeHarvest)) STATE.maizeHarvest = [];
+  STATE.maizeHarvest.push(row);
+  try { await storageSet(K_MAIZE_HARVEST, STATE.maizeHarvest); } catch (e) {}
+
+  showToast('Saved · ' + qty + ' ' + unit + ' ' + grade + ' · ' + plot + ' · ' + date);
+
+  // Keep date/plot/grade for batch entry; clear quantity + notes.
+  ['mh-qty', 'mh-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  validateMaizeHarvest();
+
+  const synced = await syncMaizeHarvest(row);
+  if (!synced) {
+    await queueForSync(row, 'maize-harvest');
+    if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
+      showToast('🔒 Writes locked — ping ' + farmOwnerTitle() + ' · harvest queued', 6000);
+    }
+  }
+  updateSyncIndicator();
+  if (typeof renderHome === 'function') renderHome();
+}
+
+async function syncMaizeHarvest(row) {
+  if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL) {
+    const gateResult = await pushMaizeHarvestToGate(row);
+    if (gateResult) { lastWriteResult = gateResult; return gateResult.ok; }
+  }
+  lastWriteResult = { ok: false, reason: 'gate-unreachable' };
+  return false;
+}
+
+async function pushMaizeHarvestToGate(row) {
+  try {
+    const body = {
+      action: 'maize-harvest',
+      payload: {
+        ts: row.ts || new Date().toISOString(),
+        date: row.date,
+        plot: row.plot,
+        grade: row.grade,
+        quantity: Number(row.quantity || 0),
+        unit: row.unit || '',
+        notes: row.notes || ''
+      },
+      source: 'PWA ' + APP_VERSION + ' maize-harvest'
+    };
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST', mode: 'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    if (json && json.ok) return { ok: true, via: 'gate', possibleDuplicate: !!json.possibleDuplicate, summary: json.summary };
+    if (json && json.writesLocked) return { ok: false, reason: 'writes-locked', summary: json.reason };
+    return { ok: false, reason: (json && json.reason) ? json.reason : 'gate-rejected' };
+  } catch (e) {
+    return null;
   }
 }
 
