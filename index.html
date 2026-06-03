@@ -4551,7 +4551,7 @@
         <div class="field"><label>Batch ID</label><input type="text" id="ib-batch-id" placeholder="e.g. Nandi30APR1000" style="font-family:'IBM Plex Mono',monospace"></div>
         <div class="field"><label>Date set</label><input type="date" id="ib-date-set"></div>
         <div class="field"><label>Eggs in (count)</label><input type="number" id="ib-eggs-in" inputmode="numeric" step="1" min="1" placeholder="0"></div>
-        <div class="field"><label>Source</label><input type="text" id="ib-source" placeholder="e.g. Own Ground Floor, Bought Eldoret" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
+        <div class="field"><label>Source</label><select id="ib-source" style="font-family:'Fraunces',serif;font-size:1.05rem"></select></div>
         <div class="field" id="ib-draws-field">
           <label>Drawn from stock (per batch · optional)</label>
           <div id="ib-draws"></div>
@@ -9105,7 +9105,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.71';
+const APP_VERSION = 'v6.11.72';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -16598,6 +16598,22 @@ function initIncubationForm() {
   if (dhEl && !dhEl.value) dhEl.value = today;
 
   // Wire start form
+  // v6.11.72 — Source is a restricted dropdown (Cheison 03 Jun 2026 Verden:
+  // tighten Source to "Kipkenda" or "Other", restrict the text). Curated, no
+  // free typing — origin detail, if any, goes in Notes. Options from
+  // Control_Panel INCUBATION_SOURCES (default "Kipkenda,Other"); first option
+  // (Kipkenda — the usual origin) is the default selection.
+  (function () {
+    const sEl = document.getElementById('ib-source');
+    if (sEl) {
+      const prev = sEl.value;
+      const list = String((typeof tcfg === 'function') ? tcfg('INCUBATION_SOURCES', 'Kipkenda,Other') : 'Kipkenda,Other')
+        .split(',').map(s => s.trim()).filter(Boolean);
+      const opts = list.length ? list : ['Kipkenda', 'Other'];
+      sEl.innerHTML = opts.map(o => '<option value="' + o.replace(/"/g, '&quot;') + '">' + o + '</option>').join('');
+      sEl.value = (prev && opts.indexOf(prev) !== -1) ? prev : opts[0];
+    }
+  })();
   const startFields = ['ib-batch-id', 'ib-date-set', 'ib-eggs-in', 'ib-source', 'ib-expected-hatch', 'ib-notes'];
   startFields.forEach(id => {
     const el = document.getElementById(id);
@@ -16831,7 +16847,7 @@ async function submitIncubationStart() {
     // Clear form on success
     document.getElementById('ib-batch-id').value = '';
     document.getElementById('ib-eggs-in').value = '';
-    document.getElementById('ib-source').value = '';
+    { const _s = document.getElementById('ib-source'); if (_s && _s.options.length) _s.selectedIndex = 0; }  // v6.11.72 — reset to default (Kipkenda)
     document.getElementById('ib-notes').value = '';
     validateIncubationStart();
     renderHome();
