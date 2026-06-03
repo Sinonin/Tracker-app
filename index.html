@@ -9105,7 +9105,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.72';
+const APP_VERSION = 'v6.11.73';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -16559,12 +16559,21 @@ function updateIncubationDrawTally() {
   if (!el) return;
   const drawn = collectIncubationDraws().reduce((s, d) => s + d.qty, 0);
   const ei = Number((document.getElementById('ib-eggs-in') || {}).value) || 0;
+  const src = ((document.getElementById('ib-source') || {}).value || '').trim();   // v6.11.73
+  const isExternal = /^other$/i.test(src);
   if (!drawn && !ei) { el.textContent = ''; return; }
-  let msg = 'Drawn from tracked stock: ' + drawn;
+  // v6.11.73 — source-aware reconciliation feedback. Internal source (own stock,
+  // e.g. Kipkenda) must be FULLY sourced from tracked batches so the decrement
+  // registers; external ("Other", bought in) draws down nothing internal.
+  if (isExternal) {
+    el.textContent = 'Source: Other (bought in) \u00b7 no batch drawn down' + (ei ? ' \u00b7 ' + ei + ' eggs in' : '');
+    return;
+  }
+  let msg = 'Sourced from tracked stock: ' + drawn + (ei ? ' / ' + ei : '');
   if (ei) {
     const diff = ei - drawn;
-    if (diff === 0) msg += ' \u00b7 matches eggs in \u2713';
-    else if (diff > 0) msg += ' \u00b7 ' + diff + ' from untracked source (bought / older stock)';
+    if (diff === 0) msg += ' \u00b7 fully sourced \u2713';
+    else if (diff > 0) msg += ' \u00b7 ' + diff + ' still to source';
     else msg += ' \u00b7 ' + (-diff) + ' MORE than eggs in \u2014 check counts';
   }
   el.textContent = msg;
@@ -16663,6 +16672,13 @@ function initIncubationForm() {
     eiDrawEl.dataset.drawWired = '1';
     eiDrawEl.addEventListener('input', updateIncubationDrawTally);
   }
+  // v6.11.73 — Source toggle (Kipkenda ↔ Other) flips the reconciliation rule,
+  // so refresh the live tally when it changes.
+  const srcDrawEl = document.getElementById('ib-source');
+  if (srcDrawEl && !srcDrawEl.dataset.drawWired) {
+    srcDrawEl.dataset.drawWired = '1';
+    srcDrawEl.addEventListener('change', updateIncubationDrawTally);
+  }
 
   // Initial validation
   validateIncubationStart();
@@ -16756,6 +16772,42 @@ async function submitIncubationStart() {
   if (!id) { showToast('Missing: Batch ID', 3000); return; }
   if (!ds) { showToast('Missing: Date set', 3000); return; }
   if (!ei || ei <= 0) { showToast('Missing or invalid: Eggs in (must be > 0)', 3000); return; }
+
+  // v6.11.73 — SOURCE RECONCILIATION (Cheison 03 Jun 2026 Verden: "the log has
+  // it but the decrement is not registering"). The stock decrement keys on the
+  // source-batch draws (egg_draws), which were optional and decoupled from
+  // "Eggs in" — so a batch could be booked with a count but no source, debiting
+  // nothing. Now, source-aware (ties to the v6.11.72 Source dropdown):
+  //   · Internal source (own stock, e.g. Kipkenda): draws REQUIRED and must sum
+  //     to Eggs in, so every incubated egg is sourced and the decrement lands.
+  //   · External ("Other", bought in): no draws — nothing internal to debit.
+  // Also bounds each draw by the batch's remaining (parallel to the egg-sale
+  // guard). Placed before the in-flight guard so early returns need no reset.
+  // The incubation twin of the mandatory-cohort sale guard (v6.11.60).
+  const _isExternal = /^other$/i.test(src);
+  if (!_isExternal) {
+    const _draws = collectIncubationDraws();
+    const _drawSum = _draws.reduce((a, d) => a + (Number(d.qty) || 0), 0);
+    if (_draws.length === 0) {
+      showToast('Pick where these eggs came from \u2014 use \u201c+ Add source batch\u201d, or set Source to \u201cOther\u201d if bought in.', 5500);
+      return;
+    }
+    if (_drawSum !== ei) {
+      const diff = ei - _drawSum;
+      showToast(diff > 0
+        ? '\ud83e\udd5a ' + diff + ' of ' + ei + ' eggs not yet sourced \u2014 source batches must total ' + ei + '.'
+        : '\ud83e\udd5a Source batches total ' + _drawSum + ', more than the ' + ei + ' eggs in \u2014 adjust.', 5500);
+      return;
+    }
+    for (let _i = 0; _i < _draws.length; _i++) {
+      const _d = _draws[_i];
+      const _rem = (typeof _eggRemainingFor === 'function') ? _eggRemainingFor(_d.id) : null;
+      if (_rem !== null && Number(_d.qty) > _rem) {
+        showToast('\ud83d\udeab Only ' + _rem + ' eggs remain for ' + _d.id + ' \u2014 can\u2019t draw ' + _d.qty + '.', 5500);
+        return;
+      }
+    }
+  }
 
   // v5.8.5 — Add tab gibberish protection
   if (!isSessionConfirmed('incubation-start')) {
