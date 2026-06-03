@@ -4179,6 +4179,11 @@
       <div class="field"><label>Category</label><select id="x-category"><option value="">— Category —</option></select></div>
       <div class="field"><label>Description</label><input type="text" id="x-description" placeholder="e.g. DAP fertilizer, 50kg bag" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
       <div class="field"><label>Allocation</label><select id="x-block"><option value="Whole farm">Whole farm</option></select></div>
+      <!-- v6.11.67 — Crop/enterprise attribution, mirroring sales' business_unit.
+           Required, no "Whole farm" (per v6.11.18 seal); Shared Overhead is the
+           home for non-crop costs. This is the clean dimension the maize hub keys
+           on — block stays the site, business unit is the enterprise. -->
+      <div class="field"><label>Business unit</label><select id="x-business-unit" onchange="updateExpensePreview()"><option value="">— Enterprise —</option></select></div>
       <!-- v6.9.19 — Field repurposed from "Paid to" (free text) to 
            "Payment method" (curated dropdown). Cheison observation 
            (21 May 2026 Verden): "despite tutorials, the team still writes 
@@ -4213,6 +4218,7 @@
         <div class="primary"><span class="unit">Ksh</span><span id="x-preview-amt">0</span></div>
         <div class="breakdown">
           <div class="k">Category</div><div class="v" id="x-preview-cat">—</div>
+          <div class="k">Business unit</div><div class="v" id="x-preview-bu">—</div>
           <div class="k">Allocation</div><div class="v" id="x-preview-block">—</div>
           <div class="k">Date</div><div class="v" id="x-preview-date">—</div>
         </div>
@@ -7013,8 +7019,10 @@ function renderMaizePanel() {
         return rowLine(escapeHtml(p[0]), (h - s) + ' ' + escapeHtml(p[1]) + ' <span style="opacity:0.5">(' + h + '\u2212' + s + ')</span>'); }).join('')
     : '<div style="opacity:0.7">No harvest logged yet — Add → 🌽 Crops → Harvest.</div>';
 
-  // CROP P&L — revenue (sales) − maize-tagged cost
-  const maizeExp = expenses.filter(function (x) { const b = String(x.block || '').toLowerCase(); return b === 'maize' || plotSet.has(b); });
+  // CROP P&L — revenue (sales) − maize cost. v6.11.67: cost now keys on the
+  // clean business_unit === 'Maize' tag (set on the expense form), not the old
+  // leaky block/plot heuristic that swept in tea/beans/fruit on shared sites.
+  const maizeExp = expenses.filter(function (x) { return String(x.business_unit || '') === 'Maize'; });
   const cost = maizeExp.reduce(function (a, x) { return a + (Number(x.amount) || 0); }, 0);
   const revenue = sales.reduce(function (a, s) { return a + (Number(s.amount) || 0); }, 0);
   const margin = revenue - cost;
@@ -7029,15 +7037,15 @@ function renderMaizePanel() {
   } else {
     plotHtml = plots.map(function (p) {
       const pl = p.toLowerCase();
-      const c = expenses.filter(function (x) { return String(x.block || '').toLowerCase() === pl; }).reduce(function (a, x) { return a + (Number(x.amount) || 0); }, 0);
+      const c = expenses.filter(function (x) { return String(x.business_unit || '') === 'Maize' && String(x.block || '').toLowerCase() === pl; }).reduce(function (a, x) { return a + (Number(x.amount) || 0); }, 0);
       const bags = harvest.filter(function (h) { return String(h.plot || '').toLowerCase() === pl && /bag/i.test(h.unit || ''); }).reduce(function (a, h) { return a + (Number(h.quantity) || 0); }, 0);
       const sub = bags > 0 ? (bags + ' bags · ' + fmt(c / bags) + '/bag') : 'no harvest yet';
       return '<div style="padding:0.3rem 0;border-bottom:1px solid rgba(0,0,0,0.06)">'
         + rowLine('<strong>' + escapeHtml(p) + '</strong>', fmt(c))
         + '<div style="font-size:0.78rem;opacity:0.7">' + sub + '</div></div>';
     }).join('');
-    const unalloc = expenses.filter(function (x) { return String(x.block || '').toLowerCase() === 'maize'; }).reduce(function (a, x) { return a + (Number(x.amount) || 0); }, 0);
-    if (unalloc > 0) plotHtml += '<div style="padding:0.35rem 0;opacity:0.8;font-size:0.82rem">Unallocated (block \u201cMaize\u201d, no plot): <span style="font-family:\'IBM Plex Mono\',monospace">' + fmt(unalloc) + '</span></div>';
+    const unalloc = expenses.filter(function (x) { return String(x.business_unit || '') === 'Maize' && !plotSet.has(String(x.block || '').toLowerCase()); }).reduce(function (a, x) { return a + (Number(x.amount) || 0); }, 0);
+    if (unalloc > 0) plotHtml += '<div style="padding:0.35rem 0;opacity:0.8;font-size:0.82rem">Unallocated (Maize, site not in plot list): <span style="font-family:\'IBM Plex Mono\',monospace">' + fmt(unalloc) + '</span></div>';
   }
 
   const label = function (t) { return '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:0.72rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--forest-dark);margin-bottom:0.5rem">' + t + '</div>'; };
@@ -9085,7 +9093,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.66';
+const APP_VERSION = 'v6.11.67';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -11254,6 +11262,7 @@ async function pushExpenseToGate(expense) {
         description: expense.description || '',
         amount:      Number(expense.amount),
         block:       expense.block || 'Whole farm',
+        business_unit: expense.business_unit || '',
         payee:       expense.payee || ''
       },
       source: `PWA ${APP_VERSION} expense`
@@ -12123,6 +12132,7 @@ function cloudToLocalExpense(r) {
     description: r.description || '',
     amount: Number(r.amount) || 0,
     block: r.block || 'Whole farm',
+    business_unit: r.business_unit || '',   // v6.11.67 — crop/enterprise (blank for legacy rows)
     payee: r.payee || '',
     // v5.9.3 — Broader history matching: catches 'historical_expense' source label
     _source: (r.source === 'history' || r.source === 'historical_expense') ? 'history' : 'cloud'
@@ -12831,6 +12841,18 @@ function populateDropdowns() {
   // "Whole farm"-tagged expenses still render in their own Insights bucket 
   // (unchanged) — this is an input-side change only.
   document.getElementById('x-block').innerHTML = '<option value="">— Allocate to… —</option>' + groupedOpts;
+  // v6.11.67 — Business-unit (crop/enterprise) picker for expense crop
+  // attribution. Same enterprise + Shared Overhead options as the allocation's
+  // non-block groups; REQUIRED, NO "Whole farm" — consistent with the v6.11.18
+  // seal. block = site (where); business_unit = enterprise (which crop).
+  var xbuEl = document.getElementById('x-business-unit');
+  if (xbuEl) {
+    var xbuCur = xbuEl.value;
+    xbuEl.innerHTML = '<option value="">— Enterprise —</option>'
+      + '<optgroup label="Business units">' + businessUnitOpts + '</optgroup>'
+      + expenseOnlyOpts;
+    if (xbuCur) xbuEl.value = xbuCur;   // preserve selection across re-populate
+  }
   repopulatePluckerDropdown();
   repopulateFactoryDropdowns();
   repopulateCategoryDropdown();
@@ -13421,6 +13443,7 @@ function xValues() {
     // v6.11.18 — No "Whole farm" fallback. Empty block is caught by 
     // submitExpense validation, forcing the operator to allocate.
     block: document.getElementById('x-block').value,
+    business_unit: (document.getElementById('x-business-unit') || {}).value || '',
     payee: document.getElementById('x-payee').value.trim()
   };
 }
@@ -13429,12 +13452,13 @@ function updateExpensePreview() {
   const v = xValues();
   const card = document.getElementById('x-preview');
   const btn = document.getElementById('x-submit');
-  const ready = v.date && v.category && v.amount > 0;
+  const ready = v.date && v.category && v.amount > 0 && v.business_unit;
   if (!ready) { card.style.display = 'none'; btn.disabled = true; return; }
   card.style.display = 'block';
   btn.disabled = false;
   document.getElementById('x-preview-amt').textContent = moneyRound(v.amount);
   document.getElementById('x-preview-cat').textContent = v.category;
+  document.getElementById('x-preview-bu').textContent = v.business_unit;
   document.getElementById('x-preview-block').textContent = v.block;
   document.getElementById('x-preview-date').textContent = v.date;
 }
@@ -13457,6 +13481,14 @@ async function submitExpense() {
     if (typeof showToast === 'function') showToast('Pick an allocation — which block or unit does this cost belong to?', 4000);
     const sel = document.getElementById('x-block');
     if (sel && typeof sel.focus === 'function') sel.focus();
+    return;
+  }
+  // v6.11.67 — Business unit (crop/enterprise) required. The clean crop tag
+  // that lets per-crop P&L (maize, coffee) compute on multi-enterprise sites.
+  if (!v.business_unit) {
+    if (typeof showToast === 'function') showToast('Pick a business unit — which enterprise is this cost for? (Shared Overhead for non-crop costs)', 4500);
+    const bsel = document.getElementById('x-business-unit');
+    if (bsel && typeof bsel.focus === 'function') bsel.focus();
     return;
   }
 
@@ -13489,6 +13521,7 @@ async function submitExpense() {
       description: v.description,
       amount: v.amount,
       block: v.block,
+      business_unit: v.business_unit,
       payee: v.payee
     };
     STATE.expenses.push(expense);
