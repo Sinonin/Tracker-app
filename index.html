@@ -4063,6 +4063,7 @@
        Replaces the panel-other dead-end the Crops Maize card used to hit. -->
   <section class="panel" id="panel-maize">
     <div class="section-head"><h3>🌽 Maize</h3></div>
+    <div id="maize-nudge-card" class="calc-card" style="display:none;border-left:3px solid var(--forest);margin-bottom:0.8rem"></div>
     <div id="maize-stock-card" class="calc-card" style="margin-bottom:0.8rem"></div>
     <div id="maize-pnl-card" class="calc-card" style="margin-bottom:0.8rem"></div>
     <div id="maize-plot-card" class="calc-card" style="margin-bottom:0.8rem"></div>
@@ -6904,6 +6905,80 @@ function _buildClusterCard(label) {
    Maize sprays tagged "Labour"/"Tea farm operations" won't be caught by the
    crop-cost filter until they carry block=plot or block=Maize. Empty states
    tell the truth rather than imply numbers we don't have. */
+/* ============================================================
+   v6.11.64 — MAIZE NUDGE ENGINE (config-driven, farm-wide)
+   ============================================================
+   Engine #1 of the agreed two: season/calendar nudges that fire by
+   Gregorian month, rendered with the bilingual "English / Nandi" label
+   (Cheison, 3 Jun 2026). Reads three Control_Panel keys — all the tenant's
+   own data, all tunable, none hard-coded:
+     · MONTH_NAMES    — 12 comma-listed Nandi months, Jan→Dec (spellings from
+                        Cheison's Kalenjin "Months" chart, Jun 2026 — supersedes
+                        the Hollis-derived list; verified fallback below).
+     · SEASONS        — "wet:Mar-Aug:olt'-ap-iwot;dry:Sep-Feb:olt'-ap-keme"
+     · MAIZE_CALENDAR — ";"-separated "Mon: action" entries (the agronomy).
+   MAIZE_CALENDAR unset → no nudge (silent). We never invent timings; the
+   schedule is the tenant's. Engine #2 (planting-date + offset) waits on
+   per-plot planting capture — deliberately farm-wide first. Surfaced only
+   inside panel-maize, so the bilingual labels stay nudge-only as scoped. */
+var _MAIZE_ENG_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+var _MAIZE_MON3 = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+
+function maizeMonthNames() {
+  var raw = tcfg('MONTH_NAMES', "Ng'otyooto,Kiptaamo,Iwotkuut,Waki,Ng'eei,Rooptuui,Bureet,Epeeso,Kipsunde ne Tai,Kipsunde nebo Aeng',Mulgul ne Tai,Mulgul nebo Aeeng'");
+  var arr = String(raw).split(',').map(function (s) { return s.trim(); });
+  return arr.length === 12 ? arr : null;   // honest: only a complete set is usable
+}
+
+function maizeMonthLabel(m) {
+  var eng = _MAIZE_ENG_MONTHS[m] || '';
+  var nandi = maizeMonthNames();
+  return (nandi && nandi[m]) ? (eng + ' / ' + nandi[m]) : eng;   // English / Nandi; degrades to English-only
+}
+
+function maizeSeasons() {
+  var raw = tcfg('SEASONS', "wet:Mar-Aug:olt'-ap-iwot;dry:Sep-Feb:olt'-ap-keme");
+  var out = [];
+  String(raw).split(';').forEach(function (e) {
+    var p = e.split(':');
+    if (p.length < 2) return;
+    var span = String(p[1] || '').trim().toLowerCase().split('-');
+    if (span.length < 2) return;
+    var a = _MAIZE_MON3.indexOf(span[0].slice(0, 3)), b = _MAIZE_MON3.indexOf(span[1].slice(0, 3));
+    if (a < 0 || b < 0) return;
+    out.push({ key: String(p[0] || '').trim(), from: a, to: b, nandi: String(p[2] || '').trim() });
+  });
+  return out;
+}
+
+function maizeSeasonLabel(m) {
+  var s = maizeSeasons().filter(function (x) {
+    return x.from <= x.to ? (m >= x.from && m <= x.to) : (m >= x.from || m <= x.to);   // wrap-aware (dry season spans year-end)
+  })[0];
+  return s ? (s.key + (s.nandi ? ' · ' + s.nandi : '')) : '';
+}
+
+function maizeCalendar() {
+  var raw = tcfg('MAIZE_CALENDAR', '');
+  var out = {};
+  if (!raw) return out;
+  String(raw).split(';').forEach(function (entry) {
+    var i = entry.indexOf(':');
+    if (i < 0) return;
+    var mon = entry.slice(0, i).trim().slice(0, 3).toLowerCase();
+    var action = entry.slice(i + 1).trim();
+    var idx = _MAIZE_MON3.indexOf(mon);
+    if (idx >= 0 && action) out[idx] = action;
+  });
+  return out;
+}
+
+function maizeNudgeForNow() {
+  var cal = maizeCalendar();
+  var m = new Date().getMonth();
+  return cal[m] ? { month: m, action: cal[m] } : null;
+}
+
 function renderMaizePanel() {
   const fmt = function (n) { return 'Ksh ' + ((typeof moneyRound === 'function') ? moneyRound(Number(n) || 0) : Math.round(Number(n) || 0)); };
   const harvest  = Array.isArray(STATE.maizeHarvest) ? STATE.maizeHarvest : [];
@@ -6912,6 +6987,20 @@ function renderMaizePanel() {
   const plots    = (typeof _maizePlots === 'function') ? _maizePlots() : [];
   const plotSet  = new Set(plots.map(function (p) { return p.toLowerCase(); }));
   const rowLine = function (l, r, extra) { return '<div style="display:flex;justify-content:space-between;padding:0.22rem 0;' + (extra || '') + '"><span>' + l + '</span><span style="font-family:\'IBM Plex Mono\',monospace">' + r + '</span></div>'; };
+
+  // NUDGE — current month's scheduled action (config-driven; silent if none)
+  (function () {
+    var nEl = document.getElementById('maize-nudge-card');
+    if (!nEl) return;
+    var nudge = (typeof maizeNudgeForNow === 'function') ? maizeNudgeForNow() : null;
+    if (!nudge) { nEl.style.display = 'none'; nEl.innerHTML = ''; return; }
+    var season = (typeof maizeSeasonLabel === 'function') ? maizeSeasonLabel(nudge.month) : '';
+    nEl.style.display = '';
+    nEl.innerHTML =
+      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:0.72rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--forest-dark);margin-bottom:0.4rem">🌱 This month · ' + escapeHtml(maizeMonthLabel(nudge.month)) + '</div>'
+      + '<div style="font-size:0.95rem;font-weight:600">' + escapeHtml(nudge.action) + '</div>'
+      + (season ? '<div style="font-size:0.78rem;opacity:0.7;margin-top:0.2rem">' + escapeHtml(season) + '</div>' : '');
+  })();
 
   // STOCK — per grade × unit (harvested − sold)
   const K = function (g, u) { return (g || '?') + ' || ' + (u || ''); };
@@ -8996,7 +9085,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.63';
+const APP_VERSION = 'v6.11.66';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
