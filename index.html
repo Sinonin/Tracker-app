@@ -9093,7 +9093,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.67';
+const APP_VERSION = 'v6.11.69';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -15258,6 +15258,43 @@ function updatePoultryPreview() {
   document.getElementById('y-preview-date').textContent = v.date;
 }
 
+/* v6.11.68 — Authoritative egg-stock recompute for a given sub-batch id.
+   remaining = collected − sold − incubated, read from CURRENT state, so a
+   stale cohort dropdown can't let a disposition exceed what was collected
+   (the KP03JUN2026FC_B case: 6 broken collected, 6+6 gifted two minutes
+   apart — the second slipped past because the dropdown still showed "6 left").
+   Mirrors the dropdown's own math (EGGS_PER_TRAY=30; _SA/_B/base grades;
+   opening pool). Returns null for ids it can't resolve (non-egg sales pass). */
+function _eggRemainingFor(cohortId) {
+  const id = String(cohortId || '').trim();
+  if (!id) return null;
+  const EGGS_PER_TRAY = 30;
+  const isTrayUnit = function (u) { return /tray|crate/i.test(String(u || '')); };
+  let collected = null;
+  if (typeof EGG_OPENING_BALANCE !== 'undefined' && EGG_OPENING_BALANCE && id === EGG_OPENING_BALANCE.id) {
+    collected = Number(EGG_OPENING_BALANCE.normal) || 0;
+  } else {
+    let base = id, field = 'normal';
+    if (id.slice(-3) === '_SA')      { base = id.slice(0, -3); field = 'small_abnormal'; }
+    else if (id.slice(-2) === '_B')  { base = id.slice(0, -2); field = 'broken'; }
+    const e = (STATE.eggCollection || []).find(function (x) { return x && String(x.egg_batch_id || '').trim() === base; });
+    if (!e) return null;
+    collected = Number(e[field]) || 0;
+  }
+  let sold = 0;
+  (STATE.poultry || []).forEach(function (s) {
+    if (!s || s.product !== 'Eggs') return;
+    if (String(s.cohort_id || '').trim() !== id) return;
+    sold += (Number(s.quantity) || 0) * (isTrayUnit(s.unit) ? EGGS_PER_TRAY : 1);
+  });
+  let incub = 0;
+  (STATE.incubation || []).forEach(function (b) {
+    if (!b || !Array.isArray(b.egg_draws)) return;
+    b.egg_draws.forEach(function (d) { if (String((d && d.id) || '').trim() === id) incub += Number(d && d.qty) || 0; });
+  });
+  return collected - sold - incub;
+}
+
 async function submitPoultry() {
   const v = yValues();
   if (!v.date || !v.product || !v.stage || !v.unit || v.quantity <= 0 || !v.payment_method) return;
@@ -15316,6 +15353,27 @@ async function submitPoultry() {
     }
   }
 
+  // v6.11.68 — Egg over-disposal guard (Cheison 03 Jun 2026 Verden: "Block and
+  // Toast"). The bird block above exempts Eggs; this is its egg twin. Recomputes
+  // remaining from CURRENT state — independent of the dropdown, which can be
+  // stale after a prior submit. Hard block: cannot dispose more eggs than remain
+  // for the picked sub-batch. Try/catch fails open (a checker bug shouldn't block
+  // legitimate work), consistent with the bird block's stance.
+  if (v.product === 'Eggs') {
+    try {
+      const rem = (typeof _eggRemainingFor === 'function') ? _eggRemainingFor(v.cohort_id) : null;
+      if (rem !== null) {
+        const reqEggs = (Number(v.quantity) || 0) * (/tray|crate/i.test(String(v.unit || '')) ? 30 : 1);
+        if (reqEggs > rem) {
+          showToast('🚫 Only ' + rem + ' egg' + (rem === 1 ? '' : 's') + ' remain for ' + v.cohort_id + ' — can\u2019t dispose ' + reqEggs + '. Adjust quantity or pick another batch.', 5500);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('[egg-stock-guard] failed, allowing through:', e && e.message);
+    }
+  }
+
   // v5.8.5 — Add tab gibberish protection
   if (!isSessionConfirmed('poultry')) {
     const summaryHtml = `
@@ -15358,6 +15416,10 @@ async function submitPoultry() {
   STATE.poultry.push(row);
   await storageSet(K_POULTRY, STATE.poultry);
   renderRecentPoultry();
+  // v6.11.68 — Refresh the batch picker so the just-decremented sub-batch shows
+  // its new remaining (or drops out at zero) — closes the stale-dropdown hole
+  // that let a depleted batch be re-submitted.
+  if (typeof populatePoultryCohortDropdown === 'function') populatePoultryCohortDropdown();
   showToast(`Sale recorded · ${v.product} · ${v.payment_method} · Ksh ${moneyRound(v.amount)}`);
   const synced = await syncPoultry(row);
   if (!synced) {
@@ -16345,9 +16407,15 @@ function eggBatchesOpenForDraw() {
       inc[id] = (inc[id] || 0) + q;
     });
   });
-  const window15 = new Date(Date.now() - 15 * 86400000).toISOString().slice(0, 10);
+  // v6.11.69 — Incubator draw now shows ALL batches with remaining normal eggs
+  // (Cheison 03 Jun 2026 Verden: "return the old eggs to appear in the incubator
+  // option"). The 15-day window is a SALES-freshness concept (hatching/catering
+  // grade); whether to incubate an older egg is the operator's call. Old eggs
+  // reappear here WITHOUT affecting the sale picker, which keeps its own 15-day
+  // cutoff. Cleared-through + remaining>0 still apply, so explicitly reconciled-
+  // closed stock does not resurrect.
   return (STATE.eggCollection || [])
-    .filter(e => e && e.egg_batch_id && e.date && e.date >= window15 && e.date > EGG_CLEARED_THROUGH)
+    .filter(e => e && e.egg_batch_id && e.date && e.date > EGG_CLEARED_THROUGH)
     .map(e => {
       const id = String(e.egg_batch_id).trim();
       const collected = Number(e.normal) || 0;
