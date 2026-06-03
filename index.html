@@ -4356,6 +4356,18 @@
         <select id="y-dest-select"><option value="">— Select —</option></select>
         <input type="text" id="y-dest-new" placeholder="Type name" autocapitalize="words" autocomplete="off" spellcheck="false" style="font-family:'Fraunces',serif;font-size:1.05rem;display:none;margin-top:0.5rem"></div>
 
+      <!-- v6.11.70 — Ancillary egg-sale charges (Cheison 03 Jun 2026 Verden).
+           Delivery = service income; Crate = outright crate sale. BOTH recorded
+           as their OWN Sales-sheet lines (product Delivery / Crate), never folded
+           into egg revenue, so "income for eggs" stays pure. Eggs-only, optional
+           (blank = none), no stock effect. -->
+      <div id="y-ancillary" style="display:none">
+        <div class="pair">
+          <div class="field"><label>Delivery charge · Ksh (optional)</label><input type="number" id="y-delivery-charge" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+          <div class="field"><label>Crate sale · Ksh (optional)</label><input type="number" id="y-crate-charge" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+        </div>
+      </div>
+
       <button class="submit" id="y-submit" disabled>Record Sale</button>
 
       <div class="calc-card" id="y-preview" style="display:none;margin-top:0.9rem">
@@ -9093,7 +9105,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.69';
+const APP_VERSION = 'v6.11.70';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -14808,6 +14820,9 @@ function yValues() {
     amount: parseFloat(document.getElementById('y-amount').value) || 0,
     payment_method: document.getElementById('y-payment').value,
     buyer: _resolvePoultryDest(),
+    // v6.11.70 — Ancillary egg-sale charges (eggs only); 0 when blank/non-egg.
+    delivery_charge: parseFloat((document.getElementById('y-delivery-charge') || {}).value) || 0,
+    crate_charge: parseFloat((document.getElementById('y-crate-charge') || {}).value) || 0,
     // v6.9.10 — Cohort identity captured at write boundary (§ 7.6 closed).
     // Empty for non-bird products (Eggs) or when no stage is selected.
     cohort_id: (document.getElementById('y-cohort') || {}).value || ''
@@ -15078,6 +15093,14 @@ function populatePoultryCohortDropdown() {
   // operator picks an egg-collection batch), "Cohort" for bird sales.
   const labelEl = document.getElementById('y-cohort-label');
   if (labelEl) labelEl.textContent = (product === 'Eggs') ? 'Batch' : 'Cohort';
+
+  // v6.11.70 — Ancillary charge fields (delivery / crate) are eggs-only.
+  const ancEl = document.getElementById('y-ancillary');
+  if (ancEl) ancEl.style.display = (product === 'Eggs') ? '' : 'none';
+  if (product !== 'Eggs') {
+    const _dc = document.getElementById('y-delivery-charge'); if (_dc) _dc.value = '';
+    const _cc = document.getElementById('y-crate-charge'); if (_cc) _cc.value = '';
+  }
 
   // v6.10.8 — Egg sale path: source = Egg_Collection batches, not cohorts.
   if (product === 'Eggs') {
@@ -15395,6 +15418,8 @@ async function submitPoultry() {
   // typically records multiple sales in same product/payment session.
   document.getElementById('y-quantity').value = '';
   document.getElementById('y-amount').value = '';
+  { const _dc = document.getElementById('y-delivery-charge'); if (_dc) _dc.value = '';
+    const _cc = document.getElementById('y-crate-charge'); if (_cc) _cc.value = ''; }  // v6.11.70
   { const _ds = document.getElementById('y-dest-select'); if (_ds) _ds.value = '';
     const _dn = document.getElementById('y-dest-new'); if (_dn) { _dn.value = ''; _dn.style.display = 'none'; } }
   updatePoultryPreview();
@@ -15486,6 +15511,50 @@ async function submitPoultry() {
     }
   } catch (e) {
     console.warn('[sales-mirror] poultry\u2192Sales mirror failed (primary write unaffected):', e && e.message);
+  }
+
+  // v6.11.70 — Ancillary egg-sale charges as their OWN Sales-sheet lines, never
+  // folded into egg revenue. Delivery = service income; Crate = outright sale
+  // (Cheison 03 Jun 2026: crate is a sale, not a deposit; no tracking). Eggs-only;
+  // no stock movement; each an independent 'sale' row (product ≠ Eggs, so egg
+  // reporting excludes it). Distinct ts so server idempotency doesn't drop them.
+  if (v.product === 'Eggs') {
+    const _ancillary = [
+      { amt: Number(v.delivery_charge) || 0, product: 'Delivery' },
+      { amt: Number(v.crate_charge) || 0,    product: 'Crate' }
+    ];
+    for (let i = 0; i < _ancillary.length; i++) {
+      const a = _ancillary[i];
+      if (a.amt <= 0) continue;
+      try {
+        const aRow = {
+          id: row.id + '-' + a.product.charAt(0),
+          ts: new Date(Date.now() + (i + 1)).toISOString(),
+          date: v.date,
+          business_unit: 'Poultry',
+          product: a.product,
+          variant: '',
+          quantity: null,
+          unit: '',
+          amount: a.amt,
+          payment_method: v.payment_method || '',
+          revenue_type: 'Income',
+          buyer: v.buyer || '',
+          period: '',
+          reference: v.cohort_id || '',
+          notes: a.product + ' charge on egg sale' + (v.cohort_id ? ' \u00b7 Batch: ' + v.cohort_id : ''),
+          receipt_type: '', receipt_id: '', receipt_issued: false,
+          recorded_from: 'PWA ' + APP_VERSION + ' egg-ancillary'
+        };
+        if (typeof syncSale === 'function') {
+          const aSynced = await syncSale(aRow);
+          if (!aSynced && typeof queueForSync === 'function') await queueForSync(aRow, 'sale');
+        }
+        showToast(a.product + ' charge recorded \u00b7 Ksh ' + moneyRound(a.amt), 2500);
+      } catch (e) {
+        console.warn('[ancillary-charge] ' + a.product + ' failed (egg sale unaffected):', e && e.message);
+      }
+    }
   }
 
   // v6.11.51 — Prominent, linked receipt prompt after a poultry sale. The
