@@ -7129,6 +7129,58 @@ function _defaultUnitForContext(unitLabel, productLabel) {
   return 'number';
 }
 
+/* ============================================================
+   v6.11.61 (M2 step 1) — CONTEXT-AWARE UNIT OPTIONS
+   ============================================================
+   The s-unit dropdown was a single global list, so selling maize offered
+   litres / trays / nights etc. _unitsForContext returns only the measures
+   that fit the unit+product. Reads an optional Control_Panel UNITS_<UNIT>
+   override (comma-separated values) for scalability — same config pattern
+   as PRODUCTS_ / VARIANTS_. Unknown context falls back to the FULL list, so
+   a new tenant unit never has a measure wrongly hidden. */
+const SALES_UNIT_LABELS = {
+  kg: 'kg', litres: 'litres', trays: 'trays (30 eggs)', number: 'number / count',
+  bags: 'bags', debe: 'debe', gorogoro: 'gorogoro', hours: 'hours',
+  nights: 'nights', lumpsum: 'lump sum (no qty)'
+};
+const SALES_UNIT_ALL = ['kg','litres','trays','number','bags','debe','gorogoro','hours','nights','lumpsum'];
+
+function _unitsForContext(unitLabel, productLabel) {
+  // Control_Panel override: UNITS_<UNIT> (e.g. UNITS_MAIZE = "bags,kg,debe,gorogoro").
+  const slug = String(unitLabel || '').toUpperCase().trim().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+  if (slug && typeof tcfg === 'function') {
+    const ovr = tcfg('UNITS_' + slug, '');
+    if (ovr && String(ovr).trim()) {
+      const list = String(ovr).split(',').map(s => s.trim()).filter(Boolean);
+      if (list.length) return list;
+    }
+  }
+  const u = String(unitLabel || '').toLowerCase();
+  const p = String(productLabel || '').toLowerCase();
+  if (u.indexOf('tea') !== -1 && p.indexOf('greenleaf') !== -1) return ['kg'];
+  if (u.indexOf('tea') !== -1 && p.indexOf('seedling') !== -1) return ['number'];
+  if (u.indexOf('tea') !== -1) return ['kg', 'number', 'lumpsum'];
+  if (u.indexOf('poultry') !== -1 && p.indexOf('egg') !== -1) return ['trays', 'number'];
+  if (u.indexOf('poultry') !== -1) return ['number'];
+  if (u.indexOf('dairy') !== -1 && p.indexOf('milk') !== -1) return ['litres'];
+  if (u.indexOf('dairy') !== -1) return ['number', 'litres'];
+  if (u.indexOf('dorper') !== -1 || u.indexOf('sheep') !== -1 || u.indexOf('goat') !== -1) return ['number'];
+  if (u.indexOf('coffee') !== -1) return ['kg', 'number'];
+  if (u.indexOf('maize') !== -1) return ['bags', 'kg', 'debe', 'gorogoro'];
+  if (u.indexOf('training') !== -1) return ['lumpsum'];
+  if (u.indexOf('hospitality') !== -1 || u.indexOf('room') !== -1) return ['nights', 'lumpsum'];
+  if (u.indexOf('machinery') !== -1 || u.indexOf('hire') !== -1) return ['hours', 'lumpsum'];
+  return SALES_UNIT_ALL.slice();   // unknown unit → full list, never wrongly hide
+}
+
+function _populateSalesUnitOptions(unitLabel, productLabel) {
+  const sel = document.getElementById('s-unit');
+  if (!sel) return;
+  const vals = _unitsForContext(unitLabel, productLabel);
+  sel.innerHTML = '<option value="">— Unit —</option>'
+    + vals.map(v => '<option value="' + v + '">' + (SALES_UNIT_LABELS[v] || v) + '</option>').join('');
+}
+
 /* Default revenue type given context. Tea greenleaf to a factory = Revenue
    (bulk settlement); everything else defaults to Income (transactional sale). */
 function _defaultRevTypeForContext(unitLabel, productLabel) {
@@ -7286,7 +7338,8 @@ function _enterSalesLevel4() {
   document.getElementById('s-method').value = '';
   if (typeof renderSaleDestination === 'function') renderSaleDestination(); // v6.11.54 step 3 — builds list + pre-selects factory variant
 
-  // Unit default for this context
+  // Unit options + default for this context (M2 step 1 — only relevant measures)
+  _populateSalesUnitOptions(c.unit.label, c.product.label);
   document.getElementById('s-unit').value = _defaultUnitForContext(c.unit.label, c.product.label);
 
   // Revenue type default
@@ -8836,7 +8889,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.60';
+const APP_VERSION = 'v6.11.61';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
