@@ -9105,7 +9105,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.70';
+const APP_VERSION = 'v6.11.71';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -16483,7 +16483,7 @@ function eggBatchesOpenForDraw() {
   // reappear here WITHOUT affecting the sale picker, which keeps its own 15-day
   // cutoff. Cleared-through + remaining>0 still apply, so explicitly reconciled-
   // closed stock does not resurrect.
-  return (STATE.eggCollection || [])
+  const out = (STATE.eggCollection || [])
     .filter(e => e && e.egg_batch_id && e.date && e.date > EGG_CLEARED_THROUGH)
     .map(e => {
       const id = String(e.egg_batch_id).trim();
@@ -16493,6 +16493,19 @@ function eggBatchesOpenForDraw() {
     })
     .filter(b => b.remaining > 0)
     .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  // v6.11.71 — Include the pre-date-marking OPENING POOL in the draw. It lives
+  // outside STATE.eggCollection (it's the EGG_OPENING_BALANCE constant), so the
+  // draw never saw it even though the sale picker offers it — the team could
+  // sell from the pool but not incubate from it. Normal-only; remaining =
+  // opening − sold − incubated; listed FIRST (oldest physical stock → FIFO).
+  if (typeof EGG_OPENING_BALANCE !== 'undefined' && EGG_OPENING_BALANCE && Number(EGG_OPENING_BALANCE.normal) > 0) {
+    const oid = EGG_OPENING_BALANCE.id;
+    const oRemaining = Number(EGG_OPENING_BALANCE.normal) - (sold[oid] || 0) - (inc[oid] || 0);
+    if (oRemaining > 0) {
+      out.unshift({ id: oid, date: EGG_OPENING_BALANCE.date || '', remaining: oRemaining, label: EGG_OPENING_BALANCE.label });
+    }
+  }
+  return out;
 }
 
 function incubationDrawOptionsHtml(selectedId) {
@@ -16500,7 +16513,8 @@ function incubationDrawOptionsHtml(selectedId) {
   let h = '<option value="">— select batch —</option>';
   opts.forEach(o => {
     const sel = o.id === selectedId ? ' selected' : '';
-    h += '<option value="' + o.id + '"' + sel + '>' + o.id + ' \u00b7 ' + o.date + ' \u00b7 ' + o.remaining + ' left</option>';
+    const disp = o.label ? o.label : (o.id + ' \u00b7 ' + o.date);   // v6.11.71 — friendly label for opening pool
+    h += '<option value="' + o.id + '"' + sel + '>' + disp + ' \u00b7 ' + o.remaining + ' left</option>';
   });
   if (selectedId && !opts.some(o => o.id === selectedId)) {
     h += '<option value="' + selectedId + '" selected>' + selectedId + ' \u00b7 (0 left)</option>';
