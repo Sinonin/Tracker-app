@@ -4057,6 +4057,18 @@
     </div>
   </section>
 
+  <!-- v6.11.63 (M2 step 4 + M3) — Maize hub. Read-only: per-grade stock,
+       crop P&L, per-plot cost/yield. Fed by STATE.maizeHarvest (harvested),
+       Maize sales (sold + revenue), and expenses tagged block=plot/Maize.
+       Replaces the panel-other dead-end the Crops Maize card used to hit. -->
+  <section class="panel" id="panel-maize">
+    <div class="section-head"><h3>🌽 Maize</h3></div>
+    <div id="maize-stock-card" class="calc-card" style="margin-bottom:0.8rem"></div>
+    <div id="maize-pnl-card" class="calc-card" style="margin-bottom:0.8rem"></div>
+    <div id="maize-plot-card" class="calc-card" style="margin-bottom:0.8rem"></div>
+    <button class="submit" type="button" onclick="openAddPanel('crops','maize-harvest')">🌽 Log harvest</button>
+  </section>
+
   <!-- ADD -->
   <section class="panel" id="panel-add">
     <div class="biz-toggle">
@@ -6864,6 +6876,7 @@ function _clusterTargetForUnit(label) {
   if (/\bpoultry\b/.test(s)) return 'poultry';
   if (/\b(dairy|cow|cattle)\b/.test(s)) return 'cows';
   if (/\b(dorper|sheep)\b/.test(s)) return 'sheep';
+  if (/\bmaize\b/.test(s)) return 'maize';   // v6.11.63 — Maize now has its own hub panel
   return 'other';
 }
 
@@ -6877,6 +6890,72 @@ function _buildClusterCard(label) {
          '<span class="sc-icon">' + _iconForUnit(label) + '</span>' +
          '<span class="sc-label">' + escapeHtml(label) + '</span>' +
          '</button>';
+}
+
+/* ============================================================
+   v6.11.63 (M2 step 4 + M3) — MAIZE HUB (read-only)
+   ============================================================
+   Three honest cards in panel-maize:
+   · Stock    — per grade × unit: harvested − sold (sold = Maize sales).
+   · Crop P&L — revenue (Maize sales) − maize-tagged cost = margin.
+   · Per plot — cost (expenses block=plot) · yield (harvest bags) · cost/bag.
+   No fabricated per-plot revenue: maize sells from combined stock, so a sale
+   isn't plot-attributable; profit lives at crop level (no-massaging rule).
+   Maize sprays tagged "Labour"/"Tea farm operations" won't be caught by the
+   crop-cost filter until they carry block=plot or block=Maize. Empty states
+   tell the truth rather than imply numbers we don't have. */
+function renderMaizePanel() {
+  const fmt = function (n) { return 'Ksh ' + ((typeof moneyRound === 'function') ? moneyRound(Number(n) || 0) : Math.round(Number(n) || 0)); };
+  const harvest  = Array.isArray(STATE.maizeHarvest) ? STATE.maizeHarvest : [];
+  const sales    = (Array.isArray(STATE.sales) ? STATE.sales : []).filter(function (s) { return s && s.business_unit === 'Maize'; });
+  const expenses = Array.isArray(STATE.expenses) ? STATE.expenses : [];
+  const plots    = (typeof _maizePlots === 'function') ? _maizePlots() : [];
+  const plotSet  = new Set(plots.map(function (p) { return p.toLowerCase(); }));
+  const rowLine = function (l, r, extra) { return '<div style="display:flex;justify-content:space-between;padding:0.22rem 0;' + (extra || '') + '"><span>' + l + '</span><span style="font-family:\'IBM Plex Mono\',monospace">' + r + '</span></div>'; };
+
+  // STOCK — per grade × unit (harvested − sold)
+  const K = function (g, u) { return (g || '?') + ' || ' + (u || ''); };
+  const harv = {}, sold = {};
+  harvest.forEach(function (h) { const k = K(h.grade, h.unit); harv[k] = (harv[k] || 0) + (Number(h.quantity) || 0); });
+  sales.forEach(function (s) { const k = K(s.product, s.unit); sold[k] = (sold[k] || 0) + (Number(s.quantity) || 0); });
+  const sKeys = Array.from(new Set(Object.keys(harv).concat(Object.keys(sold)))).sort();
+  const stockHtml = sKeys.length
+    ? sKeys.map(function (k) { const p = k.split(' || '); const h = harv[k] || 0, s = sold[k] || 0;
+        return rowLine(escapeHtml(p[0]), (h - s) + ' ' + escapeHtml(p[1]) + ' <span style="opacity:0.5">(' + h + '\u2212' + s + ')</span>'); }).join('')
+    : '<div style="opacity:0.7">No harvest logged yet — Add → 🌽 Crops → Harvest.</div>';
+
+  // CROP P&L — revenue (sales) − maize-tagged cost
+  const maizeExp = expenses.filter(function (x) { const b = String(x.block || '').toLowerCase(); return b === 'maize' || plotSet.has(b); });
+  const cost = maizeExp.reduce(function (a, x) { return a + (Number(x.amount) || 0); }, 0);
+  const revenue = sales.reduce(function (a, s) { return a + (Number(s.amount) || 0); }, 0);
+  const margin = revenue - cost;
+  let pnlHtml = rowLine('Revenue (sales)', fmt(revenue)) + rowLine('Cost (maize-tagged)', fmt(cost))
+    + rowLine('Margin', '<span style="color:' + (margin >= 0 ? 'var(--forest)' : 'var(--brass)') + '">' + fmt(margin) + '</span>', 'border-top:1px solid rgba(0,0,0,0.1);font-weight:600;margin-top:0.2rem;padding-top:0.35rem');
+  if (revenue === 0) pnlHtml += '<div style="opacity:0.7;font-size:0.78rem;margin-top:0.35rem">No maize sales yet — margin is cost-only so far.</div>';
+
+  // PER PLOT — cost · yield · cost/bag (no revenue: not plot-attributable)
+  let plotHtml;
+  if (!plots.length) {
+    plotHtml = '<div style="opacity:0.7">No plots configured — set MAIZE_PLOTS in Control_Panel.</div>';
+  } else {
+    plotHtml = plots.map(function (p) {
+      const pl = p.toLowerCase();
+      const c = expenses.filter(function (x) { return String(x.block || '').toLowerCase() === pl; }).reduce(function (a, x) { return a + (Number(x.amount) || 0); }, 0);
+      const bags = harvest.filter(function (h) { return String(h.plot || '').toLowerCase() === pl && /bag/i.test(h.unit || ''); }).reduce(function (a, h) { return a + (Number(h.quantity) || 0); }, 0);
+      const sub = bags > 0 ? (bags + ' bags · ' + fmt(c / bags) + '/bag') : 'no harvest yet';
+      return '<div style="padding:0.3rem 0;border-bottom:1px solid rgba(0,0,0,0.06)">'
+        + rowLine('<strong>' + escapeHtml(p) + '</strong>', fmt(c))
+        + '<div style="font-size:0.78rem;opacity:0.7">' + sub + '</div></div>';
+    }).join('');
+    const unalloc = expenses.filter(function (x) { return String(x.block || '').toLowerCase() === 'maize'; }).reduce(function (a, x) { return a + (Number(x.amount) || 0); }, 0);
+    if (unalloc > 0) plotHtml += '<div style="padding:0.35rem 0;opacity:0.8;font-size:0.82rem">Unallocated (block \u201cMaize\u201d, no plot): <span style="font-family:\'IBM Plex Mono\',monospace">' + fmt(unalloc) + '</span></div>';
+  }
+
+  const label = function (t) { return '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:0.72rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--forest-dark);margin-bottom:0.5rem">' + t + '</div>'; };
+  const setC = function (id, l, body) { const el = document.getElementById(id); if (el) el.innerHTML = label(l) + body; };
+  setC('maize-stock-card', 'Stock · per grade', stockHtml);
+  setC('maize-pnl-card', 'Crop P&L', pnlHtml);
+  setC('maize-plot-card', 'Per plot · cost & yield', plotHtml);
 }
 
 /* Render Crops hub. v6.11.11 — cards generated from BUSINESS_UNITS 
@@ -8748,6 +8827,7 @@ const SCREEN_TITLES = {
   other: 'Other',
   // v6.11.5 — Cluster hub screen titles
   crops: 'Crops',
+  maize: 'Maize',   // v6.11.63 — Maize hub panel
   livestock: 'Livestock',
   sales: 'Sales',  // v6.11.0 — unified revenue-recording POS cascade
   insights: 'Insights',
@@ -8916,7 +8996,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.62';
+const APP_VERSION = 'v6.11.63';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -12807,6 +12887,7 @@ function switchView(v) {
   // hiding is automatic via data-product attrs (the global hide-product 
   // CSS already handles it).
   if (v === 'crops' && typeof renderCropsHub === 'function') renderCropsHub();
+  if (v === 'maize' && typeof renderMaizePanel === 'function') renderMaizePanel(); // v6.11.63
   if (v === 'livestock' && typeof renderLivestockHub === 'function') renderLivestockHub();
   // v6.11.0 — Sales tab: POS cascade. Reset to Level 1 (business-unit cards)
   // every time the tab is entered so the operator always starts at the top
