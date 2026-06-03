@@ -4548,7 +4548,7 @@
 
       <!-- START BATCH form -->
       <div id="incubation-start-form">
-        <div class="field"><label>Batch ID</label><input type="text" id="ib-batch-id" placeholder="e.g. Nandi30APR1000" style="font-family:'IBM Plex Mono',monospace"></div>
+        <div class="field"><label>Batch ID (auto)</label><input type="text" id="ib-batch-id" readonly tabindex="-1" placeholder="set source, date & eggs" style="font-family:'IBM Plex Mono',monospace;background:rgba(0,0,0,0.05);opacity:0.85;cursor:default"></div>
         <div class="field"><label>Date set</label><input type="date" id="ib-date-set"></div>
         <div class="field"><label>Eggs in (count)</label><input type="number" id="ib-eggs-in" inputmode="numeric" step="1" min="1" placeholder="0"></div>
         <div class="field"><label>Source</label><select id="ib-source" style="font-family:'Fraunces',serif;font-size:1.05rem"></select></div>
@@ -9105,7 +9105,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.73';
+const APP_VERSION = 'v6.11.75';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -16537,8 +16537,29 @@ function addIncubationDrawRow(presetId, presetQty) {
       'style="border:none;background:transparent;font-size:1.1rem;cursor:pointer;opacity:0.6">\u2715</button>';
   wrap.appendChild(row);
   row.querySelector('.ib-draw-del').addEventListener('click', () => { row.remove(); updateIncubationDrawTally(); });
-  row.querySelector('.ib-draw-batch').addEventListener('change', updateIncubationDrawTally);
-  row.querySelector('.ib-draw-qty').addEventListener('input', updateIncubationDrawTally);
+  const batchSel = row.querySelector('.ib-draw-batch');
+  const qtyInput = row.querySelector('.ib-draw-qty');
+  // v6.11.74 — One-tap quantity: picking a source batch with an empty qty
+  // auto-fills it with the still-outstanding count (Eggs in − already drawn on
+  // other rows), clamped to that batch's remaining. Common "all from one batch"
+  // case becomes a single tap; operator can still override.
+  batchSel.addEventListener('change', () => {
+    const id = (batchSel.value || '').trim();
+    if (id && !String(qtyInput.value || '').trim()) {
+      const ei = Number((document.getElementById('ib-eggs-in') || {}).value) || 0;
+      let drawnElsewhere = 0;
+      document.querySelectorAll('#ib-draws .ib-draw-row').forEach(r => {
+        if (r === row) return;
+        drawnElsewhere += Number((r.querySelector('.ib-draw-qty') || {}).value) || 0;
+      });
+      const outstanding = Math.max(0, ei - drawnElsewhere);
+      const rem = (typeof _eggRemainingFor === 'function') ? _eggRemainingFor(id) : null;
+      const fill = (rem !== null && rem >= 0) ? Math.min(outstanding, rem) : outstanding;
+      if (fill > 0) qtyInput.value = fill;
+    }
+    updateIncubationDrawTally();
+  });
+  qtyInput.addEventListener('input', updateIncubationDrawTally);
   updateIncubationDrawTally();
 }
 
@@ -16577,6 +16598,9 @@ function updateIncubationDrawTally() {
     else msg += ' \u00b7 ' + (-diff) + ' MORE than eggs in \u2014 check counts';
   }
   el.textContent = msg;
+  // v6.11.74 — tally and button gate move together: any change that updates the
+  // tally (draw row, qty, source) also re-evaluates the Start button.
+  if (typeof validateIncubationStart === 'function') validateIncubationStart();
 }
 
 function initIncubationForm() {
@@ -16680,6 +16704,17 @@ function initIncubationForm() {
     srcDrawEl.addEventListener('change', updateIncubationDrawTally);
   }
 
+  // v6.11.75 — Batch ID generator: rebuild whenever source, date, or eggs change.
+  ['ib-source', 'ib-date-set', 'ib-eggs-in'].forEach(fid => {
+    const el = document.getElementById(fid);
+    if (el && !el.dataset.idWired) {
+      el.dataset.idWired = '1';
+      el.addEventListener('input', recomputeIncubationBatchId);
+      el.addEventListener('change', recomputeIncubationBatchId);
+    }
+  });
+  recomputeIncubationBatchId();   // initial build (prefix + today's date)
+
   // Initial validation
   validateIncubationStart();
 }
@@ -16697,11 +16732,53 @@ function autoFillExpectedHatch() {
   }
 }
 
+// v6.11.75 — Batch ID is GENERATED, never typed (Cheison 03 Jun 2026 Verden:
+// "stop manual entry"). Free typing let a code slip in spelled out as
+// "KP03JUNE264". Now machine-built and locked: prefix (KP own / EXT bought-in)
+// + DD + 3-letter MONTH + YY, then "_" + egg count once "Eggs in" is filled.
+// e.g. KP03JUN26_264. Egg part appears only once the eggs are picked.
+function recomputeIncubationBatchId() {
+  const el = document.getElementById('ib-batch-id');
+  if (!el) return;
+  const src = ((document.getElementById('ib-source') || {}).value || '').trim();
+  const ds = (document.getElementById('ib-date-set') || {}).value;
+  const eiRaw = (document.getElementById('ib-eggs-in') || {}).value;
+  const prefix = /^other$/i.test(src) ? 'EXT' : 'KP';
+  const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  let datePart = '';
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ds || ''));
+  if (m) {
+    const yy = m[1].slice(2);                       // YY, e.g. 26
+    const mon = MONTHS[Number(m[2]) - 1] || '';      // 3-letter month
+    datePart = m[3] + mon + yy;                      // DDMMMYY, e.g. 03JUN26
+  }
+  const eggs = Math.trunc(Number(eiRaw));
+  const eggPart = (String(eiRaw).trim() !== '' && !isNaN(eggs) && eggs > 0) ? ('_' + eggs) : '';
+  el.value = datePart ? (prefix + datePart + eggPart) : '';
+  if (typeof validateIncubationStart === 'function') validateIncubationStart();
+}
+
 function validateIncubationStart() {
   const id = ((document.getElementById('ib-batch-id') || {}).value || '').trim();
   const ds = (document.getElementById('ib-date-set') || {}).value;
   const ei = (document.getElementById('ib-eggs-in') || {}).value;
-  const valid = !!id && !!ds && ei !== '' && !isNaN(Number(ei)) && Number(ei) > 0;
+  let valid = !!id && !!ds && ei !== '' && !isNaN(Number(ei)) && Number(ei) > 0;
+  // v6.11.74 — Button now GATES on source reconciliation (same rule the submit
+  // guard enforces), so the requirement is visible up front instead of a
+  // rejection after pressing Start. Own stock (not "Other") must be fully
+  // sourced from tracked batches; each draw within its batch's remaining.
+  if (valid) {
+    const src = ((document.getElementById('ib-source') || {}).value || '').trim();
+    if (!/^other$/i.test(src)) {
+      const draws = collectIncubationDraws();
+      const sum = draws.reduce((a, d) => a + (Number(d.qty) || 0), 0);
+      const overdrawn = draws.some(d => {
+        const rem = (typeof _eggRemainingFor === 'function') ? _eggRemainingFor(d.id) : null;
+        return rem !== null && Number(d.qty) > rem;
+      });
+      if (draws.length === 0 || sum !== Number(ei) || overdrawn) valid = false;
+    }
+  }
   const btn = document.getElementById('ib-start-submit');
   if (btn) btn.disabled = !valid;
 }
@@ -16897,10 +16974,10 @@ async function submitIncubationStart() {
     }
 
     // Clear form on success
-    document.getElementById('ib-batch-id').value = '';
     document.getElementById('ib-eggs-in').value = '';
     { const _s = document.getElementById('ib-source'); if (_s && _s.options.length) _s.selectedIndex = 0; }  // v6.11.72 — reset to default (Kipkenda)
     document.getElementById('ib-notes').value = '';
+    if (typeof recomputeIncubationBatchId === 'function') recomputeIncubationBatchId();  // v6.11.75 — rebuild auto code (eggs cleared)
     validateIncubationStart();
     renderHome();
     if (typeof renderIncubationProgress === 'function') renderIncubationProgress();
