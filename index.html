@@ -9105,7 +9105,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.75';
+const APP_VERSION = 'v6.11.76';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -12280,6 +12280,7 @@ function cloudToLocalIncubation(r) {
     date_hatched:   r.date_hatched || '',
     hatched_count:  Number(r.hatched_count) || 0,
     failed_count:   Number(r.failed_count) || 0,
+    fertile_count:  Number(r.fertile_count) || 0,
     hatch_rate:     Number(r.hatch_rate) || 0,
     status:         String(r.status || 'incubating'),
     notes:          String(r.notes || ''),
@@ -17070,13 +17071,17 @@ async function submitIncubationHatch() {
     batch.date_hatched = dh;
     batch.hatched_count = hc;
     batch.failed_count = failed;
-    batch.hatch_rate = batch.eggs_in > 0 ? (hc / batch.eggs_in) : 0;
+    batch.fertile_count = fertile;   // v6.11.76 — candling count
+    // v6.11.76 — Hatch_Rate is hatch-of-FERTILE (matches backend v5.0.67):
+    // divide by candling count; fall back to eggs set only if not candled.
+    const _rateBase = fertile > 0 ? fertile : (Number(batch.eggs_in) || 0);
+    batch.hatch_rate = _rateBase > 0 ? (hc / _rateBase) : 0;
     batch.status = 'hatched';
     if (notes) batch.notes = notes;
     await storageSet(K_INCUBATION, STATE.incubation);
 
     const ratePct = (batch.hatch_rate * 100).toFixed(1);
-    showToast(`🐣 Hatched ${id} · ${hc}/${batch.eggs_in} · ${ratePct}%`, 5000);
+    showToast(`🐣 Hatched ${id} · ${hc}/${_rateBase}${fertile > 0 ? ' fertile' : ''} · ${ratePct}%`, 5000);
 
     try {
       const body = {
