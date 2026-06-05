@@ -1093,17 +1093,18 @@
     bottom: 9rem; left: 50%;
     transform: translateX(-50%) translateY(30px);
     background: var(--forest-dark); color: var(--ivory);
-    padding: 0.8rem 1.3rem;
+    padding: 1rem 1.5rem;
     border-radius: 2px;
     border-left: 3px solid var(--success);
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.78rem;
-    letter-spacing: 0.1em;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    letter-spacing: 0.03em;
     opacity: 0; pointer-events: none;
     transition: opacity .25s, transform .25s;
     z-index: 100;
     box-shadow: 0 8px 24px rgba(0,0,0,0.25);
-    max-width: 90%;
+    max-width: 92%;
     text-align: center;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -4348,6 +4349,7 @@
            Amount below is the WHOLE sale, split across batches by quantity.
            Eggs-only; shown/hidden by populatePoultryCohortDropdown. -->
       <div id="y-extra-sources" style="display:none">
+        <div style="font-size:0.85rem;opacity:0.7;margin:0.2rem 0 0.45rem;line-height:1.4">Selling across batches? The <b>batch &amp; quantity above</b> are your first line — take any amount from it. Add the rest below, any amount from each.</div>
         <div id="y-extra-rows"></div>
         <button type="button" id="y-add-source" style="background:none;border:1px dashed #c9c2b6;border-radius:0.5rem;padding:0.45rem 0.7rem;font-family:'Fraunces',serif;font-size:0.95rem;cursor:pointer;opacity:0.85;margin-top:0.3rem">+ Sell from another batch</button>
         <div id="y-extra-tally" style="font-size:0.85rem;opacity:0.75;margin-top:0.35rem"></div>
@@ -9115,7 +9117,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.77';
+const APP_VERSION = 'v6.11.78';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -15543,7 +15545,19 @@ async function submitPoultry() {
       for (const cid in _reqByCohort) {
         const rem = (typeof _eggRemainingFor === 'function') ? _eggRemainingFor(cid) : null;
         if (rem !== null && _reqByCohort[cid] > rem) {
-          showToast('🚫 Only ' + rem + ' egg' + (rem === 1 ? '' : 's') + ' remain for ' + cid + ' — can\u2019t dispose ' + _reqByCohort[cid] + '. Adjust quantity or pick another batch.', 5500);
+          // v6.11.78 — hard block uses the legible acknowledge-modal, not a small
+          // fading toast (Cheison 05 Jun 2026: "the toast is too small").
+          const _need = _reqByCohort[cid];
+          if (typeof showAlertModal === 'function') {
+            await showAlertModal(
+              'Not enough eggs in this batch',
+              'Batch <b>' + cid + '</b> has only <b>' + rem + '</b> egg' + (rem === 1 ? '' : 's') +
+              ' left, but the sale asks for <b>' + _need + '</b>.<br><br>Lower the quantity, or take the balance from another batch with “+ Sell from another batch”.',
+              'Got it'
+            );
+          } else {
+            showToast('🚫 Only ' + rem + ' egg' + (rem === 1 ? '' : 's') + ' remain for ' + cid + ' — can\u2019t dispose ' + _need + '.', 5500);
+          }
           return;
         }
       }
