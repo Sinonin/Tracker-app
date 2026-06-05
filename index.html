@@ -4178,7 +4178,8 @@
         <div class="field"><label>Amount (Ksh)</label><input type="number" id="x-amount" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
       </div>
       <div class="field"><label>Category</label><select id="x-category"><option value="">— Category —</option></select></div>
-      <div class="field"><label>Description</label><select id="x-description" onchange="updateExpensePreview()"><option value="">— Description —</option></select></div>
+      <div class="field"><label>Description</label><select id="x-description" onchange="onExpenseDescriptionChange()"><option value="">— Description —</option></select></div>
+      <div class="field" id="x-description-other-wrap" style="display:none"><label>Specify</label><input type="text" id="x-description-other" oninput="updateExpensePreview()" placeholder="Describe this one-off cost" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
       <div class="field"><label>Allocation</label><select id="x-block"><option value="Whole farm">Whole farm</option></select></div>
       <!-- v6.11.67 — Crop/enterprise attribution, mirroring sales' business_unit.
            Required, no "Whole farm" (per v6.11.18 seal); Shared Overhead is the
@@ -9117,7 +9118,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.79';
+const APP_VERSION = 'v6.11.80';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -13464,7 +13465,7 @@ function xValues() {
   return {
     date: document.getElementById('x-date').value,
     category: document.getElementById('x-category').value,
-    description: document.getElementById('x-description').value.trim(),
+    description: resolveExpenseDescription(document.getElementById('x-description'), document.getElementById('x-description-other')),
     amount: parseFloat(document.getElementById('x-amount').value) || 0,
     // v6.11.18 — No "Whole farm" fallback. Empty block is caught by 
     // submitExpense validation, forcing the operator to allocate.
@@ -13481,16 +13482,73 @@ function xValues() {
 // (comma-separated); a built-in fallback keeps the field usable before the key
 // is set, but the Control-Panel list is the source of truth. The "— Description —"
 // hint carries value "" so it can never be saved (blocked in submitExpense).
+// v6.11.80 — Shared descriptor source for BOTH the single Quick-Entry form and
+// the batch rows (one list, no copy-paste). Includes the "Other (specify)"
+// managed escape valve (Cheison 05 Jun 2026 Verden): routine costs stay locked
+// to the Control-Panel vocabulary; genuine one-offs (a lease, equipment, fees —
+// the 122k) pick "Other" and type a description, so they're never blocked, and
+// stay reviewable as the only free-form descriptors.
+const EXPENSE_DESC_OTHER = '__OTHER__';
+
+function expenseDescriptorList() {
+  const fallback = 'Plucking fee, Vehicle fuel, Petrol for water pump, Pruning, Weeding, Fertiliser - DAP, Fertiliser - CAN, Spraying / pesticide, Casual labour, Transport, Salary / wages, Azolla management, Shepherd care, Veterinary / drugs, Poultry feeds, Repairs & maintenance, Tools & equipment, Seedlings';
+  return String((typeof tcfg === 'function') ? tcfg('EXPENSE_DESCRIPTIONS', fallback) : fallback)
+    .split(',').map(s => s.trim()).filter(Boolean);
+}
+
+function expenseDescriptorOptionsHtml() {
+  return '<option value="">— Description —</option>'
+    + expenseDescriptorList().map(d => `<option value="${String(d).replace(/"/g, '&quot;')}">${d}</option>`).join('')
+    + `<option value="${EXPENSE_DESC_OTHER}">Other (specify)…</option>`;
+}
+
+// Resolve a descriptor <select> + its hidden "specify" text box to the final
+// description string. Returns '' when "Other" is chosen but nothing is typed,
+// so the required-check blocks it.
+function resolveExpenseDescription(selEl, otherEl) {
+  if (!selEl) return '';
+  if (selEl.value === EXPENSE_DESC_OTHER) return otherEl ? otherEl.value.trim() : '';
+  return selEl.value;
+}
+
 function repopulateExpenseDescriptionDropdown() {
   const el = document.getElementById('x-description');
   if (!el) return;
   const cur = el.value;
-  const fallback = 'Plucking fee, Vehicle fuel, Petrol for water pump, Pruning, Weeding, Fertiliser - DAP, Fertiliser - CAN, Spraying / pesticide, Casual labour, Transport, Salary / wages, Azolla management, Shepherd care, Veterinary / drugs, Poultry feeds, Repairs & maintenance, Tools & equipment, Seedlings';
-  const list = String((typeof tcfg === 'function') ? tcfg('EXPENSE_DESCRIPTIONS', fallback) : fallback)
-    .split(',').map(s => s.trim()).filter(Boolean);
-  el.innerHTML = '<option value="">— Description —</option>'
-    + list.map(d => `<option value="${String(d).replace(/"/g, '&quot;')}">${d}</option>`).join('');
-  if (cur && list.indexOf(cur) !== -1) el.value = cur;   // preserve a still-valid pick
+  el.innerHTML = expenseDescriptorOptionsHtml();
+  if (cur && Array.prototype.some.call(el.options, o => o.value === cur)) el.value = cur;  // preserve valid pick (incl. Other)
+}
+
+function onExpenseDescriptionChange() {
+  const sel = document.getElementById('x-description');
+  const wrap = document.getElementById('x-description-other-wrap');
+  if (wrap) wrap.style.display = (sel && sel.value === EXPENSE_DESC_OTHER) ? '' : 'none';
+  updateExpensePreview();
+}
+
+// v6.11.80 — Same date + amount + category + block duplicate guard. The server's
+// timestamp dedup misses re-entries that are seconds apart (the 2,194.5 plucking
+// triple, the 1,800 mash pair both slipped through). This catches the human
+// double-entry. A confirm, not a hard block — genuine identical same-day costs
+// exist, but they should be a conscious choice.
+function findExpenseDuplicate(exp, list) {
+  const arr = Array.isArray(list) ? list : (STATE.expenses || []);
+  return arr.find(e => e && e.id !== exp.id
+    && String(e.date) === String(exp.date)
+    && Math.abs((Number(e.amount) || 0) - (Number(exp.amount) || 0)) < 0.005
+    && String(e.category || '') === String(exp.category || '')
+    && String(e.block || '') === String(exp.block || ''));
+}
+
+async function confirmIfDuplicate(exp) {
+  const dup = findExpenseDuplicate(exp);
+  if (!dup) return true;
+  const choice = await showChoiceModal(
+    'Possible duplicate',
+    `An expense of <strong>Ksh ${moneyRound(exp.amount)}</strong> for <strong>${exp.category}</strong> on <strong>${exp.date}</strong> at <strong>${exp.block}</strong> is already recorded.<br><br>Record it again?`,
+    [{ label: 'Cancel', value: false }, { label: 'Record anyway', value: true, primary: true }]
+  );
+  return choice === true;
 }
 
 function updateExpensePreview() {
@@ -13544,6 +13602,10 @@ async function submitExpense() {
     return;
   }
 
+  // v6.11.80 — duplicate guard (same date + amount + category + block already recorded)
+  const notDup = await confirmIfDuplicate({ id: null, date: v.date, amount: v.amount, category: v.category, block: v.block });
+  if (!notDup) { showToast('Cancelled — not recorded', 1800); return; }
+
   // v5.8.0 — Add tab protection: confirm first submission per session
   if (!isSessionConfirmed('expense')) {
     const summaryHtml = `
@@ -13580,6 +13642,8 @@ async function submitExpense() {
     await storageSet(K_EXPENSES, STATE.expenses);
     document.getElementById('x-amount').value = '';
     document.getElementById('x-description').value = '';
+    { const ow = document.getElementById('x-description-other'); if (ow) ow.value = '';
+      const owr = document.getElementById('x-description-other-wrap'); if (owr) owr.style.display = 'none'; }
     document.getElementById('x-payee').value = '';
     updateExpensePreview();
     renderRecentExpenses();
@@ -13644,6 +13708,7 @@ function xbAddRow() {
   const expenseOnlyOptsB = expenseOnlyUnitsB.length
     ? `<optgroup label="Overhead">${expenseOnlyUnitsB.map(u => `<option value="${u}">${u}</option>`).join('')}</optgroup>`
     : '';
+  const descOpts = expenseDescriptorOptionsHtml();   // v6.11.80 — controlled descriptors + Other
   const blockOpts =
     `<option value="" selected>— Allocate to… —</option>` +
     `<optgroup label="Tea blocks">${teaBlockOpts}</optgroup>` +
@@ -13654,8 +13719,10 @@ function xbAddRow() {
     <div class="xb-row-num">Row ${xbRowCounter}</div>
     <div class="field"><label>Category</label><select class="xb-cat">${catOpts}</select></div>
     <div class="field"><label>Amount (Ksh)</label><input type="number" class="xb-amt" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
-    <div class="field"><label>Description</label><input type="text" class="xb-desc" placeholder="e.g. DAP fertilizer, 50kg" style="font-family:'Fraunces',serif;font-size:1rem"></div>
+    <div class="field"><label>Description</label><select class="xb-desc">${descOpts}</select></div>
+    <div class="field xb-desc-other-wrap" style="display:none"><label>Specify</label><input type="text" class="xb-desc-other" placeholder="Describe this one-off cost" style="font-family:'Fraunces',serif;font-size:1rem"></div>
     <div class="field"><label>Allocation</label><select class="xb-block">${blockOpts}</select></div>
+    <div class="field"><label>Business unit</label><select class="xb-bu"><option value="">— Enterprise —</option><optgroup label="Business units">${businessUnitOpts}</optgroup>${expenseOnlyOptsB}</select></div>
     <!-- v6.9.19 — Same change as the single-expense form (x-payee). 
          Batch class is xb-payee. -->
     <div class="field">
@@ -13682,6 +13749,12 @@ function xbAddRow() {
     const ev = el.tagName === 'SELECT' ? 'change' : 'input';
     el.addEventListener(ev, updateBatchExpensePreview);
   });
+  // v6.11.80 — reveal the per-row "specify" box when descriptor is Other
+  const xbDescSel = wrap.querySelector('.xb-desc');
+  if (xbDescSel) xbDescSel.addEventListener('change', () => {
+    const ow = wrap.querySelector('.xb-desc-other-wrap');
+    if (ow) ow.style.display = (xbDescSel.value === EXPENSE_DESC_OTHER) ? '' : 'none';
+  });
   updateBatchExpensePreview();
 }
 
@@ -13689,17 +13762,19 @@ function xbRowValues(rowEl) {
   return {
     category: rowEl.querySelector('.xb-cat').value,
     amount: parseFloat(rowEl.querySelector('.xb-amt').value) || 0,
-    description: rowEl.querySelector('.xb-desc').value.trim(),
+    description: resolveExpenseDescription(rowEl.querySelector('.xb-desc'), rowEl.querySelector('.xb-desc-other')),
     // v6.11.18 — No "Whole farm" fallback; empty block fails xbRowIsValid.
     block: rowEl.querySelector('.xb-block').value,
+    business_unit: (rowEl.querySelector('.xb-bu') || {}).value || '',   // v6.11.80
     payee: rowEl.querySelector('.xb-payee').value.trim()
   };
 }
 
 function xbRowIsValid(rowEl) {
   const v = xbRowValues(rowEl);
-  // v6.11.18 — Allocation now required alongside category + amount.
-  return v.category && v.amount > 0 && !!v.block;
+  // v6.11.18 — Allocation required. v6.11.80 — business unit + description too,
+  // bringing batch rows to parity with the single Quick-Entry form.
+  return v.category && v.amount > 0 && !!v.block && !!v.business_unit && !!v.description;
 }
 
 function xbRowIsEmpty(rowEl) {
@@ -13756,9 +13831,27 @@ async function submitBatchExpenses() {
       description: v.description,
       amount: v.amount,
       block: v.block,
+      business_unit: v.business_unit,   // v6.11.80 — was silently dropped before
       payee: v.payee
     };
   });
+  // v6.11.80 — duplicate guard: same date+amount+category+block, checked against
+  // already-recorded expenses AND earlier rows in this same batch.
+  const dupHits = [];
+  const seen = (STATE.expenses || []).slice();
+  newExpenses.forEach(e => {
+    if (findExpenseDuplicate(e, seen)) dupHits.push(e);
+    seen.push(e);
+  });
+  if (dupHits.length) {
+    const lines = dupHits.map(e => `• Ksh ${moneyRound(e.amount)} · ${e.category} · ${e.block}`).join('<br>');
+    const choice = await showChoiceModal(
+      'Possible duplicate' + (dupHits.length > 1 ? 's' : ''),
+      `${dupHits.length} row${dupHits.length === 1 ? '' : 's'} match an expense already recorded for <strong>${date}</strong>:<br><br>${lines}<br><br>Record anyway?`,
+      [{ label: 'Cancel', value: false }, { label: 'Record anyway', value: true, primary: true }]
+    );
+    if (choice !== true) { showToast('Cancelled — nothing recorded', 1800); return; }
+  }
   // Persist locally first
   STATE.expenses.push(...newExpenses);
   await storageSet(K_EXPENSES, STATE.expenses);
