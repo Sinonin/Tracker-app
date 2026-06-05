@@ -4342,6 +4342,16 @@
         <div class="field"><label>Quantity</label><input type="number" id="y-quantity" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
         <div class="field"><label>Unit</label><select id="y-unit"></select></div>
       </div>
+      <!-- v6.11.77 — Multi-batch egg sale (Faith, 05 Jun 2026): when one batch
+           can't cover the sale (8 trays needed, 01 Jun holds 7), add more source
+           batches here instead of closing and reopening. Same unit as above; the
+           Amount below is the WHOLE sale, split across batches by quantity.
+           Eggs-only; shown/hidden by populatePoultryCohortDropdown. -->
+      <div id="y-extra-sources" style="display:none">
+        <div id="y-extra-rows"></div>
+        <button type="button" id="y-add-source" style="background:none;border:1px dashed #c9c2b6;border-radius:0.5rem;padding:0.45rem 0.7rem;font-family:'Fraunces',serif;font-size:0.95rem;cursor:pointer;opacity:0.85;margin-top:0.3rem">+ Sell from another batch</button>
+        <div id="y-extra-tally" style="font-size:0.85rem;opacity:0.75;margin-top:0.35rem"></div>
+      </div>
       <div class="field"><label>Amount (Ksh)</label><input type="number" id="y-amount" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
       <div class="field"><label>Payment method</label><select id="y-payment"></select></div>
       <!-- v6.11.54 — Strict Destination control replaces free-text buyer
@@ -9105,7 +9115,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.76';
+const APP_VERSION = 'v6.11.77';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -15098,7 +15108,11 @@ function populatePoultryCohortDropdown() {
   // v6.11.70 — Ancillary charge fields (delivery / crate) are eggs-only.
   const ancEl = document.getElementById('y-ancillary');
   if (ancEl) ancEl.style.display = (product === 'Eggs') ? '' : 'none';
+  // v6.11.77 — Multi-batch source UI is eggs-only too; clear it for non-eggs.
+  const extraEl = document.getElementById('y-extra-sources');
+  if (extraEl) extraEl.style.display = (product === 'Eggs') ? '' : 'none';
   if (product !== 'Eggs') {
+    const _er = document.getElementById('y-extra-rows'); if (_er) _er.innerHTML = '';
     const _dc = document.getElementById('y-delivery-charge'); if (_dc) _dc.value = '';
     const _cc = document.getElementById('y-crate-charge'); if (_cc) _cc.value = '';
   }
@@ -15238,6 +15252,9 @@ function populatePoultryCohortDropdown() {
     // FIFO default — keep a still-valid prior pick; otherwise select the first
     // real option (opening pool / oldest batch) so the sale decrements by default.
     cohortEl.value = (_prevCohort && _validCohortVals.has(_prevCohort)) ? _prevCohort : (firstRealVal || '');
+    // v6.11.77 — keep multi-batch extra-source pickers in sync with this list.
+    if (typeof refreshEggSaleSourceSelects === 'function') refreshEggSaleSourceSelects();
+    if (typeof updateEggSaleSourceTally === 'function') updateEggSaleSourceTally();
     return;
   }
 
@@ -15319,6 +15336,130 @@ function _eggRemainingFor(cohortId) {
   return collected - sold - incub;
 }
 
+// v6.11.77 — Write ONE poultry sale row + its Sales-sheet mirror. The stock
+// decrement is implicit: STATE.poultry now carries this row, which every egg
+// view subtracts. Extracted from submitPoultry so a multi-batch egg sale can
+// loop it per source — one honest row per batch, no kiraka. `i` nudges the
+// timestamp a few ms so sibling rows in one sale get distinct ts (server
+// idempotency keys on ts within a window; identical ts would be dropped).
+async function _writeOnePoultrySale(d, i) {
+  const off = (Number(i) || 0) * 3;
+  const row = {
+    id: 'P' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+    ts: new Date(Date.now() + off).toISOString(),
+    date: d.date,
+    product: d.product,
+    stage: d.stage,
+    unit: d.unit,
+    quantity: d.quantity,
+    amount: d.amount,
+    payment_method: d.payment_method,
+    buyer: d.buyer,
+    cohort_id: d.cohort_id
+  };
+  STATE.poultry = STATE.poultry || [];
+  STATE.poultry.push(row);
+  await storageSet(K_POULTRY, STATE.poultry);
+  const synced = await syncPoultry(row);
+  if (!synced) {
+    const wasDup = await handleDuplicateRejection(row, 'poultry', 'poultry', K_POULTRY);
+    if (!wasDup) {
+      await queueForSync(row, 'poultry');
+      if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
+        showToast(`🔒 Writes locked — ping ${farmOwnerTitle()} · queued`, 6000);
+      }
+    }
+  }
+  // Sales-sheet mirror (write-only; NOT added to STATE.sales — zero in-app double-count)
+  try {
+    const mirror = {
+      id:             row.id + '-PS',
+      ts:             row.ts,
+      date:           row.date,
+      business_unit:  'Poultry',
+      product:        row.product,
+      variant:        row.stage || '',
+      quantity:       row.quantity != null ? Number(row.quantity) : null,
+      unit:           row.unit || '',
+      amount:         Number(row.amount) || 0,
+      payment_method: row.payment_method || '',
+      revenue_type:   'Income',
+      buyer:          row.buyer || '',
+      period:         '',
+      reference:      row.cohort_id || '',
+      notes:          (row.stage ? 'Stage: ' + row.stage : '') +
+                      (row.cohort_id ? (row.stage ? ' \u00b7 ' : '') + 'Cohort: ' + row.cohort_id : ''),
+      receipt_type:   '',
+      receipt_id:     '',
+      receipt_issued: false,
+      recorded_from:  'PWA ' + APP_VERSION + ' poultry-mirror'
+    };
+    if (typeof syncSale === 'function') {
+      const mSynced = await syncSale(mirror);
+      if (!mSynced && typeof queueForSync === 'function') await queueForSync(mirror, 'sale');
+    }
+  } catch (e) {
+    console.warn('[sales-mirror] poultry\u2192Sales mirror failed (primary write unaffected):', e && e.message);
+  }
+  return row;
+}
+
+// v6.11.77 — Multi-batch egg sale UI. Extra source rows clone the primary batch
+// picker's options and draw from another batch in the same unit.
+function refreshEggSaleSourceSelects() {
+  const primary = document.getElementById('y-cohort');
+  if (!primary) return;
+  document.querySelectorAll('#y-extra-rows .y-extra-batch').forEach(function (sel) {
+    const keep = sel.value;
+    sel.innerHTML = primary.innerHTML;
+    if (keep) sel.value = keep;
+  });
+}
+function addEggSaleSourceRow() {
+  const wrap = document.getElementById('y-extra-rows');
+  const primary = document.getElementById('y-cohort');
+  if (!wrap || !primary) return;
+  const row = document.createElement('div');
+  row.className = 'pair y-extra-row';
+  row.style.marginTop = '0.4rem';
+  row.innerHTML =
+    '<div class="field"><select class="y-extra-batch">' + primary.innerHTML + '</select></div>' +
+    '<div class="field" style="display:flex;gap:0.4rem;align-items:center">' +
+      '<input type="number" class="y-extra-qty" inputmode="decimal" step="0.01" min="0" placeholder="qty">' +
+      '<button type="button" class="y-extra-del" aria-label="Remove" style="border:none;background:transparent;font-size:1.3rem;line-height:1;cursor:pointer;opacity:0.55">\u00d7</button>' +
+    '</div>';
+  wrap.appendChild(row);
+  const sel = row.querySelector('.y-extra-batch'); if (sel) sel.value = '';
+  row.querySelector('.y-extra-del').addEventListener('click', function () {
+    row.remove(); updateEggSaleSourceTally();
+    if (typeof updatePoultryPreview === 'function') updatePoultryPreview();
+  });
+  row.querySelector('.y-extra-batch').addEventListener('change', updateEggSaleSourceTally);
+  row.querySelector('.y-extra-qty').addEventListener('input', updateEggSaleSourceTally);
+  updateEggSaleSourceTally();
+}
+function collectExtraEggSources() {
+  const out = [];
+  document.querySelectorAll('#y-extra-rows .y-extra-row').forEach(function (r) {
+    const cid = String((r.querySelector('.y-extra-batch') || {}).value || '').trim();
+    const qty = Number((r.querySelector('.y-extra-qty') || {}).value) || 0;
+    if (cid && qty > 0) out.push({ cohort_id: cid, qty: qty });
+  });
+  return out;
+}
+function updateEggSaleSourceTally() {
+  const el = document.getElementById('y-extra-tally');
+  if (!el) return;
+  const primaryQty = Number((document.getElementById('y-quantity') || {}).value) || 0;
+  const extras = collectExtraEggSources();
+  const total = primaryQty + extras.reduce(function (a, s) { return a + s.qty; }, 0);
+  const n = (primaryQty > 0 ? 1 : 0) + extras.length;
+  const unit = (document.getElementById('y-unit') || {}).value || '';
+  el.textContent = (n > 1)
+    ? ('Total this sale: ' + (Math.round(total * 100) / 100) + ' ' + unit + ' across ' + n + ' batches \u00b7 amount splits by quantity')
+    : '';
+}
+
 async function submitPoultry() {
   const v = yValues();
   if (!v.date || !v.product || !v.stage || !v.unit || v.quantity <= 0 || !v.payment_method) return;
@@ -15377,19 +15518,32 @@ async function submitPoultry() {
     }
   }
 
-  // v6.11.68 — Egg over-disposal guard (Cheison 03 Jun 2026 Verden: "Block and
-  // Toast"). The bird block above exempts Eggs; this is its egg twin. Recomputes
-  // remaining from CURRENT state — independent of the dropdown, which can be
-  // stale after a prior submit. Hard block: cannot dispose more eggs than remain
-  // for the picked sub-batch. Try/catch fails open (a checker bug shouldn't block
-  // legitimate work), consistent with the bird block's stance.
+  // v6.11.77 — Build the sale's source list. Eggs may draw from MULTIPLE batches
+  // (Faith: 8 trays = 7 from 01 Jun + 1 from 02 Jun); every other product is a
+  // single source (the picked cohort). Drives both the guard and the write loop.
+  let saleSources = [{ cohort_id: v.cohort_id, qty: Number(v.quantity) || 0 }];
+  if (v.product === 'Eggs' && typeof collectExtraEggSources === 'function') {
+    saleSources = saleSources.concat(collectExtraEggSources());
+  }
+
+  // v6.11.68 → v6.11.77 — Egg over-disposal guard, now MULTI-SOURCE aware.
+  // Aggregates requested eggs PER batch across all source rows (so the same
+  // batch picked twice — or primary + an extra on one batch — can't jointly
+  // overdraw), then blocks if any batch is asked for more than it holds.
+  // Recomputes from CURRENT state; fails open on a checker error.
   if (v.product === 'Eggs') {
     try {
-      const rem = (typeof _eggRemainingFor === 'function') ? _eggRemainingFor(v.cohort_id) : null;
-      if (rem !== null) {
-        const reqEggs = (Number(v.quantity) || 0) * (/tray|crate/i.test(String(v.unit || '')) ? 30 : 1);
-        if (reqEggs > rem) {
-          showToast('🚫 Only ' + rem + ' egg' + (rem === 1 ? '' : 's') + ' remain for ' + v.cohort_id + ' — can\u2019t dispose ' + reqEggs + '. Adjust quantity or pick another batch.', 5500);
+      const _isTray = /tray|crate/i.test(String(v.unit || ''));
+      const _reqByCohort = {};
+      saleSources.forEach(function (s) {
+        const cid = String(s.cohort_id || '').trim();
+        if (!cid) return;
+        _reqByCohort[cid] = (_reqByCohort[cid] || 0) + (Number(s.qty) || 0) * (_isTray ? 30 : 1);
+      });
+      for (const cid in _reqByCohort) {
+        const rem = (typeof _eggRemainingFor === 'function') ? _eggRemainingFor(cid) : null;
+        if (rem !== null && _reqByCohort[cid] > rem) {
+          showToast('🚫 Only ' + rem + ' egg' + (rem === 1 ? '' : 's') + ' remain for ' + cid + ' — can\u2019t dispose ' + _reqByCohort[cid] + '. Adjust quantity or pick another batch.', 5500);
           return;
         }
       }
@@ -15425,43 +15579,44 @@ async function submitPoultry() {
     const _dn = document.getElementById('y-dest-new'); if (_dn) { _dn.value = ''; _dn.style.display = 'none'; } }
   updatePoultryPreview();
 
-  const row = {
-    id: 'P' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
-    ts: new Date().toISOString(),
-    date: v.date,
-    product: v.product,
-    stage: v.stage,
-    unit: v.unit,
-    quantity: v.quantity,
-    amount: v.amount,
-    payment_method: v.payment_method,
-    buyer: v.buyer,
-    cohort_id: v.cohort_id   // v6.9.10 — captured from form
-  };
-  STATE.poultry = STATE.poultry || [];
-  STATE.poultry.push(row);
-  await storageSet(K_POULTRY, STATE.poultry);
-  renderRecentPoultry();
-  // v6.11.68 — Refresh the batch picker so the just-decremented sub-batch shows
-  // its new remaining (or drops out at zero) — closes the stale-dropdown hole
-  // that let a depleted batch be re-submitted.
-  if (typeof populatePoultryCohortDropdown === 'function') populatePoultryCohortDropdown();
-  showToast(`Sale recorded · ${v.product} · ${v.payment_method} · Ksh ${moneyRound(v.amount)}`);
-  const synced = await syncPoultry(row);
-  if (!synced) {
-    // v5.0.23 — server-side dedup (poultry is FLAG mode so this only fires on hard errors,
-    // but we keep the helper for symmetry and future expansion)
-    const wasDup = await handleDuplicateRejection(row, 'poultry', 'poultry', K_POULTRY);
-    if (!wasDup) {
-      await queueForSync(row, 'poultry');
-      if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
-        showToast(`🔒 Writes locked — ping ${farmOwnerTitle()} · sale queued`, 6000);
-      }
+  // v6.11.77 — Write one poultry row + Sales mirror PER source batch (eggs may
+  // be multi-source). The whole-sale Amount is split across sources by quantity;
+  // the primary row absorbs any rounding remainder, so the parts always re-sum
+  // to the total — no massaged numbers. Each row decrements its own batch (the
+  // decrement is implicit in STATE.poultry). Non-egg and single-batch egg sales
+  // are simply a one-element loop — behaviour unchanged.
+  const _totalAmt = Number(v.amount) || 0;
+  const _totalQty = saleSources.reduce(function (a, s) { return a + (Number(s.qty) || 0); }, 0) || 1;
+  let _alloc = 0;
+  const _rows = [];
+  for (let _i = 0; _i < saleSources.length; _i++) {
+    const _s = saleSources[_i];
+    if (!(Number(_s.qty) > 0)) continue;
+    let _amt;
+    if (_i === saleSources.length - 1) {
+      _amt = Math.max(0, _totalAmt - _alloc);
+    } else {
+      _amt = Math.round(_totalAmt * (Number(_s.qty) / _totalQty));
+      _alloc += _amt;
     }
-  } else {
-    // Poultry uses FLAG mode — surface the possible-duplicate review toast
-    showPossibleDuplicateToast('poultry');
+    const _r = await _writeOnePoultrySale({
+      date: v.date, product: v.product, stage: v.stage, unit: v.unit,
+      quantity: Number(_s.qty), amount: _amt, payment_method: v.payment_method,
+      buyer: v.buyer, cohort_id: _s.cohort_id
+    }, _i);
+    _rows.push(_r);
   }
+  const row = _rows[0];
+  if (!row) { showToast('Nothing to record — no quantity', 2500); return; }
+  renderRecentPoultry();
+  // v6.11.68 — Refresh the batch picker so just-decremented sub-batches show
+  // their new remaining (or drop out at zero) — closes the stale-dropdown hole.
+  if (typeof populatePoultryCohortDropdown === 'function') populatePoultryCohortDropdown();
+  // v6.11.77 — clear the extra-source rows after a multi-batch sale.
+  { const _er = document.getElementById('y-extra-rows'); if (_er) _er.innerHTML = '';
+    if (typeof updateEggSaleSourceTally === 'function') updateEggSaleSourceTally(); }
+  showToast(`Sale recorded · ${v.product}${_rows.length > 1 ? ' · ' + _rows.length + ' batches' : ''} · ${v.payment_method} · Ksh ${moneyRound(_totalAmt)}`);
+  if (typeof showPossibleDuplicateToast === 'function') showPossibleDuplicateToast('poultry');
   // v6.7.0 — Auto-decrement matching cohort on bird sale.
   // For non-Egg products, find the oldest cohort whose computed stage matches
   // and reduce its current_count, increment sold_count. This keeps cohorts 
@@ -15472,47 +15627,11 @@ async function submitPoultry() {
     try { await autoDecrementCohortOnSale(row); } catch (e) { console.warn('[cohort-decrement] failed:', e.message); }
   }
 
-  // v6.11.50 — Phase D, Path A: dual-write bridge. Every poultry/egg sale is
-  // ALSO mirrored into the unified Sales sheet (action='sale') so that sheet
-  // becomes the single ledger for cross-unit reporting. WRITE-ONLY mirror: the
-  // row is NOT added to STATE.sales, and the app's poultry reports keep reading
-  // STATE.poultry — so there is ZERO in-app double-count. Cohort/stage are
-  // folded into Reference + Notes (no Sales schema change). Wrapped so a mirror
-  // failure can never break the primary Poultry Sales write; offline it queues
-  // as a payload-carrying 'sale' (replay branch added v6.11.50). Sealed Cheison
-  // 01 Jun 2026 Verden. CAUTION: during the dual-write window, never SUM the
-  // Sales sheet and the Poultry Sales sheet in one spreadsheet total — that is
-  // the only double-count surface, and it lives outside the app.
-  try {
-    const mirror = {
-      id:             row.id + '-PS',
-      ts:             row.ts,
-      date:           row.date,
-      business_unit:  'Poultry',
-      product:        row.product,
-      variant:        row.stage || '',
-      quantity:       row.quantity != null ? Number(row.quantity) : null,
-      unit:           row.unit || '',
-      amount:         Number(row.amount) || 0,
-      payment_method: row.payment_method || '',
-      revenue_type:   'Income',
-      buyer:          row.buyer || '',
-      period:         '',
-      reference:      row.cohort_id || '',
-      notes:          (row.stage ? 'Stage: ' + row.stage : '') +
-                      (row.cohort_id ? (row.stage ? ' \u00b7 ' : '') + 'Cohort: ' + row.cohort_id : ''),
-      receipt_type:   '',
-      receipt_id:     '',
-      receipt_issued: false,
-      recorded_from:  'PWA ' + APP_VERSION + ' poultry-mirror'
-    };
-    if (typeof syncSale === 'function') {
-      const mSynced = await syncSale(mirror);
-      if (!mSynced && typeof queueForSync === 'function') await queueForSync(mirror, 'sale');
-    }
-  } catch (e) {
-    console.warn('[sales-mirror] poultry\u2192Sales mirror failed (primary write unaffected):', e && e.message);
-  }
+  // v6.11.77 — The Sales-sheet mirror (dual-write bridge) is now written
+  // PER SOURCE inside _writeOnePoultrySale(), so a multi-batch sale produces one
+  // honest mirror row per batch. (Sealed Cheison 01 Jun 2026: write-only mirror,
+  // never added to STATE.sales — zero in-app double-count. CAUTION still applies:
+  // never SUM the Sales sheet and the Poultry Sales sheet in one total.)
 
   // v6.11.70 — Ancillary egg-sale charges as their OWN Sales-sheet lines, never
   // folded into egg revenue. Delivery = service income; Crate = outright sale
@@ -27079,6 +27198,20 @@ function showUpdateBanner() {
   // v6.11.54 — Destination select toggles the "Add new / Other" reveal input.
   const yDestSel = document.getElementById('y-dest-select');
   if (yDestSel) yDestSel.addEventListener('change', () => { _togglePoultryDestNew(); updatePoultryPreview(); });
+  // v6.11.77 — Multi-batch egg sale: "+ Sell from another batch" + live tally.
+  const yAddSrc = document.getElementById('y-add-source');
+  if (yAddSrc && !yAddSrc.dataset.wired) {
+    yAddSrc.dataset.wired = '1';
+    yAddSrc.addEventListener('click', () => { if (typeof addEggSaleSourceRow === 'function') addEggSaleSourceRow(); });
+  }
+  ['y-quantity', 'y-unit'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.dataset.tallyWired) {
+      el.dataset.tallyWired = '1';
+      el.addEventListener('input', () => { if (typeof updateEggSaleSourceTally === 'function') updateEggSaleSourceTally(); });
+      el.addEventListener('change', () => { if (typeof updateEggSaleSourceTally === 'function') updateEggSaleSourceTally(); });
+    }
+  });
   const yDestNew = document.getElementById('y-dest-new');
   if (yDestNew) yDestNew.addEventListener('blur', () => { yDestNew.value = _tidyName(yDestNew.value); updatePoultryPreview(); });
   // v6.9.10 — Stage change repopulates the cohort dropdown with active 
