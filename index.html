@@ -4178,7 +4178,7 @@
         <div class="field"><label>Amount (Ksh)</label><input type="number" id="x-amount" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
       </div>
       <div class="field"><label>Category</label><select id="x-category"><option value="">— Category —</option></select></div>
-      <div class="field"><label>Description</label><input type="text" id="x-description" placeholder="e.g. DAP fertilizer, 50kg bag" style="font-family:'Fraunces',serif;font-size:1.05rem"></div>
+      <div class="field"><label>Description</label><select id="x-description" onchange="updateExpensePreview()"><option value="">— Description —</option></select></div>
       <div class="field"><label>Allocation</label><select id="x-block"><option value="Whole farm">Whole farm</option></select></div>
       <!-- v6.11.67 — Crop/enterprise attribution, mirroring sales' business_unit.
            Required, no "Whole farm" (per v6.11.18 seal); Shared Overhead is the
@@ -9117,7 +9117,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.78';
+const APP_VERSION = 'v6.11.79';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -12881,6 +12881,7 @@ function populateDropdowns() {
   repopulatePluckerDropdown();
   repopulateFactoryDropdowns();
   repopulateCategoryDropdown();
+  repopulateExpenseDescriptionDropdown();   // v6.11.79 — controlled descriptor list
 
   // Banked Income: business dropdown
   // v6.11.9 — Source from tcfg via tenantBusinessUnits() + 'Other'. Replaces 
@@ -13473,11 +13474,30 @@ function xValues() {
   };
 }
 
+// v6.11.79 — Expense Description is now a CONTROLLED dropdown, not free text
+// (Cheison 05 Jun 2026 Verden: "de-democratise descriptors; it lives in the
+// control panel"). Free text bred typos and silent duplicates (the triple
+// 2,194.5 plucking fee). Options come from Control_Panel EXPENSE_DESCRIPTIONS
+// (comma-separated); a built-in fallback keeps the field usable before the key
+// is set, but the Control-Panel list is the source of truth. The "— Description —"
+// hint carries value "" so it can never be saved (blocked in submitExpense).
+function repopulateExpenseDescriptionDropdown() {
+  const el = document.getElementById('x-description');
+  if (!el) return;
+  const cur = el.value;
+  const fallback = 'Plucking fee, Vehicle fuel, Petrol for water pump, Pruning, Weeding, Fertiliser - DAP, Fertiliser - CAN, Spraying / pesticide, Casual labour, Transport, Salary / wages, Azolla management, Shepherd care, Veterinary / drugs, Poultry feeds, Repairs & maintenance, Tools & equipment, Seedlings';
+  const list = String((typeof tcfg === 'function') ? tcfg('EXPENSE_DESCRIPTIONS', fallback) : fallback)
+    .split(',').map(s => s.trim()).filter(Boolean);
+  el.innerHTML = '<option value="">— Description —</option>'
+    + list.map(d => `<option value="${String(d).replace(/"/g, '&quot;')}">${d}</option>`).join('');
+  if (cur && list.indexOf(cur) !== -1) el.value = cur;   // preserve a still-valid pick
+}
+
 function updateExpensePreview() {
   const v = xValues();
   const card = document.getElementById('x-preview');
   const btn = document.getElementById('x-submit');
-  const ready = v.date && v.category && v.amount > 0 && v.business_unit;
+  const ready = v.date && v.category && v.amount > 0 && v.business_unit && v.description;
   if (!ready) { card.style.display = 'none'; btn.disabled = true; return; }
   card.style.display = 'block';
   btn.disabled = false;
@@ -13514,6 +13534,13 @@ async function submitExpense() {
     if (typeof showToast === 'function') showToast('Pick a business unit — which enterprise is this cost for? (Shared Overhead for non-crop costs)', 4500);
     const bsel = document.getElementById('x-business-unit');
     if (bsel && typeof bsel.focus === 'function') bsel.focus();
+    return;
+  }
+  // v6.11.79 — Description is a controlled choice now; the hint can't be saved.
+  if (!v.description) {
+    if (typeof showToast === 'function') showToast('Pick a description from the list (managed in the Control Panel).', 4500);
+    const dsel = document.getElementById('x-description');
+    if (dsel && typeof dsel.focus === 'function') dsel.focus();
     return;
   }
 
