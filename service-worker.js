@@ -105,7 +105,7 @@
 // v6.11.40 — Cohort sell-delta: server-relative decrement, no client absolutes (31 May 2026 Verden)
 // v6.11.41 — Egg-batch picker nets collected − sold; sold-off batches hidden (31 May 2026 Verden)
 // v6.11.42 — Egg per-grade sub-batches: base=Normal, _SA, _B clear independently (31 May 2026 Verden)
-const CACHE = 'sinonin-greenleaf-v305';
+const CACHE = 'sinonin-greenleaf-v306';
 
 const SHELL_FILES = [
   './',

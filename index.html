@@ -698,11 +698,10 @@
     border-top: 2px solid var(--brass);
     padding: 0.4rem 0.2rem 0.55rem;
     display: grid;
-    /* v6.11.5 — 6 columns. Cluster nav compresses Tea/Poultry/Sheep/Cows/Other 
-       into Crops + Livestock hubs. Original 7-col baseline restored + 1 for 
-       Sales (added in v6.11.0). Sealed § 7.x: "paint, not walls" — same 
-       structural data, cleaner thumb-target real estate. */
-    grid-template-columns: repeat(6, 1fr);
+    /* v6.11.83 — 5 columns. Admin relocated to the header (left of refresh),
+       leaving Home/Crops/Livestock/Sales/Insights as the thumb-frequent
+       ground-ops cluster. Was 6 (Sales added v6.11.0); paint, not walls. */
+    grid-template-columns: repeat(5, 1fr);
     gap: 0.08rem;
   }
   nav.bottom-nav button {
@@ -3407,15 +3406,33 @@
   <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"></svg>
   <img class="brand-logo" id="brand-logo" src="logo.png" alt="Sinonin Food Innovations" title="Hold to toggle stealth mode (unlock requires admin)">
   <span class="header-sync" id="header-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Online</span></span>
-  <!-- v6.10.5 — Admin button RELOCATED from bottom-nav to header. Sits 
-       left of refresh wheel. Same id (#nav-settings) so all existing JS 
-       (state pulls, lock-state attribute updates, click routing to 
-       panel-settings) keeps working unchanged. Multi-state padlock SVG 
-       preserved. Hidden by CSS when data-lock-state="locked" (operator 
-       default; revealed via long-press escape hatch on version label). 
-       Sealed § 6.x candidate: surfaces used by the principal but not 
-       daily operators belong in the header — bottom nav real estate is 
-       for thumb-frequent ground-ops controls. -->
+  <!-- v6.11.83 — Admin button RELOCATED back to the header, to the LEFT of
+       refresh (Cheison 06 Jun 2026 Verden), reversing the v6.11.7 bottom-nav
+       consolidation. The exact same element (id #nav-settings, data-view="admin",
+       the data-lock-state machine, three-state padlock SVG) is lifted from the
+       bottom nav — moved, not duplicated — so wireLockIconAuth, state pulls,
+       lock-state updates and click→switchView('admin') all keep working
+       unchanged. Header CSS keeps it ALWAYS VISIBLE with the padlock as the
+       state indicator (matching the bottom-nav behaviour it replaces), so
+       operators still see it. Bottom nav drops to 5 columns. -->
+  <button data-view="admin" id="nav-settings" data-lock-state="locked" aria-label="Admin" title="Admin">
+    <svg class="nav-lock-svg" viewBox="0 0 24 24" aria-hidden="true">
+      <g class="nav-lock-icon-locked">
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" fill="none"/>
+        <rect x="5" y="11" width="14" height="10" rx="2"/>
+        <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
+      </g>
+      <g class="nav-lock-icon-admin">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>
+      </g>
+      <g class="nav-lock-icon-open">
+        <path d="M7 11V7a5 5 0 0 1 9.5-2" fill="none"/>
+        <rect x="5" y="11" width="14" height="10" rx="2"/>
+        <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
+      </g>
+    </svg>
+  </button>
   <button id="header-refresh-btn" class="header-refresh" type="button" aria-label="Refresh data" title="Refresh from cloud">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
       <polyline points="23 4 23 10 17 10"></polyline>
@@ -6349,32 +6366,12 @@
       <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg>
       <span>Insights</span>
     </button>
-    <!-- v6.11.7 — Admin lives in bottom-nav as sole entry point. Carries the 
-         full data-lock-state machine (locked/admin/open) wired by 
-         wireLockIconAuth() — triple-tap auth gate for operators, single-tap 
-         pass-through for authenticated admins. The previously-redundant 
-         header Admin button has been removed (Cheison 27 May 2026 Verden):
-         "two instances of Admin is one too many." Sealed § 7.x: one Admin 
-         entry, one gate, one cluster slot. -->
-    <button data-view="admin" id="nav-settings" data-lock-state="locked" aria-label="Admin" title="Admin">
-      <svg class="nav-lock-svg" viewBox="0 0 24 24" aria-hidden="true">
-        <g class="nav-lock-icon-locked">
-          <path d="M7 11V7a5 5 0 0 1 10 0v4" fill="none"/>
-          <rect x="5" y="11" width="14" height="10" rx="2"/>
-          <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
-        </g>
-        <g class="nav-lock-icon-admin">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>
-        </g>
-        <g class="nav-lock-icon-open">
-          <path d="M7 11V7a5 5 0 0 1 9.5-2" fill="none"/>
-          <rect x="5" y="11" width="14" height="10" rx="2"/>
-          <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
-        </g>
-      </svg>
-      <span>Admin</span>
-    </button>
+    <!-- v6.11.83 — Admin RELOCATED to the header (left of refresh), reversing
+         the v6.11.7 consolidation (Cheison 06 Jun 2026 Verden). The bottom nav
+         is now the 5 thumb-frequent ground-ops views (Home/Crops/Livestock/
+         Sales/Insights). Admin is a principal control, not a daily-operator one,
+         so it lives up top. Same #nav-settings element moved intact, not
+         duplicated — "one Admin entry, one gate" still holds. -->
   </nav>
 </div>
 
@@ -9113,7 +9110,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.82';
+const APP_VERSION = 'v6.11.83';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -27427,14 +27424,13 @@ function showUpdateBanner() {
   populateDropdowns();
   renderBatchList();
 
-  // v6.11.7 — Bottom-nav Admin button IS #nav-settings (relocated from 
-  // header). wireLockIconAuth() attaches its capture-phase handler to it 
-  // directly. For state="locked", capture-phase intercepts via 
-  // stopPropagation so this bubble-phase listener never sees the click 
-  // and switchView is not called. For state="admin"/"open", first tap 
-  // bubbles through and switchView('admin') opens the panel. Single 
-  // gate, no delegation needed.
-  document.querySelectorAll('nav.bottom-nav button').forEach(b => {
+  // v6.11.83 — Admin (#nav-settings) now lives in the HEADER (left of refresh),
+  // moved from the bottom nav. wireLockIconAuth() still attaches its capture-phase
+  // handler to it by id, so for state="locked" it intercepts via stopPropagation
+  // and this bubble listener never fires (panel stays shut). For "admin"/"open"
+  // the tap bubbles through and switchView('admin') opens the panel. The selector
+  // now includes the header button so that bubble path is wired wherever it sits.
+  document.querySelectorAll('nav.bottom-nav button, header.brand #nav-settings').forEach(b => {
     b.addEventListener('click', () => switchView(b.dataset.view));
   });
 
