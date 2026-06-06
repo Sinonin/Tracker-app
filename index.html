@@ -9118,7 +9118,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.80';
+const APP_VERSION = 'v6.11.81';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -12528,7 +12528,7 @@ async function applyCloudResponse(data) {
     }
   }
   /* v6.0.0 — D4: Vaccination schedule sync (cloud-replace-local) */
-  if (Array.isArray(data.vaccSchedule)) {
+  if (Array.isArray(data.vaccSchedule) && data.vaccSchedule.length) {   // v6.11.81 — empty cloud array must NOT wipe the seeded default
     STATE.vaccSchedule = data.vaccSchedule.map(r => ({
       stage: r.stage || '',
       vaccine: r.vaccine || '',
@@ -12896,7 +12896,7 @@ function populateDropdowns() {
   // v6.10.11 — Stage list is product-aware; populate via helper that
   // respects current product selection (empty on first load).
   if (typeof populatePoultryStageDropdown === 'function') populatePoultryStageDropdown();
-  document.getElementById('y-unit').innerHTML = '<option value="">— Unit —</option>' + POULTRY_UNITS.map(u => `<option value="${u}">${u}</option>`).join('');
+  if (typeof repopulatePoultryUnitDropdown === 'function') repopulatePoultryUnitDropdown();   // v6.11.81 — context-aware poultry units (eggs: trays/eggs; birds: birds)
   // v6.9.21 — Payment dropdown is now stage-aware (populator function 
   // below). "Gift" option appears only for Broken eggs / Small-Abnormal
   // Eggs — sealed Cheison: "Grade A eggs should be sold; Grade B/C can
@@ -15222,6 +15222,9 @@ function populatePoultryCohortDropdown() {
   const stage = stageEl ? stageEl.value : '';
   const product = productEl ? productEl.value : '';
 
+  // v6.11.81 — keep the unit picker honest to the product (eggs: trays/eggs; birds: birds)
+  if (typeof repopulatePoultryUnitDropdown === 'function') repopulatePoultryUnitDropdown();
+
   // v6.10.8 — Dynamic label: "Batch" reads honestly for egg sales (the
   // operator picks an egg-collection batch), "Cohort" for bird sales.
   const labelEl = document.getElementById('y-cohort-label');
@@ -15528,58 +15531,139 @@ async function _writeOnePoultrySale(d, i) {
 
 // v6.11.77 — Multi-batch egg sale UI. Extra source rows clone the primary batch
 // picker's options and draw from another batch in the same unit.
+// v6.11.81 — Poultry sale units, sanitised & context-aware (Cheison 06 Jun 2026
+// Verden: "bags, kgs, birds, other — ridiculous!"). Eggs sell in trays or
+// individual eggs; live birds sell as birds. Nothing else. The flat POULTRY_UNITS
+// list is no longer used for the y-unit picker.
+function poultryUnitsFor(product) {
+  const p = String(product || '');
+  if (p === 'Eggs') return ['Trays', 'No. of eggs'];
+  if (p) return ['Birds'];                       // any live-bird product
+  return ['Trays', 'No. of eggs', 'Birds'];      // unknown/initial → sane union, never Bags/Kg/Other
+}
+function repopulatePoultryUnitDropdown() {
+  const el = document.getElementById('y-unit');
+  if (!el) return;
+  const product = (document.getElementById('y-product') || {}).value || '';
+  const list = poultryUnitsFor(product);
+  const cur = el.value;
+  el.innerHTML = '<option value="">— Unit —</option>' + list.map(function (u) { return '<option value="' + u + '">' + u + '</option>'; }).join('');
+  if (cur && list.indexOf(cur) !== -1) el.value = cur;        // keep a still-valid pick
+  else if (list.length === 1) el.value = list[0];            // single option (Birds) → auto-select
+}
+
+// ── Multi-batch egg sale (v6.11.77 → v6.11.81) ──────────────────────────────
+// v6.11.81 (Cheison 06 Jun 2026): each extra batch carries its OWN unit, so
+// "3 trays from A + 20 eggs from B" needs no hand-math; the amount splits by
+// egg-equivalent, not raw quantity. A batch that can't cover one whole unit of a
+// row's chosen unit (e.g. <30 eggs left under Trays) is dropped from THAT row's
+// choices — after subtracting what the rest of the sale already claims.
+const EGGS_PER_TRAY_SALE = 30;
+function _isTrayUnit(u) { return /tray|crate/i.test(String(u || '')); }
+function _eggsFromQtyUnit(qty, unit) { return (Number(qty) || 0) * (_isTrayUnit(unit) ? EGGS_PER_TRAY_SALE : 1); }
+
+// Eggs committed across the whole sale (primary + every extra row) EXCEPT the row
+// passed in, so a row's own pick never counts against its own availability.
+function _eggSaleCommittedEggs(exceptRowEl) {
+  const map = {};
+  const add = function (cid, eggs) { cid = String(cid || '').trim(); if (cid) map[cid] = (map[cid] || 0) + eggs; };
+  add((document.getElementById('y-cohort') || {}).value || '',
+      _eggsFromQtyUnit((document.getElementById('y-quantity') || {}).value || 0,
+                       (document.getElementById('y-unit') || {}).value || ''));
+  document.querySelectorAll('#y-extra-rows .y-extra-row').forEach(function (r) {
+    if (r === exceptRowEl) return;
+    add((r.querySelector('.y-extra-batch') || {}).value || '',
+        _eggsFromQtyUnit((r.querySelector('.y-extra-qty') || {}).value || 0,
+                         (r.querySelector('.y-extra-unit') || {}).value || ''));
+  });
+  return map;
+}
+
 function refreshEggSaleSourceSelects() {
   const primary = document.getElementById('y-cohort');
   if (!primary) return;
-  document.querySelectorAll('#y-extra-rows .y-extra-batch').forEach(function (sel) {
+  document.querySelectorAll('#y-extra-rows .y-extra-row').forEach(function (row) {
+    const sel = row.querySelector('.y-extra-batch');
+    if (!sel) return;
+    const unit = (row.querySelector('.y-extra-unit') || {}).value || '';
+    const unitEggs = _isTrayUnit(unit) ? EGGS_PER_TRAY_SALE : 1;
+    const committed = _eggSaleCommittedEggs(row);   // eggs already claimed by other rows
     const keep = sel.value;
-    sel.innerHTML = primary.innerHTML;
-    if (keep) sel.value = keep;
+    let html = '<option value="">— add batch —</option>';
+    Array.prototype.forEach.call(primary.options, function (opt) {
+      const val = opt.value;
+      if (!val) return;                              // skip primary placeholder / no-stock line
+      const rem = (typeof _eggRemainingFor === 'function') ? _eggRemainingFor(val) : null;
+      const avail = (rem === null) ? Infinity : (rem - (committed[val] || 0));
+      if (avail >= unitEggs || val === keep) {       // keep a still-selected batch even if now tight
+        html += '<option value="' + val + '">' + opt.textContent + '</option>';
+      }
+    });
+    sel.innerHTML = html;
+    sel.value = (keep && Array.prototype.some.call(sel.options, function (o) { return o.value === keep; })) ? keep : '';
   });
 }
+
+function onEggSaleSourcesChanged() {
+  if (typeof refreshEggSaleSourceSelects === 'function') refreshEggSaleSourceSelects();
+  if (typeof updateEggSaleSourceTally === 'function') updateEggSaleSourceTally();
+}
+
 function addEggSaleSourceRow() {
   const wrap = document.getElementById('y-extra-rows');
   const primary = document.getElementById('y-cohort');
   if (!wrap || !primary) return;
+  const unitOpts = poultryUnitsFor('Eggs').map(function (u) { return '<option value="' + u + '">' + u + '</option>'; }).join('');
   const row = document.createElement('div');
   row.className = 'pair y-extra-row';
   row.style.marginTop = '0.4rem';
   row.innerHTML =
-    '<div class="field"><select class="y-extra-batch">' + primary.innerHTML + '</select></div>' +
+    '<div class="field"><select class="y-extra-batch"><option value="">— add batch —</option></select></div>' +
     '<div class="field" style="display:flex;gap:0.4rem;align-items:center">' +
       '<input type="number" class="y-extra-qty" inputmode="decimal" step="0.01" min="0" placeholder="qty">' +
+      '<select class="y-extra-unit">' + unitOpts + '</select>' +
       '<button type="button" class="y-extra-del" aria-label="Remove" style="border:none;background:transparent;font-size:1.3rem;line-height:1;cursor:pointer;opacity:0.55">\u00d7</button>' +
     '</div>';
   wrap.appendChild(row);
-  const sel = row.querySelector('.y-extra-batch'); if (sel) sel.value = '';
+  // default the new row's unit to the primary's current unit, when that's valid
+  const primUnit = (document.getElementById('y-unit') || {}).value || '';
+  const uSel = row.querySelector('.y-extra-unit');
+  if (uSel && Array.prototype.some.call(uSel.options, function (o) { return o.value === primUnit; })) uSel.value = primUnit;
   row.querySelector('.y-extra-del').addEventListener('click', function () {
-    row.remove(); updateEggSaleSourceTally();
+    row.remove(); onEggSaleSourcesChanged();
     if (typeof updatePoultryPreview === 'function') updatePoultryPreview();
   });
-  row.querySelector('.y-extra-batch').addEventListener('change', updateEggSaleSourceTally);
-  row.querySelector('.y-extra-qty').addEventListener('input', updateEggSaleSourceTally);
-  updateEggSaleSourceTally();
+  row.querySelector('.y-extra-batch').addEventListener('change', onEggSaleSourcesChanged);
+  row.querySelector('.y-extra-qty').addEventListener('input', onEggSaleSourcesChanged);
+  uSel.addEventListener('change', onEggSaleSourcesChanged);
+  onEggSaleSourcesChanged();   // filter the new row's options against the rest of the sale
 }
+
 function collectExtraEggSources() {
   const out = [];
   document.querySelectorAll('#y-extra-rows .y-extra-row').forEach(function (r) {
     const cid = String((r.querySelector('.y-extra-batch') || {}).value || '').trim();
     const qty = Number((r.querySelector('.y-extra-qty') || {}).value) || 0;
-    if (cid && qty > 0) out.push({ cohort_id: cid, qty: qty });
+    const unit = (r.querySelector('.y-extra-unit') || {}).value || '';
+    if (cid && qty > 0) out.push({ cohort_id: cid, qty: qty, unit: unit });
   });
   return out;
 }
+
 function updateEggSaleSourceTally() {
   const el = document.getElementById('y-extra-tally');
   if (!el) return;
-  const primaryQty = Number((document.getElementById('y-quantity') || {}).value) || 0;
+  const pQty = Number((document.getElementById('y-quantity') || {}).value) || 0;
+  const pUnit = (document.getElementById('y-unit') || {}).value || '';
   const extras = collectExtraEggSources();
-  const total = primaryQty + extras.reduce(function (a, s) { return a + s.qty; }, 0);
-  const n = (primaryQty > 0 ? 1 : 0) + extras.length;
-  const unit = (document.getElementById('y-unit') || {}).value || '';
-  el.textContent = (n > 1)
-    ? ('Total this sale: ' + (Math.round(total * 100) / 100) + ' ' + unit + ' across ' + n + ' batches \u00b7 amount splits by quantity')
-    : '';
+  const n = (pQty > 0 ? 1 : 0) + extras.length;
+  if (n <= 1) { el.textContent = ''; return; }
+  const totalEggs = _eggsFromQtyUnit(pQty, pUnit) +
+    extras.reduce(function (a, s) { return a + _eggsFromQtyUnit(s.qty, s.unit); }, 0);
+  const trays = Math.floor(totalEggs / EGGS_PER_TRAY_SALE), loose = totalEggs % EGGS_PER_TRAY_SALE;
+  const brk = trays > 0 ? ' (' + trays + ' tray' + (trays === 1 ? '' : 's') + (loose ? ' + ' + loose + ' egg' + (loose === 1 ? '' : 's') : '') + ')' : '';
+  el.textContent = 'Total this sale: ' + totalEggs + ' egg' + (totalEggs === 1 ? '' : 's') + brk +
+    ' across ' + n + ' batches \u00b7 amount splits by egg count';
 }
 
 async function submitPoultry() {
@@ -15643,7 +15727,7 @@ async function submitPoultry() {
   // v6.11.77 — Build the sale's source list. Eggs may draw from MULTIPLE batches
   // (Faith: 8 trays = 7 from 01 Jun + 1 from 02 Jun); every other product is a
   // single source (the picked cohort). Drives both the guard and the write loop.
-  let saleSources = [{ cohort_id: v.cohort_id, qty: Number(v.quantity) || 0 }];
+  let saleSources = [{ cohort_id: v.cohort_id, qty: Number(v.quantity) || 0, unit: v.unit }];
   if (v.product === 'Eggs' && typeof collectExtraEggSources === 'function') {
     saleSources = saleSources.concat(collectExtraEggSources());
   }
@@ -15655,12 +15739,12 @@ async function submitPoultry() {
   // Recomputes from CURRENT state; fails open on a checker error.
   if (v.product === 'Eggs') {
     try {
-      const _isTray = /tray|crate/i.test(String(v.unit || ''));
       const _reqByCohort = {};
       saleSources.forEach(function (s) {
         const cid = String(s.cohort_id || '').trim();
         if (!cid) return;
-        _reqByCohort[cid] = (_reqByCohort[cid] || 0) + (Number(s.qty) || 0) * (_isTray ? 30 : 1);
+        // v6.11.81 — each source carries its own unit (trays/eggs)
+        _reqByCohort[cid] = (_reqByCohort[cid] || 0) + _eggsFromQtyUnit(s.qty, s.unit);
       });
       for (const cid in _reqByCohort) {
         const rem = (typeof _eggRemainingFor === 'function') ? _eggRemainingFor(cid) : null;
@@ -15720,7 +15804,10 @@ async function submitPoultry() {
   // decrement is implicit in STATE.poultry). Non-egg and single-batch egg sales
   // are simply a one-element loop — behaviour unchanged.
   const _totalAmt = Number(v.amount) || 0;
-  const _totalQty = saleSources.reduce(function (a, s) { return a + (Number(s.qty) || 0); }, 0) || 1;
+  // v6.11.81 — split by EGG-EQUIVALENT, not raw qty, since sources may mix units
+  // (3 trays + 20 eggs). Non-egg sales are a single source, so this is a no-op there.
+  const _eggsOfSrc = function (s) { return (v.product === 'Eggs') ? _eggsFromQtyUnit(s.qty, s.unit || v.unit) : (Number(s.qty) || 0); };
+  const _totalBasis = saleSources.reduce(function (a, s) { return a + _eggsOfSrc(s); }, 0) || 1;
   let _alloc = 0;
   const _rows = [];
   for (let _i = 0; _i < saleSources.length; _i++) {
@@ -15730,11 +15817,11 @@ async function submitPoultry() {
     if (_i === saleSources.length - 1) {
       _amt = Math.max(0, _totalAmt - _alloc);
     } else {
-      _amt = Math.round(_totalAmt * (Number(_s.qty) / _totalQty));
+      _amt = Math.round(_totalAmt * (_eggsOfSrc(_s) / _totalBasis));
       _alloc += _amt;
     }
     const _r = await _writeOnePoultrySale({
-      date: v.date, product: v.product, stage: v.stage, unit: v.unit,
+      date: v.date, product: v.product, stage: v.stage, unit: (_s.unit || v.unit),
       quantity: Number(_s.qty), amount: _amt, payment_method: v.payment_method,
       buyer: v.buyer, cohort_id: _s.cohort_id
     }, _i);
@@ -18436,7 +18523,12 @@ function initVaccinationForm() {
   if (stageEl && vaccEl) {
     const populateVaccines = () => {
       const stage = stageEl.value;
-      const schedule = (Array.isArray(STATE.vaccSchedule) ? STATE.vaccSchedule : [])
+      // v6.11.81 — never let an empty schedule blank the dropdown; fall back to
+      // the seeded default (the empty Vaccination_Schedule sheet was clobbering it).
+      const _sched = (Array.isArray(STATE.vaccSchedule) && STATE.vaccSchedule.length)
+        ? STATE.vaccSchedule
+        : (typeof VACC_SCHEDULE_DEFAULT !== 'undefined' ? VACC_SCHEDULE_DEFAULT : []);
+      const schedule = _sched
         .filter(s => s.stage === stage)
         .sort((a, b) => Number(a.day_of_life) - Number(b.day_of_life));
       vaccEl.innerHTML = '<option value="">— Vaccine —</option>' +
@@ -27342,8 +27434,8 @@ function showUpdateBanner() {
     const el = document.getElementById(id);
     if (el && !el.dataset.tallyWired) {
       el.dataset.tallyWired = '1';
-      el.addEventListener('input', () => { if (typeof updateEggSaleSourceTally === 'function') updateEggSaleSourceTally(); });
-      el.addEventListener('change', () => { if (typeof updateEggSaleSourceTally === 'function') updateEggSaleSourceTally(); });
+      el.addEventListener('input', () => { if (typeof onEggSaleSourcesChanged === 'function') onEggSaleSourcesChanged(); });
+      el.addEventListener('change', () => { if (typeof onEggSaleSourcesChanged === 'function') onEggSaleSourcesChanged(); });
     }
   });
   const yDestNew = document.getElementById('y-dest-new');
