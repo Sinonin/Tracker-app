@@ -9122,7 +9122,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.85';
+const APP_VERSION = 'v6.11.86';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -13575,9 +13575,27 @@ function repopulateExpenseBuMenu() {
   menu.innerHTML = units.map(function (u) {
     return `<button type="button" data-bu="${String(u).replace(/"/g, '&quot;')}">${_expenseBuShortLabel(u)}</button>`;
   }).join('');
-  Array.prototype.forEach.call(menu.querySelectorAll('button'), function (b) {
-    b.addEventListener('click', function () { selectExpenseBusinessUnit(b.dataset.bu); });
-    if (_expenseBuContext) b.classList.toggle('active', b.dataset.bu === _expenseBuContext);
+  // v6.11.86 — re-assert the active highlight; click handling is delegated to the
+  // stable container by wireExpenseBuMenu(), so it survives this innerHTML rebuild.
+  if (_expenseBuContext) Array.prototype.forEach.call(menu.querySelectorAll('button'), function (b) {
+    b.classList.toggle('active', b.dataset.bu === _expenseBuContext);
+  });
+  wireExpenseBuMenu();
+}
+
+// v6.11.86 — Delegated click handling for the expense business-unit menu. The
+// container (#kind-toggle-expenses) is a stable element; only its innerHTML is
+// rebuilt by repopulateExpenseBuMenu on each entry. The previous per-button
+// listeners were lost on every rebuild, leaving the buttons unresponsive (Cheison
+// 06 Jun 2026 Verden). One delegated listener on the container handles every
+// current and future button. Self-guards against double-wiring.
+function wireExpenseBuMenu() {
+  const menu = document.getElementById('kind-toggle-expenses');
+  if (!menu || menu.dataset.delegated === '1') return;
+  menu.dataset.delegated = '1';
+  menu.addEventListener('click', function (e) {
+    const btn = (e.target && e.target.closest) ? e.target.closest('button[data-bu]') : null;
+    if (btn) selectExpenseBusinessUnit(btn.dataset.bu);
   });
 }
 
