@@ -4437,6 +4437,33 @@
       <button class="submit" id="mh-submit" onclick="submitMaizeHarvest()" disabled>Record Harvest</button>
     </div>
 
+    <!-- v6.11.87 — FLOCK HEALTH (manual-first). A NON-FINANCIAL observation entry —
+         it records what's seen in the flock and never touches revenue/expense/equity.
+         Submits action 'flock-health' to the gate (backend v5.0.70); offline-queued
+         on failure like every other write, with loud feedback (no silent loss). The
+         on-device AI layer will later pre-fill Condition + Confidence; for now the
+         operator records by hand. Opened via openFlockHealth() (isolated — no biz or
+         kind toggle), reached from a card in the Livestock hub. -->
+    <div id="flock-health-kind" style="display:none">
+      <div class="batch-instructions">Record a flock health observation — one per house / flock. This is not a money entry; it logs condition, severity and what was done. Keep date &amp; unit to log several quickly.</div>
+      <div class="field"><label>Date</label><input type="date" id="fh-date" onchange="validateFlockHealth()"></div>
+      <div class="pair">
+        <div class="field"><label>Business unit</label><select id="fh-unit" onchange="validateFlockHealth()"><option value="">— Unit —</option></select></div>
+        <div class="field"><label>House / flock</label><select id="fh-house" onchange="validateFlockHealth()"><option value="">— House —</option></select></div>
+      </div>
+      <div class="field"><label>Cohort (optional)</label><select id="fh-cohort"><option value="">— Cohort (optional) —</option></select></div>
+      <div class="pair">
+        <div class="field"><label>Condition</label><select id="fh-condition" onchange="validateFlockHealth()"><option value="">— Condition —</option></select></div>
+        <div class="field"><label>Severity (optional)</label><select id="fh-severity"><option value="">—</option><option value="Mild">Mild</option><option value="Moderate">Moderate</option><option value="Severe">Severe</option></select></div>
+      </div>
+      <div class="pair">
+        <div class="field"><label>Birds affected (optional)</label><input type="number" id="fh-count" inputmode="numeric" step="1" min="0" placeholder="" autocomplete="off"></div>
+        <div class="field"><label>Action taken (optional)</label><select id="fh-action"><option value="">—</option><option value="Observed only">Observed only</option><option value="Isolated affected">Isolated affected birds</option><option value="Treated / medicated">Treated / medicated</option><option value="Vaccinated">Vaccinated</option><option value="Called vet">Called vet</option><option value="Culled">Culled</option></select></div>
+      </div>
+      <div class="field" style="margin-top:0.7rem"><label>Notes (optional)</label><input type="text" id="fh-notes" placeholder="what you saw, where, any detail" autocomplete="off"></div>
+      <button class="submit" id="fh-submit" onclick="submitFlockHealth()" disabled>Record Observation</button>
+    </div>
+
     <div id="egg-collection-kind" style="display:none">
       <div class="batch-instructions">Daily egg collection — record per house. One row per day captures all layer houses. Use 0 for zero-collection days.</div>
 
@@ -7108,6 +7135,17 @@ function renderLivestockHub() {
   } else {
     grid.innerHTML = units.map(_buildClusterCard).join('');
   }
+  // v6.11.87 — Flock Health entry card (non-financial observations), appended after
+  // the per-unit cluster cards. Matches cluster-card markup; opens the isolated
+  // Flock Health surface. No data-cluster-target, so _wireClusterCards ignores it
+  // and its inline onclick drives it.
+  if (grid.querySelector('.sales-card')) {
+    grid.insertAdjacentHTML('beforeend',
+      '<button class="sales-card" type="button" onclick="openFlockHealth()">' +
+      '<span class="sc-icon">\uD83E\uDE7A</span>' +
+      '<span class="sc-label">Flock Health</span>' +
+      '</button>');
+  }
   _wireClusterCards();
 }
 
@@ -9122,7 +9160,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.86';
+const APP_VERSION = 'v6.11.87';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -11799,6 +11837,7 @@ async function flushQueue(opts) {
       else if (kind === 'sale') record = item.payload || (STATE.sales || []).find(s => s && s.id === recordId) || null; // v6.11.50 — payload-carried (mirror) or STATE.sales (unified)
       else if (kind === 'egg-collection') record = (STATE.eggCollection || []).find(e => e.id === recordId);
       else if (kind === 'maize-harvest') record = item.payload || (STATE.maizeHarvest || []).find(m => m.id === recordId) || null; // v6.11.62
+      else if (kind === 'flock-health') record = item.payload || (STATE.flockHealth || []).find(m => m.id === recordId) || null; // v6.11.87
       else if (kind === 'bird-census') record = (STATE.birdCensus || []).find(b => b.id === recordId);
       else if (kind === 'vaccination') record = (STATE.vaccinations || []).find(v => v.id === recordId);
       // v6.1.7 — Cohort and litter records use queue payload (carry full record),
@@ -11825,6 +11864,7 @@ async function flushQueue(opts) {
       else if (kind === 'sale')    { const _sr = await pushSaleToGate(record); ok = !!(_sr && _sr.ok); } // v6.11.50
       else if (kind === 'egg-collection') ok = await syncEggCollection(record);
       else if (kind === 'maize-harvest') { const _mh = await pushMaizeHarvestToGate(record); ok = !!(_mh && _mh.ok); } // v6.11.62
+      else if (kind === 'flock-health') { const _fh = await pushFlockHealthToGate(record); ok = !!(_fh && _fh.ok); } // v6.11.87
       else if (kind === 'bird-census') ok = await syncBirdCensus(record);
       else if (kind === 'vaccination') ok = await syncVaccination(record);
       else if (kind === 'cohort')      ok = await syncCohort(record);
@@ -12242,6 +12282,25 @@ function cloudToLocalMaizeHarvest(r) {
   };
 }
 
+function cloudToLocalFlockHealth(r) {
+  return {
+    id: 'C-FH-' + String(r.ts || r.date || '') + '-' + String(r.condition || '').trim(),
+    ts: r.ts || (r.date ? r.date + 'T00:00:00Z' : new Date().toISOString()),
+    date: r.date || '',
+    unit: String(r.unit || '').trim(),
+    house: String(r.house || '').trim(),
+    cohort: String(r.cohort || '').trim(),
+    condition: String(r.condition || '').trim(),
+    severity: String(r.severity || '').trim(),
+    count: (r.count === null || r.count === undefined || r.count === '') ? '' : Number(r.count),
+    action: String(r.action || '').trim(),
+    method: String(r.method || 'manual').trim(),
+    confidence: (r.confidence === null || r.confidence === undefined || r.confidence === '') ? '' : Number(r.confidence),
+    notes: String(r.notes || ''),
+    _source: 'cloud'
+  };
+}
+
 function cloudToLocalEggCollection(r) {
   const gfN = Number(r.gf_normal) || 0;
   const gfS = Number(r.gf_small)  || 0;
@@ -12483,6 +12542,10 @@ async function applyCloudResponse(data) {
   if (Array.isArray(data.maizeHarvest)) {
     STATE.maizeHarvest = data.maizeHarvest.map(cloudToLocalMaizeHarvest);
     await storageSet(K_MAIZE_HARVEST, STATE.maizeHarvest);
+  }
+  if (Array.isArray(data.flockHealth)) {                       // v6.11.87
+    STATE.flockHealth = data.flockHealth.map(cloudToLocalFlockHealth);
+    await storageSet(K_FLOCK_HEALTH, STATE.flockHealth);
   }
   /* v6.0 SHIP 3 — Houses sync (cloud-replace-local; config, not transactions) */
   if (Array.isArray(data.houses)) {
@@ -13393,6 +13456,7 @@ function switchKind(k) {
   // v6.11.62 (M2 step 3) — Maize harvest
   const mhKindEl = document.getElementById('maize-harvest-kind');
   if (mhKindEl) mhKindEl.style.display = k === 'maize-harvest' ? '' : 'none';
+  { const fhKindEl = document.getElementById('flock-health-kind'); if (fhKindEl) fhKindEl.style.display = k === 'flock-health' ? '' : 'none'; }   // v6.11.87
   // v6.0 SHIP 4 — Bird Census
   const bcKindEl = document.getElementById('bird-census-kind');
   if (bcKindEl) bcKindEl.style.display = k === 'bird-census' ? '' : 'none';
@@ -13419,6 +13483,7 @@ function switchKind(k) {
   if (k === 'poultry' && typeof populatePoultryCohortDropdown === 'function') populatePoultryCohortDropdown();
   if (k === 'egg-collection' && typeof initEggCollectionForm === 'function') initEggCollectionForm();
   if (k === 'maize-harvest' && typeof initMaizeHarvestForm === 'function') initMaizeHarvestForm();
+  if (k === 'flock-health' && typeof initFlockHealthForm === 'function') initFlockHealthForm();   // v6.11.87
   if (k === 'bird-census' && typeof initBirdCensusForm === 'function') initBirdCensusForm();
   if (k === 'incubation' && typeof initIncubationForm === 'function') initIncubationForm();
   if (k === 'incubation' && typeof renderIncubationProgress === 'function') renderIncubationProgress();
@@ -16205,6 +16270,17 @@ const K_MAIZE_HARVEST = 'sinonin_maize_harvest_v1';
 if (typeof STATE === 'object' && !Array.isArray(STATE.maizeHarvest)) {
   STATE.maizeHarvest = [];
 }
+// v6.11.87 — Flock Health (manual-first, non-financial). Mirrors the maize-harvest
+// local model: a STATE array persisted to its own storage key, synced via the
+// gate, read back in applyCloudResponse. NEVER summed into any P&L.
+const K_FLOCK_HEALTH = 'sinonin_flock_health_v1';
+if (typeof STATE === 'object' && !Array.isArray(STATE.flockHealth)) {
+  STATE.flockHealth = [];
+}
+// Condition vocabulary — config-driven via FLOCK_CONDITIONS in Control_Panel;
+// built-in fallback covers common Nandi poultry observations. The AI layer will
+// later predict into this same field.
+const FLOCK_CONDITION_DEFAULT = ['Healthy', 'Coccidiosis', 'Newcastle (suspected)', 'Respiratory signs', 'Diarrhoea', 'Fowl pox', 'Lameness', 'Mites / lice', 'Eye / head swelling', 'Drop in laying', 'Other'];
 
 function initEggCollectionForm() {
   // Default date to today
@@ -16485,6 +16561,189 @@ async function pushMaizeHarvestToGate(row) {
   } catch (e) {
     return null;
   }
+}
+
+async function submitFlockHealth() {
+  const date = (document.getElementById('fh-date') || {}).value || '';
+  const unit = ((document.getElementById('fh-unit') || {}).value || '').trim();
+  const house = ((document.getElementById('fh-house') || {}).value || '').trim();
+  const cohort = ((document.getElementById('fh-cohort') || {}).value || '').trim();
+  const condition = ((document.getElementById('fh-condition') || {}).value || '').trim();
+  const severity = ((document.getElementById('fh-severity') || {}).value || '').trim();
+  const countRaw = ((document.getElementById('fh-count') || {}).value || '').trim();
+  const action = ((document.getElementById('fh-action') || {}).value || '').trim();
+  const notes = ((document.getElementById('fh-notes') || {}).value || '').trim();
+
+  if (!date) { showToast('Pick a date', 2500); return; }
+  if (!unit) { showToast('Pick a business unit', 2500); return; }
+  if (!condition) { showToast('Pick a condition', 2500); return; }
+
+  if (!isSessionConfirmed('flock-health')) {
+    const summaryHtml = '<div><strong>' + escapeHtml(condition) + (severity ? ' · ' + escapeHtml(severity) : '') + '</strong></div>'
+      + '<div style="opacity:0.85;margin-top:0.3rem;">' + escapeHtml(unit) + (house ? ' · ' + escapeHtml(house) : '') + ' · ' + date + '</div>';
+    const ok = await confirmFirstSubmit('flock-health', summaryHtml);
+    if (!ok) { showToast('Cancelled', 1800); return; }
+    markSessionConfirmed('flock-health');
+  }
+
+  const row = {
+    id: 'fh-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+    ts: new Date().toISOString(),
+    date: date, unit: unit, house: house, cohort: cohort,
+    condition: condition, severity: severity,
+    count: countRaw === '' ? '' : Number(countRaw),
+    action: action, method: 'manual', confidence: '', notes: notes
+  };
+
+  if (!Array.isArray(STATE.flockHealth)) STATE.flockHealth = [];
+  STATE.flockHealth.push(row);
+  try { await storageSet(K_FLOCK_HEALTH, STATE.flockHealth); } catch (e) {}
+
+  showToast('Saved · ' + condition + (house ? ' · ' + house : '') + ' · ' + date);
+
+  // Keep date/unit/house for quick repeat; clear the per-observation fields.
+  ['fh-count', 'fh-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['fh-condition', 'fh-severity', 'fh-action'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  validateFlockHealth();
+
+  const synced = await syncFlockHealth(row);
+  if (!synced) {
+    await queueForSync(row, 'flock-health');
+    // v6.11.87 — loud feedback on the offline path (the silent-loss lesson from the
+    // 06 Jun expense saga): the operator always learns the entry is held, never
+    // assumes it landed. The queue survives resync and replays via flushQueue.
+    if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
+      showToast('🔒 Writes locked — ping ' + farmOwnerTitle() + ' · observation queued', 6000);
+    } else {
+      showToast('Saved offline · will sync when back online', 3500);
+    }
+  }
+  updateSyncIndicator();
+  if (typeof renderHome === 'function') renderHome();
+}
+
+async function syncFlockHealth(row) {
+  if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL) {
+    const gateResult = await pushFlockHealthToGate(row);
+    if (gateResult) { lastWriteResult = gateResult; return gateResult.ok; }
+  }
+  lastWriteResult = { ok: false, reason: 'gate-unreachable' };
+  return false;
+}
+
+async function pushFlockHealthToGate(row) {
+  try {
+    const body = {
+      action: 'flock-health',
+      payload: {
+        ts: row.ts || new Date().toISOString(),
+        date: row.date,
+        unit: row.unit,
+        house: row.house || '',
+        cohort: row.cohort || '',
+        condition: row.condition,
+        severity: row.severity || '',
+        count: (row.count === '' || row.count === null || row.count === undefined) ? '' : Number(row.count),
+        action: row.action || '',
+        method: row.method || 'manual',
+        confidence: (row.confidence === '' || row.confidence === null || row.confidence === undefined) ? '' : Number(row.confidence),
+        notes: row.notes || ''
+      },
+      source: 'PWA ' + APP_VERSION + ' flock-health'
+    };
+    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+      method: 'POST', mode: 'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    if (json && json.ok) return { ok: true, via: 'gate', possibleDuplicate: !!json.possibleDuplicate, summary: json.summary };
+    if (json && json.writesLocked) return { ok: false, reason: 'writes-locked', summary: json.reason };
+    return { ok: false, reason: (json && json.reason) ? json.reason : 'gate-rejected' };
+  } catch (e) {
+    return null;
+  }
+}
+
+function initFlockHealthForm() {
+  const dEl = document.getElementById('fh-date');
+  if (dEl && !dEl.value) dEl.value = new Date().toISOString().slice(0, 10);
+
+  // Business unit — livestock units (poultry today; crop health later via own tab)
+  const unitEl = document.getElementById('fh-unit');
+  if (unitEl) {
+    const cur = unitEl.value;
+    const filt = (typeof _isLivestockUnit === 'function') ? _isLivestockUnit : function () { return true; };
+    const units = (typeof tenantBusinessUnits === 'function') ? tenantBusinessUnits().filter(filt) : [];
+    unitEl.innerHTML = '<option value="">— Unit —</option>' +
+      units.map(u => '<option value="' + escapeHtml(u) + '">' + escapeHtml(u) + '</option>').join('');
+    if (cur) unitEl.value = cur;
+    else if (units.length === 1) unitEl.value = units[0];
+  }
+
+  // House / flock — active houses (same source as the mortality form)
+  const houseEl = document.getElementById('fh-house');
+  if (houseEl) {
+    const cur = houseEl.value;
+    const houses = (Array.isArray(STATE.houses) ? STATE.houses : [])
+      .filter(h => h.active === true || h.active === 'TRUE' || h.active === undefined);
+    houseEl.innerHTML = '<option value="">— House —</option>' +
+      houses.map(h => '<option value="' + escapeHtml(h.name) + '">' + escapeHtml(h.name) + '</option>').join('');
+    if (cur) houseEl.value = cur;
+  }
+
+  // Cohort (optional) — all known cohorts
+  const cohEl = document.getElementById('fh-cohort');
+  if (cohEl) {
+    const cohorts = (Array.isArray(STATE.cohorts) ? STATE.cohorts : []);
+    cohEl.innerHTML = '<option value="">— Cohort (optional) —</option>' +
+      cohorts.map(c => {
+        const id = c.cohort_id || c.id || c.Cohort_ID || '';
+        return id ? '<option value="' + escapeHtml(id) + '">' + escapeHtml(id) + '</option>' : '';
+      }).join('');
+  }
+
+  // Condition vocabulary (config-driven, fallback to built-in)
+  const condEl = document.getElementById('fh-condition');
+  if (condEl) {
+    let conds = FLOCK_CONDITION_DEFAULT;
+    try {
+      const cfg = (typeof tcfg === 'function') ? tcfg('FLOCK_CONDITIONS', '') : '';
+      if (cfg && String(cfg).trim()) conds = String(cfg).split(',').map(s => s.trim()).filter(Boolean);
+    } catch (e) {}
+    condEl.innerHTML = '<option value="">— Condition —</option>' +
+      conds.map(c => '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>').join('');
+  }
+
+  validateFlockHealth();
+}
+
+function validateFlockHealth() {
+  const date = (document.getElementById('fh-date') || {}).value || '';
+  const unit = (document.getElementById('fh-unit') || {}).value || '';
+  const condition = (document.getElementById('fh-condition') || {}).value || '';
+  const valid = !!date && !!unit && !!condition;
+  const btn = document.getElementById('fh-submit');
+  if (btn) btn.disabled = !valid;
+  return valid;
+}
+
+// v6.11.87 — Isolated open for the Flock Health surface. Shows panel-add with ONLY
+// the flock-health form: biz-toggle hidden and every kind-toggle hidden, so this
+// non-financial entry never entangles with the financial biz/kind machinery.
+function openFlockHealth() {
+  STATE.view = 'add';
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('panel-add');
+  if (panel) panel.classList.add('active');
+  const titleEl = document.getElementById('screen-title');
+  if (titleEl) titleEl.textContent = 'Flock Health';
+  const bizToggle = document.querySelector('.biz-toggle');
+  if (bizToggle) bizToggle.style.display = 'none';
+  document.querySelectorAll('.kind-toggle').forEach(kt => { kt.style.display = 'none'; });
+  if (typeof switchKind === 'function') switchKind('flock-health');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function submitEggCollection() {
