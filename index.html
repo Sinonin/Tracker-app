@@ -698,10 +698,10 @@
     border-top: 2px solid var(--brass);
     padding: 0.4rem 0.2rem 0.55rem;
     display: grid;
-    /* v6.11.83 — 5 columns. Admin relocated to the header (left of refresh),
-       leaving Home/Crops/Livestock/Sales/Insights as the thumb-frequent
-       ground-ops cluster. Was 6 (Sales added v6.11.0); paint, not walls. */
-    grid-template-columns: repeat(5, 1fr);
+    /* v6.11.84 — 6 columns: Home/Crops/Livestock/Sales/Expenses/Insights.
+       Admin moving to the header (v6.11.83) freed a slot; Expenses fills it as
+       the money-OUT twin of Sales. Paint, not walls. */
+    grid-template-columns: repeat(6, 1fr);
     gap: 0.08rem;
   }
   nav.bottom-nav button {
@@ -6362,6 +6362,17 @@
       </svg>
       <span>Sales</span>
     </button>
+    <!-- v6.11.84 — Expenses: first-class bottom-nav tab, the money-OUT twin of
+         Sales, sitting between Sales and Insights. Opens the shared expense
+         surface (single + batch). Fills the slot Admin vacated in v6.11.83. -->
+    <button data-view="expenses" aria-label="Expenses">
+      <svg viewBox="0 0 24 24">
+        <ellipse cx="12" cy="6" rx="8" ry="3"/>
+        <path d="M4 6v6c0 1.6 3.6 3 8 3s8-1.4 8-3"/>
+        <path d="M4 12v6c0 1.6 3.6 3 8 3s8-1.4 8-3"/>
+      </svg>
+      <span>Expenses</span>
+    </button>
     <button data-view="insights" aria-label="Insights">
       <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg>
       <span>Insights</span>
@@ -8944,6 +8955,7 @@ const SCREEN_TITLES = {
   maize: 'Maize',   // v6.11.63 — Maize hub panel
   livestock: 'Livestock',
   sales: 'Sales',  // v6.11.0 — unified revenue-recording POS cascade
+  expenses: 'Expenses',  // v6.11.84 — first-class expense surface (money out)
   insights: 'Insights',
   admin: 'Admin',
   // Legacy view names — kept reachable for backwards compat
@@ -9110,7 +9122,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.83';
+const APP_VERSION = 'v6.11.84';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -12982,6 +12994,19 @@ function switchView(v) {
   // at the bottom. They no longer route to panel-add directly. Per principle: 
   // tabs are mostly VIEW; Add is a button inside, not the default landing.
   // 'admin' is the renamed 'settings' view — same panel-settings element.
+
+  // v6.11.84 — Expenses is a first-class bottom-nav destination now, not reached
+  // only through the Tea door (Cheison 06 Jun 2026 Verden). It opens the shared
+  // expense surface (panel-add scoped to the Expenses biz), so the single AND
+  // batch forms and every bit of their logic are reused unchanged.
+  if (v === 'expenses') {
+    if (typeof openAddPanel === 'function') openAddPanel('expenses', 'expense');
+    STATE.view = 'expenses';
+    document.querySelectorAll('nav.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === 'expenses'));
+    const _t = document.getElementById('screen-title'); if (_t) _t.textContent = SCREEN_TITLES['expenses'] || 'Expenses';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
   let panelId;
   if (v === 'admin') {
     panelId = 'panel-settings';
