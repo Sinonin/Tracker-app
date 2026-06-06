@@ -4673,11 +4673,6 @@
         <div class="field"><label>Stage</label>
           <select id="mt-stage">
             <option value="">— Stage —</option>
-            <option value="Chicks 1–7 days">Chicks 1–7 days</option>
-            <option value="Chicks 7–28 days">Chicks 8–28 days</option>
-            <option value="Growers">Growers</option>
-            <option value="Cockerels">Cockerels</option>
-            <option value="Layers">Layers</option>
           </select>
         </div>
       </div>
@@ -18879,6 +18874,20 @@ function initMortalityForm() {
   // Default date to today
   const dEl = document.getElementById('mt-date');
   if (dEl && !dEl.value) dEl.value = new Date().toISOString().slice(0, 10);
+
+  // v6.11.82 — Stage list from the canonical BIRD_CENSUS_STAGES (Cheison 06 Jun
+  // 2026: "quarantine and deformities not showing under death"). The death form
+  // had hardcoded a 5-stage subset that omitted Quarantine, Deformities and
+  // Retired birds — so an isolated or condition bird could not be recorded as
+  // dying. Driving it from the same list the census uses keeps the two in
+  // lockstep forever; a future stage added there shows up here automatically.
+  const mtStageEl = document.getElementById('mt-stage');
+  if (mtStageEl) {
+    const cur = mtStageEl.value;
+    mtStageEl.innerHTML = '<option value="">— Stage —</option>' +
+      BIRD_CENSUS_STAGES.map(s => `<option value="${s}">${s}</option>`).join('');
+    if (cur && BIRD_CENSUS_STAGES.indexOf(cur) !== -1) mtStageEl.value = cur;
+  }
 
   // Populate Houses dropdown (active only)
   const houseEl = document.getElementById('mt-house');
