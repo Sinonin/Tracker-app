@@ -9118,7 +9118,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.81';
+const APP_VERSION = 'v6.11.82';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -11239,6 +11239,16 @@ async function pushGreenleafToGate(entry) {
   }
 }
 
+// v6.11.82 — Gate write pacing (Cheison 06 Jun 2026). Serializing batch writes
+// (v6.11.30) stopped the parallel Promise.all burst that lost 2/12 pluckers at
+// Sangalo, but sequential awaits alone can still race the Apps Script LockService,
+// which may hold its lock a beat past the HTTP response. A short gap between
+// CONSECUTIVE gate writes removes that race. CONVENTION: every multi-row write
+// path (batch submit + queue flush) paces its writes with _gateGap() between
+// items — never fire the next write the instant the previous returns.
+const GATE_WRITE_GAP_MS = 250;
+function _gateGap() { return new Promise(function (r) { setTimeout(r, GATE_WRITE_GAP_MS); }); }
+
 async function pushExpenseToForm(expense) {
   // v5.0 Phase 2.2 — try gate first if configured
   if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL) {
@@ -11766,6 +11776,7 @@ async function flushQueue(opts) {
     if (queue.length === 0) return;
     const remaining = [];
     let anySuccess = false;
+    let _wroteOne = false;   // v6.11.82 — gate pacing across queued writes
     for (const item of queue) {
       // Skip gate-blocked items unless this is a manual/triggered flush
       if (item.blockedByGate && !manual) {
@@ -11801,6 +11812,7 @@ async function flushQueue(opts) {
       else if (kind === 'milk-log') record = item.payload || null;
       else if (kind === 'mortality') record = (STATE.mortality || []).find(m => m.id === recordId);
       if (!record) continue; // record was deleted locally, drop from queue
+      if (_wroteOne) await _gateGap();   // v6.11.82 — pace the gate between queued writes
       let ok;
       if (kind === 'expense')      ok = await pushExpenseToForm(record);
       else if (kind === 'actual')  ok = await pushActualToForm(record);
@@ -11822,6 +11834,7 @@ async function flushQueue(opts) {
       else if (kind === 'milk-log')    ok = await pushMilkLogToGate(record);
       else if (kind === 'mortality')   ok = await syncMortality(record);
       else                         ok = await pushToForm(record);
+      _wroteOne = true;   // v6.11.82 — a gate write was attempted; pace the next
       if (ok) {
         anySuccess = true;
         const stats = await storageGet(K_SYNC_STATS, { synced: 0, lastSync: null });
@@ -13300,6 +13313,7 @@ async function submitBatch() {
     // keeps each write confirmed against the gate; a genuine failure is queued.
     const results = [];
     for (let i = 0; i < newEntries.length; i++) {
+      if (i > 0) await _gateGap();   // v6.11.82 — pace the gate between writes
       const ok = await syncEntry(newEntries[i]);
       results.push(ok);
       if (!ok) await queueForSync(newEntries[i], 'greenleaf');
@@ -13860,6 +13874,7 @@ async function submitBatchExpenses() {
   // bursts overwhelm the gate and lose entries to the unverifiable Form fallback.
   let queuedCount = 0;
   for (let i = 0; i < newExpenses.length; i++) {
+    if (i > 0) await _gateGap();   // v6.11.82 — pace the gate between writes
     const ok = await syncExpense(newExpenses[i]);
     if (!ok) {
       await queueForSync(newExpenses[i], 'expense');
@@ -15604,9 +15619,46 @@ function refreshEggSaleSourceSelects() {
   });
 }
 
+// v6.11.82 — Immediate over-draw warning (Cheison 06 Jun 2026): the moment a row
+// asks for more eggs than its batch holds (4 trays from a 102 batch; 13 eggs from
+// a batch with 12 left after earlier rows claimed the rest), toast right away —
+// don't make the operator reach Submit to find out. The submit-time modal stays
+// as the hard block; this is the early nudge. Deduped so it fires on crossing the
+// threshold, not on every keystroke.
+let _lastOverdrawKey = '';
+function _checkEggOverdrawLive() {
+  const productEl = document.getElementById('y-product');
+  if (!productEl || productEl.value !== 'Eggs') { _lastOverdrawKey = ''; return; }
+  const sources = [];
+  const pCid = (document.getElementById('y-cohort') || {}).value || '';
+  if (pCid) sources.push({ cohort_id: pCid, qty: (document.getElementById('y-quantity') || {}).value || 0, unit: (document.getElementById('y-unit') || {}).value || '' });
+  (typeof collectExtraEggSources === 'function' ? collectExtraEggSources() : []).forEach(function (s) { sources.push(s); });
+  const req = {};
+  sources.forEach(function (s) {
+    const cid = String(s.cohort_id || '').trim();
+    if (!cid) return;
+    req[cid] = (req[cid] || 0) + _eggsFromQtyUnit(s.qty, s.unit);
+  });
+  for (const cid in req) {
+    if (!(req[cid] > 0)) continue;
+    const rem = (typeof _eggRemainingFor === 'function') ? _eggRemainingFor(cid) : null;
+    if (rem !== null && req[cid] > rem) {
+      const key = cid + ':' + req[cid] + ':' + rem;
+      if (key !== _lastOverdrawKey) {
+        _lastOverdrawKey = key;
+        if (typeof showToast === 'function') {
+          showToast('\u26a0 ' + cid + ' has only ' + rem + ' egg' + (rem === 1 ? '' : 's') + ' left \u2014 you\u2019ve asked for ' + req[cid] + '. Lower it or use another batch.', 4500);
+        }
+      }
+      return;
+    }
+  }
+  _lastOverdrawKey = '';   // all clear → reset so a fresh over-draw re-toasts
+}
 function onEggSaleSourcesChanged() {
   if (typeof refreshEggSaleSourceSelects === 'function') refreshEggSaleSourceSelects();
   if (typeof updateEggSaleSourceTally === 'function') updateEggSaleSourceTally();
+  if (typeof _checkEggOverdrawLive === 'function') _checkEggOverdrawLive();
 }
 
 function addEggSaleSourceRow() {
@@ -15813,6 +15865,7 @@ async function submitPoultry() {
   for (let _i = 0; _i < saleSources.length; _i++) {
     const _s = saleSources[_i];
     if (!(Number(_s.qty) > 0)) continue;
+    if (_rows.length > 0) await _gateGap();   // v6.11.82 — pace the gate (multi-batch egg sale)
     let _amt;
     if (_i === saleSources.length - 1) {
       _amt = Math.max(0, _totalAmt - _alloc);
@@ -27421,6 +27474,12 @@ function showUpdateBanner() {
     el.addEventListener('input', updatePoultryPreview);
     el.addEventListener('change', updatePoultryPreview);
   });
+  // v6.11.82 — primary batch change re-checks live over-draw + re-filters extra rows
+  const yCohortLive = document.getElementById('y-cohort');
+  if (yCohortLive && !yCohortLive.dataset.odWired) {
+    yCohortLive.dataset.odWired = '1';
+    yCohortLive.addEventListener('change', () => { if (typeof onEggSaleSourcesChanged === 'function') onEggSaleSourcesChanged(); });
+  }
   // v6.11.54 — Destination select toggles the "Add new / Other" reveal input.
   const yDestSel = document.getElementById('y-dest-select');
   if (yDestSel) yDestSel.addEventListener('change', () => { _togglePoultryDestNew(); updatePoultryPreview(); });
