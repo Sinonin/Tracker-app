@@ -847,7 +847,7 @@
   #kind-toggle-tea { grid-template-columns: 1fr 1fr 1fr; }
   #kind-toggle-poultry { grid-template-columns: 1fr 1fr 1fr 1fr 1fr; }
   #kind-toggle-poultry button { font-size: 0.65rem; padding: 0.55rem 0.2rem; letter-spacing: 0.04em; }
-  #kind-toggle-expenses { grid-template-columns: 1fr; }
+  #kind-toggle-expenses { grid-template-columns: repeat(auto-fit, minmax(74px, 1fr)); gap: 0.3rem; }
   .kind-toggle button {
     background: transparent; border: none;
     padding: 0.75rem 0.3rem;
@@ -9122,7 +9122,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.84';
+const APP_VERSION = 'v6.11.85';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -12900,6 +12900,7 @@ function populateDropdowns() {
   repopulateFactoryDropdowns();
   repopulateCategoryDropdown();
   repopulateExpenseDescriptionDropdown();   // v6.11.79 — controlled descriptor list
+  repopulateExpenseBuMenu();                // v6.11.85 — business-unit access menu
 
   // Banked Income: business dropdown
   // v6.11.9 — Source from tcfg via tenantBusinessUnits() + 'Other'. Replaces 
@@ -13366,8 +13367,11 @@ function switchBiz(b) {
   document.getElementById('kind-toggle-poultry').style.display = b === 'poultry' ? '' : 'none';
   // v6.11.62 (M2 step 3) — Crops kind-toggle
   { const ct = document.getElementById('kind-toggle-crops'); if (ct) ct.style.display = b === 'crops' ? '' : 'none'; }
-  // v5.9.1 — kind-toggle-expenses kept as empty placeholder (single-child eliminated)
-  // No display toggle needed; the form itself shows via switchKind('expense') below.
+  // v6.11.85 — Expenses business-unit access menu lives in kind-toggle-expenses;
+  // show it for the Expenses biz so the surface is framed by unit, not by Tea.
+  { const xe = document.getElementById('kind-toggle-expenses');
+    if (xe) { xe.style.display = b === 'expenses' ? '' : 'none';
+      if (b === 'expenses' && typeof repopulateExpenseBuMenu === 'function') repopulateExpenseBuMenu(); } }
   // When switching business, activate the first kind in that business's toggle
   if (b === 'tea') switchKind('greenleaf');
   else if (b === 'poultry') switchKind('poultry');
@@ -13377,7 +13381,7 @@ function switchBiz(b) {
 
 function switchKind(k) {
   STATE.kind = k;
-  document.querySelectorAll('.kind-toggle button').forEach(b => b.classList.toggle('active', b.dataset.kind === k));
+  document.querySelectorAll('.kind-toggle button[data-kind]').forEach(b => b.classList.toggle('active', b.dataset.kind === k));   // v6.11.85 — [data-kind] excludes the expense BU menu buttons
   document.getElementById('greenleaf-kind').style.display = k === 'greenleaf' ? '' : 'none';
   document.getElementById('expense-kind').style.display = k === 'expense' ? '' : 'none';
   document.getElementById('actual-kind').style.display = k === 'actual' ? '' : 'none';
@@ -13548,6 +13552,53 @@ function repopulateExpenseDescriptionDropdown() {
   const cur = el.value;
   el.innerHTML = expenseDescriptorOptionsHtml();
   if (cur && Array.prototype.some.call(el.options, o => o.value === cur)) el.value = cur;  // preserve valid pick (incl. Other)
+}
+
+// v6.11.85 — Business-unit access menu for the Expenses surface (Cheison 06 Jun
+// 2026 Verden). Populates the #kind-toggle-expenses slot with one button per
+// business unit. Tapping a unit PRE-FILLS the expense business unit (the single
+// form, new batch rows, and any still-empty existing rows) — it does NOT lock
+// anything. #x-business-unit and each row's .xb-bu stay fully editable, so
+// mixed-unit batches still work. Frames Expenses as the all-farm host, reached
+// by unit rather than through the Tea door. These buttons carry data-bu (not
+// data-kind), so the generic kind-toggle wiring leaves them alone.
+let _expenseBuContext = '';
+
+function _expenseBuShortLabel(unit) {
+  return String(unit || '').replace(/^(Sinonin|Kipkenda|Olomotit)\s+/i, '').trim() || String(unit || '');
+}
+
+function repopulateExpenseBuMenu() {
+  const menu = document.getElementById('kind-toggle-expenses');
+  if (!menu) return;
+  const units = (typeof tenantBusinessUnits === 'function') ? tenantBusinessUnits() : [];
+  menu.innerHTML = units.map(function (u) {
+    return `<button type="button" data-bu="${String(u).replace(/"/g, '&quot;')}">${_expenseBuShortLabel(u)}</button>`;
+  }).join('');
+  Array.prototype.forEach.call(menu.querySelectorAll('button'), function (b) {
+    b.addEventListener('click', function () { selectExpenseBusinessUnit(b.dataset.bu); });
+    if (_expenseBuContext) b.classList.toggle('active', b.dataset.bu === _expenseBuContext);
+  });
+}
+
+function selectExpenseBusinessUnit(unit) {
+  _expenseBuContext = unit || '';
+  const menu = document.getElementById('kind-toggle-expenses');
+  if (menu) Array.prototype.forEach.call(menu.querySelectorAll('button'), function (b) {
+    b.classList.toggle('active', b.dataset.bu === _expenseBuContext);
+  });
+  // Pre-fill the single form's business unit (editable; required-check still applies)
+  const xbu = document.getElementById('x-business-unit');
+  if (xbu && Array.prototype.some.call(xbu.options, function (o) { return o.value === _expenseBuContext; })) {
+    xbu.value = _expenseBuContext;
+    if (typeof updateExpensePreview === 'function') updateExpensePreview();
+  }
+  // Default any still-EMPTY batch rows to the chosen unit (never override a pick)
+  document.querySelectorAll('#xb-rows .xb-bu').forEach(function (sel) {
+    if (!sel.value && Array.prototype.some.call(sel.options, function (o) { return o.value === _expenseBuContext; })) {
+      sel.value = _expenseBuContext;
+    }
+  });
 }
 
 function onExpenseDescriptionChange() {
@@ -13786,6 +13837,12 @@ function xbAddRow() {
     const ow = wrap.querySelector('.xb-desc-other-wrap');
     if (ow) ow.style.display = (xbDescSel.value === EXPENSE_DESC_OTHER) ? '' : 'none';
   });
+  // v6.11.85 — default this row's business unit from the access-menu context
+  // (pre-filled, still editable per row → mixed-unit batches preserved).
+  if (_expenseBuContext) {
+    const buSel = wrap.querySelector('.xb-bu');
+    if (buSel && Array.prototype.some.call(buSel.options, function (o) { return o.value === _expenseBuContext; })) buSel.value = _expenseBuContext;
+  }
   updateBatchExpensePreview();
 }
 
@@ -27465,7 +27522,7 @@ function showUpdateBanner() {
   });
 
   // Kind toggles within each business
-  document.querySelectorAll('.kind-toggle button').forEach(b => {
+  document.querySelectorAll('.kind-toggle button[data-kind]').forEach(b => {   // v6.11.85 — [data-kind] excludes expense BU menu buttons (wired separately)
     b.addEventListener('click', () => switchKind(b.dataset.kind));
   });
 
