@@ -287,11 +287,28 @@
   header.brand #nav-settings[data-lock-state="open"]   .nav-lock-icon-open {
     display: inline;
   }
-  /* Open state: shackle outline picks up the brass-light to read as ACTIVE */
+  /* v6.11.88 — State COLOURS + pulse, ported to the header from the old
+     nav.bottom-nav rules. When Admin moved to the header (v6.11.83) the icon-
+     DISPLAY logic came along but these colour/animation rules were left behind as
+     orphans, so the header padlock silently lost its amber "locked" warning and —
+     critically — its GREEN "writes open" signal, plus the state-change pulse.
+     Restored here; the orphan nav.bottom-nav #nav-settings block is removed below.
+     Locked = amber-copper · Admin = brass · Open = green (writes ON). */
+  header.brand #nav-settings[data-lock-state="locked"] svg { stroke: #c97b3a; }
+  header.brand #nav-settings[data-lock-state="admin"]  svg { stroke: var(--brass-light); }
+  header.brand #nav-settings[data-lock-state="open"]   svg { stroke: #6b9e5b; }
+  /* Open state (writes ON): shackle + box pick up the sage-green to read as live */
   header.brand #nav-settings[data-lock-state="open"] {
-    color: #d4a55b;
-    border-color: #d4a55b;
+    color: #6b9e5b;
+    border-color: #6b9e5b;
   }
+  header.brand #nav-settings svg { transition: stroke 0.3s ease; }
+  @keyframes navLockPulse {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.18); }
+    100% { transform: scale(1); }
+  }
+  header.brand #nav-settings.lock-pulse svg { animation: navLockPulse 0.45s ease-out; }
   /* v5.9.0 — Header biometric unlock button.
      Position to LEFT of refresh button. Only visible when stealth ON
      AND credential registered. Tap → native biometric/PIN prompt. */
@@ -742,50 +759,13 @@
   }
   nav.bottom-nav button.central.active svg { background: var(--brass-light); }
 
-  /* v5.1.0 — Three-state padlock for #nav-settings */
-  /* Hide all three icon groups by default */
-  nav.bottom-nav #nav-settings .nav-lock-icon-locked,
-  nav.bottom-nav #nav-settings .nav-lock-icon-admin,
-  nav.bottom-nav #nav-settings .nav-lock-icon-open {
-    display: none;
-  }
-  /* Show the right group based on state */
-  nav.bottom-nav #nav-settings[data-lock-state="locked"] .nav-lock-icon-locked,
-  nav.bottom-nav #nav-settings[data-lock-state="admin"]  .nav-lock-icon-admin,
-  nav.bottom-nav #nav-settings[data-lock-state="open"]   .nav-lock-icon-open {
-    display: inline;
-  }
-  /* Locked padlock — amber/copper (warning, not alarming) */
-  nav.bottom-nav #nav-settings[data-lock-state="locked"] svg {
-    stroke: #c97b3a;  /* amber-copper */
-  }
-  nav.bottom-nav #nav-settings[data-lock-state="locked"].active svg {
-    stroke: #d68a47;  /* slightly brighter when active */
-  }
-  /* Admin gear — neutral (Cheison authenticated, gate still closed) */
-  nav.bottom-nav #nav-settings[data-lock-state="admin"] svg {
-    stroke: var(--brass-light);
-  }
-  /* Open padlock — green (writes ON) */
-  nav.bottom-nav #nav-settings[data-lock-state="open"] svg {
-    stroke: #6b9e5b;  /* sage/forest green — Sinonin palette */
-  }
-  nav.bottom-nav #nav-settings[data-lock-state="open"].active svg {
-    stroke: #82b774;
-  }
-  /* Subtle pop animation when state changes */
-  nav.bottom-nav #nav-settings svg {
-    transition: stroke 0.3s ease;
-  }
-  /* Pop animation triggered by .lock-pulse class added briefly on state-change */
-  @keyframes navLockPulse {
-    0%   { transform: scale(1); }
-    35%  { transform: scale(1.18); }
-    100% { transform: scale(1); }
-  }
-  nav.bottom-nav #nav-settings.lock-pulse svg {
-    animation: navLockPulse 0.45s ease-out;
-  }
+  /* v6.11.88 — The three-state padlock CSS that lived here (scoped to
+     nav.bottom-nav #nav-settings) was orphaned when Admin moved to the header
+     (v6.11.83): after the move those selectors matched no element. Removed.
+     The header equivalents — icon display + state colours + pulse — live in the
+     header.brand #nav-settings block above. Sealed: relocating a control means
+     porting ALL of its scoped CSS, then deleting the old rules — never leaving
+     orphans that quietly drop styling at the new location. */
   .field { margin-bottom: 1.1rem; }
   .field label {
     display: block;
@@ -4458,9 +4438,9 @@
       </div>
       <div class="pair">
         <div class="field"><label>Birds affected (optional)</label><input type="number" id="fh-count" inputmode="numeric" step="1" min="0" placeholder="" autocomplete="off"></div>
-        <div class="field"><label>Action taken (optional)</label><select id="fh-action"><option value="">—</option><option value="Observed only">Observed only</option><option value="Isolated affected">Isolated affected birds</option><option value="Treated / medicated">Treated / medicated</option><option value="Vaccinated">Vaccinated</option><option value="Called vet">Called vet</option><option value="Culled">Culled</option></select></div>
+        <div class="field"><label>Action taken (optional)</label><select id="fh-action"><option value="">— Action taken (optional) —</option></select></div>
       </div>
-      <div class="field" style="margin-top:0.7rem"><label>Notes (optional)</label><input type="text" id="fh-notes" placeholder="what you saw, where, any detail" autocomplete="off"></div>
+      <div class="field" style="margin-top:0.7rem"><label>Remark (optional)</label><select id="fh-notes"><option value="">— Remark (optional) —</option></select></div>
       <button class="submit" id="fh-submit" onclick="submitFlockHealth()" disabled>Record Observation</button>
     </div>
 
@@ -9160,7 +9140,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.87';
+const APP_VERSION = 'v6.11.89';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -16280,7 +16260,15 @@ if (typeof STATE === 'object' && !Array.isArray(STATE.flockHealth)) {
 // Condition vocabulary — config-driven via FLOCK_CONDITIONS in Control_Panel;
 // built-in fallback covers common Nandi poultry observations. The AI layer will
 // later predict into this same field.
-const FLOCK_CONDITION_DEFAULT = ['Healthy', 'Coccidiosis', 'Newcastle (suspected)', 'Respiratory signs', 'Diarrhoea', 'Fowl pox', 'Lameness', 'Mites / lice', 'Eye / head swelling', 'Drop in laying', 'Other'];
+// v6.11.89 — Flock Health vocabularies are CONTROL-PANEL managed (Cheison's
+// de-democratise rule, same as expense descriptors): each dropdown reads its
+// Control_Panel key (FLOCK_CONDITIONS / FLOCK_ACTIONS / FLOCK_NOTES / FLOCK_HOUSES),
+// comma-separated, and falls back to these built-in defaults ONLY when the key is
+// unset. Defaults now include 'Dead' as a condition and disposal actions
+// (slaughter / cull / bury / incinerate). No free-text democracy on the form.
+const FLOCK_CONDITION_DEFAULT = ['Healthy', 'Dead', 'Coccidiosis', 'Newcastle (suspected)', 'Respiratory signs', 'Diarrhoea', 'Fowl pox', 'Lameness', 'Mites / lice', 'Eye / head swelling', 'Drop in laying', 'Injury', 'Other'];
+const FLOCK_ACTION_DEFAULT = ['Observed only', 'Isolated affected', 'Treated / medicated', 'Vaccinated', 'Called vet', 'Slaughtered', 'Culled', 'Buried', 'Incinerated'];
+const FLOCK_NOTES_DEFAULT = ['Routine check — normal', 'Found dead in morning', 'Lethargy / not feeding', 'Reduced laying', 'Wet litter', 'Isolated for monitoring', 'Recovered'];
 
 function initEggCollectionForm() {
   // Default date to today
@@ -16682,41 +16670,59 @@ function initFlockHealthForm() {
     else if (units.length === 1) unitEl.value = units[0];
   }
 
-  // House / flock — active houses (same source as the mortality form)
+  // v6.11.89 — House / location: CONTROL-PANEL managed (FLOCK_HOUSES), falling back
+  // to the active Houses sheet only when the key is unset. Lets health locations
+  // span beyond poultry houses without touching the poultry Houses registry.
   const houseEl = document.getElementById('fh-house');
   if (houseEl) {
     const cur = houseEl.value;
-    const houses = (Array.isArray(STATE.houses) ? STATE.houses : [])
-      .filter(h => h.active === true || h.active === 'TRUE' || h.active === undefined);
-    houseEl.innerHTML = '<option value="">— House —</option>' +
-      houses.map(h => '<option value="' + escapeHtml(h.name) + '">' + escapeHtml(h.name) + '</option>').join('');
+    let houseList = _flockCfgList('FLOCK_HOUSES');
+    if (!houseList.length) {
+      houseList = (Array.isArray(STATE.houses) ? STATE.houses : [])
+        .filter(h => h.active === true || h.active === 'TRUE' || h.active === undefined)
+        .map(h => h.name).filter(Boolean);
+    }
+    houseEl.innerHTML = '<option value="">— House / location —</option>' +
+      houseList.map(h => '<option value="' + escapeHtml(h) + '">' + escapeHtml(h) + '</option>').join('');
     if (cur) houseEl.value = cur;
   }
 
-  // Cohort (optional) — all known cohorts
+  // v6.11.89 — Cohort: reuse buildCohortSelect, which filters to ACTIVE cohorts
+  // (current_count > 0) via cohortPickerOptions — dropping the sold-out / closed
+  // cohorts the raw list was surfacing (the stale relic Cheison saw).
   const cohEl = document.getElementById('fh-cohort');
-  if (cohEl) {
-    const cohorts = (Array.isArray(STATE.cohorts) ? STATE.cohorts : []);
-    cohEl.innerHTML = '<option value="">— Cohort (optional) —</option>' +
-      cohorts.map(c => {
-        const id = c.cohort_id || c.id || c.Cohort_ID || '';
-        return id ? '<option value="' + escapeHtml(id) + '">' + escapeHtml(id) + '</option>' : '';
-      }).join('');
+  if (cohEl && typeof buildCohortSelect === 'function') {
+    buildCohortSelect(cohEl, '', '', '\u2014 Cohort (optional) \u2014', false);
   }
 
-  // Condition vocabulary (config-driven, fallback to built-in)
-  const condEl = document.getElementById('fh-condition');
-  if (condEl) {
-    let conds = FLOCK_CONDITION_DEFAULT;
-    try {
-      const cfg = (typeof tcfg === 'function') ? tcfg('FLOCK_CONDITIONS', '') : '';
-      if (cfg && String(cfg).trim()) conds = String(cfg).split(',').map(s => s.trim()).filter(Boolean);
-    } catch (e) {}
-    condEl.innerHTML = '<option value="">— Condition —</option>' +
-      conds.map(c => '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>').join('');
-  }
+  // Condition / Action / Remark — all CONTROL-PANEL managed dropdowns (no free text).
+  _fillFlockSelect('fh-condition', 'FLOCK_CONDITIONS', FLOCK_CONDITION_DEFAULT, '— Condition —');
+  _fillFlockSelect('fh-action',    'FLOCK_ACTIONS',    FLOCK_ACTION_DEFAULT,    '— Action taken (optional) —');
+  _fillFlockSelect('fh-notes',     'FLOCK_NOTES',      FLOCK_NOTES_DEFAULT,     '— Remark (optional) —');
 
   validateFlockHealth();
+}
+
+// v6.11.89 — Read a comma-separated Control-Panel list, trimmed; [] when unset.
+function _flockCfgList(key) {
+  try {
+    const cfg = (typeof tcfg === 'function') ? tcfg(key, '') : '';
+    if (cfg && String(cfg).trim()) return String(cfg).split(',').map(s => s.trim()).filter(Boolean);
+  } catch (e) {}
+  return [];
+}
+
+// v6.11.89 — Fill a flock-health <select> from a Control-Panel key, falling back to
+// a built-in default. Preserves the current selection if still present.
+function _fillFlockSelect(elId, cfgKey, fallback, placeholder) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const cur = el.value;
+  let list = _flockCfgList(cfgKey);
+  if (!list.length) list = fallback || [];
+  el.innerHTML = '<option value="">' + placeholder + '</option>' +
+    list.map(v => '<option value="' + escapeHtml(v) + '">' + escapeHtml(v) + '</option>').join('');
+  if (cur && list.indexOf(cur) !== -1) el.value = cur;
 }
 
 function validateFlockHealth() {
