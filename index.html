@@ -4430,6 +4430,14 @@
          kind toggle), reached from a card in the Livestock hub. -->
     <div id="flock-health-kind" style="display:none;padding-bottom:5rem">
       <div class="batch-instructions">One observation per house / flock — condition, severity, action.</div>
+      <!-- v6.11.93 — AI scan (beta, gated). Inert until a validated model + the
+           Control_Panel FLOCK_AI_MODEL_URL flag is installed; degrades to manual.
+           The photo is used for on-device inference only — never uploaded or stored. -->
+      <div class="field" style="margin-top:0.5rem">
+        <button type="button" class="export-btn" id="fh-scan-btn" style="width:100%" onclick="document.getElementById('fh-photo').click()">📷 Scan flock photo (beta)</button>
+        <input type="file" id="fh-photo" accept="image/*" capture="environment" style="display:none" onchange="onFlockPhotoChosen(event)">
+        <div id="fh-ai-result" style="display:none;margin-top:0.5rem;padding:0.6rem 0.7rem;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:0.82rem;line-height:1.45"></div>
+      </div>
       <div class="field"><label>Date</label><input type="date" id="fh-date" onchange="validateFlockHealth()"></div>
       <div class="pair">
         <div class="field"><label>Business unit</label><select id="fh-unit" onchange="validateFlockHealth()"><option value="">— Unit —</option></select></div>
@@ -9154,7 +9162,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.92';
+const APP_VERSION = 'v6.11.93';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -16584,6 +16592,95 @@ async function pushMaizeHarvestToGate(row) {
   }
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// v6.11.93 — Flock Health AI scaffold (camera → on-device suggestion).
+// SAFE SHAPE: the AI never decides. It SUGGESTS a condition; the operator
+// confirms or overrides; Method flips to 'ai' only if the suggestion is kept.
+// Inert until a validated model is installed — runFlockAiInference is gated on
+// the Control_Panel FLOCK_AI_MODEL_URL flag. With no model it returns
+// {enabled:false} and the form degrades to manual entry. The photo is used for
+// on-device inference only and is NEVER uploaded or stored in the sheet.
+//
+// WHY GATED: shipping unvalidated poultry-disease detection to a live flock is
+// unsafe — a false "Healthy" on a Newcastle case could cost the flock. The model
+// (MobileNetV2; Zenodo 4628934/5801834) must be trained and validated on real
+// Kipkenda photos before FLOCK_AI_MODEL_URL is set. The app side is ready now.
+// ───────────────────────────────────────────────────────────────────────────
+let _fhAiSuggestion = null;   // { condition, confidence } when the AI proposed one
+let _fhModelPromise = null;   // cached model load (resolved once per session)
+
+function _fhShowAiResult(html, kind) {
+  const el = document.getElementById('fh-ai-result');
+  if (!el) return;
+  const bg = kind === 'suggest' ? 'rgba(184,147,90,0.14)' : 'rgba(120,120,120,0.10)';
+  const bd = kind === 'suggest' ? 'var(--brass,#b8935a)' : (kind === 'error' ? '#d68a47' : 'var(--rule,#d8cdb8)');
+  el.style.display = '';
+  el.style.background = bg;
+  el.style.border = '1px solid ' + bd;
+  el.innerHTML = html;
+}
+
+function _fhClearAiResult() {
+  _fhAiSuggestion = null;
+  const el = document.getElementById('fh-ai-result');
+  if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+}
+
+async function onFlockPhotoChosen(event) {
+  const file = event && event.target && event.target.files && event.target.files[0];
+  if (event && event.target) event.target.value = '';   // allow re-pick of the same file
+  if (!file) return;
+  _fhShowAiResult('Reading photo…', 'off');
+  let res;
+  try { res = await runFlockAiInference(file); }
+  catch (e) { res = { enabled: false, error: (e && e.message) || 'scan failed' }; }
+
+  if (!res || !res.enabled) {
+    _fhAiSuggestion = null;
+    const why = (res && res.error) ? ' (' + res.error + ')' : '';
+    _fhShowAiResult('AI scan isn\u2019t enabled yet' + why + ' — record this observation manually. The photo was not stored.', 'off');
+    return;
+  }
+
+  // Suggestion only. Pre-fill Condition if the suggested class is an available
+  // option, store it, and ask the operator to confirm or change it.
+  _fhAiSuggestion = { condition: res.condition, confidence: res.confidence };
+  const condEl = document.getElementById('fh-condition');
+  if (condEl && Array.prototype.some.call(condEl.options, function (o) { return o.value === res.condition; })) {
+    condEl.value = res.condition;
+    if (typeof validateFlockHealth === 'function') validateFlockHealth();
+  }
+  const pct = Math.round((res.confidence || 0) * 100);
+  _fhShowAiResult(
+    '\uD83E\uDD16 AI suggests <strong>' + escapeHtml(res.condition) + '</strong> (' + pct + '%).<br>' +
+    'Confirm it, or change the Condition above if it\u2019s wrong. The photo was not stored.',
+    'suggest'
+  );
+}
+
+// Gated on-device inference. Returns {enabled:false} until a validated model is
+// installed via Control_Panel FLOCK_AI_MODEL_URL (and TF.js is present on device).
+async function runFlockAiInference(file) {
+  const modelUrl = (tcfg('FLOCK_AI_MODEL_URL', '') || '').trim();
+  if (!modelUrl) return { enabled: false };                       // no validated model yet → manual
+  if (typeof tf === 'undefined') return { enabled: false, error: 'engine not loaded' };
+  const classes = (tcfg('FLOCK_AI_CLASSES', '') || 'Healthy,Coccidiosis,Newcastle,Salmonella');
+  const labels = String(classes).split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  if (!_fhModelPromise) _fhModelPromise = tf.loadGraphModel(modelUrl);
+  const model = await _fhModelPromise;
+  const bitmap = await createImageBitmap(file);
+  const logits = tf.tidy(function () {
+    const img = tf.browser.fromPixels(bitmap).resizeBilinear([224, 224]).toFloat().div(255).expandDims(0);
+    return model.predict(img);
+  });
+  const probs = Array.from(await logits.data());
+  logits.dispose();
+  if (bitmap.close) bitmap.close();
+  let best = 0;
+  for (let i = 1; i < probs.length; i++) if (probs[i] > probs[best]) best = i;
+  return { enabled: true, condition: labels[best] || 'Other', confidence: probs[best] || 0 };
+}
+
 async function submitFlockHealth() {
   const date = (document.getElementById('fh-date') || {}).value || '';
   const unit = ((document.getElementById('fh-unit') || {}).value || '').trim();
@@ -16607,13 +16704,20 @@ async function submitFlockHealth() {
     markSessionConfirmed('flock-health');
   }
 
+  // v6.11.93 — Method/Confidence reflect whether the AI suggestion was KEPT.
+  // 'ai' only if the operator left the AI-proposed condition unchanged; otherwise
+  // it's a manual call (the operator overrode, or never scanned).
+  const _aiKept = !!(_fhAiSuggestion && _fhAiSuggestion.condition === condition);
+  const _method = _aiKept ? 'ai' : 'manual';
+  const _confidence = _aiKept ? _fhAiSuggestion.confidence : '';
+
   const row = {
     id: 'fh-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
     ts: new Date().toISOString(),
     date: date, unit: unit, house: house, cohort: cohort,
     condition: condition, severity: severity,
     count: countRaw === '' ? '' : Number(countRaw),
-    action: action, method: 'manual', confidence: '', notes: notes
+    action: action, method: _method, confidence: _confidence, notes: notes
   };
 
   if (!Array.isArray(STATE.flockHealth)) STATE.flockHealth = [];
@@ -16626,6 +16730,7 @@ async function submitFlockHealth() {
   // Keep date/unit/house for quick repeat; clear the per-observation fields.
   ['fh-count', 'fh-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   ['fh-condition', 'fh-severity', 'fh-action'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  _fhClearAiResult();   // v6.11.93 — suggestion consumed; clear for the next observation
   validateFlockHealth();
 
   const synced = await syncFlockHealth(row);
@@ -16691,6 +16796,7 @@ async function pushFlockHealthToGate(row) {
 function initFlockHealthForm() {
   const dEl = document.getElementById('fh-date');
   if (dEl && !dEl.value) dEl.value = new Date().toISOString().slice(0, 10);
+  if (typeof _fhClearAiResult === 'function') _fhClearAiResult();   // v6.11.93 — no stale suggestion on open
 
   // Business unit — livestock units (poultry today; crop health later via own tab)
   const unitEl = document.getElementById('fh-unit');
