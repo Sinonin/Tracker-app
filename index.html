@@ -9150,7 +9150,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.90';
+const APP_VERSION = 'v6.11.91';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -13326,6 +13326,9 @@ async function submitBatch() {
     console.log('[submitBatch] step 2: batchRows extracted', { block, factory, date, rowCount: rows.length });
     if (!block || !factory || rows.length === 0) {
       console.warn('[submitBatch] EXIT: missing block/factory/rows');
+      // v6.11.91 — loud guard (no silent return): name what's missing.
+      if (rows.length === 0) showToast('Add at least one plucker row before saving', 3000);
+      else showToast('Pick a block and factory before saving', 3000);
       return;
     }
     let saved = 0;
@@ -13976,11 +13979,21 @@ function updateBatchExpensePreview() {
 
 async function submitBatchExpenses() {
   const date = document.getElementById('xb-date').value;
-  if (!date) return;
+  // v6.11.91 — loud guards (no silent return). Hardening pass: a batch submit that
+  // does nothing must say WHY, so an operator never taps Save and watches the entry
+  // vanish without a word (the 06 Jun expense saga).
+  if (!date) { showToast('Pick a date for the batch first', 2800); return; }
   const rows = Array.from(document.querySelectorAll('#xb-rows .xb-row'));
   const validRows = rows.filter(xbRowIsValid);
   const skippedRows = rows.filter(r => !xbRowIsValid(r) && !xbRowIsEmpty(r));
-  if (validRows.length === 0) return;
+  if (validRows.length === 0) {
+    if (skippedRows.length > 0) {
+      showToast(skippedRows.length + ' row' + (skippedRows.length === 1 ? '' : 's') + ' incomplete — nothing saved. Each row needs category, amount, business unit and description.', 5500);
+    } else {
+      showToast('Nothing to save — add an expense row first', 3000);
+    }
+    return;
+  }
   const newExpenses = validRows.map((r, i) => {
     const v = xbRowValues(r);
     return {
