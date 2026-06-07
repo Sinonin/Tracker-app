@@ -4442,6 +4442,16 @@
       </div>
       <div class="field" style="margin-top:0.7rem"><label>Remark (optional)</label><select id="fh-notes"><option value="">— Remark (optional) —</option></select></div>
       <button class="submit" id="fh-submit" onclick="submitFlockHealth()" disabled>Record Observation</button>
+
+      <!-- v6.11.90 — Flock Health history (read-only view of STATE.flockHealth,
+           synced from the Flock_Health sheet). A 30-day condition tally surfaces
+           spikes (e.g. several 'Dead' or 'Coccidiosis'); the list shows recent
+           observations. Non-financial; never enters any rollup. -->
+      <div class="section" id="fh-recent-section" style="display:none;margin-top:1.2rem">
+        <div class="section-head"><h3>Recent observations</h3><span class="meta" id="fh-recent-count">0</span></div>
+        <div id="fh-recent-tally" class="meta" style="margin-bottom:0.5rem"></div>
+        <div id="fh-recent-list"></div>
+      </div>
     </div>
 
     <div id="egg-collection-kind" style="display:none">
@@ -9140,7 +9150,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.89';
+const APP_VERSION = 'v6.11.90';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -16588,6 +16598,7 @@ async function submitFlockHealth() {
   try { await storageSet(K_FLOCK_HEALTH, STATE.flockHealth); } catch (e) {}
 
   showToast('Saved · ' + condition + (house ? ' · ' + house : '') + ' · ' + date);
+  if (typeof renderFlockHealthHistory === 'function') renderFlockHealthHistory();   // v6.11.90
 
   // Keep date/unit/house for quick repeat; clear the per-observation fields.
   ['fh-count', 'fh-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
@@ -16701,6 +16712,51 @@ function initFlockHealthForm() {
   _fillFlockSelect('fh-notes',     'FLOCK_NOTES',      FLOCK_NOTES_DEFAULT,     '— Remark (optional) —');
 
   validateFlockHealth();
+  if (typeof renderFlockHealthHistory === 'function') renderFlockHealthHistory();   // v6.11.90
+}
+
+// v6.11.90 — Read-only Flock Health history on the entry surface. Newest-first
+// recent list + a 30-day condition tally that surfaces spikes at a glance.
+// Pure read of STATE.flockHealth; touches no financial rollup.
+function renderFlockHealthHistory() {
+  const section = document.getElementById('fh-recent-section');
+  if (!section) return;
+  const all = Array.isArray(STATE.flockHealth) ? STATE.flockHealth : [];
+  if (all.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = '';
+
+  const countEl = document.getElementById('fh-recent-count');
+  if (countEl) countEl.textContent = all.length + ' logged';
+
+  // 30-day condition tally — spot a run of Dead / Coccidiosis etc.
+  const tallyEl = document.getElementById('fh-recent-tally');
+  if (tallyEl) {
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const tally = {};
+    all.forEach(e => { if ((e.date || '') >= cutoff && e.condition) tally[e.condition] = (tally[e.condition] || 0) + 1; });
+    const parts = Object.keys(tally).sort((a, b) => tally[b] - tally[a]).map(k => escapeHtml(k) + ' \u00d7' + tally[k]);
+    tallyEl.innerHTML = parts.length ? ('Last 30 days: ' + parts.join(' \u00b7 ')) : '';
+    tallyEl.style.display = parts.length ? '' : 'none';
+  }
+
+  const box = document.getElementById('fh-recent-list');
+  if (box) {
+    const sorted = [...all].sort((a, b) => String(b.ts || b.date || '').localeCompare(String(a.ts || a.date || '')));
+    box.innerHTML = sorted.slice(0, 10).map(e => {
+      const sev = e.severity ? ' \u00b7 ' + escapeHtml(e.severity) : '';
+      const metaBits = [e.date, e.unit, e.house, e.cohort, e.action, e.notes]
+        .filter(Boolean).map(escapeHtml).join(' \u00b7 ');
+      const cnt = (e.count !== '' && e.count !== null && e.count !== undefined) ? (e.count + ' affected') : '';
+      return `
+        <div class="record-row" style="grid-template-columns:1fr auto">
+          <div>
+            <div class="name">${escapeHtml(e.condition || '\u2014')}${sev}</div>
+            <div class="meta">${metaBits}</div>
+          </div>
+          <div class="val">${cnt}</div>
+        </div>`;
+    }).join('');
+  }
 }
 
 // v6.11.89 — Read a comma-separated Control-Panel list, trimmed; [] when unset.
