@@ -1087,6 +1087,10 @@
     text-align: center;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  /* v6.11.92 — severity variants: amber = warning/partial, red = error. The
+     default green left-border reads as success; these distinguish at a glance. */
+  .toast.toast-warn { border-left-color: #d68a47; }
+  .toast.toast-error { border-left-color: #c0524a; }
 
   /* v5.1.0 — Modal infrastructure (passphrase + revoke confirmation).
      Sinonin-themed: rounded corners, brand greens, Inter font, soft shadow. */
@@ -4424,8 +4428,8 @@
          on-device AI layer will later pre-fill Condition + Confidence; for now the
          operator records by hand. Opened via openFlockHealth() (isolated — no biz or
          kind toggle), reached from a card in the Livestock hub. -->
-    <div id="flock-health-kind" style="display:none">
-      <div class="batch-instructions">Record a flock health observation — one per house / flock. This is not a money entry; it logs condition, severity and what was done. Keep date &amp; unit to log several quickly.</div>
+    <div id="flock-health-kind" style="display:none;padding-bottom:5rem">
+      <div class="batch-instructions">One observation per house / flock — condition, severity, action.</div>
       <div class="field"><label>Date</label><input type="date" id="fh-date" onchange="validateFlockHealth()"></div>
       <div class="pair">
         <div class="field"><label>Business unit</label><select id="fh-unit" onchange="validateFlockHealth()"><option value="">— Unit —</option></select></div>
@@ -9150,7 +9154,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.91';
+const APP_VERSION = 'v6.11.92';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -13326,9 +13330,9 @@ async function submitBatch() {
     console.log('[submitBatch] step 2: batchRows extracted', { block, factory, date, rowCount: rows.length });
     if (!block || !factory || rows.length === 0) {
       console.warn('[submitBatch] EXIT: missing block/factory/rows');
-      // v6.11.91 — loud guard (no silent return): name what's missing.
-      if (rows.length === 0) showToast('Add at least one plucker row before saving', 3000);
-      else showToast('Pick a block and factory before saving', 3000);
+      // v6.11.92 — blocking modal, not a fading toast: the operator must acknowledge.
+      if (rows.length === 0) await showAlertModal('Nothing saved', 'Add at least one plucker row before saving.', 'Got it');
+      else await showAlertModal('Nothing saved', 'Pick a block and factory before saving.', 'Got it');
       return;
     }
     let saved = 0;
@@ -13979,18 +13983,20 @@ function updateBatchExpensePreview() {
 
 async function submitBatchExpenses() {
   const date = document.getElementById('xb-date').value;
-  // v6.11.91 — loud guards (no silent return). Hardening pass: a batch submit that
-  // does nothing must say WHY, so an operator never taps Save and watches the entry
-  // vanish without a word (the 06 Jun expense saga).
-  if (!date) { showToast('Pick a date for the batch first', 2800); return; }
+  // v6.11.92 — hard "nothing saved" failures use the blocking modal (Cheison:
+  // the toast is "barely legible"). The operator must acknowledge, so they can't
+  // walk away believing it saved.
+  if (!date) { await showAlertModal('Nothing saved', 'Pick a date for the batch before saving.', 'Got it'); return; }
   const rows = Array.from(document.querySelectorAll('#xb-rows .xb-row'));
   const validRows = rows.filter(xbRowIsValid);
   const skippedRows = rows.filter(r => !xbRowIsValid(r) && !xbRowIsEmpty(r));
   if (validRows.length === 0) {
     if (skippedRows.length > 0) {
-      showToast(skippedRows.length + ' row' + (skippedRows.length === 1 ? '' : 's') + ' incomplete — nothing saved. Each row needs category, amount, business unit and description.', 5500);
+      await showAlertModal('Nothing saved',
+        `${skippedRows.length} row${skippedRows.length === 1 ? ' is' : 's are'} incomplete, so nothing was recorded.<br><br>Each row needs a <strong>category, amount, business unit and description</strong>.`,
+        'Got it');
     } else {
-      showToast('Nothing to save — add an expense row first', 3000);
+      await showAlertModal('Nothing saved', 'There are no expense rows to record yet — add a row first.', 'Got it');
     }
     return;
   }
@@ -14045,9 +14051,13 @@ async function submitBatchExpenses() {
   document.getElementById('xb-rows').innerHTML = '';
   xbAddRow();
   updateBatchExpensePreview();
-  // Toast
-  const skipMsg = skippedRows.length > 0 ? ` · ${skippedRows.length} incomplete skipped` : '';
-  showToast(`Saved ${newExpenses.length} expense${newExpenses.length === 1 ? '' : 's'}${skipMsg}`);
+  // Toast — v6.11.92: a partial save (some rows skipped) is an amber WARNING, not
+  // a plain success, so it never reads as all-clear.
+  if (skippedRows.length > 0) {
+    showToast(`Saved ${newExpenses.length} · ${skippedRows.length} incomplete row${skippedRows.length === 1 ? '' : 's'} skipped`, 5000, 'warn');
+  } else {
+    showToast(`Saved ${newExpenses.length} expense${newExpenses.length === 1 ? '' : 's'}`);
+  }
   // v5.0 Phase 2.2 — gate-rejection feedback (any of the queued items locked)
   if (queuedCount > 0 && lastWriteResult && lastWriteResult.reason === 'writes-locked') {
     setTimeout(() => {
@@ -27290,9 +27300,14 @@ function confirmFirstSubmit(kindLabel, summaryHtml) {
   });
 }
 
-function showToast(msg, durationMs) {
+function showToast(msg, durationMs, type) {
   const t = document.getElementById('toast');
   t.textContent = msg;
+  // v6.11.92 — severity variants. Default = success (green). 'warn' = amber (a
+  // partial result the operator must notice), 'error' = red. Hard "nothing saved"
+  // failures use showAlertModal instead — a blocking dialog, not a fading strip.
+  t.classList.remove('toast-warn', 'toast-error');
+  if (type === 'warn' || type === 'error') t.classList.add('toast-' + type);
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), durationMs || 2200);
 }
