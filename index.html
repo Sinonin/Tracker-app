@@ -4084,7 +4084,9 @@
     <div class="kind-toggle" id="kind-toggle-tea">
       <button class="active" data-kind="greenleaf">Plucker Entry</button>
       <button data-kind="actual">Actuals</button>
-      <button data-kind="banked">Banked</button>
+      <!-- v6.11.99 — "Banked" tea kind removed: tea income is recorded via
+           Sales -> Tea -> Green Leaf; the banked input is retired. History
+           remains under Records -> filter "Banked Income". -->
     </div>
 
     <div class="kind-toggle" id="kind-toggle-poultry" style="display:none">
@@ -9192,7 +9194,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.98';
+const APP_VERSION = 'v6.11.99';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
