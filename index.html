@@ -9192,7 +9192,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.95';
+const APP_VERSION = 'v6.11.96';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -15046,6 +15046,19 @@ function updateBankedPreview() {
 }
 
 async function submitBanked() {
+  // v6.11.96 — Banked income input RETIRED. Tea income is recorded via
+  // Sales -> Tea -> Green Leaf (the single source of truth). This path is
+  // walled off so nothing splits the ledger again. Existing banked history
+  // stays readable; this guard is reversible (delete it to re-enable).
+  if (typeof showAlertModal === 'function') {
+    showAlertModal('Record under Sales \u2192 Tea',
+      'Tea income now lives in one ledger. Record it under <strong>Sales \u2192 Tea \u2192 Green Leaf</strong> \u2014 the separate Banked Income entry has been retired.',
+      'Got it');
+  } else {
+    showToast('Tea income now goes under Sales \u2192 Tea', 5000, 'warn');
+  }
+  return;
+
   const v = iValues();
   if (!v.date || !v.business || !v.source || v.amount <= 0) return;
 
@@ -15097,17 +15110,19 @@ async function submitBanked() {
 }
 
 function renderRecentBanked() {
-  const list = [...(STATE.banked || [])].sort((a,b) => (b.ts || '').localeCompare(a.ts || '')).slice(0, 5);
+  // v6.11.96 — recent income reads Sales (Sinonin Tea); banked input retired.
+  const tea = (STATE.sales || []).filter(s => s && isTeaBU(s.business_unit) && (Number(s.amount) || 0) > 0);
+  const list = [...tea].sort((a,b) => (b.ts || '').localeCompare(a.ts || '')).slice(0, 5);
   const section = document.getElementById('i-recent-section');
   if (list.length === 0) { section.style.display = 'none'; return; }
   section.style.display = '';
-  document.getElementById('i-recent-count').textContent = (STATE.banked || []).length + ' total';
+  document.getElementById('i-recent-count').textContent = tea.length + ' total';
   const box = document.getElementById('i-recent-list');
   box.innerHTML = list.map(r => `
     <div class="record-row" style="grid-template-columns:1fr auto auto">
       <div>
-        <div class="name">${r.business}</div>
-        <div class="meta">${r.date} · ${r.source}${r.period ? ' · ' + r.period : ''}</div>
+        <div class="name">${r.business_unit}</div>
+        <div class="meta">${r.date} · ${r.buyer}${r.period ? ' · ' + r.period : ''}</div>
       </div>
       <div class="qty"></div>
       <div class="val">Ksh ${moneyRound(r.amount)}</div>
@@ -20172,7 +20187,7 @@ function renderEmptyStateHint() {
   const anyEntry = (STATE.entries || []).some(e => e.date === today);
   const anyExpense = (STATE.expenses || []).some(x => x.date === today);
   const anyActual = (STATE.actuals || []).some(a => a.date === today);
-  const anyBanked = (STATE.banked || []).some(b => b.date === today);
+  const anyBanked = (STATE.sales || []).some(s => s && isTeaBU(s.business_unit) && s.date === today);  // v6.11.96 — tea income now in Sales
   const anyPoultry = (STATE.poultry || []).some(p => p.date === today);
   const anyEggColl = (STATE.eggCollection || []).some(e => e.date === today);
   const anyCensus = (STATE.birdCensus || []).some(c => c.date === today);
@@ -22521,7 +22536,9 @@ function renderFactoryRecon() {
   }
 
   const actuals = STATE.actuals || [];
-  const banked = STATE.banked || [];
+  // v6.11.96 — booked income now comes from Sales (Sinonin Tea rows), not the
+  // retired Banked sheet. buyer = factory; period = tidied "Month YYYY" text.
+  const teaSales = (STATE.sales || []).filter(s => s && isTeaBU(s.business_unit) && (Number(s.amount) || 0) > 0);
   const fnorm = s => String(s || '').trim().toLowerCase();
 
   // Compute per-factory rows once; both views consume the same data.
@@ -22537,11 +22554,11 @@ function renderFactoryRecon() {
         expected += kgv * netPerKg(a.factory, a.date);
       });
       let booked = 0, hasBooking = false;
-      banked.forEach(b => {
-        if (fnorm(b.source) !== fkey) return;
-        const periodMatch = b.period && fnorm(b.period) === fnorm(m.periodLabel);
-        const dateMatch = !b.period && String(b.date || '').slice(0, 7) === m.ym;
-        if (periodMatch || dateMatch) { booked += Number(b.amount) || 0; hasBooking = true; }
+      teaSales.forEach(s => {
+        if (fnorm(s.buyer) !== fkey) return;
+        const periodMatch = s.period && fnorm(s.period) === fnorm(m.periodLabel);
+        const dateMatch = !s.period && String(s.date || '').slice(0, 7) === m.ym;
+        if (periodMatch || dateMatch) { booked += Number(s.amount) || 0; hasBooking = true; }
       });
       return { m, glKg, expected, booked, hasBooking };
     });
