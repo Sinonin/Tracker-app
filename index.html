@@ -3746,10 +3746,10 @@
           <span class="qa-icon">💸</span>
           <span class="qa-label">Expenses</span>
         </button>
-        <button class="quick-add-card" type="button" onclick="openAddPanel('tea','banked')">
-          <span class="qa-icon">💰</span>
-          <span class="qa-label">Income</span>
-        </button>
+        <!-- v6.11.97 — "Income" (banked) quick-add card retired. Tea income is
+             recorded via Sales -> Tea -> Green Leaf; the banked input is gone.
+             Historical banked records remain viewable under Records -> filter
+             "Banked Income". Reversible: restore the button to re-enable. -->
       </div>
     </div>
 
@@ -9192,7 +9192,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.96';
+const APP_VERSION = 'v6.11.97';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
