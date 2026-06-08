@@ -9192,7 +9192,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.97';
+const APP_VERSION = 'v6.11.98';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -14877,7 +14877,7 @@ async function submitActual() {
   // can check whether plucker entries are missing. This catches the 
   // pattern Elias saw on 11 May: 232 kg pluckers logged vs 305.7 kg 
   // delivered (32% gap from missing plucker entries).
-  try { checkWeighbridgeGap(actual); } catch (e) { console.warn('[weighbridge-check] failed:', e.message); }
+  checkWeighbridgeGap(actual).catch(e => console.warn('[weighbridge-check] failed:', e && e.message));
   // v6.9.5 — Re-evaluate the 10-20% block-gap banner now that a new
   // actual has landed. The renderer reads state and decides whether
   // to surface, update, or hide the row for this (block, date).
@@ -14929,13 +14929,26 @@ function navigateToPluckerEntryPrefilled(actual) {
    weight (matches confirmFirstSubmit and the no-pluckers modal). Cheison
    feedback: "small and long, lift it to the same position as the first-
    submission helper for prominence." */
-function checkWeighbridgeGap(actual) {
+async function checkWeighbridgeGap(actual) {
   if (!actual || !actual.date || !actual.block || !actual.kg) return;
-  const pluckerSum = (STATE.entries || [])
+  const sumPluckers = () => (STATE.entries || [])
     .filter(e => e.date === actual.date
               && e.block === actual.block
               && e.factory === actual.factory)
     .reduce((s, e) => s + (Number(e.qty) || 0), 0);
+  let pluckerSum = sumPluckers();
+
+  // v6.11.98 — Stale-state guard (sealed principle #8: never judge from stale
+  // local state). A zero here is usually not "no pluckers exist" but "this
+  // device hasn't pulled the field operators' entries yet" — e.g. recording a
+  // Sireet actual from Verden minutes after the pickers logged their kilos
+  // (Sangalo, 8 Jun: 3 pluckers were already in the sheet, but not on the
+  // saving device). Pull authoritative cloud state and recompute before
+  // alarming; only warn if it is still zero against fresh data.
+  if (pluckerSum <= 0 && navigator.onLine && typeof runCloudSync === 'function') {
+    try { await runCloudSync(); } catch (e) { /* offline / failed: keep local view */ }
+    pluckerSum = sumPluckers();
+  }
 
   const route = `${actual.block} → ${actual.factory || 'factory'}`;
 
@@ -14958,8 +14971,8 @@ function checkWeighbridgeGap(actual) {
     // v6.9.18 — Message now names the route (block → factory) so the
     // operator immediately sees which leg of delivery is unaccounted for.
     if (actual.kg > 10) {
-      const body = `<strong>${route}</strong>: <strong>${actual.kg} kg</strong> saved for <strong>${actual.date}</strong>, but no plucker entries from <strong>${actual.block}</strong> have been recorded yet for <strong>${actual.factory || 'this factory'}</strong>.<br><br>` +
-                   `The field operator may still be entering them. If not, you may want to ping them.`;
+      const body = `<strong>${route}</strong>: <strong>${actual.kg} kg</strong> saved for <strong>${actual.date}</strong>, but no plucker entries from <strong>${actual.block}</strong> have synced to this device yet for <strong>${actual.factory || 'this factory'}</strong>.<br><br>` +
+                   `If the field operator is still entering them, they'll appear on the next sync. If not, you may want to ping them.`;
       showChoiceModal('⚠ No plucker entries yet', body, [
         { label: 'Record pluckers', value: 'pluckers', primary: true },
         { label: 'Got it',          value: 'ok',       primary: false }
@@ -27631,9 +27644,16 @@ async function nudgeRecordActualsIfMissing(entry) {
     if (!entry || !entry.date || !entry.block || !entry.factory) return;
     const key = `${entry.date}|${entry.block}|${entry.factory}`;
     if (ACTUALS_NUDGE_DISMISSED.has(key)) return;
-    const hasActual = (STATE.actuals || []).some(a =>
+    const matchActual = () => (STATE.actuals || []).some(a =>
       a && a.date === entry.date && a.block === entry.block && a.factory === entry.factory
     );
+    let hasActual = matchActual();
+    // v6.11.98 — stale-state guard: re-check against fresh cloud state before
+    // nudging, so an actual recorded on another device isn't reported missing.
+    if (!hasActual && navigator.onLine && typeof runCloudSync === 'function') {
+      try { await runCloudSync(); } catch (e) { /* offline / failed: keep local view */ }
+      hasActual = matchActual();
+    }
     if (hasActual) return;
     const body = `Plucker entries are flowing for <strong>${entry.block}</strong> on <strong>${entry.date}</strong>, but no factory-confirmed actual has been recorded yet for <strong>${entry.factory}</strong>.<br><br>` +
                  `Recording the actual now keeps the day's reconciliation tight.`;
