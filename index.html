@@ -9162,7 +9162,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.93';
+const APP_VERSION = 'v6.11.94';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -20712,6 +20712,29 @@ function computeStageLive(stage, house, today) {
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// v6.11.94 — Unified revenue read. STATE.sales is the single source of truth
+// for income: tea banked-GL history + poultry mirrors + the 929-row import
+// all live in the Sales sheet, read back via readSales/doGet (backend v5.0.71).
+// Rule (Cheison): amount > 0 = revenue, no Revenue-Type filter, crate charges
+// count. buTest folds poultry's 'Poultry' (mirror/import) and 'Kipkenda
+// Poultry' (direct) labels into one bucket. The legacy STATE.banked /
+// STATE.poultry INCOME rollups are retired here — their sheets still feed
+// operational paths (egg FIFO, cohort decrement, buyer lists), untouched.
+// ─────────────────────────────────────────────────────────────────────
+function salesRevenue(filter, buTest) {
+  return (Array.isArray(STATE.sales) ? STATE.sales : []).reduce(function (sum, s) {
+    if (!s) return sum;
+    var amt = Number(s.amount) || 0;
+    if (amt <= 0) return sum;
+    if (filter && !filter(s)) return sum;
+    if (buTest && !buTest(s.business_unit)) return sum;
+    return sum + amt;
+  }, 0);
+}
+function isTeaBU(bu)     { return bu === 'Sinonin Tea'; }
+function isPoultryBU(bu) { return /poultry/i.test(bu || ''); }
+
 function renderHome() {
   // v6.3.12 — Greeting changed from Swahili time-based to Nandi.
   // "Chamgei chemogeet" — universal Nandi greeting. If you want morning/evening 
@@ -20787,9 +20810,8 @@ function renderHome() {
   // ─────────────────────────────────────────────────────────────────────
   
   function sumIncome(filter) {
-    const banked = (STATE.banked || []).filter(filter).reduce((s, b) => s + (Number(b.amount) || 0), 0);
-    const poultry = (STATE.poultry || []).filter(filter).reduce((s, p) => s + (Number(p.amount) || 0), 0);
-    return banked + poultry;
+    // v6.11.94 — all business units, Sales sheet as source of truth
+    return salesRevenue(filter);
   }
   function sumSpend(filter) {
     return (STATE.expenses || []).filter(filter).reduce((s, x) => s + (Number(x.amount) || 0), 0);
@@ -20933,19 +20955,17 @@ function renderHome() {
   // the headline, fmtKes (compact k/M) for horizon cells.
   // ─────────────────────────────────────────────────────────────────────
   
-  // Tea revenue (banked only — factory deposits)
-  const sumBanked = (filter) => (STATE.banked || [])
-    .filter(filter)
-    .reduce((s, b) => s + (Number(b.amount) || 0), 0);
+  // v6.11.94 — Tea card reads Sinonin Tea revenue from Sales (was STATE.banked).
+  // Picks up the direct GL entries that were stranded outside Banked_Income.
+  const sumBanked = (filter) => salesRevenue(filter, isTeaBU);
   const teaToday = sumBanked(ftToday);
   const teaMTD   = sumBanked(ftMTD);
   const teaYTD   = sumBanked(ftYTD);
   const teaLife  = sumBanked(ftAll);
   
-  // Poultry revenue (poultry sales)
-  const sumPoultrySales = (filter) => (STATE.poultry || [])
-    .filter(filter)
-    .reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  // v6.11.94 — Poultry card reads poultry revenue from Sales (was STATE.poultry).
+  // /poultry/i folds 'Poultry' (mirror/import) + 'Kipkenda Poultry' (direct).
+  const sumPoultrySales = (filter) => salesRevenue(filter, isPoultryBU);
   const poultryToday = sumPoultrySales(ftToday);
   const poultryMTD   = sumPoultrySales(ftMTD);
   const poultryYTD   = sumPoultrySales(ftYTD);
@@ -22013,11 +22033,10 @@ function renderYoYAndTrend() {
     return d >= fromDate && d <= toDate;
   }
 
-  // Helper: total income (banked + poultry) and total expenses for a date range
+  // Helper: total income (Sales, all BUs) and total expenses for a date range
   function totalsFor(fromDate, toDate) {
     let income = 0, expenses = 0;
-    (STATE.banked || []).forEach(b => { if (inRange(b.date, fromDate, toDate)) income += (b.amount || 0); });
-    (STATE.poultry || []).forEach(p => { if (inRange(p.date, fromDate, toDate)) income += (p.amount || 0); });
+    income += salesRevenue(function (s) { return inRange(s.date, fromDate, toDate); });  // v6.11.94 — Sales as source of truth
     STATE.expenses.forEach(x => { if (inRange(x.date, fromDate, toDate)) expenses += (x.amount || 0); });
     return { income, expenses, margin: income - expenses };
   }
@@ -22130,10 +22149,11 @@ function showMonthDetail(ym) {
     return dd >= d && dd <= endOfMonth;
   }
   // Compute breakdown
-  const banked = (STATE.banked || []).filter(b => inRange(b.date)).reduce((s,b) => s + (b.amount || 0), 0);
-  const poultry = (STATE.poultry || []).filter(p => inRange(p.date)).reduce((s,p) => s + (p.amount || 0), 0);
-  const eggsIncome = (STATE.poultry || []).filter(p => inRange(p.date) && p.product === 'Eggs').reduce((s,p) => s + (p.amount || 0), 0);
-  const birdsIncome = (STATE.poultry || []).filter(p => inRange(p.date) && (p.product === 'Chicks' || p.product === 'Chicken')).reduce((s,p) => s + (p.amount || 0), 0);
+  // v6.11.94 — month breakdown reads Sales as source of truth
+  const banked = salesRevenue(s => inRange(s.date), isTeaBU);          // Tea revenue
+  const poultry = salesRevenue(s => inRange(s.date), isPoultryBU);
+  const eggsIncome = salesRevenue(s => inRange(s.date) && (s.product || '') === 'Eggs', isPoultryBU);
+  const birdsIncome = salesRevenue(s => inRange(s.date) && ['Chicks','Chicken'].indexOf(s.product || '') >= 0, isPoultryBU);
   const expenses = STATE.expenses.filter(x => inRange(x.date)).reduce((s,x) => s + (x.amount || 0), 0);
   const income = banked + poultry;
   const margin = income - expenses;
@@ -22151,7 +22171,7 @@ function showMonthDetail(ym) {
   backdrop.innerHTML = `
     <div class="trend-modal">
       <h4>${monthLbl}</h4>
-      <div class="modal-row"><span class="lbl">Banked income</span><span class="val">Ksh ${moneyRound(banked)}</span></div>
+      <div class="modal-row"><span class="lbl">Tea income</span><span class="val">Ksh ${moneyRound(banked)}</span></div>
       <div class="modal-row"><span class="lbl">Eggs income</span><span class="val">Ksh ${moneyRound(eggsIncome)}</span></div>
       <div class="modal-row"><span class="lbl">Live birds income</span><span class="val">Ksh ${moneyRound(birdsIncome)}</span></div>
       <div class="modal-row"><span class="lbl"><strong>Total income</strong></span><span class="val"><strong>Ksh ${moneyRound(income)}</strong></span></div>
