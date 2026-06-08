@@ -7325,8 +7325,8 @@ function _iconForUnit(label) {
 }
 
 function _iconForProduct(unitLabel, productLabel) {
-  const u = String(unitLabel || '').toLowerCase();
-  const p = String(productLabel || '').toLowerCase();
+  const u = String(unitLabel || '').toLowerCase().replace(/\s+/g, '');
+  const p = String(productLabel || '').toLowerCase().replace(/\s+/g, '');
   // Tea-specific products
   if (u.indexOf('tea') !== -1) {
     if (p.indexOf('greenleaf') !== -1) return '🍃';
@@ -7383,8 +7383,8 @@ function salesVariantsFor(unitSlug, productSlug) {
 
 /* Default unit suggestion for the form's Unit dropdown, based on context. */
 function _defaultUnitForContext(unitLabel, productLabel) {
-  const u = String(unitLabel || '').toLowerCase();
-  const p = String(productLabel || '').toLowerCase();
+  const u = String(unitLabel || '').toLowerCase().replace(/\s+/g, '');
+  const p = String(productLabel || '').toLowerCase().replace(/\s+/g, '');
   if (u.indexOf('tea') !== -1 && p.indexOf('greenleaf') !== -1) return 'kg';
   if (u.indexOf('tea') !== -1 && p.indexOf('seedling') !== -1) return 'number';
   if (u.indexOf('poultry') !== -1 && p.indexOf('egg') !== -1) return 'trays';
@@ -7398,6 +7398,34 @@ function _defaultUnitForContext(unitLabel, productLabel) {
   if (u.indexOf('hospitality') !== -1 || u.indexOf('room') !== -1) return 'nights';
   if (u.indexOf('machinery') !== -1 || u.indexOf('hire') !== -1) return 'hours';
   return 'number';
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// v6.11.95 — Auto-derive the "For Period" field from the sale date + product.
+// Cheison: poultry uses the date's month (handled by the mirror); tea Green
+// Leaf is paid in arrears so its period is the PREVIOUS month; tea Seedlings
+// (and any other tea product) use the date's own month. Non-tea units return
+// '' so the field stays manual/blank as before. Overridable — operator can
+// still type a different period. Re-runs when the date input changes.
+// ─────────────────────────────────────────────────────────────────────
+function _autoPeriodFor(unitLabel, productLabel, dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const u = String(unitLabel || '').toLowerCase().replace(/\s+/g, '');
+  const p = String(productLabel || '').toLowerCase().replace(/\s+/g, '');
+  if (u.indexOf('tea') === -1) return '';   // tea only; others stay manual
+  let m = d.getMonth(), y = d.getFullYear();
+  if (p.indexOf('greenleaf') !== -1) { m -= 1; if (m < 0) { m = 11; y -= 1; } }  // GL arrears → previous month
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return MONTHS[m] + ' ' + y;
+}
+function _refreshSalePeriod() {
+  const c = SALES_CASCADE;
+  if (!c || !c.unit || !c.product) return;
+  const el = document.getElementById('s-period');
+  const dEl = document.getElementById('s-date');
+  if (el) el.value = _autoPeriodFor(c.unit.label, c.product.label, (dEl && dEl.value) || '');
 }
 
 /* ============================================================
@@ -7603,10 +7631,12 @@ function _enterSalesLevel4() {
   document.getElementById('s-date').value = new Date().toISOString().slice(0, 10);
   document.getElementById('s-qty').value = '';
   document.getElementById('s-amount').value = '';
-  document.getElementById('s-period').value = '';
   document.getElementById('s-reference').value = '';
   document.getElementById('s-notes').value = '';
   document.getElementById('s-method').value = '';
+  // v6.11.95 — auto-derive For Period (tea GL = previous month, else date's month)
+  _refreshSalePeriod();
+  document.getElementById('s-date').onchange = _refreshSalePeriod;
   if (typeof renderSaleDestination === 'function') renderSaleDestination(); // v6.11.54 step 3 — builds list + pre-selects factory variant
 
   // Unit options + default for this context (M2 step 1 — only relevant measures)
@@ -8422,7 +8452,7 @@ async function submitSale() {
     date: date,
     business_unit: c.unit.label,
     product: c.product.label,
-    variant: c.variant ? c.variant.label : '',
+    variant: c.variant ? c.variant.label : (/tea/i.test(c.unit.label) ? c.product.label : ''),  // v6.11.95 — tea: Variant inherits Product
     quantity: qty || null,
     unit: unitSel || '',
     amount: amount,
@@ -8436,7 +8466,7 @@ async function submitSale() {
     receipt_type: '',
     receipt_id: '',
     receipt_issued: false,
-    recorded_from: 'PWA v6.11.36'
+    recorded_from: 'PWA ' + APP_VERSION
   };
   STATE.sales = STATE.sales || [];
   STATE.sales.push(row);
@@ -8445,9 +8475,9 @@ async function submitSale() {
   // Reset form fields (keep context — operator may want to record another in same drill)
   document.getElementById('s-qty').value = '';
   document.getElementById('s-amount').value = '';
-  document.getElementById('s-period').value = '';
   document.getElementById('s-reference').value = '';
   document.getElementById('s-notes').value = '';
+  _refreshSalePeriod();   // v6.11.95 — re-derive For Period for the kept context
   _updateSalesPreview();
   _renderRecentSalesForContext();
 
@@ -9162,7 +9192,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.94';
+const APP_VERSION = 'v6.11.95';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
