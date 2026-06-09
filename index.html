@@ -9194,7 +9194,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.99';
+const APP_VERSION = 'v6.11.100';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -16668,6 +16668,31 @@ async function pushMaizeHarvestToGate(row) {
 // ───────────────────────────────────────────────────────────────────────────
 let _fhAiSuggestion = null;   // { condition, confidence } when the AI proposed one
 let _fhModelPromise = null;   // cached model load (resolved once per session)
+let _fhTfPromise = null;      // lazy TF.js engine load (injected on first scan only)
+
+// v6.11.100 — TF.js is loaded LAZILY (only on the first photo scan), not at app
+// boot, so the ~1MB engine never weighs down normal farm-ops use on a phone.
+// Flock AI already needs network to fetch the model from Vercel, so requiring
+// network for the engine too is consistent; offline it degrades to manual.
+function _fhEnsureTf() {
+  if (typeof tf !== 'undefined') return Promise.resolve(true);
+  if (_fhTfPromise) return _fhTfPromise;
+  _fhTfPromise = new Promise(function (resolve) {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js';
+    s.async = true;
+    s.onload = function () { resolve(typeof tf !== 'undefined'); };
+    s.onerror = function () { _fhTfPromise = null; resolve(false); };  // allow retry next scan
+    document.head.appendChild(s);
+  });
+  return _fhTfPromise;
+}
+
+// v6.11.100 — Maps the model's RAW class names (FLOCK_AI_CLASSES, alphabetical:
+// cocci,healthy,ncd,salmo) to the human Condition labels used in the form dropdown.
+// Keys are lower-cased raw classes. Anything unmapped falls back to its raw name.
+// 'Salmonella' must exist in FLOCK_CONDITIONS for salmo to auto-fill the dropdown.
+const FLOCK_AI_LABELMAP = { 'cocci': 'Coccidiosis', 'healthy': 'Healthy', 'ncd': 'Newcastle (suspected)', 'salmo': 'Salmonella' };
 
 function _fhShowAiResult(html, kind) {
   const el = document.getElementById('fh-ai-result');
@@ -16702,18 +16727,21 @@ async function onFlockPhotoChosen(event) {
     return;
   }
 
-  // Suggestion only. Pre-fill Condition if the suggested class is an available
-  // option, store it, and ask the operator to confirm or change it.
+  // Suggestion only. Pre-fill Condition if the top class is an available option
+  // (now a human label via FLOCK_AI_LABELMAP), store it, and ask the operator to
+  // confirm or override. Method flips to 'ai' at submit only if this is kept.
   _fhAiSuggestion = { condition: res.condition, confidence: res.confidence };
   const condEl = document.getElementById('fh-condition');
   if (condEl && Array.prototype.some.call(condEl.options, function (o) { return o.value === res.condition; })) {
     condEl.value = res.condition;
     if (typeof validateFlockHealth === 'function') validateFlockHealth();
   }
-  const pct = Math.round((res.confidence || 0) * 100);
+  // Top-2 readout for the clinician (Elias): primary + runner-up with percentages.
+  const t = (res.top2 && res.top2.length) ? res.top2 : [{ label: res.condition, p: res.confidence }];
+  const line = t.map(function (x) { return escapeHtml(x.label) + ' ' + Math.round((x.p || 0) * 100) + '%'; }).join(' \u00b7 ');
   _fhShowAiResult(
-    '\uD83E\uDD16 AI suggests <strong>' + escapeHtml(res.condition) + '</strong> (' + pct + '%).<br>' +
-    'Confirm it, or change the Condition above if it\u2019s wrong. The photo was not stored.',
+    '\uD83E\uDD16 AI reads: <strong>' + line + '</strong>.<br>' +
+    'Confirm the Condition above, or change it if the photo says otherwise. The photo was not stored.',
     'suggest'
   );
 }
@@ -16723,22 +16751,40 @@ async function onFlockPhotoChosen(event) {
 async function runFlockAiInference(file) {
   const modelUrl = (tcfg('FLOCK_AI_MODEL_URL', '') || '').trim();
   if (!modelUrl) return { enabled: false };                       // no validated model yet → manual
-  if (typeof tf === 'undefined') return { enabled: false, error: 'engine not loaded' };
-  const classes = (tcfg('FLOCK_AI_CLASSES', '') || 'Healthy,Coccidiosis,Newcastle,Salmonella');
+  const haveTf = await _fhEnsureTf();                             // lazy-load engine on first scan
+  if (!haveTf || typeof tf === 'undefined') return { enabled: false, error: 'engine unavailable (offline?)' };
+  // RAW class order — MUST match the model's training class_names (alphabetical:
+  // cocci,healthy,ncd,salmo). Load-bearing: a wrong order mislabels every scan.
+  const classes = (tcfg('FLOCK_AI_CLASSES', '') || 'cocci,healthy,ncd,salmo');
   const labels = String(classes).split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  // The SavedModel→tfjs conversion produces a GRAPH model → loadGraphModel.
   if (!_fhModelPromise) _fhModelPromise = tf.loadGraphModel(modelUrl);
   const model = await _fhModelPromise;
   const bitmap = await createImageBitmap(file);
-  const logits = tf.tidy(function () {
-    const img = tf.browser.fromPixels(bitmap).resizeBilinear([224, 224]).toFloat().div(255).expandDims(0);
+  // Preprocessing is BAKED INTO the model (Rescaling 1/127.5 − 1, first layer),
+  // so the app feeds RAW 0-255 pixels — do NOT divide by 255 here (double-scaling
+  // would push every input to ≈ −1 and make predictions noise).
+  const out = tf.tidy(function () {
+    const img = tf.browser.fromPixels(bitmap).resizeBilinear([224, 224]).toFloat().expandDims(0);
     return model.predict(img);
   });
-  const probs = Array.from(await logits.data());
-  logits.dispose();
+  const probs = Array.from(await out.data());
+  out.dispose();
   if (bitmap.close) bitmap.close();
-  let best = 0;
-  for (let i = 1; i < probs.length; i++) if (probs[i] > probs[best]) best = i;
-  return { enabled: true, condition: labels[best] || 'Other', confidence: probs[best] || 0 };
+  // Map raw class → human Condition label; rank for a top-2 readout to the clinician.
+  function human(i) {
+    const raw = labels[i] || 'Other';
+    return FLOCK_AI_LABELMAP[raw.toLowerCase()] || raw;
+  }
+  const ranked = probs.map(function (p, i) { return { i: i, p: p }; })
+                      .sort(function (a, b) { return b.p - a.p; });
+  const top2 = ranked.slice(0, 2).map(function (r) { return { label: human(r.i), p: r.p }; });
+  return {
+    enabled: true,
+    condition: top2[0] ? top2[0].label : 'Other',
+    confidence: top2[0] ? top2[0].p : 0,
+    top2: top2
+  };
 }
 
 async function submitFlockHealth() {
