@@ -8697,6 +8697,74 @@ function cloudToLocalSale(r) {
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// v6.11.105 — Poultry Sales deprecation, STEP 1 (shadow / instrumentation only).
+// salesMirrorToPoultry(): rebuild the STATE.poultry row shape from the Sales
+// poultry-mirror rows (business_unit 'Poultry'). cohort_id ← reference,
+// stage ← variant; id uses the SAME synthetic scheme as cloudToLocalPoultry so
+// the two sources are directly comparable. This is the eventual replacement
+// source once the diff proves clean; for now it only feeds the shadow audit.
+// Nothing in the app reads this unless Control_Panel POULTRY_SOURCE='derived'.
+function salesMirrorToPoultry(salesArr) {
+  const out = [];
+  (salesArr || []).forEach(function (s) {
+    if (!s) return;
+    if (!/poultry/i.test(String(s.business_unit || ''))) return;   // mirror rows only
+    const product = String(s.product || '');
+    const quantity = Number(s.quantity) || 0;
+    const amount = Number(s.amount) || 0;
+    out.push({
+      id: 'C-Y-' + s.date + '-' + product + '-' + quantity.toFixed(2) + '-' + amount.toFixed(2),
+      ts: s.ts || (s.date + 'T00:00:00Z'),
+      date: s.date,
+      product: product,
+      stage: s.variant || '',
+      unit: s.unit || '',
+      quantity: quantity,
+      amount: amount,
+      payment_method: s.payment_method || '',
+      buyer: s.buyer || '',
+      cohort_id: s.reference || ''
+    });
+  });
+  return out;
+}
+
+// auditPoultrySource(): diff the sheet-fed list vs the Sales-derived list on the
+// metrics that actually drive stock — eggs-sold-per-cohort, birds-sold-per-cohort,
+// row count, total amount. Logs ✓/✗ to console and stashes the result on
+// window.__poultryAudit for inspection. Pure read; changes nothing.
+function auditPoultrySource(sheetList, derivedList) {
+  const EGGS_PER_TRAY = 30;
+  const trayU = function (u) { return /tray|crate/i.test(String(u || '')); };
+  function maps(list) {
+    const egg = {}, bird = {}; let n = 0, amt = 0;
+    (list || []).forEach(function (s) {
+      if (!s) return; n++; amt += Number(s.amount) || 0;
+      const id = String(s.cohort_id || '').trim();
+      if (s.product === 'Eggs') {
+        if (id) egg[id] = (egg[id] || 0) + (Number(s.quantity) || 0) * (trayU(s.unit) ? EGGS_PER_TRAY : 1);
+      } else {
+        if (id) bird[id] = (bird[id] || 0) + (Number(s.quantity) || 0);
+      }
+    });
+    return { egg: egg, bird: bird, n: n, amt: amt };
+  }
+  const A = maps(sheetList), B = maps(derivedList);
+  const diffs = [];
+  if (A.n !== B.n) diffs.push('rowcount sheet=' + A.n + ' derived=' + B.n);
+  if (Math.round(A.amt) !== Math.round(B.amt)) diffs.push('amount sheet=' + Math.round(A.amt) + ' derived=' + Math.round(B.amt));
+  const eggIds = {}; Object.keys(A.egg).forEach(function (k) { eggIds[k] = 1; }); Object.keys(B.egg).forEach(function (k) { eggIds[k] = 1; });
+  Object.keys(eggIds).forEach(function (id) { if ((A.egg[id] || 0) !== (B.egg[id] || 0)) diffs.push('eggs[' + id + '] sheet=' + (A.egg[id] || 0) + ' derived=' + (B.egg[id] || 0)); });
+  const birdIds = {}; Object.keys(A.bird).forEach(function (k) { birdIds[k] = 1; }); Object.keys(B.bird).forEach(function (k) { birdIds[k] = 1; });
+  Object.keys(birdIds).forEach(function (id) { if ((A.bird[id] || 0) !== (B.bird[id] || 0)) diffs.push('birds[' + id + '] sheet=' + (A.bird[id] || 0) + ' derived=' + (B.bird[id] || 0)); });
+  const result = { ok: diffs.length === 0, sheetRows: A.n, derivedRows: B.n, diffs: diffs, at: new Date().toISOString() };
+  try { window.__poultryAudit = result; } catch (e) {}
+  if (result.ok) console.log('[poultry-source-audit] \u2713 sheet & derived AGREE (' + A.n + ' rows, Ksh ' + Math.round(A.amt) + ')');
+  else console.warn('[poultry-source-audit] \u2717 MISMATCH (' + diffs.length + '):', diffs);
+  return result;
+}
+
 /* v6.11.1 — pushSaleToGate. Grounded in real Apps Script protocol:
    action='sale' routes to writeSaleEntry (Apps Script v5.0.50+), which 
    calls the new appendRowGeneric primitive. Payload fields match 
@@ -9332,7 +9400,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.104';
+const APP_VERSION = 'v6.11.105';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -12581,7 +12649,28 @@ async function applyCloudResponse(data) {
     await storageSet(K_BANKED, STATE.banked);
   }
   if (Array.isArray(data.poultry)) {
-    STATE.poultry = data.poultry.map(cloudToLocalPoultry);
+    const sheetPoultry = data.poultry.map(cloudToLocalPoultry);
+    // v6.11.105 — Poultry Sales deprecation STEP 1 (shadow). Derive the same list
+    // from the Sales poultry-mirrors and diff it against the sheet-fed list every
+    // sync. Default source is 'sheet' (zero behaviour change). Flip Control_Panel
+    // POULTRY_SOURCE='derived' for Step 2; flip back to 'sheet' = instant recoil.
+    let derivedPoultry = [];
+    try {
+      const salesLocal = Array.isArray(data.sales) ? data.sales.map(cloudToLocalSale).filter(Boolean)
+                                                   : (STATE.sales || []);
+      derivedPoultry = salesMirrorToPoultry(salesLocal);
+    } catch (e) { console.warn('[poultry-source] derive failed:', e && e.message); }
+    try { auditPoultrySource(sheetPoultry, derivedPoultry); } catch (e) { console.warn('[poultry-source] audit failed:', e && e.message); }
+
+    const src = String((STATE.controlPanel && STATE.controlPanel.POULTRY_SOURCE) || 'sheet').toLowerCase();
+    let chosen = (src === 'derived') ? derivedPoultry : sheetPoultry;
+    // RECOIL LANDING: never let a bad flag flip zero out stock. If 'derived' comes
+    // back empty while the sheet has rows, stay on the sheet and shout.
+    if (src === 'derived' && (!derivedPoultry || !derivedPoultry.length) && sheetPoultry.length) {
+      console.warn('[poultry-source] derived empty but sheet has ' + sheetPoultry.length + ' rows \u2014 staying on SHEET (recoil)');
+      chosen = sheetPoultry;
+    }
+    STATE.poultry = chosen;
     await storageSet(K_POULTRY, STATE.poultry);
   }
   // v6.11.0 — Unified Sales hydration. Apps Script returns data.sales when 
