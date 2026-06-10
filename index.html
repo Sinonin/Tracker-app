@@ -4882,9 +4882,11 @@
           </div>
         </div>
 
-        <!-- Quantity row — labeled dynamically based on product context -->
-        <div class="pair">
+        <!-- v6.11.101 — Quantity · Unit price · Unit (3-up). Unit price drives a
+             computed, LOCKED Amount for counted goods (no free-typed prices). -->
+        <div class="pair" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.6rem">
           <div class="field"><label id="s-qty-label">Quantity</label><input type="number" id="s-qty" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+          <div class="field"><label id="s-unitprice-label">Unit price (Ksh)</label><input type="number" id="s-unitprice" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
           <div class="field">
             <label>Unit</label>
             <select id="s-unit">
@@ -4903,12 +4905,25 @@
           </div>
         </div>
 
-        <div class="field"><label>Amount received (Ksh)</label><input type="number" id="s-amount" inputmode="decimal" step="0.01" min="0" placeholder="0" style="font-family:'Fraunces',serif;font-size:1.1rem"></div>
+        <!-- v6.11.101 — Discount (Ksh) · Amount. Amount is computed (qty × unit
+             price − discount) and read-only for counted goods. -->
+        <div class="pair">
+          <div class="field"><label>Discount (Ksh)</label><input type="number" id="s-discount" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+          <div class="field"><label>Amount received (Ksh)</label><input type="number" id="s-amount" inputmode="decimal" step="0.01" min="0" placeholder="0" style="font-family:'Fraunces',serif;font-size:1.1rem"></div>
+        </div>
+
+        <!-- v6.11.101 — Discount reason: shown only when a discount is applied,
+             required before submit. Control_Panel DISCOUNT_REASONS (dropdown, not
+             free text). Captured at entry for governance; not persisted (event). -->
+        <div class="field" id="s-discount-reason-field" style="display:none">
+          <label>Discount reason</label>
+          <select id="s-discount-reason"><option value="">— Select reason —</option></select>
+        </div>
 
         <!-- Auto-prefill / variance row — shown when expected math is known (e.g. tea) -->
         <div id="s-expected-row" class="calc-card" style="display:none;margin-top:0.4rem;padding:0.6rem 0.8rem">
           <div style="display:flex;justify-content:space-between;align-items:baseline">
-            <span class="lbl" style="font-size:0.78rem">Expected net (auto)</span>
+            <span class="lbl" style="font-size:0.78rem">Calculated (auto)</span>
             <span style="font-family:'IBM Plex Mono',monospace;font-size:0.9rem" id="s-expected-val">Ksh —</span>
           </div>
           <div id="s-variance-line" style="display:none;margin-top:0.3rem;font-size:0.75rem;color:var(--brass)"></div>
@@ -7633,6 +7648,13 @@ function _enterSalesLevel4() {
   document.getElementById('s-date').value = new Date().toISOString().slice(0, 10);
   document.getElementById('s-qty').value = '';
   document.getElementById('s-amount').value = '';
+  // v6.11.101 — reset the unit-price calculator fields for the new context
+  document.getElementById('s-unitprice').value = '';
+  document.getElementById('s-discount').value = '';
+  var _drEl = document.getElementById('s-discount-reason'); if (_drEl) _drEl.value = '';
+  var _drField = document.getElementById('s-discount-reason-field'); if (_drField) _drField.style.display = 'none';
+  var _amtReset = document.getElementById('s-amount'); if (_amtReset) { _amtReset.readOnly = false; _amtReset.style.opacity = ''; }
+  _populateDiscountReasons();
   document.getElementById('s-reference').value = '';
   document.getElementById('s-notes').value = '';
   document.getElementById('s-method').value = '';
@@ -7644,6 +7666,7 @@ function _enterSalesLevel4() {
   // Unit options + default for this context (M2 step 1 — only relevant measures)
   _populateSalesUnitOptions(c.unit.label, c.product.label);
   document.getElementById('s-unit').value = _defaultUnitForContext(c.unit.label, c.product.label);
+  _lastSaleUnit = document.getElementById('s-unit').value;   // v6.11.101 — sync so first preview doesn't false-clear
 
   // Revenue type default
   document.getElementById('s-revtype').value = _defaultRevTypeForContext(c.unit.label, c.product.label);
@@ -8324,6 +8347,22 @@ function renderSalesPanel() {
   if (typeof initReceiptFeature === 'function') initReceiptFeature();
 }
 
+/* v6.11.101 — Sale unit-price calculator: module state + helpers. */
+let _lastSaleUnit = null;
+function _round2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
+
+/* Discount-reason options from Control_Panel DISCOUNT_REASONS (comma list).
+   Falls back to the three standard concession categories so it works unconfigured.
+   Dropdown only — never free text (keeps with the de-democratised-input discipline). */
+function _populateDiscountReasons() {
+  const sel = document.getElementById('s-discount-reason');
+  if (!sel) return;
+  const raw = tcfg('DISCOUNT_REASONS', 'Trade discount, Loyalty premium, Promotion');
+  const opts = String(raw || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  sel.innerHTML = '<option value="">\u2014 Select reason \u2014</option>'
+    + opts.map(function (o) { return '<option value="' + escapeHtml(o) + '">' + escapeHtml(o) + '</option>'; }).join('');
+}
+
 /* Live preview + validation on form fields */
 function _updateSalesPreview() {
   const date = document.getElementById('s-date').value;
@@ -8334,22 +8373,71 @@ function _updateSalesPreview() {
   // hasn't typed an amount yet, fill the amount field with 0. Avoids 
   // forcing them to type 0 for the truthful "no payment" record (Cheison's
   // catch — typing 1 to activate Record Sale lied to the books).
-  const amtEl = document.getElementById('s-amount');
-  if (method === 'GIFT' && amtEl.value === '') {
-    amtEl.value = '0';
-  }
-  const amount = parseFloat(amtEl.value) || 0;
-  
   const unitSel = document.getElementById('s-unit').value;
+  const amtEl = document.getElementById('s-amount');
+  const upEl = document.getElementById('s-unitprice');
+  const discEl = document.getElementById('s-discount');
+  const reasonField = document.getElementById('s-discount-reason-field');
+  const reasonEl = document.getElementById('s-discount-reason');
+  const expRow = document.getElementById('s-expected-row');
+
+  // v6.11.101 — Clear a stale unit price + discount when the Unit changes (a
+  // per-tray price must never silently carry over onto per-egg, etc.).
+  if (_lastSaleUnit !== null && _lastSaleUnit !== unitSel) {
+    if (upEl) upEl.value = '';
+    if (discEl) discEl.value = '';
+    if (reasonEl) reasonEl.value = '';
+  }
+  _lastSaleUnit = unitSel;
+
+  const priced = !!unitSel && unitSel !== 'lumpsum';   // counted good → calculator applies
+  const unitPrice = upEl ? (parseFloat(upEl.value) || 0) : 0;
+  let discount = discEl ? (parseFloat(discEl.value) || 0) : 0;
+  if (discount < 0) { discount = 0; if (discEl) discEl.value = ''; }
+
+  if (method === 'GIFT') {
+    // v6.11.4 — Gift = no payment is the truth → amount 0; calculator off.
+    if (amtEl.value === '') amtEl.value = '0';
+    amtEl.readOnly = false; amtEl.style.opacity = '';
+    if (reasonField) reasonField.style.display = 'none';
+    if (expRow) expRow.style.display = 'none';
+  } else if (priced) {
+    // v6.11.101 — Counted good: Amount = qty × unit price − discount, COMPUTED
+    // and LOCKED (no free-typed "price democracy"). A discount needs a reason.
+    const gross = qty * unitPrice;
+    if (discount > gross) { discount = gross; if (discEl) discEl.value = String(_round2(gross)); }
+    const net = Math.max(0, gross - discount);
+    amtEl.value = (unitPrice > 0 && qty > 0) ? String(_round2(net)) : '';
+    amtEl.readOnly = true; amtEl.style.opacity = '0.85';
+    if (reasonField) reasonField.style.display = (discount > 0) ? '' : 'none';
+    if (expRow) {
+      if (unitPrice > 0 && qty > 0) {
+        expRow.style.display = '';
+        const ev = document.getElementById('s-expected-val');
+        const ed = document.getElementById('s-deduction-detail');
+        if (ev) ev.textContent = 'Ksh ' + moneyRound(net);
+        if (ed) ed.textContent = qty.toLocaleString('en-KE') + ' \u00d7 ' + unitPrice
+          + ' = Ksh ' + moneyRound(gross)
+          + (discount > 0 ? '   \u2212 ' + moneyRound(discount) + ' (disc)' : '');
+      } else { expRow.style.display = 'none'; }
+    }
+  } else {
+    // Lump sum / amount-only revenue (Sireet dividend, training fee): free Amount.
+    amtEl.readOnly = false; amtEl.style.opacity = '';
+    if (reasonField) reasonField.style.display = 'none';
+    if (expRow) expRow.style.display = 'none';
+  }
+
+  const amount = parseFloat(amtEl.value) || 0;
   const revtype = document.getElementById('s-revtype').value;
   const buyer = _resolveSaleDest();
 
-  // Validation: date + method + amount required. Qty optional (lump-sum 
-  // sales possible — Sireet shares dividend, training fee, etc.).
-  // v6.11.4 — Gift method allows amount=0 (no payment is the truth). 
-  // Other methods require amount > 0 to guard against typo-empty submits.
+  // Validation: date + method + amount required. Qty optional (lump-sum sales
+  // possible — Sireet shares dividend, training fee, etc.). Gift allows amount=0.
+  // v6.11.101 — a discount on a counted good must carry a reason before submit.
   const amountValid = (method === 'GIFT') ? amount >= 0 : amount > 0;
-  const valid = !!date && !!method && amountValid;
+  const reasonOk = !(priced && discount > 0) || !!(reasonEl && reasonEl.value);
+  const valid = !!date && !!method && amountValid && reasonOk;
   document.getElementById('s-submit').disabled = !valid;
 
   // Quantity label update
@@ -8438,6 +8526,15 @@ async function submitSale() {
   const amountValid = (method === 'GIFT') ? amount >= 0 : amount > 0;
   if (!date || !method || !amountValid) return;
 
+  // v6.11.101 — A discount on a counted good must name a reason (governance
+  // friction; the reason is captured at entry but not persisted — it's an event).
+  const _priced = !!unitSel && unitSel !== 'lumpsum';
+  const _disc = parseFloat((document.getElementById('s-discount') || {}).value) || 0;
+  if (_priced && _disc > 0) {
+    const _rsn = document.getElementById('s-discount-reason');
+    if (!_rsn || !_rsn.value) { showToast('Select a discount reason', 2600); return; }
+  }
+
   // First-submit gibberish guard (same pattern as banked/poultry forms)
   if (typeof isSessionConfirmed === 'function' && !isSessionConfirmed('sale')) {
     const summaryHtml = '<div><strong>' + escapeHtml(c.unit.label) + ' · ' + escapeHtml(c.product.label) + (c.variant ? ' · ' + escapeHtml(c.variant.label) : '') + '</strong></div>'
@@ -8477,6 +8574,11 @@ async function submitSale() {
   // Reset form fields (keep context — operator may want to record another in same drill)
   document.getElementById('s-qty').value = '';
   document.getElementById('s-amount').value = '';
+  // v6.11.101 — reset the calculator fields too
+  document.getElementById('s-unitprice').value = '';
+  document.getElementById('s-discount').value = '';
+  var _drClr = document.getElementById('s-discount-reason'); if (_drClr) _drClr.value = '';
+  var _drfClr = document.getElementById('s-discount-reason-field'); if (_drfClr) _drfClr.style.display = 'none';
   document.getElementById('s-reference').value = '';
   document.getElementById('s-notes').value = '';
   _refreshSalePeriod();   // v6.11.95 — re-derive For Period for the kept context
@@ -8514,11 +8616,23 @@ async function submitSale() {
 
 /* Wire form input listeners + back buttons + submit. Idempotent. */
 function _wireSalesForm() {
-  ['s-date','s-qty','s-amount','s-method','s-unit','s-revtype','s-dest-select','s-dest-new','s-period','s-reference','s-notes'].forEach(function (id) {
+  ['s-date','s-qty','s-unitprice','s-discount','s-discount-reason','s-amount','s-method','s-unit','s-revtype','s-dest-select','s-dest-new','s-period','s-reference','s-notes'].forEach(function (id) {
     const el = document.getElementById(id);
     if (!el) return;
     el.addEventListener('input', _updateSalesPreview);
     el.addEventListener('change', _updateSalesPreview);
+  });
+  // v6.11.101 — Toast the computed total once the operator finishes the unit price.
+  const sUp = document.getElementById('s-unitprice');
+  if (sUp) sUp.addEventListener('blur', function () {
+    const u = document.getElementById('s-unit').value;
+    const q = parseFloat(document.getElementById('s-qty').value) || 0;
+    const p = parseFloat(sUp.value) || 0;
+    let d = parseFloat(document.getElementById('s-discount').value) || 0; if (d < 0) d = 0;
+    if (u && u !== 'lumpsum' && p > 0 && q > 0) {
+      const net = Math.max(0, q * p - d);
+      showToast(q.toLocaleString('en-KE') + ' ' + u + ' \u00d7 ' + p + ' = Ksh ' + moneyRound(net), 2600);
+    }
   });
   // v6.11.54 step 3 — payment flips Gift⇄sale (swaps the list); select toggles
   // the Add-new/Other reveal; new-input tidies on blur.
@@ -9194,7 +9308,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.100';
+const APP_VERSION = 'v6.11.101';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
