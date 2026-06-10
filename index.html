@@ -4343,8 +4343,11 @@
       <div class="field"><label id="y-cohort-label">Cohort</label>
         <select id="y-cohort"><option value="">— Pick a stage first —</option></select>
       </div>
-      <div class="pair">
+      <!-- v6.11.102 — Quantity · Unit price · Unit (3-up). Operator enters the unit
+           price; Amount auto-computes (qty × price − discount) and locks. No typed total. -->
+      <div class="pair" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.6rem">
         <div class="field"><label>Quantity</label><input type="number" id="y-quantity" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+        <div class="field"><label id="y-unitprice-label">Unit price (Ksh)</label><input type="number" id="y-unitprice" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
         <div class="field"><label>Unit</label><select id="y-unit"></select></div>
       </div>
       <!-- v6.11.77 — Multi-batch egg sale (Faith, 05 Jun 2026): when one batch
@@ -4358,7 +4361,19 @@
         <button type="button" id="y-add-source" style="background:none;border:1px dashed #c9c2b6;border-radius:0.5rem;padding:0.45rem 0.7rem;font-family:'Fraunces',serif;font-size:0.95rem;cursor:pointer;opacity:0.85;margin-top:0.3rem">+ Sell from another batch</button>
         <div id="y-extra-tally" style="font-size:0.85rem;opacity:0.75;margin-top:0.35rem"></div>
       </div>
-      <div class="field"><label>Amount (Ksh)</label><input type="number" id="y-amount" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+      <!-- v6.11.102 — Discount (Ksh) · Amount. Amount is computed (qty × unit price
+           − discount) and locked for sales; Gift keeps amount 0, editable. -->
+      <div class="pair">
+        <div class="field"><label>Discount (Ksh)</label><input type="number" id="y-discount" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+        <div class="field"><label>Amount (Ksh)</label><input type="number" id="y-amount" inputmode="decimal" step="0.01" min="0" placeholder="0" style="font-family:'Fraunces',serif;font-size:1.1rem"></div>
+      </div>
+      <div id="y-calc-line" style="display:none;font-size:0.8rem;color:var(--brass);margin:-0.15rem 0 0.4rem;font-family:'IBM Plex Mono',monospace"></div>
+      <!-- v6.11.102 — Discount reason: shown only when discount>0, required before submit.
+           Control_Panel DISCOUNT_REASONS (dropdown, not free text). Not persisted — an event. -->
+      <div class="field" id="y-discount-reason-field" style="display:none">
+        <label>Discount reason</label>
+        <select id="y-discount-reason"><option value="">— Select reason —</option></select>
+      </div>
       <div class="field"><label>Payment method</label><select id="y-payment"></select></div>
       <!-- v6.11.54 — Strict Destination control replaces free-text buyer
            (Cheison 02 Jun 2026 Verden: "Delete the posting by…" landed in this
@@ -8354,8 +8369,8 @@ function _round2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
 /* Discount-reason options from Control_Panel DISCOUNT_REASONS (comma list).
    Falls back to the three standard concession categories so it works unconfigured.
    Dropdown only — never free text (keeps with the de-democratised-input discipline). */
-function _populateDiscountReasons() {
-  const sel = document.getElementById('s-discount-reason');
+function _populateDiscountReasons(selId) {
+  const sel = document.getElementById(selId || 's-discount-reason');
   if (!sel) return;
   const raw = tcfg('DISCOUNT_REASONS', 'Trade discount, Loyalty premium, Promotion');
   const opts = String(raw || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
@@ -9308,7 +9323,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.101';
+const APP_VERSION = 'v6.11.102';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -13132,6 +13147,7 @@ function populateDropdowns() {
   // be moved any way that clears them, including gifting to staff."
   if (typeof populatePoultryPaymentDropdown === 'function') populatePoultryPaymentDropdown();
   if (typeof renderPoultryDestination === 'function') renderPoultryDestination(); // v6.11.54
+  if (typeof _populateDiscountReasons === 'function') _populateDiscountReasons('y-discount-reason'); // v6.11.102
 
   const todayIso = new Date().toISOString().slice(0,10);
   document.getElementById('q-date').value = todayIso;
@@ -15318,6 +15334,10 @@ function yValues() {
     unit: document.getElementById('y-unit').value,
     quantity: parseFloat(document.getElementById('y-quantity').value) || 0,
     amount: parseFloat(document.getElementById('y-amount').value) || 0,
+    // v6.11.102 — unit-price calculator inputs (compute-only; not persisted)
+    unit_price: parseFloat((document.getElementById('y-unitprice') || {}).value) || 0,
+    discount: parseFloat((document.getElementById('y-discount') || {}).value) || 0,
+    discount_reason: (document.getElementById('y-discount-reason') || {}).value || '',
     payment_method: document.getElementById('y-payment').value,
     buyer: _resolvePoultryDest(),
     // v6.11.70 — Ancillary egg-sale charges (eggs only); 0 when blank/non-egg.
@@ -15775,12 +15795,70 @@ function populatePoultryCohortDropdown() {
   cohortEl.innerHTML = html;
 }
 
+/* v6.11.102 — Poultry sale unit-price calculator. Operator enters the unit price;
+   Amount = (total egg-equivalent ÷ unit's egg factor) × unit price − discount, and is
+   LOCKED. Multi-batch eggs sum across sources by egg-equivalent; birds price per head
+   (egg factor 1). Gift = no payment → amount 0, calculator off. Returns
+   { reasonMissing } so the preview can gate submit on an un-named discount. */
+function _computePoultryAmount() {
+  const amtEl = document.getElementById('y-amount');
+  const upEl = document.getElementById('y-unitprice');
+  const discEl = document.getElementById('y-discount');
+  const reasonField = document.getElementById('y-discount-reason-field');
+  const reasonEl = document.getElementById('y-discount-reason');
+  const calcLine = document.getElementById('y-calc-line');
+  if (!amtEl) return { reasonMissing: false };
+  const method = (document.getElementById('y-payment') || {}).value || '';
+  const pUnit = (document.getElementById('y-unit') || {}).value || '';
+  const pQty = Number((document.getElementById('y-quantity') || {}).value) || 0;
+  const unitPrice = upEl ? (parseFloat(upEl.value) || 0) : 0;
+  let discount = discEl ? (parseFloat(discEl.value) || 0) : 0;
+  if (discount < 0) { discount = 0; if (discEl) discEl.value = ''; }
+
+  // Gift = no payment is the truth → amount 0; calculator + discount off.
+  if (method === 'Gift') {
+    amtEl.readOnly = false; amtEl.style.opacity = '';
+    if (reasonField) reasonField.style.display = 'none';
+    if (calcLine) calcLine.style.display = 'none';
+    return { reasonMissing: false };
+  }
+
+  // Total egg-equivalent across primary + extra batches (birds: head count).
+  const extras = (typeof collectExtraEggSources === 'function') ? collectExtraEggSources() : [];
+  const totalEquiv = _eggsFromQtyUnit(pQty, pUnit)
+    + extras.reduce(function (a, s) { return a + _eggsFromQtyUnit(s.qty, s.unit || pUnit); }, 0);
+  const eggFactor = _isTrayUnit(pUnit) ? EGGS_PER_TRAY_SALE : 1;
+  const perEgg = eggFactor ? (unitPrice / eggFactor) : unitPrice;
+  const gross = totalEquiv * perEgg;
+  if (discount > gross) { discount = gross; if (discEl) discEl.value = String(_round2(gross)); }
+  const net = Math.max(0, gross - discount);
+
+  amtEl.value = (unitPrice > 0 && totalEquiv > 0) ? String(_round2(net)) : '';
+  amtEl.readOnly = true; amtEl.style.opacity = '0.85';
+  if (reasonField) reasonField.style.display = (discount > 0) ? '' : 'none';
+
+  if (calcLine) {
+    if (unitPrice > 0 && totalEquiv > 0) {
+      calcLine.style.display = '';
+      const single = extras.length === 0;
+      const lead = single
+        ? (pQty + ' ' + (pUnit || 'unit') + ' \u00d7 ' + unitPrice)
+        : (totalEquiv + ' eggs \u00d7 ' + _round2(perEgg));
+      calcLine.textContent = lead + ' = Ksh ' + moneyRound(gross)
+        + (discount > 0 ? '   \u2212 ' + moneyRound(discount) + ' = Ksh ' + moneyRound(net) : '');
+    } else { calcLine.style.display = 'none'; }
+  }
+
+  return { reasonMissing: (discount > 0) && !(reasonEl && reasonEl.value) };
+}
+
 function updatePoultryPreview() {
+  const calc = _computePoultryAmount();   // v6.11.102 — compute + lock y-amount first
   const v = yValues();
   // v6.9.21 — Gifts are zero-revenue transactions (broken/small eggs given 
   // to staff). Amount > 0 is not required when payment_method = 'Gift'.
   const isGift = v.payment_method === 'Gift';
-  const valid = v.date && v.product && v.stage && v.unit && v.quantity > 0 && (isGift || v.amount > 0) && v.payment_method && _poultryDestFilled() && !!v.cohort_id;
+  const valid = v.date && v.product && v.stage && v.unit && v.quantity > 0 && (isGift || v.amount > 0) && v.payment_method && _poultryDestFilled() && !!v.cohort_id && !calc.reasonMissing;
   document.getElementById('y-submit').disabled = !valid;
   const preview = document.getElementById('y-preview');
   if (!valid) { preview.style.display = 'none'; return; }
@@ -16080,6 +16158,12 @@ async function submitPoultry() {
   const isGiftSubmit = v.payment_method === 'Gift';
   if (!isGiftSubmit && v.amount <= 0) return;
 
+  // v6.11.102 — A discount must name a reason (governance friction; captured at
+  // entry, not persisted — discounting is an event, e.g. a loyal customer at 23/egg).
+  if (!isGiftSubmit && v.discount > 0 && !v.discount_reason) {
+    showToast('Select a discount reason', 2600); return;
+  }
+
   // v6.9.9 — Zero-population sale block. Sealed § 6.x principle (20 May 2026,
   // Elias dwarf-layer Quarantine incident): rejects any sale that would push
   // the stage's live count below zero. Pre-v6.9.9 the system "generously"
@@ -16195,6 +16279,12 @@ async function submitPoultry() {
   // typically records multiple sales in same product/payment session.
   document.getElementById('y-quantity').value = '';
   document.getElementById('y-amount').value = '';
+  // v6.11.102 — reset the unit-price calculator fields
+  { const _up = document.getElementById('y-unitprice'); if (_up) _up.value = '';
+    const _dsc = document.getElementById('y-discount'); if (_dsc) _dsc.value = '';
+    const _dr = document.getElementById('y-discount-reason'); if (_dr) _dr.value = '';
+    const _drf = document.getElementById('y-discount-reason-field'); if (_drf) _drf.style.display = 'none';
+    const _cl = document.getElementById('y-calc-line'); if (_cl) _cl.style.display = 'none'; }
   { const _dc = document.getElementById('y-delivery-charge'); if (_dc) _dc.value = '';
     const _cc = document.getElementById('y-crate-charge'); if (_cc) _cc.value = ''; }  // v6.11.70
   { const _ds = document.getElementById('y-dest-select'); if (_ds) _ds.value = '';
@@ -28277,12 +28367,38 @@ function showUpdateBanner() {
   }
 
   // Poultry Sales
-  ['y-date','y-product','y-stage','y-cohort','y-unit','y-quantity','y-amount','y-payment','y-dest-select','y-dest-new'].forEach(id => {
+  ['y-date','y-product','y-stage','y-cohort','y-unit','y-quantity','y-unitprice','y-discount','y-discount-reason','y-amount','y-payment','y-dest-select','y-dest-new'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.addEventListener('input', updatePoultryPreview);
     el.addEventListener('change', updatePoultryPreview);
   });
+  // v6.11.102 — Unit changed: clear a stale unit price + discount (a per-tray
+  // price must not silently carry onto per-egg, etc.).
+  const yUnitEl = document.getElementById('y-unit');
+  if (yUnitEl && !yUnitEl.dataset.upWired) {
+    yUnitEl.dataset.upWired = '1';
+    yUnitEl.addEventListener('change', () => {
+      const up = document.getElementById('y-unitprice'); if (up) up.value = '';
+      const dc = document.getElementById('y-discount'); if (dc) dc.value = '';
+      const dr = document.getElementById('y-discount-reason'); if (dr) dr.value = '';
+      updatePoultryPreview();
+    });
+  }
+  // v6.11.102 — Toast the computed total once the operator finishes the unit price.
+  const yUp = document.getElementById('y-unitprice');
+  if (yUp && !yUp.dataset.tWired) {
+    yUp.dataset.tWired = '1';
+    yUp.addEventListener('blur', () => {
+      const u = (document.getElementById('y-unit') || {}).value || '';
+      const q = Number((document.getElementById('y-quantity') || {}).value) || 0;
+      const p = parseFloat(yUp.value) || 0;
+      const amt = parseFloat((document.getElementById('y-amount') || {}).value) || 0;
+      if (u && p > 0 && q > 0 && amt > 0) {
+        showToast(q.toLocaleString('en-KE') + ' ' + u + ' \u00d7 ' + p + ' = Ksh ' + moneyRound(amt), 2600);
+      }
+    });
+  }
   // v6.11.82 — primary batch change re-checks live over-draw + re-filters extra rows
   const yCohortLive = document.getElementById('y-cohort');
   if (yCohortLive && !yCohortLive.dataset.odWired) {
