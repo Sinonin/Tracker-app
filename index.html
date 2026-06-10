@@ -4451,8 +4451,17 @@
            Control_Panel FLOCK_AI_MODEL_URL flag is installed; degrades to manual.
            The photo is used for on-device inference only — never uploaded or stored. -->
       <div class="field" style="margin-top:0.5rem">
-        <button type="button" class="export-btn" id="fh-scan-btn" style="width:100%" onclick="document.getElementById('fh-photo').click()">📷 Scan flock photo (beta)</button>
+        <!-- v6.11.104 — two photo paths: live camera (capture="environment") AND
+             storage upload (no capture). Some phones forced the camera and never
+             offered the gallery, so Faith's separately-taken photos couldn't be
+             scanned. Both buttons feed the same handler; the photo is used for
+             on-device inference only — never uploaded or stored. -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+          <button type="button" class="export-btn" id="fh-scan-btn" onclick="document.getElementById('fh-photo').click()">📷 Take photo</button>
+          <button type="button" class="export-btn" id="fh-upload-btn" onclick="document.getElementById('fh-photo-upload').click()">🖼️ Upload photo</button>
+        </div>
         <input type="file" id="fh-photo" accept="image/*" capture="environment" style="display:none" onchange="onFlockPhotoChosen(event)">
+        <input type="file" id="fh-photo-upload" accept="image/*" style="display:none" onchange="onFlockPhotoChosen(event)">
         <div id="fh-ai-result" style="display:none;margin-top:0.5rem;padding:0.6rem 0.7rem;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:0.82rem;line-height:1.45"></div>
       </div>
       <div class="field"><label>Date</label><input type="date" id="fh-date" onchange="validateFlockHealth()"></div>
@@ -9323,7 +9332,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.103';
+const APP_VERSION = 'v6.11.104';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
