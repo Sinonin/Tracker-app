@@ -9400,7 +9400,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.105';
+const APP_VERSION = 'v6.11.106';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -12276,7 +12276,7 @@ async function cloudFetch(since) {
   // continues in the background until network/browser drops it. For our 
   // ~50KB JSON payload over 4G, that's fine. The 20-sec rejection just 
   // tells US (the caller) to give up waiting. No memory leak in practice.
-  const TIMEOUT_MS = 20000;
+  const TIMEOUT_MS = 30000;  // v6.11.106 — was 20000; doGet outgrew 20s as Sales+Poultry sheets grew. Temporary ceiling while we slim the doGet (Path B retires the Poultry Sales read).
   const timeoutPromise = new Promise((_, reject) =>
     setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS)
   );
