@@ -8030,7 +8030,7 @@ async function _recStampSale(saleId, typeLabel, number) {
   // Durable server stamp so it survives cloud re-hydration.
   if (navigator.onLine && typeof TENANT_APPS_SCRIPT_URL !== 'undefined' && TENANT_APPS_SCRIPT_URL) {
     try {
-      await fetch(TENANT_APPS_SCRIPT_URL, {
+      await gatePost_(TENANT_APPS_SCRIPT_URL, {
         method: 'POST', mode: 'cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
@@ -8140,7 +8140,7 @@ async function _recAllocateNumber(type) {
   if (!navigator.onLine) return { ok: false, offline: true };
   if (typeof TENANT_APPS_SCRIPT_URL === 'undefined' || !TENANT_APPS_SCRIPT_URL) return { ok: false };
   try {
-    const res = await fetch(TENANT_APPS_SCRIPT_URL, {
+    const res = await gatePost_(TENANT_APPS_SCRIPT_URL, {
       method: 'POST', mode: 'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
@@ -8799,7 +8799,7 @@ async function pushSaleToGate(row) {
       },
       source: `PWA ${APP_VERSION} sale`
     };
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -9377,6 +9377,42 @@ const TENANT_APPS_SCRIPT_URL = (function () {
 const CLOUD_ENDPOINT = TENANT_APPS_SCRIPT_URL;
 
 /* ============================================================
+   v6.11.107 — SECURITY FIX 3 (client half): gated write-token
+   ============================================================
+   Per-tenant write token, read from the same config.js that carries
+   appsScriptUrl: window.TENANT_CONFIG.writeToken. gatePost_ (below)
+   injects it into every gate request body. EMPTY when unconfigured →
+   gatePost_ injects nothing → behaviour is byte-identical to v6.11.106.
+   The server check (AS v5.0.80) stays INERT until REQUIRE_WRITE_TOKEN=TRUE
+   in Control_Panel, so this ships safe and only arms once BOTH sides carry
+   the matching token (config.js writeToken === Control_Panel WRITE_TOKEN).
+   NB: a token in client config is extractable from the bundle — it stops
+   casual/accidental/automated writes to the public /exec URL, not a
+   determined attacker. Real per-user auth is the heavier future fix. */
+const TENANT_WRITE_TOKEN = (function () {
+  const cfg = (typeof window !== 'undefined' && window.TENANT_CONFIG) || null;
+  return cfg && typeof cfg.writeToken === 'string' ? cfg.writeToken.trim() : '';
+})();
+
+/* Single send choke-point. Every gate-write call site was swapped to
+   gatePost_(...), so the token is injected in exactly one place and future
+   writers inherit it. Only mutates JSON bodies that carry an `action`
+   (real gate requests); GET reads and the no-cors Form fallback pass
+   straight through untouched. Never injects when TENANT_WRITE_TOKEN is ''. */
+async function gatePost_(url, opts) {
+  try {
+    if (TENANT_WRITE_TOKEN && opts && typeof opts.body === 'string') {
+      const o = JSON.parse(opts.body);
+      if (o && typeof o === 'object' && !Array.isArray(o) && o.action) {
+        o.token = TENANT_WRITE_TOKEN;
+        opts = Object.assign({}, opts, { body: JSON.stringify(o) });
+      }
+    }
+  } catch (e) { /* body not JSON (e.g. form-encoded) — leave untouched */ }
+  return fetch(url, opts);
+}
+
+/* ============================================================
    v5.0 PHASE 1 — APPS SCRIPT GATE CONFIG
    ============================================================
    The gate is the v5.0 architecture: writes route through Apps Script,
@@ -9400,7 +9436,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.106';
+const APP_VERSION = 'v6.11.107';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -10544,7 +10580,7 @@ async function authModalSubmitView() {
 
   setAuthModalBusy(true);
   try {
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -10618,7 +10654,7 @@ async function authModalSubmitGrant() {
 
   setAuthModalBusy(true);
   try {
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -11013,7 +11049,7 @@ async function submitHouseForm() {
       body.payload.originalName = HOUSE_FORM_ORIGINAL;
     }
 
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -11102,7 +11138,7 @@ async function fetchAdminStatus() {
   // Read-only — no passphrase required. Returns gate state for UI rendering.
   if (!APPS_SCRIPT_GATE_URL) return null;
   try {
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -11137,7 +11173,7 @@ async function adminGrant(passphrase, windowLabel, expiresAt) {
       },
       source: `PWA ${APP_VERSION} admin-grant`
     };
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -11163,7 +11199,7 @@ async function adminGrant(passphrase, windowLabel, expiresAt) {
 async function adminRevoke(passphrase) {
   if (!APPS_SCRIPT_GATE_URL) return { ok: false, reason: 'No gate URL configured' };
   try {
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -11481,7 +11517,7 @@ async function pushGreenleafToGate(entry) {
       },
       source: `PWA ${APP_VERSION} greenleaf`
     };
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },  // Apps Script accepts this
@@ -11584,7 +11620,7 @@ async function pushExpenseToGate(expense) {
       },
       source: `PWA ${APP_VERSION} expense`
     };
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -11664,7 +11700,7 @@ async function pushActualToGate(actual) {
       },
       source: `PWA ${APP_VERSION} actual`
     };
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -11807,7 +11843,7 @@ async function pushBankedToGate(row) {
       },
       source: `PWA ${APP_VERSION} banked`
     };
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -11906,7 +11942,7 @@ async function pushPoultryToGate(row) {
       },
       source: `PWA ${APP_VERSION} poultry`
     };
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -11998,7 +12034,7 @@ async function pushRosterToGate(row) {
       },
       source: `PWA ${APP_VERSION} roster`
     };
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -14727,7 +14763,7 @@ async function pushActualDupeAckToGate(ackKey, action) {
       },
       source: `PWA ${APP_VERSION} actual-dupe-ack`
     };
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -14759,7 +14795,7 @@ async function pushBlockGapAckToGate(ackKey, gapPct) {
       },
       source: `PWA ${APP_VERSION} block-gap-ack`
     };
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -14791,7 +14827,7 @@ async function pushBirdPopulationAckToGate(ackKey, stage, computedCount) {
       },
       source: `PWA ${APP_VERSION} bird-population-ack`
     };
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -16939,7 +16975,7 @@ async function pushMaizeHarvestToGate(row) {
       },
       source: 'PWA ' + APP_VERSION + ' maize-harvest'
     };
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST', mode: 'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(body)
@@ -17186,7 +17222,7 @@ async function pushFlockHealthToGate(row) {
       },
       source: 'PWA ' + APP_VERSION + ' flock-health'
     };
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST', mode: 'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(body)
@@ -17445,7 +17481,7 @@ async function pushEggCollectionToGate(row) {
       },
       source: `PWA ${APP_VERSION} egg-collection`
     };
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -17688,7 +17724,7 @@ async function pushBirdCensusToGate(row) {
       },
       source: `PWA ${APP_VERSION} bird-census`
     };
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -18275,7 +18311,7 @@ async function submitIncubationStart() {
         },
         source: `PWA ${APP_VERSION} incubation-start`
       };
-      const r = await fetch(APPS_SCRIPT_GATE_URL, {
+      const r = await gatePost_(APPS_SCRIPT_GATE_URL, {
         method: 'POST', mode: 'cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(body)
@@ -18437,7 +18473,7 @@ async function submitIncubationHatch() {
         },
         source: `PWA ${APP_VERSION} incubation-hatch`
       };
-      const r = await fetch(APPS_SCRIPT_GATE_URL, {
+      const r = await gatePost_(APPS_SCRIPT_GATE_URL, {
         method: 'POST', mode: 'cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(body)
@@ -19684,7 +19720,7 @@ async function pushVaccinationToGate(row) {
       },
       source: 'PWA ' + APP_VERSION + ' vaccination'
     };
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -19740,7 +19776,7 @@ async function pushCohortToGate(record) {
       payload: record, // record already includes mode + cohort_id + stage etc.
       source: 'PWA ' + APP_VERSION + ' cohort'
     };
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -19979,7 +20015,7 @@ async function pushMortalityToGate(row) {
       },
       source: 'PWA ' + APP_VERSION + ' mortality'
     };
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -20048,7 +20084,7 @@ async function pushLitterChangeToGate(record) {
       payload: record,
       source: 'PWA ' + APP_VERSION + ' ' + action
     };
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -25426,7 +25462,7 @@ async function pushDorperToGate(record, action) {
   // {ok: true} confirmation back from Apps Script. This works when 
   // the browser allows cross-origin response reading. 
   try {
-    const response = await fetch(APPS_SCRIPT_GATE_URL, {
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -25466,7 +25502,7 @@ async function pushDorperToGate(record, action) {
   // will both confirm the write landed. Same fallback pattern your 
   // existing six write paths use (gate-cors → form-no-cors).
   try {
-    await fetch(APPS_SCRIPT_GATE_URL, {
+    await gatePost_(APPS_SCRIPT_GATE_URL, {
       method: 'POST',
       mode:   'no-cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },

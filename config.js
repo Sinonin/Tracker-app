@@ -7,6 +7,9 @@
  * Schema:
  *   window.TENANT_CONFIG = {
  *     appsScriptUrl: string,             // Apps Script web-app /exec URL
+ *     writeToken: string,                // v6.11.107 — gate write-token; MUST
+ *                                        //   match Control_Panel WRITE_TOKEN.
+ *                                        //   '' / absent => no token sent.
  *     receipt: {                         // Receipt/invoice config (optional —
  *       businessName, address, kraPin,   //   absent => document feature hidden)
  *       logoUrl, footer, numberPrefix,   //   prefix: SF / KB / BF
@@ -19,6 +22,7 @@
  */
 window.TENANT_CONFIG = {
   appsScriptUrl: 'https://script.google.com/macros/s/AKfycbyQNUy0HX_fC3M9poCgk86dM0bTiGkOpYDvFvSsNvkTjSuTKeA2X79D4UWAD6drHFAazA/exec',
+  writeToken: 'SIN-b84546375778912b51878a61a8df3dcc',
   receipt: {
     businessName: 'Sinonin Food Innovations',
     address: 'P.O. Box 93, 30301 Nandi Hills, Nandi County, Kenya',
