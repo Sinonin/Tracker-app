@@ -4569,9 +4569,8 @@
       <div class="field"><label>Dosage</label><input type="text" id="dw-dosage" placeholder="e.g. 5 ml/L water · 1 g per 2 L · per label" autocomplete="off"></div>
       <div class="pair">
         <div class="field"><label>Birds treated</label><input type="number" id="dw-count" inputmode="numeric" step="1" min="0" placeholder="e.g. 420" autocomplete="off"></div>
-        <div class="field"><label>Eggs clear from (optional)</label><input type="date" id="dw-eggs-clear"></div>
+        <div class="field"><label>Remark (optional)</label><select id="dw-notes"><option value="">— Remark (optional) —</option></select></div>
       </div>
-      <div class="field"><label>Notes (optional)</label><input type="text" id="dw-notes" placeholder="e.g. in drinking water · second round · vet-advised"></div>
       <button class="submit" id="dw-submit" onclick="submitDeworm()" disabled>🪱 Record deworming</button>
 
       <div class="section" id="dw-recent-section" style="display:none;margin-top:1.2rem">
@@ -9610,7 +9609,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.115';
+const APP_VERSION = 'v6.11.116';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -16963,6 +16962,10 @@ if (typeof STATE === 'object' && !Array.isArray(STATE.deworming)) {
 // Dewormer product fallback — CONTROL-PANEL managed via FLOCK_DEWORMERS, same as
 // every other flock vocabulary. Common Nandi-layer anthelmintics; edit live.
 const FLOCK_DEWORMER_DEFAULT = ['Piperazine', 'Levamisole', 'Albendazole', 'Fenbendazole', 'Ivermectin', 'Other'];
+// v6.11.116 — Deworm remark is CONTROL-PANEL managed (FLOCK_DEWORM_NOTES), optional.
+// No free text on the deworm form — the product is the dropdown, the dose its own
+// field, and context is a curated remark list.
+const FLOCK_DEWORM_NOTES_DEFAULT = ['In drinking water', 'In feed', 'Routine round', 'Vet-advised', 'Repeat dose due', 'Second round'];
 // v6.11.111 — Coffee deliveries (read-only display in Phase 2; written in Phase 3).
 // Local model mirrors flock health: a STATE array hydrated from doGet
 // (coffeeProduction). Kg only — value is auction-dependent, never summed into P&L.
@@ -17949,6 +17952,8 @@ function initDewormForm() {
 
   // Product — CONTROL-PANEL managed (FLOCK_DEWORMERS), with a built-in fallback.
   _fillFlockSelect('dw-product', 'FLOCK_DEWORMERS', FLOCK_DEWORMER_DEFAULT, '— Product —');
+  // Remark — CONTROL-PANEL managed (FLOCK_DEWORM_NOTES), optional. No free text.
+  _fillFlockSelect('dw-notes', 'FLOCK_DEWORM_NOTES', FLOCK_DEWORM_NOTES_DEFAULT, '— Remark (optional) —');
 
   // House — active houses + an "All" flock-wide label. "All" does NOT auto-sum a
   // count; the operator types the birds actually dosed, so brooders that weren't
@@ -17985,16 +17990,14 @@ async function submitDeworm() {
   const house = ((document.getElementById('dw-house') || {}).value || '').trim();
   const dosage = ((document.getElementById('dw-dosage') || {}).value || '').trim();
   const countRaw = ((document.getElementById('dw-count') || {}).value || '').trim();
-  const eggsClear = (document.getElementById('dw-eggs-clear') || {}).value || '';
   const notes = ((document.getElementById('dw-notes') || {}).value || '').trim();
 
   if (!date) { showToast('Pick a date', 2500); return; }
   if (!product) { showToast('Pick a product', 2500); return; }
 
   if (typeof isSessionConfirmed === 'function' && !isSessionConfirmed('deworm')) {
-    const summaryHtml = '<div><strong>' + escapeHtml(product) + '</strong></div>' +
-      '<div style="opacity:0.85;margin-top:0.3rem;">' + (house ? escapeHtml(house) + ' · ' : '') + date + '</div>' +
-      (eggsClear ? '<div style="opacity:0.7;margin-top:0.2rem;font-size:0.78rem">Eggs clear from ' + eggsClear + '</div>' : '');
+    const summaryHtml = '<div><strong>' + escapeHtml(product) + (dosage ? ' · ' + escapeHtml(dosage) : '') + '</strong></div>' +
+      '<div style="opacity:0.85;margin-top:0.3rem;">' + (house ? escapeHtml(house) + ' · ' : '') + date + '</div>';
     const ok = await confirmFirstSubmit('deworm', summaryHtml);
     if (!ok) { showToast('Cancelled', 1800); return; }
     markSessionConfirmed('deworm');
@@ -18005,7 +18008,7 @@ async function submitDeworm() {
     ts: new Date().toISOString(),
     date: date, product: product, house: house, dosage: dosage,
     birds_count: countRaw === '' ? '' : Number(countRaw),
-    eggs_clear_from: eggsClear, notes: notes
+    notes: notes
   };
 
   if (!Array.isArray(STATE.deworming)) STATE.deworming = [];
@@ -18015,7 +18018,7 @@ async function submitDeworm() {
   showToast('Saved · ' + product + (house ? ' · ' + house : '') + ' · ' + date);
   if (typeof renderDewormHistory === 'function') renderDewormHistory();
 
-  ['dw-count', 'dw-notes', 'dw-eggs-clear', 'dw-dosage'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['dw-count', 'dw-notes', 'dw-dosage'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   validateDeworm();
 
   const synced = await syncDeworm(row);
@@ -18051,7 +18054,6 @@ async function pushDewormToGate(row) {
         dosage: row.dosage || '',
         stage: row.stage || '',
         birds_count: (row.birds_count === '' || row.birds_count === null || row.birds_count === undefined) ? '' : Number(row.birds_count),
-        eggs_clear_from: row.eggs_clear_from || '',
         notes: row.notes || ''
       },
       source: 'PWA ' + APP_VERSION + ' deworm'
@@ -18081,7 +18083,6 @@ function cloudToLocalDeworm(r) {
     dosage: String(r.dosage || '').trim(),
     stage: String(r.stage || '').trim(),
     birds_count: (r.birds_count === null || r.birds_count === undefined || r.birds_count === '') ? '' : Number(r.birds_count),
-    eggs_clear_from: String(r.eggs_clear_from || '').trim(),
     notes: String(r.notes || ''),
     _source: 'cloud'
   };
@@ -18100,9 +18101,7 @@ function renderDewormHistory() {
     const sorted = [...all].sort((a, b) => String(b.ts || b.date || '').localeCompare(String(a.ts || a.date || '')));
     box.innerHTML = sorted.slice(0, 10).map(e => {
       const metaBits = [e.date, e.house, e.notes].filter(Boolean).map(escapeHtml).join(' \u00b7 ');
-      const clear = e.eggs_clear_from ? ('eggs clear ' + escapeHtml(e.eggs_clear_from)) : '';
-      const cnt = (e.birds_count !== '' && e.birds_count !== null && e.birds_count !== undefined) ? (e.birds_count + ' birds') : '';
-      const right = [cnt, clear].filter(Boolean).join(' \u00b7 ');
+      const right = (e.birds_count !== '' && e.birds_count !== null && e.birds_count !== undefined) ? (e.birds_count + ' birds') : '';
       return `
         <div class="record-row" style="grid-template-columns:1fr auto">
           <div>
