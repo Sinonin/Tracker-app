@@ -3664,15 +3664,15 @@
       <div class="hero-metric-card hmc-coffee" data-product="coffee" data-card-id="coffee" style="display:none">
         <div class="hmc-head">
           <span class="hmc-lbl">Coffee performance</span>
-          <span class="hmc-period">enterprise placeholder</span>
+          <span class="hmc-period" id="hero-coffee-period">delivered \u2192 settled</span>
         </div>
-        <div class="hmc-val">—</div>
-        <div class="hmc-sub-head">data path coming soon</div>
+        <div class="hmc-val" id="hero-coffee-val">0 kg</div>
+        <div class="hmc-sub-head" id="hero-coffee-sub">no deliveries yet</div>
         <div class="hmc-horizons">
-          <div class="hmc-horizon"><div class="hmc-h-lbl">Today</div><div class="hmc-h-val">—</div></div>
-          <div class="hmc-horizon"><div class="hmc-h-lbl">MTD</div><div class="hmc-h-val">—</div></div>
-          <div class="hmc-horizon"><div class="hmc-h-lbl">YTD</div><div class="hmc-h-val">—</div></div>
-          <div class="hmc-horizon"><div class="hmc-h-lbl">Life</div><div class="hmc-h-val">—</div></div>
+          <div class="hmc-horizon"><div class="hmc-h-lbl">Pending</div><div class="hmc-h-val" id="hero-coffee-pending">0 kg</div></div>
+          <div class="hmc-horizon"><div class="hmc-h-lbl">Settled</div><div class="hmc-h-val" id="hero-coffee-settled">0 kg</div></div>
+          <div class="hmc-horizon"><div class="hmc-h-lbl">Received</div><div class="hmc-h-val" id="hero-coffee-received">Ksh 0</div></div>
+          <div class="hmc-horizon"><div class="hmc-h-lbl">Avg/kg</div><div class="hmc-h-val" id="hero-coffee-avg">\u2014</div></div>
         </div>
       </div>
 
@@ -4070,6 +4070,17 @@
     <div id="maize-pnl-card" class="calc-card" style="margin-bottom:0.8rem"></div>
     <div id="maize-plot-card" class="calc-card" style="margin-bottom:0.8rem"></div>
     <button class="submit" type="button" onclick="openAddPanel('crops','maize-harvest')">🌽 Log harvest</button>
+  </section>
+
+  <!-- v6.11.111 — Coffee hub. Read-only delivered→settled view fed by
+       STATE.coffeeProduction. Delivery logging (Add → Crops → ☕ Delivery)
+       and settlement arrive in the Phase 3/4 drop. No "expected" column:
+       coffee value is auction-dependent, stamped only at settlement. -->
+  <section class="panel" id="panel-coffee">
+    <div class="section-head"><h3>☕ Coffee</h3></div>
+    <div id="coffee-summary-card" class="calc-card" style="margin-bottom:0.8rem"></div>
+    <div id="coffee-coop-card" class="calc-card" style="margin-bottom:0.8rem"></div>
+    <div style="opacity:0.7;font-size:0.82rem;margin-top:0.4rem">Delivery logging &amp; settlement arrive in the next drop.</div>
   </section>
 
   <!-- ADD -->
@@ -6982,6 +6993,7 @@ function _clusterTargetForUnit(label) {
   if (/\b(dairy|cow|cattle)\b/.test(s)) return 'cows';
   if (/\b(dorper|sheep)\b/.test(s)) return 'sheep';
   if (/\bmaize\b/.test(s)) return 'maize';   // v6.11.63 — Maize now has its own hub panel
+  if (/\bcoffee\b/.test(s)) return 'coffee'; // v6.11.111 — Coffee now has its own hub panel
   return 'other';
 }
 
@@ -7151,6 +7163,76 @@ function renderMaizePanel() {
   setC('maize-stock-card', 'Stock · per grade', stockHtml);
   setC('maize-pnl-card', 'Crop P&L', pnlHtml);
   setC('maize-plot-card', 'Per plot · cost & yield', plotHtml);
+}
+
+/* ============================================================
+   v6.11.111 — COFFEE Phase 2 (presentation, read-only).
+   Both surfaces read STATE.coffeeProduction (hydrated from the v5.0.83
+   doGet). Coffee carries NO "expected" value: a delivery is kg-only until
+   the cooperative settles after the Mombasa auction, when realized price/kg
+   is back-filled. Per-cooperative — Kabunyeria ≠ Kapkiyai.
+   ============================================================ */
+function _coffeeRollup() {
+  const rows = Array.isArray(STATE.coffeeProduction) ? STATE.coffeeProduction : [];
+  let pendingKg = 0, settledKg = 0, received = 0;
+  const byCoop = {};
+  rows.forEach(function (r) {
+    const kg = Number(r.kg) || 0;
+    const coop = r.cooperative || '\u2014';
+    if (!byCoop[coop]) byCoop[coop] = { pending: 0, settled: 0, received: 0 };
+    if (String(r.status || '').toLowerCase() === 'settled') {
+      settledKg += kg; byCoop[coop].settled += kg;
+      if (r.realized_price_kg != null) { received += kg * Number(r.realized_price_kg); byCoop[coop].received += kg * Number(r.realized_price_kg); }
+    } else {
+      pendingKg += kg; byCoop[coop].pending += kg;
+    }
+  });
+  return { rows: rows, pendingKg: pendingKg, settledKg: settledKg, received: received, byCoop: byCoop,
+           avg: settledKg > 0 ? received / settledKg : null };
+}
+
+function _coffeeKg(n) { return (Number(n) % 1 === 0 ? Number(n) : Number(n).toFixed(1)) + ' kg'; }
+
+function populateCoffeeCard() {
+  const card = document.querySelector('.hero-metric-card.hmc-coffee');
+  if (!card) return;
+  const farmsCoffee = (typeof tenantBusinessUnits === 'function') && tenantBusinessUnits().some(function (u) { return /coffee/i.test(u); });
+  const roll = _coffeeRollup();
+  if (!farmsCoffee && roll.rows.length === 0) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const totalKg = roll.pendingKg + roll.settledKg;
+  const setT = function (id, v) { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setT('hero-coffee-val', _coffeeKg(totalKg));
+  setT('hero-coffee-sub', roll.rows.length ? (_coffeeKg(roll.pendingKg) + ' pending · ' + _coffeeKg(roll.settledKg) + ' settled') : 'no deliveries yet');
+  setT('hero-coffee-pending', _coffeeKg(roll.pendingKg));
+  setT('hero-coffee-settled', _coffeeKg(roll.settledKg));
+  setT('hero-coffee-received', 'Ksh ' + Math.round(roll.received).toLocaleString());
+  setT('hero-coffee-avg', roll.avg != null ? (roll.avg.toFixed(1) + '/kg') : '\u2014');
+}
+
+function renderCoffeePanel() {
+  const fmt = function (n) { return 'Ksh ' + Math.round(Number(n) || 0).toLocaleString(); };
+  const rowLine = function (l, r, extra) { return '<div style="display:flex;justify-content:space-between;padding:0.22rem 0;' + (extra || '') + '"><span>' + l + '</span><span style="font-family:\'IBM Plex Mono\',monospace">' + r + '</span></div>'; };
+  const label = function (t) { return '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:0.72rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--forest-dark);margin-bottom:0.5rem">' + t + '</div>'; };
+  const setC = function (id, l, body) { const el = document.getElementById(id); if (el) el.innerHTML = label(l) + body; };
+  const roll = _coffeeRollup();
+
+  const summary = rowLine('Delivered · awaiting auction', _coffeeKg(roll.pendingKg))
+    + rowLine('Settled', _coffeeKg(roll.settledKg))
+    + rowLine('Received', fmt(roll.received))
+    + rowLine('Realized avg', roll.avg != null ? roll.avg.toFixed(2) + ' Ksh/kg' : '\u2014', 'border-top:1px solid rgba(0,0,0,0.1);font-weight:600;margin-top:0.2rem;padding-top:0.35rem');
+  setC('coffee-summary-card', 'Deliveries \u2192 settlement', roll.rows.length ? summary : '<div style="opacity:0.7">No deliveries logged yet.</div>');
+
+  const coops = Object.keys(roll.byCoop).sort();
+  const coopHtml = coops.length ? coops.map(function (c) {
+    const b = roll.byCoop[c];
+    const a = b.settled > 0 ? (b.received / b.settled) : null;
+    return '<div style="padding:0.3rem 0;border-bottom:1px solid rgba(0,0,0,0.06)">'
+      + rowLine('<strong>' + escapeHtml(c) + '</strong>', _coffeeKg(b.pending + b.settled))
+      + '<div style="font-size:0.78rem;opacity:0.7">' + _coffeeKg(b.pending) + ' pending · ' + _coffeeKg(b.settled) + ' settled'
+      + (a != null ? ' · ' + a.toFixed(2) + ' Ksh/kg' : '') + '</div></div>';
+  }).join('') : '<div style="opacity:0.7">\u2014</div>';
+  setC('coffee-coop-card', 'Per cooperative', coopHtml);
 }
 
 /* Render Crops hub. v6.11.11 — cards generated from BUSINESS_UNITS 
@@ -9445,7 +9527,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.110';
+const APP_VERSION = 'v6.11.111';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -12586,6 +12668,26 @@ function cloudToLocalFlockHealth(r) {
   };
 }
 
+function cloudToLocalCoffeeProduction(r) {
+  return {
+    id: 'C-COF-' + String(r.delivery_id || r.ts || r.date || ''),
+    ts: r.ts || (r.date ? r.date + 'T00:00:00Z' : new Date().toISOString()),
+    date: r.date || '',
+    cooperative: String(r.cooperative || '').trim(),
+    form: String(r.form || '').trim(),
+    kg: Number(r.kg) || 0,
+    slip_ref: String(r.slip_ref || '').trim(),
+    delivered_by: String(r.delivered_by || '').trim(),
+    status: String(r.status || 'pending').trim(),
+    delivery_id: String(r.delivery_id || '').trim(),
+    settled_date: r.settled_date || '',
+    settlement_sale_id: String(r.settlement_sale_id || '').trim(),
+    realized_price_kg: (r.realized_price_kg === null || r.realized_price_kg === undefined || r.realized_price_kg === '') ? null : Number(r.realized_price_kg),
+    notes: String(r.notes || ''),
+    _source: 'cloud'
+  };
+}
+
 function cloudToLocalEggCollection(r) {
   const gfN = Number(r.gf_normal) || 0;
   const gfS = Number(r.gf_small)  || 0;
@@ -12852,6 +12954,10 @@ async function applyCloudResponse(data) {
   if (Array.isArray(data.flockHealth)) {                       // v6.11.87
     STATE.flockHealth = data.flockHealth.map(cloudToLocalFlockHealth);
     await storageSet(K_FLOCK_HEALTH, STATE.flockHealth);
+  }
+  if (Array.isArray(data.coffeeProduction)) {                  // v6.11.111
+    STATE.coffeeProduction = data.coffeeProduction.map(cloudToLocalCoffeeProduction);
+    await storageSet(K_COFFEE_PRODUCTION, STATE.coffeeProduction);
   }
   /* v6.0 SHIP 3 — Houses sync (cloud-replace-local; config, not transactions) */
   if (Array.isArray(data.houses)) {
@@ -13427,6 +13533,7 @@ function switchView(v) {
   // CSS already handles it).
   if (v === 'crops' && typeof renderCropsHub === 'function') renderCropsHub();
   if (v === 'maize' && typeof renderMaizePanel === 'function') renderMaizePanel(); // v6.11.63
+  if (v === 'coffee' && typeof renderCoffeePanel === 'function') renderCoffeePanel(); // v6.11.111
   if (v === 'livestock' && typeof renderLivestockHub === 'function') renderLivestockHub();
   // v6.11.0 — Sales tab: POS cascade. Reset to Level 1 (business-unit cards)
   // every time the tab is entered so the operator always starts at the top
@@ -16716,6 +16823,13 @@ if (typeof STATE === 'object' && !Array.isArray(STATE.maizeHarvest)) {
 const K_FLOCK_HEALTH = 'sinonin_flock_health_v1';
 if (typeof STATE === 'object' && !Array.isArray(STATE.flockHealth)) {
   STATE.flockHealth = [];
+}
+// v6.11.111 — Coffee deliveries (read-only display in Phase 2; written in Phase 3).
+// Local model mirrors flock health: a STATE array hydrated from doGet
+// (coffeeProduction). Kg only — value is auction-dependent, never summed into P&L.
+const K_COFFEE_PRODUCTION = 'sinonin_coffee_production_v1';
+if (typeof STATE === 'object' && !Array.isArray(STATE.coffeeProduction)) {
+  STATE.coffeeProduction = [];
 }
 // Condition vocabulary — config-driven via FLOCK_CONDITIONS in Control_Panel;
 // built-in fallback covers common Nandi poultry observations. The AI layer will
@@ -21482,6 +21596,7 @@ function renderHome() {
   // Milk volume tracking ships in v6.10.5 (after first calving). For v6.10.2
   // the card always shows the dry-state shape because none of the 4
   // Sinonin cows have calved yet — they're all in-calf.
+  if (typeof populateCoffeeCard === 'function') populateCoffeeCard();   // v6.11.111
   const dairyCows = (STATE.cows || []).filter(c => c.status === 'alive');
   const dairyTotalCows = dairyCows.length;
   const dairyHerdState = computeDairyHerdState(dairyCows);  // see fn below
