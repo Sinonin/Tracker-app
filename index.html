@@ -7413,7 +7413,15 @@ function salesProductsFor(unitSlug, unitLabel) {
    VARIANTS_TEA_GREENLEAF. Empty/missing means no L3 — skip straight to form. */
 function salesVariantsFor(unitSlug, productSlug) {
   const key = 'VARIANTS_' + unitSlug + '_' + productSlug;
-  const raw = tcfg(key, '');
+  let raw = tcfg(key, '');
+  // v6.11.110 — Coffee L3 fallback. The cooperative is the delivery destination
+  // for EVERY coffee form (Wet Cherry, Depulped beans, …). Rather than copying
+  // the roster into VARIANTS_OLOMOTITCOFFEE_<each form>, any coffee unit with no
+  // form-specific VARIANTS row reads the canonical COFFEE_COOPERATIVES key — the
+  // same roster the destination dropdown uses. Single source of truth.
+  if ((!raw || typeof raw !== 'string' || !raw.trim()) && String(unitSlug || '').indexOf('COFFEE') !== -1) {
+    raw = tcfg('COFFEE_COOPERATIVES', '');
+  }
   if (!raw || typeof raw !== 'string') return [];
   return raw.split(',').map(function (s) {
     const label = s.trim();
@@ -7480,10 +7488,10 @@ function _refreshSalePeriod() {
    a new tenant unit never has a measure wrongly hidden. */
 const SALES_UNIT_LABELS = {
   kg: 'kg', litres: 'litres', trays: 'trays (30 eggs)', number: 'number / count',
-  bags: 'bags', debe: 'debe', gorogoro: 'gorogoro', hours: 'hours',
+  bags: 'bags', sack: 'sack', debe: 'debe', gorogoro: 'gorogoro', hours: 'hours',
   nights: 'nights', lumpsum: 'lump sum (no qty)'
 };
-const SALES_UNIT_ALL = ['kg','litres','trays','number','bags','debe','gorogoro','hours','nights','lumpsum'];
+const SALES_UNIT_ALL = ['kg','litres','trays','number','bags','sack','debe','gorogoro','hours','nights','lumpsum'];
 
 function _unitsForContext(unitLabel, productLabel) {
   // Control_Panel override: UNITS_<UNIT> (e.g. UNITS_MAIZE = "bags,kg,debe,gorogoro").
@@ -7505,7 +7513,7 @@ function _unitsForContext(unitLabel, productLabel) {
   if (u.indexOf('dairy') !== -1 && p.indexOf('milk') !== -1) return ['litres'];
   if (u.indexOf('dairy') !== -1) return ['number', 'litres'];
   if (u.indexOf('dorper') !== -1 || u.indexOf('sheep') !== -1 || u.indexOf('goat') !== -1) return ['number'];
-  if (u.indexOf('coffee') !== -1) return ['kg', 'number'];
+  if (u.indexOf('coffee') !== -1) return ['kg', 'sack'];   // v6.11.110 — beans aren't counted; sack added, number dropped
   if (u.indexOf('maize') !== -1) return ['bags', 'kg', 'debe', 'gorogoro'];
   if (u.indexOf('training') !== -1) return ['lumpsum'];
   if (u.indexOf('hospitality') !== -1 || u.indexOf('room') !== -1) return ['nights', 'lumpsum'];
@@ -7528,6 +7536,7 @@ function _defaultRevTypeForContext(unitLabel, productLabel) {
   const p = String(productLabel || '').toLowerCase();
   if (u.indexOf('tea') !== -1 && p.indexOf('greenleaf') !== -1) return 'Revenue';
   if (u.indexOf('dairy') !== -1 && p.indexOf('milk') !== -1) return 'Revenue'; // typically bulk to KCC
+  if (u.indexOf('coffee') !== -1) return 'Revenue'; // v6.11.110 — bulk delivery to cooperative (direct settlement)
   return 'Income';
 }
 
@@ -9436,7 +9445,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.109';
+const APP_VERSION = 'v6.11.110';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -15662,6 +15671,7 @@ function _saleUnitKind(unitLabel) {
   if (/tea|greenleaf|leaf/.test(u)) return 'tea';
   if (/milk|dairy/.test(u)) return 'milk';
   if (/poultry|chick|egg|bird|hen|layer|cockerel/.test(u)) return 'poultry';
+  if (/coffee/.test(u)) return 'coffee';   // v6.11.110 — cooperative destination, not generic buyer
   return 'other';
 }
 function _teaFactoryNames() {
@@ -15669,6 +15679,15 @@ function _teaFactoryNames() {
 }
 function _milkFactoryNames() {
   return (Array.isArray(STATE.milkFactories) ? STATE.milkFactories : []).filter(f => f && f.name).map(f => String(f.name).trim());
+}
+/* v6.11.110 — Coffee cooperative roster (canonical). Read from the single
+   COFFEE_COOPERATIVES Control_Panel key. Two consumers: this destination
+   dropdown AND the L3 variant fallback in salesVariantsFor — so the roster
+   lives in exactly one place. Kenya direct-settlement model: greenleaf-style
+   bulk delivery to a cooperative, no middleman buyer. */
+function _coffeeCooperativeNames() {
+  const raw = tcfg('COFFEE_COOPERATIVES', '');
+  return (typeof raw === 'string' ? raw : '').split(',').map(s => s.trim()).filter(Boolean);
 }
 function renderSaleDestination() {
   const sel = document.getElementById('s-dest-select');
@@ -15688,6 +15707,8 @@ function renderSaleDestination() {
     label = 'Factory'; opts = _milkFactoryNames(); addLabel = '➕ Add factory…';
   } else if (kind === 'poultry') {
     label = 'Buyer'; opts = _knownBuyers(); addLabel = '➕ Add new…';
+  } else if (kind === 'coffee') {
+    label = 'Cooperative'; opts = _coffeeCooperativeNames(); addLabel = '➕ Add cooperative…';
   } else {
     label = 'Buyer / Source'; opts = _knownBuyers(); addLabel = '➕ Add new…';
   }
