@@ -4566,11 +4566,12 @@
         <div class="field"><label>Product</label><select id="dw-product" onchange="validateDeworm()"><option value="">— Product —</option></select></div>
         <div class="field"><label>House</label><select id="dw-house"><option value="">— House —</option></select></div>
       </div>
+      <div class="field"><label>Dosage</label><input type="text" id="dw-dosage" placeholder="e.g. 5 ml/L water · 1 g per 2 L · per label" autocomplete="off"></div>
       <div class="pair">
         <div class="field"><label>Birds treated</label><input type="number" id="dw-count" inputmode="numeric" step="1" min="0" placeholder="e.g. 420" autocomplete="off"></div>
         <div class="field"><label>Eggs clear from (optional)</label><input type="date" id="dw-eggs-clear"></div>
       </div>
-      <div class="field"><label>Notes (optional)</label><input type="text" id="dw-notes" placeholder="e.g. Levamisole · in drinking water · all layer houses"></div>
+      <div class="field"><label>Notes (optional)</label><input type="text" id="dw-notes" placeholder="e.g. in drinking water · second round · vet-advised"></div>
       <button class="submit" id="dw-submit" onclick="submitDeworm()" disabled>🪱 Record deworming</button>
 
       <div class="section" id="dw-recent-section" style="display:none;margin-top:1.2rem">
@@ -9609,7 +9610,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.114';
+const APP_VERSION = 'v6.11.115';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -17982,6 +17983,7 @@ async function submitDeworm() {
   const date = (document.getElementById('dw-date') || {}).value || '';
   const product = ((document.getElementById('dw-product') || {}).value || '').trim();
   const house = ((document.getElementById('dw-house') || {}).value || '').trim();
+  const dosage = ((document.getElementById('dw-dosage') || {}).value || '').trim();
   const countRaw = ((document.getElementById('dw-count') || {}).value || '').trim();
   const eggsClear = (document.getElementById('dw-eggs-clear') || {}).value || '';
   const notes = ((document.getElementById('dw-notes') || {}).value || '').trim();
@@ -18001,7 +18003,7 @@ async function submitDeworm() {
   const row = {
     id: 'dw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
     ts: new Date().toISOString(),
-    date: date, product: product, house: house,
+    date: date, product: product, house: house, dosage: dosage,
     birds_count: countRaw === '' ? '' : Number(countRaw),
     eggs_clear_from: eggsClear, notes: notes
   };
@@ -18013,7 +18015,7 @@ async function submitDeworm() {
   showToast('Saved · ' + product + (house ? ' · ' + house : '') + ' · ' + date);
   if (typeof renderDewormHistory === 'function') renderDewormHistory();
 
-  ['dw-count', 'dw-notes', 'dw-eggs-clear'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['dw-count', 'dw-notes', 'dw-eggs-clear', 'dw-dosage'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   validateDeworm();
 
   const synced = await syncDeworm(row);
@@ -18046,6 +18048,7 @@ async function pushDewormToGate(row) {
         date: row.date,
         product: row.product,
         house: row.house || '',
+        dosage: row.dosage || '',
         stage: row.stage || '',
         birds_count: (row.birds_count === '' || row.birds_count === null || row.birds_count === undefined) ? '' : Number(row.birds_count),
         eggs_clear_from: row.eggs_clear_from || '',
@@ -18075,6 +18078,7 @@ function cloudToLocalDeworm(r) {
     date: r.date || '',
     product: String(r.product || '').trim(),
     house: String(r.house || '').trim(),
+    dosage: String(r.dosage || '').trim(),
     stage: String(r.stage || '').trim(),
     birds_count: (r.birds_count === null || r.birds_count === undefined || r.birds_count === '') ? '' : Number(r.birds_count),
     eggs_clear_from: String(r.eggs_clear_from || '').trim(),
@@ -18102,7 +18106,7 @@ function renderDewormHistory() {
       return `
         <div class="record-row" style="grid-template-columns:1fr auto">
           <div>
-            <div class="name">${escapeHtml(e.product || '\u2014')}</div>
+            <div class="name">${escapeHtml(e.product || '\u2014')}${e.dosage ? ' \u00b7 ' + escapeHtml(e.dosage) : ''}</div>
             <div class="meta">${metaBits}</div>
           </div>
           <div class="val">${right}</div>
