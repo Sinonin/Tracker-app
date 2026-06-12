@@ -4080,7 +4080,8 @@
     <div class="section-head"><h3>☕ Coffee</h3></div>
     <div id="coffee-summary-card" class="calc-card" style="margin-bottom:0.8rem"></div>
     <div id="coffee-coop-card" class="calc-card" style="margin-bottom:0.8rem"></div>
-    <div style="opacity:0.7;font-size:0.82rem;margin-top:0.4rem">Delivery logging &amp; settlement arrive in the next drop.</div>
+    <button class="submit" type="button" onclick="openAddPanel('crops','coffee-production')">☕ Log delivery</button>
+    <div style="opacity:0.7;font-size:0.82rem;margin-top:0.6rem">Settlement (record the cooperative's auction payout) arrives in the next drop.</div>
   </section>
 
   <!-- ADD -->
@@ -4113,6 +4114,7 @@
          harvest); coffee delivery joins here later. -->
     <div class="kind-toggle" id="kind-toggle-crops" style="display:none">
       <button class="active" data-kind="maize-harvest">🌽 Harvest</button>
+      <button data-kind="coffee-production">☕ Delivery</button>
     </div>
 
     <!-- v5.9.1 — Expenses kind-toggle removed (only one child = redundant nav layer).
@@ -4447,6 +4449,27 @@
       </div>
       <div class="field" style="margin-top:0.7rem"><label>Notes (optional)</label><input type="text" id="mh-notes" placeholder="e.g. moisture, store location" autocomplete="off"></div>
       <button class="submit" id="mh-submit" onclick="submitMaizeHarvest()" disabled>Record Harvest</button>
+    </div>
+
+    <!-- v6.11.112 — Coffee delivery (Phase 3). Kg ONLY: a delivery carries no
+         value (auction-dependent). Cooperatives from COFFEE_COOPERATIVES, forms
+         from PRODUCTS_OLOMOTITCOFFEE. Submits 'coffee-production' to the v5.0.83
+         gate, which stays dark (rejects + queues) until COFFEE_PRODUCTION=TRUE.
+         Offline-queued on failure, exactly like maize harvest. -->
+    <div id="coffee-production-kind" style="display:none">
+      <div class="batch-instructions">Record a coffee delivery to a cooperative — kg only. Value is set later, after the Mombasa auction settles. Keep date/cooperative/form to log several loads quickly.</div>
+      <div class="field"><label>Date</label><input type="date" id="cd-date" onchange="validateCoffeeDelivery()"></div>
+      <div class="pair">
+        <div class="field"><label>Cooperative</label><select id="cd-coop" onchange="validateCoffeeDelivery()"><option value="">— Cooperative —</option></select></div>
+        <div class="field"><label>Form</label><select id="cd-form" onchange="validateCoffeeDelivery()"><option value="">— Form —</option></select></div>
+      </div>
+      <div class="pair">
+        <div class="field"><label>Weight (kg)</label><input type="number" id="cd-kg" inputmode="decimal" step="0.01" min="0" placeholder="0" oninput="validateCoffeeDelivery()"></div>
+        <div class="field"><label>Delivered by</label><select id="cd-by"></select></div>
+      </div>
+      <div class="field" style="margin-top:0.7rem"><label>Slip ref (optional)</label><input type="text" id="cd-slip" placeholder="delivery slip #" autocomplete="off"></div>
+      <div class="field" style="margin-top:0.7rem"><label>Notes (optional)</label><input type="text" id="cd-notes" placeholder="e.g. moisture, vehicle" autocomplete="off"></div>
+      <button class="submit" id="cd-submit" onclick="submitCoffeeDelivery()" disabled>Record Delivery</button>
     </div>
 
     <!-- v6.11.87 — FLOCK HEALTH (manual-first). A NON-FINANCIAL observation entry —
@@ -9527,7 +9550,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.111';
+const APP_VERSION = 'v6.11.112';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -12204,6 +12227,7 @@ async function flushQueue(opts) {
       else if (kind === 'sale') record = item.payload || (STATE.sales || []).find(s => s && s.id === recordId) || null; // v6.11.50 — payload-carried (mirror) or STATE.sales (unified)
       else if (kind === 'egg-collection') record = (STATE.eggCollection || []).find(e => e.id === recordId);
       else if (kind === 'maize-harvest') record = item.payload || (STATE.maizeHarvest || []).find(m => m.id === recordId) || null; // v6.11.62
+      else if (kind === 'coffee-production') record = item.payload || (STATE.coffeeProduction || []).find(m => m.id === recordId) || null; // v6.11.112
       else if (kind === 'flock-health') record = item.payload || (STATE.flockHealth || []).find(m => m.id === recordId) || null; // v6.11.87
       else if (kind === 'bird-census') record = (STATE.birdCensus || []).find(b => b.id === recordId);
       else if (kind === 'vaccination') record = (STATE.vaccinations || []).find(v => v.id === recordId);
@@ -12231,6 +12255,7 @@ async function flushQueue(opts) {
       else if (kind === 'sale')    { const _sr = await pushSaleToGate(record); ok = !!(_sr && _sr.ok); } // v6.11.50
       else if (kind === 'egg-collection') ok = await syncEggCollection(record);
       else if (kind === 'maize-harvest') { const _mh = await pushMaizeHarvestToGate(record); ok = !!(_mh && _mh.ok); } // v6.11.62
+      else if (kind === 'coffee-production') { const _cd = await pushCoffeeDeliveryToGate(record); ok = !!(_cd && _cd.ok); } // v6.11.112
       else if (kind === 'flock-health') { const _fh = await pushFlockHealthToGate(record); ok = !!(_fh && _fh.ok); } // v6.11.87
       else if (kind === 'bird-census') ok = await syncBirdCensus(record);
       else if (kind === 'vaccination') ok = await syncVaccination(record);
@@ -13873,6 +13898,8 @@ function switchKind(k) {
   // v6.11.62 (M2 step 3) — Maize harvest
   const mhKindEl = document.getElementById('maize-harvest-kind');
   if (mhKindEl) mhKindEl.style.display = k === 'maize-harvest' ? '' : 'none';
+  // v6.11.112 — Coffee delivery
+  { const cdKindEl = document.getElementById('coffee-production-kind'); if (cdKindEl) cdKindEl.style.display = k === 'coffee-production' ? '' : 'none'; }
   { const fhKindEl = document.getElementById('flock-health-kind'); if (fhKindEl) fhKindEl.style.display = k === 'flock-health' ? '' : 'none'; }   // v6.11.87
   // v6.0 SHIP 4 — Bird Census
   const bcKindEl = document.getElementById('bird-census-kind');
@@ -13900,6 +13927,7 @@ function switchKind(k) {
   if (k === 'poultry' && typeof populatePoultryCohortDropdown === 'function') populatePoultryCohortDropdown();
   if (k === 'egg-collection' && typeof initEggCollectionForm === 'function') initEggCollectionForm();
   if (k === 'maize-harvest' && typeof initMaizeHarvestForm === 'function') initMaizeHarvestForm();
+  if (k === 'coffee-production' && typeof initCoffeeDeliveryForm === 'function') initCoffeeDeliveryForm();   // v6.11.112
   if (k === 'flock-health' && typeof initFlockHealthForm === 'function') initFlockHealthForm();   // v6.11.87
   if (k === 'bird-census' && typeof initBirdCensusForm === 'function') initBirdCensusForm();
   if (k === 'incubation' && typeof initIncubationForm === 'function') initIncubationForm();
@@ -13924,6 +13952,7 @@ function resetFormDate(kind) {
     'poultry':         ['y-date'],
     'egg-collection':  ['ec-date'],
     'maize-harvest':   ['mh-date'],
+    'coffee-production': ['cd-date'],
     'bird-census':     ['bc-date'],
     'incubation':      ['id-date-set', 'ih-date-hatched'],
     'vaccination':     ['vc-date'],
@@ -17118,6 +17147,146 @@ async function pushMaizeHarvestToGate(row) {
     if (!response.ok) return null;
     const json = await response.json();
     if (json && json.ok) return { ok: true, via: 'gate', possibleDuplicate: !!json.possibleDuplicate, summary: json.summary };
+    if (json && json.writesLocked) return { ok: false, reason: 'writes-locked', summary: json.reason };
+    return { ok: false, reason: (json && json.reason) ? json.reason : 'gate-rejected' };
+  } catch (e) {
+    return null;
+  }
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// v6.11.112 — COFFEE Phase 3: delivery logging (clones the maize-harvest path).
+// A delivery is kg ONLY — value is auction-dependent and stamped at settlement.
+// Submits action 'coffee-production' to the v5.0.83 gate, which stays dark
+// (rejects + queues, never silent) until COFFEE_PRODUCTION=TRUE in Control_Panel.
+// ───────────────────────────────────────────────────────────────────────────
+function _coffeeCoopsList() { return String(tcfg('COFFEE_COOPERATIVES', '')).split(',').map(s => s.trim()).filter(Boolean); }
+function _coffeeFormsList() { return String(tcfg('PRODUCTS_OLOMOTITCOFFEE', '')).split(',').map(s => s.trim()).filter(Boolean); }
+
+function initCoffeeDeliveryForm() {
+  const coopSel = document.getElementById('cd-coop');
+  if (coopSel) {
+    const coops = _coffeeCoopsList();
+    coopSel.innerHTML = coops.length
+      ? '<option value="">— Cooperative —</option>' + coops.map(c => '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>').join('')
+      : '<option value="">— Set COFFEE_COOPERATIVES in Control_Panel —</option>';
+  }
+  const formSel = document.getElementById('cd-form');
+  if (formSel) {
+    const forms = _coffeeFormsList();
+    formSel.innerHTML = forms.length
+      ? '<option value="">— Form —</option>' + forms.map(f => '<option value="' + escapeHtml(f) + '">' + escapeHtml(f) + '</option>').join('')
+      : '<option value="">— Set PRODUCTS_OLOMOTITCOFFEE in Control_Panel —</option>';
+  }
+  const bySel = document.getElementById('cd-by');
+  if (bySel) {
+    const roster = (typeof workforceRoster === 'function') ? workforceRoster() : [];
+    bySel.innerHTML = '<option value="">— Delivered by —</option>'
+      + roster.concat(['Other']).map(p => '<option value="' + escapeHtml(p) + '">' + escapeHtml(p) + '</option>').join('');
+  }
+  validateCoffeeDelivery();
+}
+
+function validateCoffeeDelivery() {
+  const date = (document.getElementById('cd-date') || {}).value || '';
+  const coop = (document.getElementById('cd-coop') || {}).value || '';
+  const form = (document.getElementById('cd-form') || {}).value || '';
+  const kg = Number((document.getElementById('cd-kg') || {}).value || 0);
+  const valid = !!date && !!coop && !!form && kg > 0;
+  const btn = document.getElementById('cd-submit');
+  if (btn) btn.disabled = !valid;
+  return valid;
+}
+
+async function submitCoffeeDelivery() {
+  const date = (document.getElementById('cd-date') || {}).value || '';
+  const coop = ((document.getElementById('cd-coop') || {}).value || '').trim();
+  const form = ((document.getElementById('cd-form') || {}).value || '').trim();
+  const kg = Number((document.getElementById('cd-kg') || {}).value || 0);
+  const slip = ((document.getElementById('cd-slip') || {}).value || '').trim();
+  const by = ((document.getElementById('cd-by') || {}).value || '').trim();
+  const notes = ((document.getElementById('cd-notes') || {}).value || '').trim();
+
+  if (!date) { showToast('Pick a date', 2500); return; }
+  if (!coop) { showToast('Pick a cooperative', 2500); return; }
+  if (!form) { showToast('Pick a form', 2500); return; }
+  if (!(kg > 0)) { showToast('Weight (kg) must be greater than zero', 2500); return; }
+
+  if (!isSessionConfirmed('coffee-production')) {
+    const summaryHtml = '<div><strong>' + kg + ' kg · ' + escapeHtml(form) + '</strong></div>'
+      + '<div style="opacity:0.85;margin-top:0.3rem;">' + escapeHtml(coop) + ' · ' + date + '</div>';
+    const ok = await confirmFirstSubmit('coffee-production', summaryHtml);
+    if (!ok) { showToast('Cancelled', 1800); return; }
+    markSessionConfirmed('coffee-production');
+  }
+
+  const id = 'cd-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+  const row = {
+    id: id, delivery_id: id, ts: new Date().toISOString(),
+    date: date, cooperative: coop, form: form, kg: kg,
+    slip_ref: slip, delivered_by: by, status: 'pending',
+    settled_date: '', settlement_sale_id: '', realized_price_kg: null, notes: notes
+  };
+
+  if (!Array.isArray(STATE.coffeeProduction)) STATE.coffeeProduction = [];
+  STATE.coffeeProduction.push(row);
+  try { await storageSet(K_COFFEE_PRODUCTION, STATE.coffeeProduction); } catch (e) {}
+
+  showToast('Saved · ' + kg + ' kg ' + form + ' \u2192 ' + coop + ' · ' + date);
+
+  // Keep date/cooperative/form for batch entry; clear weight + slip + notes.
+  ['cd-kg', 'cd-slip', 'cd-notes'].forEach(idc => { const el = document.getElementById(idc); if (el) el.value = ''; });
+  validateCoffeeDelivery();
+
+  const synced = await syncCoffeeDelivery(row);
+  if (!synced) {
+    await queueForSync(row, 'coffee-production');
+    if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
+      showToast('🔒 Writes locked — ping ' + farmOwnerTitle() + ' · delivery queued', 6000);
+    } else if (lastWriteResult && lastWriteResult.reason === 'coffee-dark') {
+      showToast('☕ Coffee logging is off (COFFEE_PRODUCTION flag) · delivery queued', 6000);
+    }
+  }
+  updateSyncIndicator();
+  if (typeof renderHome === 'function') renderHome();
+  if (typeof renderCoffeePanel === 'function') renderCoffeePanel();
+}
+
+async function syncCoffeeDelivery(row) {
+  if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL) {
+    const gateResult = await pushCoffeeDeliveryToGate(row);
+    if (gateResult) { lastWriteResult = gateResult; return gateResult.ok; }
+  }
+  lastWriteResult = { ok: false, reason: 'gate-unreachable' };
+  return false;
+}
+
+async function pushCoffeeDeliveryToGate(row) {
+  try {
+    const body = {
+      action: 'coffee-production',
+      payload: {
+        ts: row.ts || new Date().toISOString(),
+        date: row.date,
+        cooperative: row.cooperative,
+        form: row.form,
+        kg: Number(row.kg || 0),
+        slip_ref: row.slip_ref || '',
+        delivered_by: row.delivered_by || '',
+        delivery_id: row.delivery_id || row.id || '',
+        notes: row.notes || ''
+      },
+      source: 'PWA ' + APP_VERSION + ' coffee-production'
+    };
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
+      method: 'POST', mode: 'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    if (json && json.ok) return { ok: true, via: 'gate', duplicate: !!json.duplicate, summary: json.summary };
+    if (json && json.coffeeDark) return { ok: false, reason: 'coffee-dark', summary: json.reason };
     if (json && json.writesLocked) return { ok: false, reason: 'writes-locked', summary: json.reason };
     return { ok: false, reason: (json && json.reason) ? json.reason : 'gate-rejected' };
   } catch (e) {
