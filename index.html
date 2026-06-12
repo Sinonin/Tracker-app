@@ -9436,7 +9436,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.107';
+const APP_VERSION = 'v6.11.108';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -22107,14 +22107,27 @@ function renderHome() {
     if (subEl) subEl.textContent = sub;
   }
 
-  // Daily LE — TODAY's normal eggs ÷ today's layers (latest census)
-  if (totalLayers > 0 && todayRow) {
-    const todayNormal = Number(todayRow.normal) || ((Number(todayRow.gf_normal)||0) + (Number(todayRow.ud_normal)||0));
-    const dailyLE = (todayNormal / totalLayers) * 100;
-    setLE('poultry-le-daily', 'poultry-le-daily-sub', dailyLE,
-          `${todayNormal} eggs ÷ ${totalLayers} layers · today`);
-  } else if (totalLayers > 0) {
-    setLE('poultry-le-daily', 'poultry-le-daily-sub', null, `no eggs today · ${totalLayers} layers`);
+  // Daily LE — latest collection day's normal eggs ÷ layers.
+  // v6.11.108 — anchors to the most recent collection date (and shows that date)
+  // instead of blanking to "no eggs today". Once a collection is recorded today,
+  // the label overwrites to "today". A blank card early in the day hid the last
+  // real reading and made the trio look inconsistent ("no eggs today" beside an MTD avg).
+  if (totalLayers > 0) {
+    let latestRow = null;
+    for (let i = 0; i < allEggs.length; i++) {
+      const e = allEggs[i];
+      if (!e || !e.date || e.date > todayStr) continue;          // ignore malformed / future-dated
+      if (!latestRow || e.date > latestRow.date) latestRow = e;
+    }
+    if (latestRow) {
+      const dayNormal = Number(latestRow.normal) || ((Number(latestRow.gf_normal)||0) + (Number(latestRow.ud_normal)||0));
+      const dailyLE = (dayNormal / totalLayers) * 100;
+      const when = (latestRow.date === todayStr) ? 'today' : formatNandiShortDate(latestRow.date);
+      setLE('poultry-le-daily', 'poultry-le-daily-sub', dailyLE,
+            `${dayNormal} eggs ÷ ${totalLayers} layers · ${when}`);
+    } else {
+      setLE('poultry-le-daily', 'poultry-le-daily-sub', null, `no collections yet · ${totalLayers} layers`);
+    }
   } else {
     setLE('poultry-le-daily', 'poultry-le-daily-sub', null, 'no layers in census');
   }
