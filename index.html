@@ -4081,7 +4081,7 @@
     <div id="coffee-summary-card" class="calc-card" style="margin-bottom:0.8rem"></div>
     <div id="coffee-coop-card" class="calc-card" style="margin-bottom:0.8rem"></div>
     <button class="submit" type="button" onclick="openAddPanel('crops','coffee-production')">☕ Log delivery</button>
-    <div style="opacity:0.7;font-size:0.82rem;margin-top:0.6rem">Settlement (record the cooperative's auction payout) arrives in the next drop.</div>
+    <button class="submit" type="button" style="margin-top:0.6rem" onclick="openAddPanel('crops','coffee-settlement')">💰 Record settlement</button>
   </section>
 
   <!-- ADD -->
@@ -4115,6 +4115,7 @@
     <div class="kind-toggle" id="kind-toggle-crops" style="display:none">
       <button class="active" data-kind="maize-harvest">🌽 Harvest</button>
       <button data-kind="coffee-production">☕ Delivery</button>
+      <button data-kind="coffee-settlement">💰 Settle</button>
     </div>
 
     <!-- v5.9.1 — Expenses kind-toggle removed (only one child = redundant nav layer).
@@ -4470,6 +4471,29 @@
       <div class="field" style="margin-top:0.7rem"><label>Slip ref (optional)</label><input type="text" id="cd-slip" placeholder="delivery slip #" autocomplete="off"></div>
       <div class="field" style="margin-top:0.7rem"><label>Notes (optional)</label><input type="text" id="cd-notes" placeholder="e.g. moisture, vehicle" autocomplete="off"></div>
       <button class="submit" id="cd-submit" onclick="submitCoffeeDelivery()" disabled>Record Delivery</button>
+    </div>
+
+    <!-- v6.11.113 — Coffee settlement (Phase 4). The cooperative's single
+         post-auction lump. Posts as a Revenue sale, then fires 'coffee-settle'
+         to stamp that co-op's pending deliveries settled at realized price/kg
+         (lump ÷ kg). Per cooperative. Online-only (the settle reads the sale
+         server-side), no "expected" — realized is derived after the fact. -->
+    <div id="coffee-settlement-kind" style="display:none">
+      <div class="batch-instructions">Record a cooperative's auction settlement — the single lump received after Mombasa closes. It posts as Revenue and back-fills the realized price/kg across that cooperative's pending deliveries.</div>
+      <div class="field"><label>Cooperative</label><select id="cs-coop" onchange="updateCoffeeSettlementPreview()"><option value="">— Cooperative —</option></select></div>
+      <div id="cs-preview" style="font-size:0.82rem;opacity:0.85;margin:0.1rem 0 0.6rem;font-family:'IBM Plex Mono',monospace"></div>
+      <div class="field"><label>Date received</label><input type="date" id="cs-date" onchange="validateCoffeeSettlement()"></div>
+      <div class="pair">
+        <div class="field"><label>Amount (Ksh)</label><input type="number" id="cs-amount" inputmode="decimal" step="0.01" min="0" placeholder="0" oninput="updateCoffeeSettlementPreview()"></div>
+        <div class="field"><label>Method</label><select id="cs-method" onchange="validateCoffeeSettlement()">
+          <option value="BANK">Bank transfer</option>
+          <option value="PAYBILL">M-Pesa PAYBILL</option>
+          <option value="TILL">M-Pesa TILL</option>
+          <option value="CASH">Cash</option>
+        </select></div>
+      </div>
+      <div class="field" style="margin-top:0.7rem"><label>Reference (optional)</label><input type="text" id="cs-ref" placeholder="settlement / payment ref" autocomplete="off"></div>
+      <button class="submit" id="cs-submit" onclick="submitCoffeeSettlement()" disabled>Record Settlement</button>
     </div>
 
     <!-- v6.11.87 — FLOCK HEALTH (manual-first). A NON-FINANCIAL observation entry —
@@ -9550,7 +9574,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.112';
+const APP_VERSION = 'v6.11.113';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -13900,6 +13924,8 @@ function switchKind(k) {
   if (mhKindEl) mhKindEl.style.display = k === 'maize-harvest' ? '' : 'none';
   // v6.11.112 — Coffee delivery
   { const cdKindEl = document.getElementById('coffee-production-kind'); if (cdKindEl) cdKindEl.style.display = k === 'coffee-production' ? '' : 'none'; }
+  // v6.11.113 — Coffee settlement
+  { const csKindEl = document.getElementById('coffee-settlement-kind'); if (csKindEl) csKindEl.style.display = k === 'coffee-settlement' ? '' : 'none'; }
   { const fhKindEl = document.getElementById('flock-health-kind'); if (fhKindEl) fhKindEl.style.display = k === 'flock-health' ? '' : 'none'; }   // v6.11.87
   // v6.0 SHIP 4 — Bird Census
   const bcKindEl = document.getElementById('bird-census-kind');
@@ -13928,6 +13954,7 @@ function switchKind(k) {
   if (k === 'egg-collection' && typeof initEggCollectionForm === 'function') initEggCollectionForm();
   if (k === 'maize-harvest' && typeof initMaizeHarvestForm === 'function') initMaizeHarvestForm();
   if (k === 'coffee-production' && typeof initCoffeeDeliveryForm === 'function') initCoffeeDeliveryForm();   // v6.11.112
+  if (k === 'coffee-settlement' && typeof initCoffeeSettlementForm === 'function') initCoffeeSettlementForm();   // v6.11.113
   if (k === 'flock-health' && typeof initFlockHealthForm === 'function') initFlockHealthForm();   // v6.11.87
   if (k === 'bird-census' && typeof initBirdCensusForm === 'function') initBirdCensusForm();
   if (k === 'incubation' && typeof initIncubationForm === 'function') initIncubationForm();
@@ -13953,6 +13980,7 @@ function resetFormDate(kind) {
     'egg-collection':  ['ec-date'],
     'maize-harvest':   ['mh-date'],
     'coffee-production': ['cd-date'],
+    'coffee-settlement': ['cs-date'],
     'bird-census':     ['bc-date'],
     'incubation':      ['id-date-set', 'ih-date-hatched'],
     'vaccination':     ['vc-date'],
@@ -17289,6 +17317,153 @@ async function pushCoffeeDeliveryToGate(row) {
     if (json && json.coffeeDark) return { ok: false, reason: 'coffee-dark', summary: json.reason };
     if (json && json.writesLocked) return { ok: false, reason: 'writes-locked', summary: json.reason };
     return { ok: false, reason: (json && json.reason) ? json.reason : 'gate-rejected' };
+  } catch (e) {
+    return null;
+  }
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// v6.11.113 — COFFEE Phase 4: settlement. The cooperative's single post-auction
+// lump posts as a Revenue sale (existing Sales path), then 'coffee-settle' stamps
+// that co-op's pending deliveries settled at realized price/kg = lump ÷ kg.
+// Per cooperative (Kabunyeria ≠ Kapkiyai). Online-only: the settle reads the sale
+// server-side, so the two posts run sequentially and never half-complete.
+// ───────────────────────────────────────────────────────────────────────────
+function _coffeeCoopPending(coop) {
+  const rows = Array.isArray(STATE.coffeeProduction) ? STATE.coffeeProduction : [];
+  return rows.reduce(function (a, r) {
+    return a + ((r.cooperative === coop && String(r.status || '').toLowerCase() === 'pending') ? (Number(r.kg) || 0) : 0);
+  }, 0);
+}
+function _coffeeCoopsWithPending() {
+  const rows = Array.isArray(STATE.coffeeProduction) ? STATE.coffeeProduction : [];
+  const set = {};
+  rows.forEach(function (r) {
+    if (String(r.status || '').toLowerCase() === 'pending' && (Number(r.kg) || 0) > 0) set[r.cooperative || '\u2014'] = true;
+  });
+  return Object.keys(set).sort();
+}
+
+function initCoffeeSettlementForm() {
+  const coopSel = document.getElementById('cs-coop');
+  if (coopSel) {
+    const coops = _coffeeCoopsWithPending();
+    coopSel.innerHTML = coops.length
+      ? '<option value="">— Cooperative —</option>' + coops.map(c => '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>').join('')
+      : '<option value="">— No pending deliveries to settle —</option>';
+  }
+  const m = document.getElementById('cs-method'); if (m && !m.value) m.value = 'BANK';
+  updateCoffeeSettlementPreview();
+}
+
+function updateCoffeeSettlementPreview() {
+  const coop = (document.getElementById('cs-coop') || {}).value || '';
+  const amount = Number((document.getElementById('cs-amount') || {}).value || 0);
+  const pending = coop ? _coffeeCoopPending(coop) : 0;
+  const el = document.getElementById('cs-preview');
+  if (el) {
+    if (!coop) el.textContent = '';
+    else if (pending <= 0) el.textContent = 'No pending kg for ' + coop;
+    else el.textContent = 'Pending: ' + pending + ' kg' + (amount > 0 ? ' \u00b7 realized \u2248 ' + (amount / pending).toFixed(2) + ' Ksh/kg' : '');
+  }
+  validateCoffeeSettlement();
+}
+
+function validateCoffeeSettlement() {
+  const coop = (document.getElementById('cs-coop') || {}).value || '';
+  const date = (document.getElementById('cs-date') || {}).value || '';
+  const amount = Number((document.getElementById('cs-amount') || {}).value || 0);
+  const method = (document.getElementById('cs-method') || {}).value || '';
+  const pending = coop ? _coffeeCoopPending(coop) : 0;
+  const valid = !!coop && !!date && amount > 0 && !!method && pending > 0;
+  const btn = document.getElementById('cs-submit'); if (btn) btn.disabled = !valid;
+  return valid;
+}
+
+async function submitCoffeeSettlement() {
+  const coop = ((document.getElementById('cs-coop') || {}).value || '').trim();
+  const date = (document.getElementById('cs-date') || {}).value || '';
+  const amount = Number((document.getElementById('cs-amount') || {}).value || 0);
+  const method = (document.getElementById('cs-method') || {}).value || '';
+  const ref = ((document.getElementById('cs-ref') || {}).value || '').trim();
+
+  if (!coop) { showToast('Pick a cooperative', 2500); return; }
+  if (!date) { showToast('Pick the date received', 2500); return; }
+  if (!(amount > 0)) { showToast('Amount must be greater than zero', 2500); return; }
+  const pending = _coffeeCoopPending(coop);
+  if (!(pending > 0)) { showToast('No pending kg for ' + coop, 3000); return; }
+  if (!navigator.onLine) { showToast('Settlement needs to be online — try again when connected', 4000); return; }
+
+  const realized = amount / pending;
+  const summaryHtml = '<div><strong>' + escapeHtml(coop) + '</strong></div>'
+    + '<div style="opacity:0.85;margin-top:0.3rem">Ksh ' + Math.round(amount).toLocaleString() + ' \u00f7 ' + pending + ' kg = ' + realized.toFixed(2) + ' Ksh/kg</div>'
+    + '<div style="opacity:0.7;margin-top:0.2rem;font-size:0.85rem">Posts as Revenue and settles ' + escapeHtml(coop) + '\u2019s pending deliveries.</div>';
+  if (typeof showChoiceModal === 'function') {
+    const choice = await showChoiceModal('Record settlement?', summaryHtml, [
+      { label: 'Cancel', value: 'cancel' },
+      { label: 'Record', value: 'ok', primary: true }
+    ]);
+    if (choice !== 'ok') { showToast('Cancelled', 1800); return; }
+  }
+
+  const saleId = 'cof-set-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+  const saleRow = {
+    id: saleId, ts: new Date().toISOString(), date: date,
+    business_unit: 'Olomotit Coffee', product: 'Auction settlement', variant: coop,
+    quantity: pending, unit: 'kg', amount: amount, payment_method: method,
+    revenue_type: 'Revenue', buyer: coop, period: '', reference: ref,
+    notes: 'Coffee auction settlement \u00b7 ' + coop + ' \u00b7 ' + pending + 'kg'
+  };
+
+  showToast('Recording settlement\u2026', 2000);
+  const saleRes = await pushSaleToGate(saleRow);
+  if (!saleRes || !saleRes.ok) {
+    const why = (saleRes && saleRes.reason === 'writes-locked') ? 'writes locked' : ((saleRes && saleRes.message) || 'gate unreachable');
+    showToast('Settlement not recorded — ' + why, 5000);
+    return;
+  }
+
+  const settleRes = await pushCoffeeSettleToGate(coop, saleId);
+  if (settleRes && settleRes.ok) {
+    const today = new Date().toISOString().slice(0, 10);
+    (STATE.coffeeProduction || []).forEach(function (r) {
+      if (r.cooperative === coop && String(r.status || '').toLowerCase() === 'pending') {
+        r.status = 'settled'; r.realized_price_kg = realized; r.settlement_sale_id = saleId; r.settled_date = today;
+      }
+    });
+    try { await storageSet(K_COFFEE_PRODUCTION, STATE.coffeeProduction); } catch (e) {}
+    showToast('Settled · ' + coop + ' · ' + pending + ' kg · ' + realized.toFixed(2) + ' Ksh/kg', 6000);
+  } else {
+    const why = (settleRes && settleRes.message) ? settleRes.message : ((settleRes && settleRes.reason) || 'reconciliation failed');
+    showToast('Revenue recorded, but reconciliation failed (' + why + '). Re-run reconcileCoffeeSettlement from the editor.', 8000);
+  }
+
+  if (typeof renderHome === 'function') renderHome();
+  if (typeof renderCoffeePanel === 'function') renderCoffeePanel();
+  if (typeof switchView === 'function') switchView('coffee');
+}
+
+async function pushCoffeeSettleToGate(coop, saleId) {
+  try {
+    const body = {
+      action: 'coffee-settle',
+      payload: { cooperative: coop, settlement_sale_id: saleId },
+      source: 'PWA ' + APP_VERSION + ' coffee-settle'
+    };
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
+      method: 'POST', mode: 'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    if (json && json.coffeeDark)   return { ok: false, reason: 'coffee-dark', message: json.reason };
+    if (json && json.writesLocked) return { ok: false, reason: 'writes-locked', message: json.reason };
+    // doPost nests the reconcile result under json.written
+    const w = json && json.written;
+    if (json && json.ok && w && w.ok)          return { ok: true, cooperative: w.cooperative, deliveries: w.deliveries, kg: w.kg, amount: w.amount, realized_price_kg: w.realized_price_kg };
+    if (json && json.ok && w && w.ok === false) return { ok: false, reason: 'settle-noop', message: w.error || 'nothing to settle' };
+    return { ok: false, reason: (json && json.reason) ? json.reason : 'settle-rejected', message: (json && json.reason) };
   } catch (e) {
     return null;
   }
