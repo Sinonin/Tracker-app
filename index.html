@@ -3842,6 +3842,10 @@
           <span class="qa-icon">💉</span>
           <span class="qa-label">Vaccine</span>
         </button>
+        <button class="quick-add-card" type="button" onclick="openAddPanel('poultry','deworm')">
+          <span class="qa-icon">🪱</span>
+          <span class="qa-label">Deworm</span>
+        </button>
         <button class="quick-add-card" type="button" onclick="openAddPanel('poultry','incubation')">
           <span class="qa-icon">🐣</span>
           <span class="qa-label">Incubate</span>
@@ -4529,8 +4533,8 @@
       </div>
       <div class="field"><label>Cohort (optional)</label><select id="fh-cohort"><option value="">— Cohort (optional) —</option></select></div>
       <div class="pair">
-        <div class="field"><label>Condition</label><select id="fh-condition" onchange="validateFlockHealth()"><option value="">— Condition —</option></select></div>
-        <div class="field"><label>Severity (optional)</label><select id="fh-severity"><option value="">—</option><option value="Mild">Mild</option><option value="Moderate">Moderate</option><option value="Severe">Severe</option></select></div>
+        <div class="field"><label>Condition</label><select id="fh-condition" onchange="onFhConditionChange()"><option value="">— Condition —</option></select></div>
+        <div class="field"><label>Severity (optional)</label><select id="fh-severity"><option value="">—</option></select></div>
       </div>
       <div class="pair">
         <div class="field"><label>Birds affected (optional)</label><input type="number" id="fh-count" inputmode="numeric" step="1" min="0" placeholder="" autocomplete="off"></div>
@@ -4547,6 +4551,31 @@
         <div class="section-head"><h3>Recent observations</h3><span class="meta" id="fh-recent-count">0</span></div>
         <div id="fh-recent-tally" class="meta" style="margin-bottom:0.5rem"></div>
         <div id="fh-recent-list"></div>
+      </div>
+    </div>
+
+    <!-- v6.11.114 — DEWORM (routine prophylactic). Stage-agnostic, non-financial,
+         count-isolated. Deliberately NOT on the vaccination path (that derives its
+         dropdown/next-due/progress bars from the stage-keyed vaccine schedule).
+         House = "All" is a flock-wide LABEL — the birds count is operator-entered
+         so untreated brooders are never silently swept into the treated number. -->
+    <div id="deworm-kind" style="display:none;padding-bottom:5rem">
+      <div class="batch-instructions">One entry per deworming round. Record who was actually dosed — leave brooders out of the count if they weren't treated.</div>
+      <div class="field"><label>Date</label><input type="date" id="dw-date" onchange="validateDeworm()"></div>
+      <div class="pair">
+        <div class="field"><label>Product</label><select id="dw-product" onchange="validateDeworm()"><option value="">— Product —</option></select></div>
+        <div class="field"><label>House</label><select id="dw-house"><option value="">— House —</option></select></div>
+      </div>
+      <div class="pair">
+        <div class="field"><label>Birds treated</label><input type="number" id="dw-count" inputmode="numeric" step="1" min="0" placeholder="e.g. 420" autocomplete="off"></div>
+        <div class="field"><label>Eggs clear from (optional)</label><input type="date" id="dw-eggs-clear"></div>
+      </div>
+      <div class="field"><label>Notes (optional)</label><input type="text" id="dw-notes" placeholder="e.g. Levamisole · in drinking water · all layer houses"></div>
+      <button class="submit" id="dw-submit" onclick="submitDeworm()" disabled>🪱 Record deworming</button>
+
+      <div class="section" id="dw-recent-section" style="display:none;margin-top:1.2rem">
+        <div class="section-head"><h3>Recent deworming</h3><span class="meta" id="dw-recent-count">0</span></div>
+        <div id="dw-recent-list"></div>
       </div>
     </div>
 
@@ -4832,6 +4861,12 @@
           <option value="Prolapse">Prolapse (layers)</option>
           <option value="Unknown found dead">Unknown / found dead</option>
           <option value="Other">Other (see notes)</option>
+        </select>
+      </div>
+      <div class="field"><label>Disposition</label>
+        <select id="mt-disposition">
+          <option value="Found dead" selected>Found dead (died unaided)</option>
+          <option value="Culled">Culled (slaughtered — welfare/management)</option>
         </select>
       </div>
       <div class="field"><label>Notes (optional)</label><input type="text" id="mt-notes" placeholder="e.g. Hawk attack near GH-South gate at dawn"></div>
@@ -9574,7 +9609,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.113';
+const APP_VERSION = 'v6.11.114';
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -11168,6 +11203,33 @@ async function submitHouseForm() {
     return;
   }
 
+  // v6.11.114 — Deactivation guard: never flip a house Inactive while it still
+  // holds live cohorts (current_count > 0). An inactive house drops out of every
+  // entry picker, so a brooder cohort still assigned to it would be stranded —
+  // unloggable for mortality / deworming / collection. Warn, list them, and let
+  // the operator relocate first or proceed knowingly.
+  if (HOUSE_FORM_MODE === 'update' && !active) {
+    const liveHere = (STATE.cohorts || []).filter(function (c) {
+      return Number(c.current_count) > 0 &&
+             String(c.house || '').trim().toLowerCase() === name.toLowerCase();
+    });
+    if (liveHere.length) {
+      const lines = liveHere.map(function (c) {
+        return '• ' + (c.cohort_id || '?') + ' · ' + (c.stage || '?') + ' · ' + (Number(c.current_count) || 0) + ' birds';
+      }).join('\n');
+      const totalBirds = liveHere.reduce(function (s, c) { return s + (Number(c.current_count) || 0); }, 0);
+      const proceed = window.confirm(
+        '⚠️ ' + name + ' still holds ' + totalBirds + ' live bird' + (totalBirds === 1 ? '' : 's') +
+        ' in ' + liveHere.length + ' cohort' + (liveHere.length === 1 ? '' : 's') + ':\n\n' + lines +
+        '\n\nDeactivating hides this house from every entry picker — these cohorts could no longer be logged against it. Move them to another house first, or proceed only if the house is truly empty.\n\nDeactivate anyway?'
+      );
+      if (!proceed) {
+        showHouseFormFeedback('Deactivation cancelled — ' + liveHere.length + ' live cohort(s) still on ' + name + '.', false);
+        return;
+      }
+    }
+  }
+
   if (submitBtn) submitBtn.disabled = true;
   showHouseFormFeedback('Saving…', true);
 
@@ -12253,6 +12315,7 @@ async function flushQueue(opts) {
       else if (kind === 'maize-harvest') record = item.payload || (STATE.maizeHarvest || []).find(m => m.id === recordId) || null; // v6.11.62
       else if (kind === 'coffee-production') record = item.payload || (STATE.coffeeProduction || []).find(m => m.id === recordId) || null; // v6.11.112
       else if (kind === 'flock-health') record = item.payload || (STATE.flockHealth || []).find(m => m.id === recordId) || null; // v6.11.87
+      else if (kind === 'deworm') record = item.payload || (STATE.deworming || []).find(m => m.id === recordId) || null; // v6.11.114
       else if (kind === 'bird-census') record = (STATE.birdCensus || []).find(b => b.id === recordId);
       else if (kind === 'vaccination') record = (STATE.vaccinations || []).find(v => v.id === recordId);
       // v6.1.7 — Cohort and litter records use queue payload (carry full record),
@@ -12281,6 +12344,7 @@ async function flushQueue(opts) {
       else if (kind === 'maize-harvest') { const _mh = await pushMaizeHarvestToGate(record); ok = !!(_mh && _mh.ok); } // v6.11.62
       else if (kind === 'coffee-production') { const _cd = await pushCoffeeDeliveryToGate(record); ok = !!(_cd && _cd.ok); } // v6.11.112
       else if (kind === 'flock-health') { const _fh = await pushFlockHealthToGate(record); ok = !!(_fh && _fh.ok); } // v6.11.87
+      else if (kind === 'deworm') { const _dw = await pushDewormToGate(record); ok = !!(_dw && _dw.ok); } // v6.11.114
       else if (kind === 'bird-census') ok = await syncBirdCensus(record);
       else if (kind === 'vaccination') ok = await syncVaccination(record);
       else if (kind === 'cohort')      ok = await syncCohort(record);
@@ -13003,6 +13067,10 @@ async function applyCloudResponse(data) {
   if (Array.isArray(data.flockHealth)) {                       // v6.11.87
     STATE.flockHealth = data.flockHealth.map(cloudToLocalFlockHealth);
     await storageSet(K_FLOCK_HEALTH, STATE.flockHealth);
+  }
+  if (Array.isArray(data.deworming)) {                         // v6.11.114
+    STATE.deworming = data.deworming.map(cloudToLocalDeworm);
+    await storageSet(K_DEWORMING, STATE.deworming);
   }
   if (Array.isArray(data.coffeeProduction)) {                  // v6.11.111
     STATE.coffeeProduction = data.coffeeProduction.map(cloudToLocalCoffeeProduction);
@@ -13927,6 +13995,7 @@ function switchKind(k) {
   // v6.11.113 — Coffee settlement
   { const csKindEl = document.getElementById('coffee-settlement-kind'); if (csKindEl) csKindEl.style.display = k === 'coffee-settlement' ? '' : 'none'; }
   { const fhKindEl = document.getElementById('flock-health-kind'); if (fhKindEl) fhKindEl.style.display = k === 'flock-health' ? '' : 'none'; }   // v6.11.87
+  { const dwKindEl = document.getElementById('deworm-kind'); if (dwKindEl) dwKindEl.style.display = k === 'deworm' ? '' : 'none'; }   // v6.11.114
   // v6.0 SHIP 4 — Bird Census
   const bcKindEl = document.getElementById('bird-census-kind');
   if (bcKindEl) bcKindEl.style.display = k === 'bird-census' ? '' : 'none';
@@ -13956,6 +14025,7 @@ function switchKind(k) {
   if (k === 'coffee-production' && typeof initCoffeeDeliveryForm === 'function') initCoffeeDeliveryForm();   // v6.11.112
   if (k === 'coffee-settlement' && typeof initCoffeeSettlementForm === 'function') initCoffeeSettlementForm();   // v6.11.113
   if (k === 'flock-health' && typeof initFlockHealthForm === 'function') initFlockHealthForm();   // v6.11.87
+  if (k === 'deworm' && typeof initDewormForm === 'function') initDewormForm();   // v6.11.114
   if (k === 'bird-census' && typeof initBirdCensusForm === 'function') initBirdCensusForm();
   if (k === 'incubation' && typeof initIncubationForm === 'function') initIncubationForm();
   if (k === 'incubation' && typeof renderIncubationProgress === 'function') renderIncubationProgress();
@@ -16881,6 +16951,17 @@ const K_FLOCK_HEALTH = 'sinonin_flock_health_v1';
 if (typeof STATE === 'object' && !Array.isArray(STATE.flockHealth)) {
   STATE.flockHealth = [];
 }
+// v6.11.114 — Deworming (routine prophylactic). Same local model as flock health:
+// a STATE array on its own storage key, synced via the gate, hydrated from doGet
+// (deworming). Non-financial — the dewormer purchase is logged as an Expense; this
+// records only the clinical event. NEVER summed into any P&L or bird count.
+const K_DEWORMING = 'sinonin_deworming_v1';
+if (typeof STATE === 'object' && !Array.isArray(STATE.deworming)) {
+  STATE.deworming = [];
+}
+// Dewormer product fallback — CONTROL-PANEL managed via FLOCK_DEWORMERS, same as
+// every other flock vocabulary. Common Nandi-layer anthelmintics; edit live.
+const FLOCK_DEWORMER_DEFAULT = ['Piperazine', 'Levamisole', 'Albendazole', 'Fenbendazole', 'Ivermectin', 'Other'];
 // v6.11.111 — Coffee deliveries (read-only display in Phase 2; written in Phase 3).
 // Local model mirrors flock health: a STATE array hydrated from doGet
 // (coffeeProduction). Kg only — value is auction-dependent, never summed into P&L.
@@ -16900,6 +16981,11 @@ if (typeof STATE === 'object' && !Array.isArray(STATE.coffeeProduction)) {
 const FLOCK_CONDITION_DEFAULT = ['Healthy', 'Dead', 'Coccidiosis', 'Newcastle (suspected)', 'Salmonella', 'Respiratory signs', 'Diarrhoea', 'Fowl pox', 'Worms', 'Lameness', 'Mites / lice', 'Eye / head swelling', 'Drop in laying', 'Injury', 'Other']; // v6.11.109 — fallback realigned to live Control_Panel (added Salmonella, Worms)
 const FLOCK_ACTION_DEFAULT = ['Observed only', 'Isolated affected', 'Treated / medicated', 'Vaccinated', 'De-Wormed', 'Called vet', 'Slaughtered', 'Culled', 'Buried', 'Incinerated']; // v6.11.109 — added De-Wormed
 const FLOCK_NOTES_DEFAULT = ['Routine check — normal', 'Found dead in morning', 'Lethargy / not feeding', 'Reduced laying', 'Wet litter', 'Isolated for monitoring', 'Recovered'];
+// v6.11.114 — Severity is now CONTROL-PANEL managed (FLOCK_SEVERITY), like every
+// other flock vocabulary. 'None' pairs with a Healthy condition so a clean
+// observation is unambiguous (blank read as "skipped"). Rename labels via the
+// Control_Panel FLOCK_SEVERITY row anytime — this is only the fallback.
+const FLOCK_SEVERITY_DEFAULT = ['None', 'Mild', 'Moderate', 'Severe'];
 
 function initEggCollectionForm() {
   // Default date to today
@@ -17760,6 +17846,7 @@ function initFlockHealthForm() {
 
   // Condition / Action / Remark — all CONTROL-PANEL managed dropdowns (no free text).
   _fillFlockSelect('fh-condition', 'FLOCK_CONDITIONS', FLOCK_CONDITION_DEFAULT, '— Condition —');
+  _fillFlockSelect('fh-severity',  'FLOCK_SEVERITY',   FLOCK_SEVERITY_DEFAULT,  '—');   // v6.11.114
   _fillFlockSelect('fh-action',    'FLOCK_ACTIONS',    FLOCK_ACTION_DEFAULT,    '— Action taken (optional) —');
   _fillFlockSelect('fh-notes',     'FLOCK_NOTES',      FLOCK_NOTES_DEFAULT,     '— Remark (optional) —');
 
@@ -17811,6 +17898,25 @@ function renderFlockHealthHistory() {
   }
 }
 
+// v6.11.114 — Condition change handler. When the operator picks a Healthy
+// condition and hasn't set a severity, default severity to the "none" option
+// (None / N/A / Healthy — whichever label is configured in FLOCK_SEVERITY) so a
+// healthy observation reads cleanly instead of an ambiguous blank. Operator can
+// still override. Always re-validates afterwards.
+function onFhConditionChange() {
+  try {
+    const condEl = document.getElementById('fh-condition');
+    const sevEl = document.getElementById('fh-severity');
+    if (condEl && sevEl && /^healthy$/i.test((condEl.value || '').trim()) && !sevEl.value) {
+      const none = Array.prototype.find.call(sevEl.options, function (o) {
+        return /^(none|n\/a|healthy)$/i.test((o.value || '').trim());
+      });
+      if (none) sevEl.value = none.value;
+    }
+  } catch (e) {}
+  if (typeof validateFlockHealth === 'function') validateFlockHealth();
+}
+
 // v6.11.89 — Read a comma-separated Control-Panel list, trimmed; [] when unset.
 function _flockCfgList(key) {
   try {
@@ -17831,6 +17937,178 @@ function _fillFlockSelect(elId, cfgKey, fallback, placeholder) {
   el.innerHTML = '<option value="">' + placeholder + '</option>' +
     list.map(v => '<option value="' + escapeHtml(v) + '">' + escapeHtml(v) + '</option>').join('');
   if (cur && list.indexOf(cur) !== -1) el.value = cur;
+}
+
+// ============================================================
+// v6.11.114 — Deworming entry (routine prophylactic, non-financial)
+// ============================================================
+function initDewormForm() {
+  const dEl = document.getElementById('dw-date');
+  if (dEl && !dEl.value) dEl.value = new Date().toISOString().slice(0, 10);
+
+  // Product — CONTROL-PANEL managed (FLOCK_DEWORMERS), with a built-in fallback.
+  _fillFlockSelect('dw-product', 'FLOCK_DEWORMERS', FLOCK_DEWORMER_DEFAULT, '— Product —');
+
+  // House — active houses + an "All" flock-wide label. "All" does NOT auto-sum a
+  // count; the operator types the birds actually dosed, so brooders that weren't
+  // treated never get swept in.
+  const houseEl = document.getElementById('dw-house');
+  if (houseEl) {
+    const cur = houseEl.value;
+    let houseList = _flockCfgList('FLOCK_HOUSES');
+    if (!houseList.length) {
+      houseList = (Array.isArray(STATE.houses) ? STATE.houses : [])
+        .filter(h => h.active === true || h.active === 'TRUE' || h.active === undefined)
+        .map(h => h.name).filter(Boolean);
+    }
+    houseEl.innerHTML = '<option value="">— House —</option>' +
+      '<option value="All">All (flock-wide)</option>' +
+      houseList.map(h => '<option value="' + escapeHtml(h) + '">' + escapeHtml(h) + '</option>').join('');
+    if (cur) houseEl.value = cur;
+  }
+
+  validateDeworm();
+  if (typeof renderDewormHistory === 'function') renderDewormHistory();
+}
+
+function validateDeworm() {
+  const date = (document.getElementById('dw-date') || {}).value || '';
+  const product = ((document.getElementById('dw-product') || {}).value || '').trim();
+  const btn = document.getElementById('dw-submit');
+  if (btn) btn.disabled = !(date && product);
+}
+
+async function submitDeworm() {
+  const date = (document.getElementById('dw-date') || {}).value || '';
+  const product = ((document.getElementById('dw-product') || {}).value || '').trim();
+  const house = ((document.getElementById('dw-house') || {}).value || '').trim();
+  const countRaw = ((document.getElementById('dw-count') || {}).value || '').trim();
+  const eggsClear = (document.getElementById('dw-eggs-clear') || {}).value || '';
+  const notes = ((document.getElementById('dw-notes') || {}).value || '').trim();
+
+  if (!date) { showToast('Pick a date', 2500); return; }
+  if (!product) { showToast('Pick a product', 2500); return; }
+
+  if (typeof isSessionConfirmed === 'function' && !isSessionConfirmed('deworm')) {
+    const summaryHtml = '<div><strong>' + escapeHtml(product) + '</strong></div>' +
+      '<div style="opacity:0.85;margin-top:0.3rem;">' + (house ? escapeHtml(house) + ' · ' : '') + date + '</div>' +
+      (eggsClear ? '<div style="opacity:0.7;margin-top:0.2rem;font-size:0.78rem">Eggs clear from ' + eggsClear + '</div>' : '');
+    const ok = await confirmFirstSubmit('deworm', summaryHtml);
+    if (!ok) { showToast('Cancelled', 1800); return; }
+    markSessionConfirmed('deworm');
+  }
+
+  const row = {
+    id: 'dw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+    ts: new Date().toISOString(),
+    date: date, product: product, house: house,
+    birds_count: countRaw === '' ? '' : Number(countRaw),
+    eggs_clear_from: eggsClear, notes: notes
+  };
+
+  if (!Array.isArray(STATE.deworming)) STATE.deworming = [];
+  STATE.deworming.push(row);
+  try { await storageSet(K_DEWORMING, STATE.deworming); } catch (e) {}
+
+  showToast('Saved · ' + product + (house ? ' · ' + house : '') + ' · ' + date);
+  if (typeof renderDewormHistory === 'function') renderDewormHistory();
+
+  ['dw-count', 'dw-notes', 'dw-eggs-clear'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  validateDeworm();
+
+  const synced = await syncDeworm(row);
+  if (!synced) {
+    await queueForSync(row, 'deworm');
+    if (lastWriteResult && lastWriteResult.reason === 'writes-locked') {
+      showToast('🔒 Writes locked — ping ' + farmOwnerTitle() + ' · deworming queued', 6000);
+    } else {
+      showToast('Saved offline · will sync when back online', 3500);
+    }
+  }
+  updateSyncIndicator();
+}
+
+async function syncDeworm(row) {
+  if (USE_APPS_SCRIPT_GATE && APPS_SCRIPT_GATE_URL) {
+    const gateResult = await pushDewormToGate(row);
+    if (gateResult) { lastWriteResult = gateResult; return gateResult.ok; }
+  }
+  lastWriteResult = { ok: false, reason: 'gate-unreachable' };
+  return false;
+}
+
+async function pushDewormToGate(row) {
+  try {
+    const body = {
+      action: 'deworm',
+      payload: {
+        ts: row.ts || new Date().toISOString(),
+        date: row.date,
+        product: row.product,
+        house: row.house || '',
+        stage: row.stage || '',
+        birds_count: (row.birds_count === '' || row.birds_count === null || row.birds_count === undefined) ? '' : Number(row.birds_count),
+        eggs_clear_from: row.eggs_clear_from || '',
+        notes: row.notes || ''
+      },
+      source: 'PWA ' + APP_VERSION + ' deworm'
+    };
+    const response = await gatePost_(APPS_SCRIPT_GATE_URL, {
+      method: 'POST', mode: 'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    if (json && json.ok) return { ok: true, via: 'gate', possibleDuplicate: !!json.possibleDuplicate, summary: json.summary };
+    if (json && json.writesLocked) return { ok: false, reason: 'writes-locked', summary: json.reason };
+    return { ok: false, reason: (json && json.reason) ? json.reason : 'gate-rejected' };
+  } catch (e) {
+    return null;
+  }
+}
+
+function cloudToLocalDeworm(r) {
+  return {
+    id: 'C-DW-' + String(r.ts || r.date || '') + '-' + String(r.product || '').trim(),
+    ts: r.ts || (r.date ? r.date + 'T00:00:00Z' : new Date().toISOString()),
+    date: r.date || '',
+    product: String(r.product || '').trim(),
+    house: String(r.house || '').trim(),
+    stage: String(r.stage || '').trim(),
+    birds_count: (r.birds_count === null || r.birds_count === undefined || r.birds_count === '') ? '' : Number(r.birds_count),
+    eggs_clear_from: String(r.eggs_clear_from || '').trim(),
+    notes: String(r.notes || ''),
+    _source: 'cloud'
+  };
+}
+
+function renderDewormHistory() {
+  const section = document.getElementById('dw-recent-section');
+  if (!section) return;
+  const all = Array.isArray(STATE.deworming) ? STATE.deworming : [];
+  if (all.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  const countEl = document.getElementById('dw-recent-count');
+  if (countEl) countEl.textContent = all.length + ' logged';
+  const box = document.getElementById('dw-recent-list');
+  if (box) {
+    const sorted = [...all].sort((a, b) => String(b.ts || b.date || '').localeCompare(String(a.ts || a.date || '')));
+    box.innerHTML = sorted.slice(0, 10).map(e => {
+      const metaBits = [e.date, e.house, e.notes].filter(Boolean).map(escapeHtml).join(' \u00b7 ');
+      const clear = e.eggs_clear_from ? ('eggs clear ' + escapeHtml(e.eggs_clear_from)) : '';
+      const cnt = (e.birds_count !== '' && e.birds_count !== null && e.birds_count !== undefined) ? (e.birds_count + ' birds') : '';
+      const right = [cnt, clear].filter(Boolean).join(' \u00b7 ');
+      return `
+        <div class="record-row" style="grid-template-columns:1fr auto">
+          <div>
+            <div class="name">${escapeHtml(e.product || '\u2014')}</div>
+            <div class="meta">${metaBits}</div>
+          </div>
+          <div class="val">${right}</div>
+        </div>`;
+    }).join('');
+  }
 }
 
 function validateFlockHealth() {
@@ -20345,6 +20623,10 @@ function initMortalityForm() {
   const dEl = document.getElementById('mt-date');
   if (dEl && !dEl.value) dEl.value = new Date().toISOString().slice(0, 10);
 
+  // v6.11.114 — Disposition resets to the safe default (Found dead) on open.
+  const mtDispEl = document.getElementById('mt-disposition');
+  if (mtDispEl) mtDispEl.value = 'Found dead';
+
   // v6.11.82 — Stage list from the canonical BIRD_CENSUS_STAGES (Cheison 06 Jun
   // 2026: "quarantine and deformities not showing under death"). The death form
   // had hardcoded a 5-stage subset that omitted Quarantine, Deformities and
@@ -20401,6 +20683,7 @@ async function submitMortality() {
   const house = (document.getElementById('mt-house') || {}).value || '';
   const count = (document.getElementById('mt-count') || {}).value;
   const cause = (document.getElementById('mt-cause') || {}).value || '';
+  const disposition = (document.getElementById('mt-disposition') || {}).value || 'Found dead';   // v6.11.114
   const notes = ((document.getElementById('mt-notes') || {}).value || '').trim();
   const cohort = (document.getElementById('mt-cohort') || {}).value || '';
 
@@ -20434,6 +20717,10 @@ async function submitMortality() {
   });
   const causeElEarly = document.getElementById('mt-cause');
   if (causeElEarly) causeElEarly.value = '';
+  // v6.11.114 — Reset disposition to the safe default so a one-off 'Culled' can't
+  // stick and silently mislabel the next found-dead entry.
+  const dispElEarly = document.getElementById('mt-disposition');
+  if (dispElEarly) dispElEarly.value = 'Found dead';
 
   const row = {
     id:    'mt-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
@@ -20443,6 +20730,7 @@ async function submitMortality() {
     stage: stage,
     count: countN,
     cause: cause,
+    disposition: disposition,
     cohort_id: cohort,
     notes: notes
   };
@@ -20489,6 +20777,7 @@ async function pushMortalityToGate(row) {
         stage:     row.stage || '',
         count:     Number(row.count || 0),
         cause:     row.cause || '',
+        disposition: row.disposition || 'Found dead',
         cohort_id: row.cohort_id || '',
         notes:     row.notes || ''
       },
@@ -20547,6 +20836,7 @@ function cloudToLocalMortality(r) {
     stage:     String(r.stage || ''),
     count:     Number(r.count) || 0,
     cause:     String(r.cause || ''),
+    disposition: String(r.disposition || ''),
     cohort_id: String(r.cohort_id || r.cohortId || ''),
     notes:     String(r.notes || '')
   };
@@ -28633,6 +28923,8 @@ function showUpdateBanner() {
   }
   // v6.5.7 — Bird mortality event log
   STATE.mortality = await storageGet(K_MORTALITY, []);
+  // v6.11.114 — Deworming log (routine prophylactic, non-financial)
+  STATE.deworming = await storageGet(K_DEWORMING, []);
   // v6.0 SHIP 1 — Egg Collection state
   STATE.eggCollection = await storageGet(K_EGG_COLLECTION, []);
   
