@@ -9609,7 +9609,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.117';
+const APP_VERSION = 'v6.11.118'; // #CleaningFriday — dead double-mortality smear machinery removed from computeStageLive (twin of AS v5.0.87)
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -21774,15 +21774,7 @@ function computeStageLive(stage, house, today) {
   // is that sales/deaths against pure-baseline birds (no cohort attached) 
   // aren't deducted post-census; acceptable for current scale.
 
-  // Helper: stage from age in days (mirrors computeCohortStage logic but 
-  // takes ageDays directly so we can iterate day-by-day cheaply)
-  function _stageForAge(ageDays) {
-    if (ageDays == null || isNaN(ageDays) || ageDays < 0) return null;
-    if (ageDays <= 7)   return 'Chicks 1\u20137 days';
-    if (ageDays <= 28)  return 'Chicks 7\u201328 days';
-    if (ageDays <= 140) return 'Growers';
-    return 'Layers';
-  }
+
 
   let cohortLiveTotal = 0;
   // v6.10.8 — Track post-census deductions from baseline cohorts separately
@@ -21820,81 +21812,52 @@ function computeStageLive(stage, house, today) {
     const inBaseline = (c.date_origin <= censusDate) && 
                        (effectiveCohortStage(c, censusDate) === stage);
 
-    // Compute age and stagesPassed
+    // Age validity guard (skips garbage / future-dated origins, exactly as
+    // before — a cohort with an unparseable or future date_origin is ignored).
     const origin = new Date(c.date_origin + 'T00:00:00Z');
     const nowDate = new Date(today + 'T00:00:00Z');
     if (isNaN(origin.getTime()) || isNaN(nowDate.getTime())) return;
     const ageDays = Math.floor((nowDate - origin) / 86400000);
     if (ageDays < 0) return;
 
-    const stagesPassed = {};
-    for (let d = 0; d <= ageDays; d++) {
-      const s = _stageForAge(d);
-      if (s) stagesPassed[s] = true;
-    }
-
-    const initial = Number(c.initial_count) || 0;
-
-    // v6.9.10 — Dual-key sale matching: cohort_id (Phase 2) first, 
-    // stagesPassed (legacy) fallback. Mirrors Apps Script v5.0.38.
-    // v6.10.8 — For baseline cohorts, only POST-census sales count
-    // (pre-census sales were already reflected in the census number).
-    // v6.10.9 — For baseline cohorts, ALSO require the sale to be 
-    // explicitly tagged with this cohort_id. Untagged sales matched by
-    // stagesPassed would double-count: with 2 Cockerels cohorts both in
-    // baseline, every untagged Cockerels sale would deduct from each
-    // cohort, blowing baseline past zero. Sinonin smoke test (25 May 2026):
-    // 100+ untagged Chicks 1-7d sales across 4-22 May matched BOTH 
-    // COH-KP16APR264 (inBaseline, at Chicks 7-28d) AND COH-KP27APR264 
-    // (not inBaseline) via stagesPassed, deducting the same sales twice
-    // and pushing Layers + Cockerels live counts to 0. With this guard,
-    // baseline cohorts honestly deduct ONLY sales we KNOW belong to them
-    // (cohort_id-tagged). Untagged historical sales remain in baseline's
-    // implicit accounting — same as pre-v6.10.8 behavior for those, which 
-    // is honest given we can't attribute them with confidence.
-    let soldForCohort = 0;
-    (STATE.poultry || []).forEach(s => {
-      if (s.product === 'Eggs') return;
-      const saleCohortId = String(s.cohort_id || '').trim();
-      if (saleCohortId) {
-        if (saleCohortId !== c.cohort_id) return;
-      } else {
-        if (inBaseline) return;  // v6.10.9 — guard against double-count
-        if (!stagesPassed[s.stage]) return;
-      }
-      if (!s.date || s.date < c.date_origin) return;
-      if (inBaseline && s.date <= censusDate) return;
-      soldForCohort += Number(s.quantity) || 0;
-    });
-
-    let mortForCohort = 0;
-    (STATE.mortality || []).forEach(m => {
-      const mortCohortId = String(m.cohort_id || '').trim();
-      if (mortCohortId) {
-        if (mortCohortId !== c.cohort_id) return;
-      } else {
-        if (inBaseline) return;  // v6.10.9 — same guard for mortality
-        if (!stagesPassed[m.stage]) return;
-      }
-      if (!m.date || m.date < c.date_origin) return;
-      // If house filter is active, only count mortality for that house
-      if (house && m.house !== house) return;
-      if (inBaseline && m.date <= censusDate) return;
-      mortForCohort += Number(m.count) || 0;
-    });
-
     if (inBaseline) {
-      // v6.10.8 BUG FIX — Cohort was counted in census baseline; deduct
-      // ONLY its post-census sales/mortality. Previously this branch
-      // returned early and post-census events were lost from the live
-      // count even though Apps Script accepted and persisted them.
+      // v6.10.8 / v6.10.9 — Cohort was already counted in the census baseline,
+      // so deduct ONLY its post-census, cohort_id-TAGGED sales/mortality.
+      // Untagged events are skipped on purpose: with two baseline cohorts in a
+      // stage, an untagged sale matched by age would deduct from BOTH and blow
+      // the count past zero (Sinonin smoke test 25 May 2026 — 100+ untagged
+      // Chicks 1-7d sales double-deducted Layers/Cockerels to 0). A death or
+      // sale only moves a baseline cohort's number when we KNOW it belongs to it.
+      //
+      // v6.11.118 (#CleaningFriday) — these two loops, a stagesPassed set, and
+      // an unused `initial` previously ran for EVERY cohort, then were discarded
+      // for non-baseline cohorts (whose live count is just current_count). That
+      // discard path was the old untagged-death SMEAR machinery — dead since
+      // v6.11.47, kept only as a trap. Gated to inBaseline, where the result is
+      // used; stagesPassed + the untagged fallback removed. Behaviour-identical.
+      // Mirrors AS v5.0.87.
+      let soldForCohort = 0;
+      (STATE.poultry || []).forEach(s => {
+        if (s.product === 'Eggs') return;
+        if (String(s.cohort_id || '').trim() !== c.cohort_id) return;
+        if (!s.date || s.date < c.date_origin || s.date <= censusDate) return;
+        soldForCohort += Number(s.quantity) || 0;
+      });
+
+      let mortForCohort = 0;
+      (STATE.mortality || []).forEach(m => {
+        if (String(m.cohort_id || '').trim() !== c.cohort_id) return;
+        if (!m.date || m.date < c.date_origin || m.date <= censusDate) return;
+        if (house && m.house !== house) return;  // house filter, if active
+        mortForCohort += Number(m.count) || 0;
+      });
+
       baselineSalesPostCensus += soldForCohort;
       baselineMortPostCensus += mortForCohort;
     } else {
-      // New cohort (or transitioned into stage after census): add full
-      // live count contribution.
-      // v6.11.47 — Live = delta-maintained current_count (mirrors AS v5.0.64);
-      // sell-delta / die-delta / create keep it exact.
+      // New cohort (or transitioned into this stage after census): contribute
+      // its full live count. v6.11.47 — Live = delta-maintained current_count
+      // (mirrors AS v5.0.64); sell-delta / die-delta / create keep it exact.
       const cohortLive = Math.max(0, Number(c.current_count) || 0);
       cohortLiveTotal += cohortLive;
       // v6.9.8 — Capture origin date only for cohorts with live birds (a
