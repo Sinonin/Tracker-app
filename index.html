@@ -9609,7 +9609,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.119'; // hold die-delta on gate-flagged possible-duplicate mortality (recurrence fix; pairs with AS v5.0.88 prolapse void)
+const APP_VERSION = 'v6.11.120'; // egg Gift option for Normal eggs (+ Gift now forces amount 0); pairs with AS v5.0.91 corrections
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -15726,15 +15726,17 @@ function yValues() {
   };
 }
 
-/* v6.9.21 — Stage-aware payment method dropdown. Cheison sealed (22 May
-   2026 Verden): "Grade A eggs should be sold; Grade B/C can be moved any
-   way that clears them, including gifting to staff." Implementation: the
-   "Gift" option appears only when product=Eggs AND stage is a non-normal
-   egg category (Broken eggs OR Small/Abnormal Eggs). For Normal eggs and
-   all bird products, the option is hidden as an accidental-write-off
-   guardrail. Preserves the operator's current selection if still valid
-   after the rebuild. */
-const EGG_GIFTABLE_STAGES = ['Broken eggs', 'Small/Abnormal Eggs'];
+/* v6.9.21 — Stage-aware payment method dropdown. Originally (22 May 2026) the
+   "Gift" option appeared ONLY for Broken / Small-Abnormal eggs — Grade A
+   (Normal) eggs were sale-only, as an accidental-write-off guardrail.
+   v6.11.120 (Cheison 13 Jun 2026) — Normal eggs are now giftable too: real
+   clearances happen (an old bulk gifted to family + shared by the team), and
+   forcing a fake discounted "sale" to clear them is what produced the 2,525
+   mis-priced gift. The remaining guardrail is the gift DESTINATION requirement
+   (renderPoultryDestination forces a recipient when Gift is chosen) plus the
+   amount being locked to 0, so a gift can't silently carry revenue. Gift stays
+   eggs-only; bird products are never giftable from this form. */
+const EGG_GIFTABLE_STAGES = ['Normal eggs', 'Broken eggs', 'Small/Abnormal Eggs'];
 
 function populatePoultryPaymentDropdown() {
   const paymentEl = document.getElementById('y-payment');
@@ -16205,8 +16207,16 @@ function _computePoultryAmount() {
   if (discount < 0) { discount = 0; if (discEl) discEl.value = ''; }
 
   // Gift = no payment is the truth → amount 0; calculator + discount off.
+  // v6.11.120 — FORCE amount to 0 and clear the price/discount inputs (and lock
+  // the amount), instead of merely leaving it editable. Previously a unit price
+  // typed before switching to Gift stayed on the field, so a "gift" could ship
+  // with revenue — exactly the 13 Jun 2,525 mis-priced clearance. A gift is now
+  // always 0, no fake-discount dance needed.
   if (method === 'Gift') {
-    amtEl.readOnly = false; amtEl.style.opacity = '';
+    amtEl.value = '0';
+    amtEl.readOnly = true; amtEl.style.opacity = '0.85';
+    if (upEl) upEl.value = '';
+    if (discEl) discEl.value = '';
     if (reasonField) reasonField.style.display = 'none';
     if (calcLine) calcLine.style.display = 'none';
     return { reasonMissing: false };
