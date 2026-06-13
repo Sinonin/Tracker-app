@@ -9609,7 +9609,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.120'; // egg Gift option for Normal eggs (+ Gift now forces amount 0); pairs with AS v5.0.91 corrections
+const APP_VERSION = 'v6.11.121'; // lay% denominator now reads live per-house layers from the cohort roster (liveLayersInHouse); pairs with AS v5.0.92 rehouseCohort_LUD20260613
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -21917,6 +21917,21 @@ function computeStageLive(stage, house, today) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// v6.11.121 — Lay% denominator: ONE live source, not the census snapshot.
+// Pairs with Apps Script v5.0.92 (rehouseCohort_LUD20260613). The per-house
+// layer count for every lay% reading must come from the live cohort roster
+// (Current_Count grouped by House) via computeStageLive — NOT the census
+// snapshot latestLayersByHouse, which stays split/stale across a re-house and
+// is the single wrong source behind both the 226÷179 = 126% Ground Floor
+// reading and the empty-house NaN. houseLE's existing `=== 0 → "no layers"`
+// branch then handles an emptied house with no extra guard. latestLayersByHouse
+// is kept for census-dated displays (vaccination bars, "as of <date>" lines).
+// ─────────────────────────────────────────────────────────────────────
+function liveLayersInHouse(house, today) {
+  return computeStageLive('Layers', house, today).live || 0;
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // v6.11.94 — Unified revenue read. STATE.sales is the single source of truth
 // for income: tea banked-GL history + poultry mirrors + the 929-row import
 // all live in the Sales sheet, read back via readSales/doGet (backend v5.0.71).
@@ -22597,8 +22612,11 @@ function renderHome() {
     totalBirds += stageTotals[s];
   });
 
-  const gfLayers = (latestLayersByHouse['Ground Floor|Layers'] && Number(latestLayersByHouse['Ground Floor|Layers'].count)) || 0;
-  const udLayers = (latestLayersByHouse['Upper Deck|Layers']   && Number(latestLayersByHouse['Upper Deck|Layers'].count))   || 0;
+  // v6.11.121 — live per-house layer count from the cohort roster (see
+  // liveLayersInHouse above), replacing the census-snapshot read that produced
+  // the 126% Ground Floor lay%. totalLayers (below) flows from these two.
+  const gfLayers = liveLayersInHouse('Ground Floor', today);
+  const udLayers = liveLayersInHouse('Upper Deck', today);
   const totalLayers = gfLayers + udLayers;
 
   // Live birds card (kept for legacy compatibility — IDs hidden in HTML)
@@ -22946,8 +22964,8 @@ function renderHome() {
     // House → { layers_count, eggs_key (sanitized for wide-schema egg row lookup) }
     const houseRows = [];
     houses.forEach(h => {
-      const layersKey = `${h.name}|Layers`;
-      const layersCount = (latestLayersByHouse[layersKey] && Number(latestLayersByHouse[layersKey].count)) || 0;
+      // v6.11.121 — live per-house layer count (was census snapshot); #CleaningFriday: layersKey retired.
+      const layersCount = liveLayersInHouse(h.name, today);
       if (layersCount > 0) {
         // Wide-schema egg key: "Ground Floor" → "gf_normal", "Upper Deck" → "ud_normal"
         // Generic sanitize: lowercase first letters joined + '_normal'
