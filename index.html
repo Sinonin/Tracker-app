@@ -9609,7 +9609,7 @@ const USE_APPS_SCRIPT_GATE = true; // Kill switch — flip to false to bypass ga
    function so audit log entries always reflect the CURRENTLY RUNNING code, not
    the version the function was originally written under. Update this on every
    deploy in lockstep with About-section meta and version-label header. */
-const APP_VERSION = 'v6.11.118'; // #CleaningFriday — dead double-mortality smear machinery removed from computeStageLive (twin of AS v5.0.87)
+const APP_VERSION = 'v6.11.119'; // hold die-delta on gate-flagged possible-duplicate mortality (recurrence fix; pairs with AS v5.0.88 prolapse void)
 // v6.11.43 — shared egg clearing cutoff: batches ON/BEFORE this date are
 // reconciled closed (sold / incubated / gifted). Used by the egg sell-picker
 // AND the incubation draw helper. Advance one line for a fresh clearing.
@@ -20755,13 +20755,28 @@ async function submitMortality() {
     }
     await queueForSync(row, 'mortality');
     showToast('💀 Death recorded locally · will sync when online', 3000);
+  } else if (lastWriteResult && lastWriteResult.possibleDuplicate) {
+    // v6.11.119 — The gate FLAGGED this as a possible duplicate (same date +
+    // house + count + cause as a death already logged today). Mortality dedup
+    // is FLAG-mode on purpose — a genuine second batch of deaths can share
+    // those fields — so we keep the row rather than drop it. But we must NOT
+    // auto-fire the die-delta here: doing so is exactly what double-decremented
+    // COH-LGF-UZ13082025 on 12 Jun (Victor's cull + Faith's re-entry, fixed by
+    // AS v5.0.88). Hold the decrement and let Cheison adjudicate — if it's a
+    // real new death, deduct it deliberately from the cohort; if it's the same
+    // bird, do nothing and the live count stays truthful.
+    showToast('\u26a0\ufe0f Looks like a death already logged today (same house · count · cause). Recorded, but the live count was NOT decremented. Check the Sheet before deducting.', 7000);
+    if (typeof renderHome === 'function') renderHome();
+    return;
   } else {
-    showToast('💀 ' + countN + ' bird' + (countN === 1 ? '' : 's') + ' recorded · ' + cause, 2500);
+    showToast('\ud83d\udc80 ' + countN + ' bird' + (countN === 1 ? '' : 's') + ' recorded \u00b7 ' + cause, 2500);
   }
 
   // v6.7.0 — Auto-decrement matching cohort on death. Mirrors the sale 
   // decrement: reduces cohort.current_count, raises cohort.mortality_count. 
   // Honors "no recount" — the FLOCK isn't disturbed, just the ledger math.
+  // v6.11.119 — reached only for a clean (non-flagged) accept or an offline
+  // queue; a gate-flagged possible-duplicate returns above without decrementing.
   try { await autoDecrementCohortOnMortality(row); } catch (e) { console.warn('[cohort-mortality-decrement] failed:', e.message); }
 
   // (v6.5.9 — field clear moved above to the pre-await position. Old 
